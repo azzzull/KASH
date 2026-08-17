@@ -10,7 +10,7 @@ export function IconButton({ icon: Icon, label, className = "", ...props }: Icon
   return (
     <button
       aria-label={label}
-      className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-kash-emerald/15 bg-white text-slate-700 transition hover:border-kash-gold/60 hover:bg-kash-selected hover:text-kash-emeraldDark active:bg-kash-selected ${className}`}
+      className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-kash-emerald/15 bg-white text-slate-700 transition hover:border-kash-emeraldDark hover:bg-kash-selected hover:text-kash-emeraldDark active:bg-kash-selected ${className}`}
       title={label}
       type="button"
       {...props}

@@ -77,6 +77,46 @@ export type WalletBalance = {
   initial_balance: MoneyAmount;
   transaction_total: MoneyAmount;
   current_balance: MoneyAmount;
+  allocated_to_goals: MoneyAmount;
+  available_balance: MoneyAmount;
+};
+
+export type GoalStatus = "active" | "completed" | "cancelled";
+
+export type Goal = {
+  id: string;
+  user_id: string;
+  wallet_id: string | null;
+  name: string;
+  target_amount: MoneyAmount;
+  deadline: string | null;
+  icon: string | null;
+  image_url: string | null;
+  note: string | null;
+  status: GoalStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GoalContribution = {
+  id: string;
+  goal_id: string;
+  user_id: string;
+  wallet_id: string;
+  transaction_id: string | null;
+  amount: MoneyAmount;
+  contribution_date: string;
+  note: string | null;
+  created_at: string;
+};
+
+export type GoalProgress = {
+  goal_id: string;
+  user_id: string;
+  target_amount: MoneyAmount;
+  current_amount: MoneyAmount;
+  remaining_amount: MoneyAmount;
+  percentage: MoneyAmount;
 };
 
 export type Notification = {

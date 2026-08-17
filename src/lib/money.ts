@@ -58,3 +58,28 @@ export function toNumber(amount: MoneyInput) {
   const numericAmount = Number(amount ?? 0);
   return Number.isFinite(numericAmount) ? numericAmount : 0;
 }
+
+export function toWholeMoneyUnits(value: MoneyInput) {
+  const normalizedValue = normalizeMoneyInput(value);
+  if (!normalizedValue) return 0n;
+
+  const sign = normalizedValue.startsWith("-") ? -1n : 1n;
+  const unsignedValue = normalizedValue.replace(/^-/, "");
+  const plainNumeric = unsignedValue.replace(",", ".");
+
+  if (/^\d+(\.\d+)?$/.test(plainNumeric)) {
+    const wholeUnits = plainNumeric.split(".")[0] || "0";
+    return sign * BigInt(wholeUnits);
+  }
+
+  const digits = unsignedValue.replace(/\D/g, "");
+  return sign * BigInt(digits || "0");
+}
+
+export function addMoneyValues(...values: MoneyInput[]) {
+  return values.reduce((total, value) => total + toWholeMoneyUnits(value), 0n).toString();
+}
+
+export function isMoneyGreaterThan(left: MoneyInput, right: MoneyInput) {
+  return toWholeMoneyUnits(left) > toWholeMoneyUnits(right);
+}

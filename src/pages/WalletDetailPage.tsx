@@ -1,11 +1,14 @@
-import { ArrowLeft, Archive, Edit3, Loader2, SlidersHorizontal, WalletCards } from "lucide-react";
+import { ArrowLeft, Archive, Edit3, Loader2, SlidersHorizontal, Trash2, WalletCards } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
+import { appEvents, emitTransactionSaved } from "../lib/appEvents";
+import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { createAdjustment } from "../lib/transactions";
 import {
@@ -17,7 +20,9 @@ import {
 } from "../lib/walletMeta";
 import {
   archiveWallet,
+  deleteWallet,
   getWalletById,
+  getWalletLinkedGoalCount,
   getWalletTransactionCount,
   updateWallet,
   type WalletWithBalance,
@@ -289,7 +294,7 @@ function AdjustmentModal({
         return;
       }
 
-      window.dispatchEvent(new CustomEvent("kash:transaction-saved"));
+      emitTransactionSaved();
       onSaved();
     } catch (adjustmentError) {
       console.error("Failed to create adjustment", adjustmentError);
@@ -353,10 +358,12 @@ export function WalletDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
+  const [linkedGoalCount, setLinkedGoalCount] = useState(0);
   const [transactionCount, setTransactionCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -365,12 +372,13 @@ export function WalletDetailPage() {
     setLoading(true);
     setError(null);
 
-    const [{ data, error: walletError }, { count, error: countError }] = await Promise.all([
+    const [{ data, error: walletError }, { count, error: countError }, { count: goalCount, error: goalCountError }] = await Promise.all([
       getWalletById(id),
       getWalletTransactionCount(id),
+      getWalletLinkedGoalCount(id),
     ]);
 
-    if (walletError || countError || !data) {
+    if (walletError || countError || goalCountError || !data) {
       setError("Couldn't load this wallet. It may not exist or you may not have access.");
       setLoading(false);
       return;
@@ -378,41 +386,40 @@ export function WalletDetailPage() {
 
     setWallet(data);
     setTransactionCount(count);
+    setLinkedGoalCount(goalCount);
     setLoading(false);
   };
 
   useEffect(() => {
     void loadWallet();
-
-    const refreshWallet = () => {
-      void loadWallet();
-    };
-
-    window.addEventListener("kash:transaction-saved", refreshWallet);
-
-    return () => {
-      window.removeEventListener("kash:transaction-saved", refreshWallet);
-    };
   }, [id]);
 
-  const handleArchive = async () => {
+  useAppEvent(appEvents.transactionSaved, () => void loadWallet());
+  useAppEvent(appEvents.goalSaved, () => void loadWallet());
+
+  const handleDeleteWallet = async () => {
     if (!wallet) return;
 
-    const confirmed = window.confirm(
-      "Archive this wallet?\n\nYour wallet history will remain available, but the wallet will no longer appear in active wallet lists.",
-    );
-
-    if (!confirmed) return;
-
-    setArchiving(true);
-    const { error: archiveError } = await archiveWallet(wallet.id);
-
-    if (archiveError) {
-      setError("Couldn't archive this wallet. Please try again.");
-      setArchiving(false);
+    if (linkedGoalCount > 0) {
+      setError("This wallet is linked to a goal. Archive or edit the goal first before deleting this wallet.");
+      setShowDelete(false);
       return;
     }
 
+    setDeleting(true);
+    const result =
+      transactionCount === 0
+        ? await deleteWallet(wallet.id)
+        : await archiveWallet(wallet.id);
+
+    if (result.error) {
+      setError(transactionCount === 0 ? "Couldn't delete this wallet. Please try again." : "Couldn't archive this wallet. Please try again.");
+      setDeleting(false);
+      setShowDelete(false);
+      return;
+    }
+
+    emitTransactionSaved();
     navigate("/wallets", { replace: true });
   };
 
@@ -439,7 +446,9 @@ export function WalletDetailPage() {
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
   const currentBalance = wallet.balance?.current_balance ?? wallet.initial_balance;
+  const availableBalance = wallet.balance?.available_balance ?? currentBalance;
   const canEditInitialBalance = transactionCount === 0;
+  const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4 p-4 md:p-6">
@@ -463,19 +472,20 @@ export function WalletDetailPage() {
               <SlidersHorizontal aria-hidden="true" size={17} />
               Adjust Balance
             </Button>
-            <Button disabled={archiving} onClick={handleArchive} variant="secondary">
-              <Archive aria-hidden="true" size={17} />
-              Archive
+            <Button disabled={deleting} onClick={() => setShowDelete(true)} variant="secondary">
+              <Trash2 aria-hidden="true" size={17} />
+              Delete
             </Button>
           </div>
         }
       />
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <DetailMetric label="Current Balance" value={formatCurrency(currentBalance, wallet.currency)} />
-          <DetailMetric label="Available Balance" value={formatCurrency(currentBalance, wallet.currency)} />
+          <DetailMetric label="Available Balance" value={formatCurrency(availableBalance, wallet.currency)} />
           <DetailMetric label="Initial Balance" value={formatCurrency(wallet.initial_balance, wallet.currency)} />
+          <DetailMetric label="Wallet Type" value={typeOption.label} />
         </div>
       </section>
 
@@ -517,6 +527,26 @@ export function WalletDetailPage() {
             void loadWallet();
           }}
           wallet={wallet}
+        />
+      ) : null}
+      {showDelete ? (
+        <ConfirmationDialog
+          confirmLabel={canHardDelete ? "Delete Wallet" : "Archive Wallet"}
+          description={
+            linkedGoalCount > 0
+              ? "This wallet is linked to a goal, so it cannot be deleted from here."
+              : canHardDelete
+                ? "This wallet has no transaction history, so it can be permanently deleted."
+                : "This wallet has financial history, so KASH will hide it from active wallet lists instead of deleting the records."
+          }
+          disabled={linkedGoalCount > 0}
+          icon={canHardDelete ? Trash2 : Archive}
+          isLoading={deleting}
+          itemLabel={wallet.name}
+          onCancel={() => setShowDelete(false)}
+          onConfirm={() => void handleDeleteWallet()}
+          title={canHardDelete ? "Delete this wallet?" : "Archive this wallet?"}
+          tone={canHardDelete ? "danger" : "warning"}
         />
       ) : null}
     </div>

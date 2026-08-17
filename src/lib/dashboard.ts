@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
 import { localDateKey } from "./calendar";
 import { createCategoryColorResolver } from "./chartColors";
-import type { Category, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
+import type { Category, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
   bank: "#10B981",
@@ -54,6 +54,7 @@ export type DashboardWalletItem = {
   walletTypeLabel: string;
   color: string;
   balance: number;
+  availableBalance: number;
   includeInNetWorth: boolean;
 };
 
@@ -63,6 +64,15 @@ export type DashboardWalletDistribution = {
   amount: number;
   percent: number;
   color: string;
+};
+
+export type DashboardGoalItem = {
+  id: string;
+  name: string;
+  currentAmount: number;
+  targetAmount: number;
+  percentage: number;
+  deadline: string | null;
 };
 
 export type DashboardRecentTransaction = {
@@ -101,6 +111,7 @@ export type DashboardSummary = {
   spendingByCategory: DashboardCategorySpend[];
   walletDistribution: DashboardWalletDistribution[];
   wallets: DashboardWalletItem[];
+  goals: DashboardGoalItem[];
   recentTransactions: DashboardRecentTransaction[];
   calendarActivity: DashboardCalendarActivity[];
 };
@@ -148,6 +159,10 @@ function moneyValue(value: unknown) {
 
 function walletCurrentBalance(wallet: WalletWithBalance) {
   return moneyValue(wallet.balance?.current_balance ?? wallet.initial_balance);
+}
+
+function walletAvailableBalance(wallet: WalletWithBalance) {
+  return moneyValue(wallet.balance?.available_balance ?? wallet.balance?.current_balance ?? wallet.initial_balance);
 }
 
 function walletVisualColor(type: WalletType) {
@@ -305,6 +320,27 @@ function buildWalletDistribution(wallets: DashboardWalletItem[]) {
     .sort((a, b) => b.amount - a.amount);
 }
 
+function buildDashboardGoals(goals: Goal[], progressRows: GoalProgress[]) {
+  const progressByGoalId = new Map(progressRows.map((progress) => [progress.goal_id, progress]));
+
+  return goals
+    .map((goal): DashboardGoalItem => {
+      const progress = progressByGoalId.get(goal.id);
+      const currentAmount = moneyValue(progress?.current_amount ?? 0);
+      const targetAmount = moneyValue(goal.target_amount);
+
+      return {
+        currentAmount,
+        deadline: goal.deadline,
+        id: goal.id,
+        name: goal.name,
+        percentage: targetAmount > 0 ? Math.min((currentAmount / targetAmount) * 100, 100) : 0,
+        targetAmount,
+      };
+    })
+    .sort((first, second) => second.percentage - first.percentage);
+}
+
 function describeTransaction(transaction: Transaction, walletsById: Map<string, Wallet>, categoriesById: Map<string, Category>) {
   const sourceWallet = walletsById.get(transaction.wallet_id);
   const destinationWallet = transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) : null;
@@ -344,7 +380,16 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   const month = currentMonthRange(options.referenceDate);
   const previousMonth = previousMonthRange(options.referenceDate);
 
-  const [walletResult, balanceResult, categoryResult, monthTransactionResult, previousMonthTransactionResult, recentTransactionResult] = await Promise.all([
+  const [
+    walletResult,
+    balanceResult,
+    categoryResult,
+    monthTransactionResult,
+    previousMonthTransactionResult,
+    recentTransactionResult,
+    goalResult,
+    goalProgressResult,
+  ] = await Promise.all([
     supabase
       .from("wallets")
       .select("*")
@@ -381,6 +426,13 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       .eq("user_id", userId)
       .order("transaction_date", { ascending: false })
       .limit(12),
+    supabase
+      .from("goals")
+      .select("*")
+      .eq("user_id", userId)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false }),
+    supabase.from("goal_progress_view").select("*").eq("user_id", userId),
   ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -389,6 +441,8 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   if (monthTransactionResult.error) throw monthTransactionResult.error;
   if (previousMonthTransactionResult.error) throw previousMonthTransactionResult.error;
   if (recentTransactionResult.error) throw recentTransactionResult.error;
+  if (goalResult.error) throw goalResult.error;
+  if (goalProgressResult.error) throw goalProgressResult.error;
 
   const balancesByWalletId = new Map((balanceResult.data ?? []).map((balance) => [balance.wallet_id, balance]));
   const wallets = (walletResult.data ?? []).map((wallet) => ({
@@ -399,6 +453,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   const monthTransactions = monthTransactionResult.data ?? [];
   const previousMonthTransactions = previousMonthTransactionResult.data ?? [];
   const recentTransactions = (recentTransactionResult.data ?? []).filter((transaction) => transaction.status !== "void").slice(0, 6);
+  const dashboardGoals = buildDashboardGoals(goalResult.data ?? [], goalProgressResult.data ?? []);
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
 
@@ -410,6 +465,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       walletTypeLabel: getWalletTypeOption(wallet.wallet_type).label,
       color: walletVisualColor(wallet.wallet_type),
       balance: walletCurrentBalance(wallet),
+      availableBalance: walletAvailableBalance(wallet),
       includeInNetWorth: wallet.include_in_net_worth,
     }))
     .sort((a, b) => b.balance - a.balance);
@@ -421,7 +477,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     .reduce((sum, wallet) => sum + wallet.balance, 0);
   const availableBalance = dashboardWallets
     .filter((wallet) => wallet.includeInNetWorth && isLiquidWallet(wallet.walletType))
-    .reduce((sum, wallet) => sum + wallet.balance, 0);
+    .reduce((sum, wallet) => sum + wallet.availableBalance, 0);
 
   return {
     period: {
@@ -446,6 +502,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     spendingByCategory: buildSpendingByCategory(monthTransactions, categories),
     walletDistribution: buildWalletDistribution(dashboardWallets),
     wallets: dashboardWallets,
+    goals: dashboardGoals,
     calendarActivity: buildCalendarActivity(monthTransactions),
     recentTransactions: recentTransactions.map((transaction) => {
       const description = describeTransaction(transaction, walletsById, categoriesById);

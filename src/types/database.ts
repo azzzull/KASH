@@ -2,6 +2,10 @@ import type {
   Category,
   CategoryType,
   CurrencyCode,
+  Goal,
+  GoalContribution,
+  GoalProgress,
+  GoalStatus,
   Notification,
   Profile,
   Transaction,
@@ -96,6 +100,41 @@ export type Database = {
         Update: Partial<Omit<Transaction, "id" | "user_id" | "created_at" | "updated_at">>;
         Relationships: [];
       };
+      goals: {
+        Row: Goal;
+        Insert: {
+          id?: string;
+          user_id: string;
+          wallet_id?: string | null;
+          name: string;
+          target_amount: string;
+          deadline?: string | null;
+          icon?: string | null;
+          image_url?: string | null;
+          note?: string | null;
+          status?: GoalStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Goal, "id" | "user_id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      goal_contributions: {
+        Row: GoalContribution;
+        Insert: {
+          id?: string;
+          goal_id: string;
+          user_id: string;
+          wallet_id: string;
+          transaction_id?: string | null;
+          amount: string;
+          contribution_date?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Omit<GoalContribution, "id" | "goal_id" | "user_id" | "wallet_id" | "created_at">>;
+        Relationships: [];
+      };
       notifications: {
         Row: Notification;
         Insert: {
@@ -120,12 +159,41 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      goal_progress_view: {
+        Row: GoalProgress;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      create_goal_with_pocket: {
+        Args: {
+          p_name: string;
+          p_target_amount: string;
+          p_deadline?: string | null;
+          p_icon?: string | null;
+          p_note?: string | null;
+          p_pocket_institution?: string | null;
+        };
+        Returns: Goal;
+      };
+      create_goal_contribution: {
+        Args: {
+          p_goal_id: string;
+          p_wallet_id: string;
+          p_amount: string;
+          p_contribution_date?: string;
+          p_note?: string | null;
+        };
+        Returns: GoalContribution;
+      };
+    };
     Enums: {
       wallet_type: Wallet["wallet_type"];
       transaction_type: Transaction["type"];
       transaction_status: Transaction["status"];
+      goal_status: GoalStatus;
     };
     CompositeTypes: Record<string, never>;
   };

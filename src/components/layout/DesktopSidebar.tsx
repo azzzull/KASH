@@ -82,7 +82,7 @@ export function DesktopSidebar() {
             type="button"
             onClick={() => setNotificationsOpen((current) => !current)}
             aria-label="Open notifications"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-kash-emerald/15 bg-white text-slate-700 transition hover:border-kash-gold/60 hover:bg-kash-selected hover:text-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-kash-emerald/15 bg-white text-slate-700 transition hover:border-kash-emeraldDark hover:bg-kash-selected hover:text-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
             title="Notifications"
           >
             <Bell aria-hidden="true" size={18} strokeWidth={2} />

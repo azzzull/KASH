@@ -8,6 +8,7 @@ export type AppRoute =
   | "/calendar"
   | "/analytics"
   | "/goals"
+  | "/goals/:id"
   | "/debts"
   | "/shared"
   | "/notifications"

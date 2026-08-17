@@ -1,12 +1,13 @@
 import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { SelectField } from "../ui/SelectField";
 import { getActiveCategories } from "../../lib/categories";
-import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
+import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../../lib/transactions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
+import { emitTransactionSaved } from "../../lib/appEvents";
 import type { Category } from "../../types/domain";
 
 export type QuickTransactionMode = "expense" | "income" | "transfer";
@@ -41,6 +42,12 @@ function firstValue<T extends { id: string }>(items: T[]) {
   return items[0]?.id ?? "";
 }
 
+function isAmountError(error: string | null) {
+  if (!error) return false;
+  const normalizedError = error.toLowerCase();
+  return normalizedError.includes("amount") || normalizedError.includes("balance");
+}
+
 export function TransactionModal({ mode, onClose, onSaved }: TransactionModalProps) {
   const copy = modeCopy[mode];
   const Icon = copy.icon;
@@ -56,6 +63,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalRef = useRef<HTMLElement>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -88,6 +96,11 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setCategoryId(firstValue(nextCategories));
   }, [categories, mode]);
 
+  useEffect(() => {
+    if (!error) return;
+    modalRef.current?.scrollTo({ behavior: "smooth", top: 0 });
+  }, [error]);
+
   const selectedWallet = wallets.find((wallet) => wallet.id === walletId) ?? null;
   const destinationWallet = wallets.find((wallet) => wallet.id === destinationWalletId) ?? null;
   const filteredCategories = useMemo(
@@ -99,6 +112,9 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const amountNumber = toNumber(amountDigits);
   const feeNumber = toNumber(feeDigits);
   const totalDeducted = amountNumber + feeNumber;
+  const selectedWalletBalance = selectedWallet?.balance?.current_balance ?? selectedWallet?.initial_balance ?? "0";
+  const totalTransferDeduction = mode === "transfer" ? addMoneyValues(amountDigits, feeDigits || "0") : amountDigits;
+  const amountHasError = isAmountError(error);
 
   const validate = () => {
     if (!walletId) return "Choose a wallet.";
@@ -109,10 +125,16 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       if (!destinationWalletId) return "Choose a destination wallet.";
       if (walletId === destinationWalletId) return "Source and destination wallets must be different.";
       if (feeNumber < 0) return "Transfer fee cannot be negative.";
+      if (isMoneyGreaterThan(totalTransferDeduction, selectedWalletBalance)) {
+        return "Wallet balance is not enough. Check the transfer amount again.";
+      }
       return null;
     }
 
     if (!categoryId) return `Choose an ${mode} category.`;
+    if (mode === "expense" && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
+      return "Wallet balance is not enough. Check the transaction amount again.";
+    }
     return null;
   };
 
@@ -168,12 +190,12 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
         return;
       }
 
-      window.dispatchEvent(new CustomEvent("kash:transaction-saved"));
+      emitTransactionSaved();
       onSaved?.();
       onClose();
     } catch (transactionError) {
       console.error("Failed to create transaction", transactionError);
-      setError("Couldn't save this transaction. Please sign in and try again.");
+      setError(transactionError instanceof Error ? transactionError.message : "Couldn't save this transaction. Please sign in and try again.");
       setSaving(false);
     }
   };
@@ -181,7 +203,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close transaction form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section ref={modalRef} className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100">
@@ -214,6 +236,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
         ) : (
           <form className="mt-5 grid gap-4" onSubmit={submit}>
             <FormField
+              hasError={amountHasError}
               id={`${mode}-amount`}
               inputMode="numeric"
               label="Amount"

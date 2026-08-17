@@ -100,6 +100,26 @@ export async function getWalletTransactionCount(walletId: string) {
   return { count: count ?? 0, error };
 }
 
+export async function getWalletLinkedGoalCount(walletId: string) {
+  const [{ count: destinationGoalCount, error: destinationGoalError }, { count: sourceContributionCount, error: sourceContributionError }] =
+    await Promise.all([
+      supabase
+        .from("goals")
+        .select("id", { count: "exact", head: true })
+        .eq("wallet_id", walletId)
+        .neq("status", "cancelled"),
+      supabase
+        .from("goal_contributions")
+        .select("id", { count: "exact", head: true })
+        .eq("wallet_id", walletId),
+    ]);
+
+  return {
+    count: (destinationGoalCount ?? 0) + (sourceContributionCount ?? 0),
+    error: destinationGoalError ?? sourceContributionError,
+  };
+}
+
 export async function createWallet(input: CreateWalletInput) {
   const userId = await getAuthenticatedUserId();
 
@@ -149,4 +169,8 @@ export async function updateWallet(id: string, input: UpdateWalletInput) {
 
 export async function archiveWallet(id: string) {
   return supabase.from("wallets").update({ is_archived: true }).eq("id", id).select("*").single();
+}
+
+export async function deleteWallet(id: string) {
+  return supabase.from("wallets").delete().eq("id", id).select("*").single();
 }

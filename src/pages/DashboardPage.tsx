@@ -11,6 +11,7 @@ import {
   EyeOff,
   Home,
   Info,
+  PiggyBank,
   RefreshCw,
   TrendingDown,
   TrendingUp,
@@ -22,6 +23,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { getDashboardSummary, type DashboardCategorySpend, type DashboardMetricChange, type DashboardSummary } from "../lib/dashboard";
 import { buildCalendarCells, localDateKey } from "../lib/calendar";
 import { formatCurrency } from "../lib/money";
+import { appEvents } from "../lib/appEvents";
+import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { PageHeader } from "../components/ui/PageHeader";
 import type { TransactionType } from "../types/domain";
@@ -36,6 +39,8 @@ const transactionTone: Record<TransactionType, string> = {
 const CASHFLOW_INCOME_COLOR = "#10B981";
 const CASHFLOW_EXPENSE_COLOR = "#E50914";
 const CHART_GRID_COLOR = "rgba(16, 185, 129, 0.16)";
+const DASHBOARD_BALANCES_VISIBLE_KEY = "kash.dashboard.balancesVisible";
+const LEGACY_DASHBOARD_BALANCES_VISIBLE_KEY = "kash.dashboard.balancesVisible";
 const calendarWeekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const calendarActivityOrder = ["income", "expense", "transfer", "adjustment"] as const;
 const calendarActivityDotClass = {
@@ -95,6 +100,11 @@ function buildMonthOptions(year: number) {
       label: new Intl.DateTimeFormat("id-ID", { month: "short" }).format(date),
     };
   });
+}
+
+function getStoredBalancesVisibility() {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(DASHBOARD_BALANCES_VISIBLE_KEY) === "true";
 }
 
 function DashboardCard({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -649,6 +659,31 @@ function WalletSummary({ balancesVisible, currency, summary }: { balancesVisible
   );
 }
 
+function GoalsSummary({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
+  if (summary.goals.length === 0) return <EmptyPanel title="No goals yet" description="Create a goal to add a dedicated savings pocket." className="min-h-44" />;
+
+  return (
+    <div className="divide-y divide-slate-100">
+      {summary.goals.slice(0, 3).map((goal) => (
+        <Link key={goal.id} to={`/goals/${goal.id}`} className="block py-3 first:pt-0 last:pb-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-900">{goal.name}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-600">
+                {formatPrivateAmount(goal.currentAmount, currency, balancesVisible)} of {formatPrivateAmount(goal.targetAmount, currency, balancesVisible)}
+              </p>
+            </div>
+            <span className="shrink-0 text-sm font-extrabold text-kash-emerald">{goal.percentage.toFixed(0)}%</span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-kash-emerald" style={{ width: `${goal.percentage}%` }} />
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function LaterSprintPanel({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex min-h-44 items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
@@ -751,7 +786,7 @@ export function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [balancesVisible, setBalancesVisible] = useState(false);
+  const [balancesVisible, setBalancesVisible] = useState(getStoredBalancesVisibility);
   const [error, setError] = useState<string | null>(null);
   const currency = profile?.default_currency ?? "IDR";
   const firstName = profile?.full_name?.split(" ")[0] ?? profile?.email.split("@")[0] ?? "there";
@@ -772,10 +807,15 @@ export function DashboardPage() {
 
   useEffect(() => {
     void loadDashboard();
-    const refreshDashboard = () => void loadDashboard();
-    window.addEventListener("kash:transaction-saved", refreshDashboard);
-    return () => window.removeEventListener("kash:transaction-saved", refreshDashboard);
   }, [loadDashboard]);
+
+  useAppEvent(appEvents.transactionSaved, () => void loadDashboard());
+  useAppEvent(appEvents.goalSaved, () => void loadDashboard());
+
+  useEffect(() => {
+    window.localStorage.removeItem(LEGACY_DASHBOARD_BALANCES_VISIBLE_KEY);
+    window.sessionStorage.setItem(DASHBOARD_BALANCES_VISIBLE_KEY, String(balancesVisible));
+  }, [balancesVisible]);
 
   if (isLoading && !summary) return <DashboardSkeleton />;
 
@@ -870,10 +910,15 @@ export function DashboardPage() {
 
         <DashboardCard className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">Goals</h2>
-            <span className="text-xs font-bold text-slate-600">Later</span>
+            <div className="flex items-center gap-2">
+              <PiggyBank aria-hidden="true" className="text-kash-emerald" size={18} />
+              <h2 className="text-base font-extrabold text-slate-900">Goals</h2>
+            </div>
+            <Link to="/goals" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
+              View All
+            </Link>
           </div>
-          <LaterSprintPanel title="Goals preview" description="Goal data is intentionally deferred beyond the current Sprint 6 Alpha dashboard scope." />
+          <GoalsSummary balancesVisible={balancesVisible} summary={summary} currency={currency} />
         </DashboardCard>
 
         <DashboardCard className="p-5">

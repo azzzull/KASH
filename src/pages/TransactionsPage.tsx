@@ -18,6 +18,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { useSearchParams } from "react-router-dom";
 import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
 import { Button } from "../components/ui/Button";
+import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
@@ -34,6 +35,8 @@ import {
   voidTransaction,
 } from "../lib/transactions";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
+import { appEvents, emitTransactionSaved } from "../lib/appEvents";
+import { useAppEvent } from "../hooks/useAppEvent";
 import type { Category, TransactionStatus, TransactionType, Wallet } from "../types/domain";
 
 type EditMode = "duplicate" | "edit";
@@ -268,6 +271,11 @@ function TransactionFormModal({
   transaction: TransactionWithMeta;
   wallets: Wallet[];
 }) {
+  const isAmountError = (message: string | null) => {
+    if (!message) return false;
+    const normalizedMessage = message.toLowerCase();
+    return normalizedMessage.includes("amount") || normalizedMessage.includes("balance");
+  };
   const duplicateSourceWalletId = wallets.some((wallet) => wallet.id === transaction.wallet_id) ? transaction.wallet_id : wallets[0]?.id ?? "";
   const duplicateDestinationWalletId =
     transaction.destination_wallet_id && wallets.some((wallet) => wallet.id === transaction.destination_wallet_id)
@@ -288,6 +296,7 @@ function TransactionFormModal({
   const [note, setNote] = useState(transaction.note ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalRef = useRef<HTMLElement>(null);
   const activeWallets = wallets.filter((wallet) => !wallet.is_archived || wallet.id === transaction.wallet_id || wallet.id === transaction.destination_wallet_id);
   const filteredCategories = useMemo(() => {
     if (transaction.type !== "income" && transaction.type !== "expense") return [];
@@ -295,6 +304,12 @@ function TransactionFormModal({
   }, [categories, mode, transaction.category_id, transaction.type]);
   const amountValue = transaction.type === "adjustment" ? parseSignedMoneyDigits(amount) : parseMoneyInputDigits(amount);
   const feeValue = parseMoneyInputDigits(transferFee) || "0";
+  const amountHasError = isAmountError(error);
+
+  useEffect(() => {
+    if (!error) return;
+    modalRef.current?.scrollTo({ behavior: "smooth", top: 0 });
+  }, [error]);
 
   const validate = () => {
     if (!walletId) return "Choose a wallet.";
@@ -353,7 +368,7 @@ function TransactionFormModal({
         return;
       }
 
-      window.dispatchEvent(new CustomEvent("kash:transaction-saved"));
+      emitTransactionSaved();
       onSaved();
       onClose();
     } catch (caughtError) {
@@ -365,7 +380,7 @@ function TransactionFormModal({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close transaction form" onClick={onClose} type="button" />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section ref={modalRef} className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase text-slate-600">{transaction.type}</p>
@@ -378,6 +393,7 @@ function TransactionFormModal({
 
         <form className="mt-5 grid gap-4" onSubmit={submit}>
           <FormField
+            hasError={amountHasError}
             id="transaction-edit-amount"
             inputMode="numeric"
             label={transaction.type === "adjustment" ? "Signed Amount" : "Amount"}
@@ -433,37 +449,6 @@ function TransactionFormModal({
           </Button>
         </form>
       </section>
-    </div>
-  );
-}
-
-function VoidConfirmation({
-  onCancel,
-  onConfirm,
-  saving,
-  transaction,
-}: {
-  onCancel: () => void;
-  onConfirm: () => void;
-  saving: boolean;
-  transaction: TransactionWithMeta;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
-        <h2 className="text-xl font-extrabold text-slate-900">Void this transaction?</h2>
-        <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-          This transaction will stop affecting your wallet balance, but will remain in transaction history for audit purposes.
-        </p>
-        <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-900">{transactionTitle(transaction)}</p>
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-          <Button disabled={saving} onClick={onConfirm} className="border-kash-expense bg-kash-expense hover:border-kash-expense hover:bg-kash-expense">
-            {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            Void Transaction
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -607,11 +592,7 @@ export function TransactionsPage() {
     });
   }, [searchParams]);
 
-  useEffect(() => {
-    const refresh = () => void loadTransactions(filters);
-    window.addEventListener("kash:transaction-saved", refresh);
-    return () => window.removeEventListener("kash:transaction-saved", refresh);
-  }, [filters, loadTransactions]);
+  useAppEvent(appEvents.transactionSaved, () => void loadTransactions(filters));
 
   useEffect(() => {
     if (!filterPanelOpen) return;
@@ -649,7 +630,7 @@ export function TransactionsPage() {
     try {
       const result = await voidTransaction(voidTarget.id);
       if (result.error) throw result.error;
-      window.dispatchEvent(new CustomEvent("kash:transaction-saved"));
+      emitTransactionSaved();
       setVoidTarget(null);
       await loadTransactions(filters);
     } catch (caughtError) {
@@ -838,7 +819,19 @@ export function TransactionsPage() {
         />
       ) : null}
 
-      {voidTarget ? <VoidConfirmation transaction={voidTarget} saving={voidSaving} onCancel={() => setVoidTarget(null)} onConfirm={() => void handleVoid()} /> : null}
+      {voidTarget ? (
+        <ConfirmationDialog
+          confirmLabel="Void Transaction"
+          description="This transaction will stop affecting your wallet balance, but will remain in transaction history for audit purposes."
+          icon={ReceiptText}
+          isLoading={voidSaving}
+          itemLabel={transactionTitle(voidTarget)}
+          onCancel={() => setVoidTarget(null)}
+          onConfirm={() => void handleVoid()}
+          title="Void this transaction?"
+          tone="danger"
+        />
+      ) : null}
     </div>
   );
 }

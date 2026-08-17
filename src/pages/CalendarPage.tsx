@@ -12,6 +12,8 @@ import {
   type CalendarMonthData,
 } from "../lib/calendar";
 import { formatCurrency } from "../lib/money";
+import { appEvents } from "../lib/appEvents";
+import { useAppEvent } from "../hooks/useAppEvent";
 import type { TransactionWithMeta } from "../lib/transactions";
 import {
   displayTransactionAmount,
@@ -300,11 +302,7 @@ export function CalendarPage() {
     void loadMonth();
   }, [loadMonth]);
 
-  useEffect(() => {
-    const refresh = () => void loadMonth();
-    window.addEventListener("kash:transaction-saved", refresh);
-    return () => window.removeEventListener("kash:transaction-saved", refresh);
-  }, [loadMonth]);
+  useAppEvent(appEvents.transactionSaved, () => void loadMonth());
 
   useEffect(() => {
     const dateKey = searchParams.get("date");

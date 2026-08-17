@@ -1,6 +1,7 @@
 import { Archive, Edit3, Loader2, Plus, Tags } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/Button";
+import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
@@ -220,7 +221,9 @@ export function CategoriesPage() {
   const [systemCategories, setSystemCategories] = useState<Category[]>([]);
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Category | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -256,20 +259,23 @@ export function CategoriesPage() {
   }, [customCategories, systemCategories]);
 
   const handleArchive = async (category: Category) => {
-    const confirmed = window.confirm("Archive this category?\n\nIt will disappear from active selectors while preserving future history.");
-    if (!confirmed) return;
-
+    setArchiving(true);
     try {
       const { error: archiveError } = await archiveCategory(category);
 
       if (archiveError) {
         setError("Couldn't archive this category. Please try again.");
+        setArchiving(false);
+        setArchiveTarget(null);
         return;
       }
 
+      setArchiveTarget(null);
       await loadCategories();
     } catch {
       setError("System categories cannot be archived.");
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -316,7 +322,7 @@ export function CategoriesPage() {
                       <CategoryPill
                         category={category}
                         key={category.id}
-                        onArchive={() => void handleArchive(category)}
+                        onArchive={() => setArchiveTarget(category)}
                         onEdit={() => {
                           setEditingCategory(category);
                           setShowForm(true);
@@ -338,7 +344,7 @@ export function CategoriesPage() {
                       <CategoryPill
                         category={category}
                         key={category.id}
-                        onArchive={() => void handleArchive(category)}
+                        onArchive={() => setArchiveTarget(category)}
                         onEdit={() => {
                           setEditingCategory(category);
                           setShowForm(true);
@@ -374,6 +380,19 @@ export function CategoriesPage() {
             setEditingCategory(null);
             void loadCategories();
           }}
+        />
+      ) : null}
+      {archiveTarget ? (
+        <ConfirmationDialog
+          confirmLabel="Archive Category"
+          description="This category will disappear from active selectors while preserving future history."
+          icon={Archive}
+          isLoading={archiving}
+          itemLabel={archiveTarget.name}
+          onCancel={() => setArchiveTarget(null)}
+          onConfirm={() => void handleArchive(archiveTarget)}
+          title="Archive this category?"
+          tone="warning"
         />
       ) : null}
     </div>

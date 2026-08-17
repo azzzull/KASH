@@ -20,6 +20,7 @@ const CategoriesPage = lazyPage(() => import("../pages/CategoriesPage"), "Catego
 const DashboardPage = lazyPage(() => import("../pages/DashboardPage"), "DashboardPage");
 const DebtsPage = lazyPage(() => import("../pages/DebtsPage"), "DebtsPage");
 const GoalsPage = lazyPage(() => import("../pages/GoalsPage"), "GoalsPage");
+const GoalDetailPage = lazyPage(() => import("../pages/GoalDetailPage"), "GoalDetailPage");
 const LoginPage = lazyPage(() => import("../pages/LoginPage"), "LoginPage");
 const NotificationsPage = lazyPage(() => import("../pages/NotificationsPage"), "NotificationsPage");
 const OnboardingPage = lazyPage(() => import("../pages/OnboardingPage"), "OnboardingPage");
@@ -79,6 +80,7 @@ export const router = createBrowserRouter([
           { path: "/calendar", element: routeElement(<CalendarPage />) },
           { path: "/analytics", element: routeElement(<AnalyticsPage />) },
           { path: "/goals", element: routeElement(<GoalsPage />) },
+          { path: "/goals/:id", element: routeElement(<GoalDetailPage />) },
           { path: "/debts", element: routeElement(<DebtsPage />) },
           { path: "/shared", element: routeElement(<SharedSavingsPage />) },
           { path: "/notifications", element: routeElement(<NotificationsPage />) },

@@ -13,6 +13,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAnalyticsSummary, type AnalyticsMetricChange, type AnalyticsPeriodKey, type AnalyticsSummary } from "../lib/analytics";
 import { formatCurrency } from "../lib/money";
+import { appEvents } from "../lib/appEvents";
+import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -857,10 +859,9 @@ export function AnalyticsPage() {
 
   useEffect(() => {
     void loadAnalytics();
-    const refreshAnalytics = () => void loadAnalytics();
-    window.addEventListener("kash:transaction-saved", refreshAnalytics);
-    return () => window.removeEventListener("kash:transaction-saved", refreshAnalytics);
   }, [loadAnalytics]);
+
+  useAppEvent(appEvents.transactionSaved, () => void loadAnalytics());
 
   const periodLabel = useMemo(() => summary?.period.label ?? "Selected period", [summary?.period.label]);
 

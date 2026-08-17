@@ -1,5 +1,6 @@
 import type { Category, CategoryType, Transaction, TransactionStatus, TransactionType, Wallet } from "../types/domain";
 import type { Database } from "../types/database";
+import { addMoneyValues, isMoneyGreaterThan } from "./money";
 import { supabase } from "./supabase";
 
 type BaseTransactionInput = {
@@ -58,6 +59,8 @@ export type UpdateTransactionInput = {
   transferFee?: string;
   walletId: string;
 };
+
+const INSUFFICIENT_BALANCE_MESSAGE = "Wallet balance is not enough. Check the amount again.";
 
 async function getAuthenticatedUserId() {
   const {
@@ -135,6 +138,33 @@ function attachTransactionMeta(transactions: Transaction[], wallets: Wallet[], c
   }));
 }
 
+function outgoingAmountFor(type: TransactionType, amount: string | number, transferFee: string | number = "0") {
+  if (type === "expense") return String(amount);
+  if (type === "transfer") return addMoneyValues(amount, transferFee);
+  return null;
+}
+
+async function getWalletCurrentBalance(userId: string, walletId: string) {
+  const { data, error } = await supabase
+    .from("wallet_balance_view")
+    .select("current_balance")
+    .eq("user_id", userId)
+    .eq("wallet_id", walletId)
+    .single();
+
+  if (error) throw error;
+  return data.current_balance;
+}
+
+async function assertWalletCanCover(userId: string, walletId: string, outgoingAmount: string, restoredAmount = "0") {
+  const currentBalance = await getWalletCurrentBalance(userId, walletId);
+  const spendableBalance = addMoneyValues(currentBalance, restoredAmount);
+
+  if (isMoneyGreaterThan(outgoingAmount, spendableBalance)) {
+    throw new Error(INSUFFICIENT_BALANCE_MESSAGE);
+  }
+}
+
 async function createTransaction(payload: {
   amount: string;
   category_id?: string | null;
@@ -147,6 +177,11 @@ async function createTransaction(payload: {
   wallet_id: string;
 }) {
   const userId = await getAuthenticatedUserId();
+  const outgoingAmount = outgoingAmountFor(payload.type, payload.amount, payload.transfer_fee ?? "0");
+
+  if (outgoingAmount) {
+    await assertWalletCanCover(userId, payload.wallet_id, outgoingAmount);
+  }
 
   return supabase
     .from("transactions")
@@ -292,8 +327,23 @@ export async function getTransactionById(id: string) {
 export async function updateTransaction(transaction: Transaction, input: UpdateTransactionInput) {
   const userId = await getAuthenticatedUserId();
 
+  if (transaction.related_entity_type === "goal_contribution") {
+    throw new Error("Goal contribution transfers are managed from Goals and cannot be edited here.");
+  }
+
   if (transaction.status === "void") {
     throw new Error("Voided transactions cannot be edited.");
+  }
+
+  const nextOutgoingAmount = outgoingAmountFor(transaction.type, input.amount, input.transferFee ?? "0");
+
+  if (nextOutgoingAmount) {
+    const restoredOutgoingAmount =
+      transaction.wallet_id === input.walletId
+        ? outgoingAmountFor(transaction.type, transaction.amount, transaction.transfer_fee) ?? "0"
+        : "0";
+
+    await assertWalletCanCover(userId, input.walletId, nextOutgoingAmount, restoredOutgoingAmount);
   }
 
   const payload: Database["public"]["Tables"]["transactions"]["Update"] = {
@@ -327,6 +377,20 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
 
 export async function voidTransaction(id: string) {
   const userId = await getAuthenticatedUserId();
+  const { data: transaction, error: loadError } = await supabase
+    .from("transactions")
+    .select("related_entity_type")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .single();
+
+  if (loadError) {
+    return { data: null, error: loadError };
+  }
+
+  if (transaction.related_entity_type === "goal_contribution") {
+    throw new Error("Goal contribution transfers are managed from Goals and cannot be voided here.");
+  }
 
   return supabase
     .from("transactions")

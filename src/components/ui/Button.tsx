@@ -9,7 +9,7 @@ export function Button({ children, className = "", disabled, type = "button", va
   const styles =
     variant === "primary"
       ? "border-kash-emerald bg-kash-emerald text-white hover:border-kash-emeraldDark hover:bg-kash-emeraldDark active:border-kash-emeraldPressed active:bg-kash-emeraldPressed"
-      : "border-kash-emerald/15 bg-white text-slate-900 hover:border-kash-gold/60 hover:bg-kash-selected hover:text-kash-emeraldDark active:bg-kash-selected";
+      : "border-kash-emerald/15 bg-white text-slate-900 hover:border-kash-emeraldDark hover:bg-kash-selected hover:text-kash-emeraldDark active:bg-kash-selected";
 
   return (
     <button

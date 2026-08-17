@@ -7,6 +7,8 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import { useAuth } from "../context/AuthContext";
+import { appEvents } from "../lib/appEvents";
+import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import {
   getWalletIcon,
@@ -41,10 +43,10 @@ const defaultFormState: WalletFormState = {
   color: "#10B981",
 };
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function SummaryCard({ label, labelClassName = "text-slate-600", value }: { label: string; labelClassName?: string; value: string }) {
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{label}</p>
+      <p className={`text-xs font-bold uppercase tracking-normal ${labelClassName}`}>{label}</p>
       <p className="mt-2 text-xl font-extrabold text-slate-900">{value}</p>
     </article>
   );
@@ -54,6 +56,7 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
   const accent = wallet.color ?? "#10B981";
+  const isSavingsPocket = wallet.wallet_type === "savings";
 
   return (
     <Link
@@ -69,8 +72,15 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
           {[wallet.institution_name, typeOption.label].filter(Boolean).join(" / ")}
         </span>
       </span>
-      <span className="text-right text-sm font-extrabold text-slate-900">
-        {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
+      <span className="min-w-[8.5rem] text-right">
+        <span className="block text-sm font-extrabold text-slate-900">
+          {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
+        </span>
+        {isSavingsPocket ? (
+          <span className="mt-1 block text-xs font-bold text-kash-emerald">
+            Savings pocket
+          </span>
+        ) : null}
       </span>
     </Link>
   );
@@ -275,17 +285,10 @@ export function WalletsPage() {
 
   useEffect(() => {
     void loadWallets();
-
-    const refreshWallets = () => {
-      void loadWallets();
-    };
-
-    window.addEventListener("kash:transaction-saved", refreshWallets);
-
-    return () => {
-      window.removeEventListener("kash:transaction-saved", refreshWallets);
-    };
   }, []);
+
+  useAppEvent(appEvents.transactionSaved, () => void loadWallets());
+  useAppEvent(appEvents.goalSaved, () => void loadWallets());
 
   const totals = useMemo(() => {
     return wallets.reduce(
@@ -298,15 +301,22 @@ export function WalletsPage() {
 
         if (isLiquidWallet(wallet.wallet_type)) {
           summary.liquid += balance;
+          if (wallet.include_in_net_worth) {
+            summary.available += balance;
+          }
         }
 
         if (wallet.wallet_type === "investment") {
           summary.investments += balance;
         }
 
+        if (wallet.wallet_type === "savings") {
+          summary.savings += balance;
+        }
+
         return summary;
       },
-      { investments: 0, liquid: 0, totalAssets: 0 },
+      { available: 0, investments: 0, liquid: 0, savings: 0, totalAssets: 0 },
     );
   }, [wallets]);
 
@@ -334,9 +344,10 @@ export function WalletsPage() {
         }
       />
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-4">
         <SummaryCard label="Total Assets" value={formatCurrency(totals.totalAssets, profile?.default_currency ?? "IDR")} />
-        <SummaryCard label="Liquid" value={formatCurrency(totals.liquid, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label="Available" value={formatCurrency(totals.available, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label="Savings Pockets" labelClassName="text-kash-emerald" value={formatCurrency(totals.savings, profile?.default_currency ?? "IDR")} />
         <SummaryCard label="Investments" value={formatCurrency(totals.investments, profile?.default_currency ?? "IDR")} />
       </section>
 
