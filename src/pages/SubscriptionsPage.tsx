@@ -16,7 +16,7 @@ import {
   Wallet as WalletIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CreateObligationModal } from "../components/subscriptions/CreateObligationModal";
 import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { Button } from "../components/ui/Button";
@@ -34,6 +34,7 @@ import type { RecurringPayment } from "../types/domain";
 type TabFilter = "all" | "subscriptions" | "installments" | "due_soon";
 
 export function SubscriptionsPage() {
+  const navigate = useNavigate();
   const [obligations, setObligations] = useState<RecurringObligationWithMeta[]>([]);
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -336,12 +337,13 @@ export function SubscriptionsPage() {
             return (
               <div
                 key={ob.id}
-                className="group flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4.5 shadow-sm transition hover:border-slate-300 sm:flex-row sm:items-center"
+                onClick={() => navigate(`/subscriptions/${ob.id}`)}
+                className="group flex cursor-pointer flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald/40 hover:shadow-md sm:flex-row sm:items-center sm:p-5"
               >
                 {/* Left: Icon & Info */}
                 <div className="flex items-start gap-3.5">
                   <span
-                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition group-hover:scale-105 ${
                       isInstallment
                         ? "bg-[#F28C45]/15 text-[#F28C45]"
                         : "bg-kash-selected text-kash-emeraldDark"
@@ -352,12 +354,11 @@ export function SubscriptionsPage() {
 
                   <div>
                     <div className="flex items-center gap-2">
-                      <Link
-                        to={`/subscriptions/${ob.id}`}
-                        className="text-base font-extrabold text-slate-900 transition hover:text-kash-emerald"
+                      <span
+                        className="text-base font-extrabold text-slate-900 transition group-hover:text-kash-emerald"
                       >
                         {ob.name}
-                      </Link>
+                      </span>
                       {ob.provider && (
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600">
                           {ob.provider}
@@ -419,7 +420,10 @@ export function SubscriptionsPage() {
                   <div className="flex items-center gap-2">
                     {ob.status === "active" && ob.currentPayment && (
                       <Button
-                        onClick={() => setPayingItem({ obligation: ob, payment: ob.currentPayment! })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPayingItem({ obligation: ob, payment: ob.currentPayment! });
+                        }}
                         className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
                       >
                         <CheckCircle2 size={14} />
@@ -427,12 +431,11 @@ export function SubscriptionsPage() {
                       </Button>
                     )}
 
-                    <Link
-                      to={`/subscriptions/${ob.id}`}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                    <span
+                      className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-kash-emerald"
                     >
                       <ChevronRight size={18} />
-                    </Link>
+                    </span>
                   </div>
                 </div>
               </div>
