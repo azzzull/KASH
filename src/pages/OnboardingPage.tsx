@@ -7,7 +7,7 @@ import { FormField } from "../components/ui/FormField";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import { useAuth } from "../context/AuthContext";
-import { completeProfileOnboarding, updateProfileCurrency } from "../lib/auth";
+import { completeProfileOnboarding, updateProfileCurrency, updateProfileFullName } from "../lib/auth";
 import { formatCurrency as formatMoneyCurrency, formatMoneyDigits, parseMoneyInputDigits } from "../lib/money";
 import { createFirstWallet } from "../lib/wallets";
 import type { Wallet, WalletType } from "../types/domain";
@@ -22,12 +22,18 @@ const walletTypes: Array<{ label: string; value: WalletType; needsInstitution: b
   { label: "Custom", value: "custom", needsInstitution: true },
 ];
 
-const steps = ["Welcome", "Currency", "First Wallet", "Initial Balance"];
+const steps = ["Welcome", "Profile", "Currency", "First Wallet", "Initial Balance"];
 
 export function OnboardingPage() {
   const navigate = useNavigate();
   const { profile, refreshProfile, user } = useAuth();
   const [step, setStep] = useState(0);
+  const [displayName, setDisplayName] = useState(
+    profile?.full_name ||
+      (user?.user_metadata?.full_name as string) ||
+      (user?.user_metadata?.name as string) ||
+      "",
+  );
   const [currency, setCurrency] = useState(profile?.default_currency ?? "IDR");
   const [walletName, setWalletName] = useState("");
   const [walletType, setWalletType] = useState<WalletType>("bank");
@@ -45,6 +51,31 @@ export function OnboardingPage() {
   const isFinish = step >= steps.length;
   const progressPercent = isFinish ? 100 : ((step + 1) / steps.length) * 100;
 
+  const persistDisplayName = async () => {
+    if (!user) return;
+    const trimmed = displayName.trim();
+
+    if (!trimmed) {
+      setError("Please enter a display name.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const { error: updateError } = await updateProfileFullName(user.id, trimmed);
+
+    if (updateError) {
+      setError("Couldn't save your display name. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    await refreshProfile();
+    setLoading(false);
+    setStep(2);
+  };
+
   const persistCurrency = async () => {
     if (!user) return;
     setLoading(true);
@@ -60,7 +91,7 @@ export function OnboardingPage() {
 
     await refreshProfile();
     setLoading(false);
-    setStep(2);
+    setStep(3);
   };
 
   const validateWalletInfo = () => {
@@ -81,6 +112,13 @@ export function OnboardingPage() {
   const createWalletAndComplete = async () => {
     if (!user) return;
 
+    const effectiveName = displayName.trim() || profile?.full_name?.trim();
+    if (!effectiveName) {
+      setError("Please set a display name before completing onboarding.");
+      setStep(1);
+      return;
+    }
+
     const normalizedBalance = parseMoneyInputDigits(initialBalance);
 
     if (!normalizedBalance) {
@@ -90,6 +128,13 @@ export function OnboardingPage() {
 
     setLoading(true);
     setError(null);
+
+    const { error: nameError } = await updateProfileFullName(user.id, effectiveName);
+    if (nameError) {
+      setError("Couldn't save your display name. Please try again.");
+      setLoading(false);
+      return;
+    }
 
     let wallet = createdWallet;
 
@@ -132,16 +177,21 @@ export function OnboardingPage() {
     event.preventDefault();
 
     if (step === 1) {
+      void persistDisplayName();
+      return;
+    }
+
+    if (step === 2) {
       void persistCurrency();
       return;
     }
 
-    if (step === 2 && validateWalletInfo()) {
-      setStep(3);
+    if (step === 3 && validateWalletInfo()) {
+      setStep(4);
       return;
     }
 
-    if (step === 3) {
+    if (step === 4) {
       void createWalletAndComplete();
     }
   };
@@ -179,7 +229,7 @@ export function OnboardingPage() {
               <span>{steps[step]}</span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-slate-100">
-              <div className="h-2 rounded-full bg-kash-emerald" style={{ width: `${progressPercent}%` }} />
+              <div className="h-2 rounded-full bg-kash-emerald transition-all duration-300" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
         ) : null}
@@ -198,7 +248,7 @@ export function OnboardingPage() {
               organized in one place.
             </h1>
             <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-slate-700">
-              Set up your main currency and first wallet so KASH can start tracking your real balances.
+              Set up your profile, currency, and first wallet so KASH can start tracking your real balances.
             </p>
             <Button className="mt-8 w-full sm:w-auto" onClick={() => setStep(1)}>
               Get Started
@@ -211,6 +261,26 @@ export function OnboardingPage() {
             {step === 1 ? (
               <>
                 <div>
+                  <h1 className="text-2xl font-bold text-slate-900">What should we call you?</h1>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    This name will appear on your dashboard, profile, and navigation.
+                  </p>
+                </div>
+                <FormField
+                  id="onboarding-display-name"
+                  label="Display Name"
+                  placeholder="e.g. Alex"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  autoFocus
+                  required
+                />
+              </>
+            ) : null}
+
+            {step === 2 ? (
+              <>
+                <div>
                   <h1 className="text-2xl font-bold text-slate-900">What's your main currency?</h1>
                   <p className="mt-2 text-sm leading-6 text-slate-700">IDR is the supported currency for the MVP.</p>
                 </div>
@@ -220,7 +290,7 @@ export function OnboardingPage() {
               </>
             ) : null}
 
-            {step === 2 ? (
+            {step === 3 ? (
               <>
                 <div>
                   <h1 className="text-2xl font-bold text-slate-900">Add your first wallet</h1>
@@ -259,7 +329,7 @@ export function OnboardingPage() {
                 </SelectField>
                 <ToggleField
                   checked={includeInNetWorth}
-                  description="Include this wallet when KASH later calculates your net worth."
+                  description="Include this wallet when KASH calculates your net worth."
                   id="include-net-worth"
                   label="Include in Net Worth"
                   onChange={(event) => setIncludeInNetWorth(event.target.checked)}
@@ -267,7 +337,7 @@ export function OnboardingPage() {
               </>
             ) : null}
 
-            {step === 3 ? (
+            {step === 4 ? (
               <>
                 <div>
                   <h1 className="text-2xl font-bold text-slate-900">Current Balance</h1>
@@ -298,7 +368,7 @@ export function OnboardingPage() {
               </Button>
               <Button disabled={loading} type="submit">
                 {loading ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-                {step === 3 ? "Create Wallet" : "Continue"}
+                {step === 4 ? "Create Wallet" : "Continue"}
               </Button>
             </div>
           </form>
@@ -309,7 +379,7 @@ export function OnboardingPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-kash-selected text-kash-emerald">
               <Check aria-hidden="true" size={24} strokeWidth={2.4} />
             </div>
-            <h1 className="mt-5 text-2xl font-bold text-slate-900">You're ready.</h1>
+            <h1 className="mt-5 text-2xl font-bold text-slate-900">You're ready, {displayName.trim() || "friend"}.</h1>
             <p className="mt-3 text-sm leading-6 text-slate-700">
               {createdWallet
                 ? `${formatMoneyCurrency(createdWallet.initial_balance, createdWallet.currency)} is now tracked in KASH.`

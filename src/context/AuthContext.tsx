@@ -1,7 +1,13 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import type { Profile } from "../types/domain";
-import { getCurrentProfile, signInWithGoogle as signInWithGoogleRequest, signOut as signOutRequest } from "../lib/auth";
+import {
+  getCurrentProfile,
+  signInWithEmailPassword,
+  signInWithGoogle as signInWithGoogleRequest,
+  signOut as signOutRequest,
+  signUpWithEmailPassword,
+} from "../lib/auth";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
@@ -14,10 +20,40 @@ type AuthContextValue = {
   profileLoading: boolean;
   refreshProfile: () => Promise<void>;
   signInWithGoogle: () => Promise<{ errorMessage: string | null }>;
+  signInWithPassword: (email: string, password: string) => Promise<{ errorMessage: string | null }>;
+  signUpWithPassword: (
+    email: string,
+    password: string,
+    fullName?: string,
+  ) => Promise<{ errorMessage: string | null; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function formatAuthError(error: Error | { message?: string } | null): string {
+  if (!error || !error.message) return "An unexpected error occurred. Please try again.";
+
+  const message = error.message.toLowerCase();
+
+  if (message.includes("invalid login credentials") || message.includes("invalid credentials")) {
+    return "Invalid email or password. Please try again.";
+  }
+  if (message.includes("user already registered") || message.includes("already exists")) {
+    return "An account with this email already exists. Please sign in.";
+  }
+  if (message.includes("password should be at least")) {
+    return "Password must be at least 6 characters.";
+  }
+  if (message.includes("email not confirmed")) {
+    return "Please check your inbox to confirm your email before signing in.";
+  }
+  if (message.includes("rate limit") || message.includes("too many requests")) {
+    return "Too many attempts. Please wait a few moments and try again.";
+  }
+
+  return error.message;
+}
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -116,7 +152,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         const { error } = await signInWithGoogleRequest();
-        return { errorMessage: error?.message ?? null };
+        return { errorMessage: error ? formatAuthError(error) : null };
+      },
+      signInWithPassword: async (email: string, password: string) => {
+        if (!isSupabaseConfigured) {
+          return { errorMessage: "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." };
+        }
+
+        const { error } = await signInWithEmailPassword(email, password);
+        return { errorMessage: error ? formatAuthError(error) : null };
+      },
+      signUpWithPassword: async (email: string, password: string, fullName?: string) => {
+        if (!isSupabaseConfigured) {
+          return { errorMessage: "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." };
+        }
+
+        const { data, error } = await signUpWithEmailPassword(email, password, fullName);
+
+        if (error) {
+          return { errorMessage: formatAuthError(error) };
+        }
+
+        const needsEmailConfirmation = Boolean(data?.user && !data?.session);
+        return { errorMessage: null, needsEmailConfirmation };
       },
       signOut: async () => {
         await signOutRequest();

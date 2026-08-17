@@ -327,8 +327,8 @@ export async function getTransactionById(id: string) {
 export async function updateTransaction(transaction: Transaction, input: UpdateTransactionInput) {
   const userId = await getAuthenticatedUserId();
 
-  if (transaction.related_entity_type === "goal_contribution") {
-    throw new Error("Goal contribution transfers are managed from Goals and cannot be edited here.");
+  if (transaction.related_entity_type === "goal_contribution" || transaction.related_entity_type === "goal_refund") {
+    throw new Error("Goal transfers are managed from Goals and cannot be edited here.");
   }
 
   if (transaction.status === "void") {
@@ -388,8 +388,8 @@ export async function voidTransaction(id: string) {
     return { data: null, error: loadError };
   }
 
-  if (transaction.related_entity_type === "goal_contribution") {
-    throw new Error("Goal contribution transfers are managed from Goals and cannot be voided here.");
+  if (transaction.related_entity_type === "goal_contribution" || transaction.related_entity_type === "goal_refund") {
+    throw new Error("Goal transfers are managed from Goals and cannot be voided here.");
   }
 
   return supabase

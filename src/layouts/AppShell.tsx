@@ -25,25 +25,73 @@ export function AppShell() {
   }, [location.pathname]);
 
   useEffect(() => {
-    let previousScrollY = window.scrollY;
+    let previousScrollY = Math.max(0, window.scrollY);
+    let accumulatedDelta = 0;
+    let ticking = false;
 
     const updateHeaderVisibility = () => {
-      const nextScrollY = window.scrollY;
-      const delta = nextScrollY - previousScrollY;
+      const currentScrollY = window.scrollY;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const innerHeight = window.innerHeight;
+      const maxScrollableDistance = scrollHeight - innerHeight;
 
-      if (nextScrollY <= 8) {
+      // 1. Short page protection: If page cannot meaningfully scroll, keep header visible
+      if (maxScrollableDistance < 120) {
         setMobileHeaderVisible(true);
-      } else if (delta > 2) {
-        setMobileHeaderVisible(false);
-      } else if (delta < -1) {
-        setMobileHeaderVisible(true);
+        previousScrollY = Math.max(0, currentScrollY);
+        accumulatedDelta = 0;
+        ticking = false;
+        return;
       }
 
-      previousScrollY = nextScrollY;
+      // 2. Top boundary / overscroll protection
+      if (currentScrollY <= 16) {
+        setMobileHeaderVisible(true);
+        previousScrollY = Math.max(0, currentScrollY);
+        accumulatedDelta = 0;
+        ticking = false;
+        return;
+      }
+
+      // 3. Bottom boundary / rubber-band bounce protection
+      if (currentScrollY >= maxScrollableDistance - 16) {
+        previousScrollY = currentScrollY;
+        ticking = false;
+        return;
+      }
+
+      const delta = currentScrollY - previousScrollY;
+
+      // Direction changed: reset accumulated delta
+      if ((delta > 0 && accumulatedDelta < 0) || (delta < 0 && accumulatedDelta > 0)) {
+        accumulatedDelta = 0;
+      }
+
+      accumulatedDelta += delta;
+
+      // Downward intentional scroll: hide header
+      if (accumulatedDelta >= 35) {
+        setMobileHeaderVisible(false);
+        accumulatedDelta = 0;
+      } else if (accumulatedDelta <= -25) {
+        // Upward intentional scroll: show header
+        setMobileHeaderVisible(true);
+        accumulatedDelta = 0;
+      }
+
+      previousScrollY = currentScrollY;
+      ticking = false;
     };
 
-    window.addEventListener("scroll", updateHeaderVisibility, { passive: true });
-    return () => window.removeEventListener("scroll", updateHeaderVisibility);
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateHeaderVisibility);
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {

@@ -51,3 +51,13 @@ a:focus-visible {
 .kash-page-bg {
   background: #ffffff;
 }
+
+/* Prevent iOS Safari auto-zooming on focus by ensuring >=16px font-size for mobile editable inputs */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+

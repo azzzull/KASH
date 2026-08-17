@@ -188,6 +188,13 @@ export type Database = {
         };
         Returns: GoalContribution;
       };
+      close_goal_with_sweep: {
+        Args: {
+          p_goal_id: string;
+          p_destination_wallet_id?: string | null;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       wallet_type: Wallet["wallet_type"];

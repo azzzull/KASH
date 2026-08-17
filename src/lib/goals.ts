@@ -178,6 +178,13 @@ export async function archiveGoal(id: string) {
   return supabase.from("goals").update({ status: "cancelled" }).eq("id", id).select("*").single();
 }
 
+export async function closeGoal(goalId: string, destinationWalletId?: string | null) {
+  return supabase.rpc("close_goal_with_sweep", {
+    p_destination_wallet_id: destinationWalletId || null,
+    p_goal_id: goalId,
+  });
+}
+
 export async function createGoalContribution(input: CreateGoalContributionInput) {
   return supabase.rpc("create_goal_contribution", {
     p_goal_id: input.goalId,
@@ -187,3 +194,4 @@ export async function createGoalContribution(input: CreateGoalContributionInput)
     p_note: input.note,
   });
 }
+

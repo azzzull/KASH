@@ -11,6 +11,7 @@ import {
   Plane,
   Plus,
   Sparkles,
+  Trash2,
   WalletCards,
 } from "lucide-react";
 import type { FormEvent } from "react";
@@ -23,6 +24,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import {
   archiveGoal,
+  closeGoal,
   createGoalContribution,
   getGoalById,
   updateGoal,
@@ -356,8 +358,10 @@ export function GoalDetailPage() {
   const [goal, setGoal] = useState<GoalDetail | null>(null);
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [archiving, setArchiving] = useState(false);
-  const [showArchiveConfirmation, setShowArchiveConfirmation] = useState(false);
+  const [closingGoal, setClosingGoal] = useState(false);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [closeDestinationWalletId, setCloseDestinationWalletId] = useState("");
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
   const [showContribution, setShowContribution] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -398,20 +402,35 @@ export function GoalDetailPage() {
 
   const progress = useMemo(() => (goal ? progressOf(goal) : null), [goal]);
 
-  const handleArchive = async () => {
-    if (!goal) return;
+  const availableDestinationWallets = useMemo(() => {
+    if (!goal) return [];
+    return wallets.filter((wallet) => wallet.id !== goal.wallet_id && !wallet.is_archived);
+  }, [goal, wallets]);
 
-    setArchiving(true);
-    const { error: archiveError } = await archiveGoal(goal.id);
+  const handleCloseGoal = async () => {
+    if (!goal || !progress) return;
 
-    if (archiveError) {
-      setError("Couldn't archive this goal. Please try again.");
-      setArchiving(false);
-      setShowArchiveConfirmation(false);
+    if (progress.current > 0 && !closeDestinationWalletId) {
+      setCloseError("Please select a destination wallet to receive the remaining funds.");
+      return;
+    }
+
+    setClosingGoal(true);
+    setCloseError(null);
+
+    const { error: rpcError } = await closeGoal(
+      goal.id,
+      progress.current > 0 ? closeDestinationWalletId : null,
+    );
+
+    if (rpcError) {
+      setCloseError(rpcError.message || "Couldn't close this goal. Please try again.");
+      setClosingGoal(false);
       return;
     }
 
     emitGoalSaved();
+    emitTransactionSaved();
     navigate("/goals", { replace: true });
   };
 
@@ -461,9 +480,17 @@ export function GoalDetailPage() {
               <Edit3 aria-hidden="true" size={17} />
               Edit
             </Button>
-            <Button disabled={archiving || isCancelled} onClick={() => setShowArchiveConfirmation(true)} variant="secondary">
-              <Archive aria-hidden="true" size={17} />
-              Archive
+            <Button
+              disabled={closingGoal || isCancelled}
+              onClick={() => {
+                setCloseError(null);
+                setCloseDestinationWalletId(availableDestinationWallets[0]?.id ?? "");
+                setShowCloseDialog(true);
+              }}
+              variant="secondary"
+            >
+              <Trash2 aria-hidden="true" size={17} />
+              Delete Goal
             </Button>
           </div>
         }
@@ -471,7 +498,7 @@ export function GoalDetailPage() {
 
       {isCancelled ? (
         <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700">
-          This goal is archived. Its historical contributions and linked pocket wallet remain available.
+          This goal is closed. Its historical contributions and records remain preserved in your history.
         </section>
       ) : null}
 
@@ -502,7 +529,7 @@ export function GoalDetailPage() {
       <section className="grid gap-3 md:grid-cols-3">
         <DetailMetric label="Deadline" value={formatDate(goal.deadline)} />
         <DetailMetric label="Pocket Wallet" value={goal.wallet?.name ?? "Goal pocket"} />
-        <DetailMetric label="Status" value={isCancelled ? "Archived" : isCompleted ? "Completed" : "Active"} />
+        <DetailMetric label="Status" value={isCancelled ? "Closed" : isCompleted ? "Completed" : "Active"} />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -563,19 +590,45 @@ export function GoalDetailPage() {
           wallets={wallets}
         />
       ) : null}
-      {showArchiveConfirmation ? (
+      {showCloseDialog ? (
         <ConfirmationDialog
-          confirmLabel="Archive Goal"
-          description="Existing contribution history and the linked pocket wallet will remain available."
-          icon={Archive}
-          isLoading={archiving}
+          confirmLabel={progress.current > 0 ? "Transfer & Close Goal" : "Delete Goal"}
+          description={
+            progress.current > 0
+              ? `This goal pocket holds ${formatCurrency(progress.current, "IDR")}. Choose an active destination wallet to receive these funds before closing.`
+              : "Are you sure you want to delete this goal? Existing contribution history and historical records will be preserved."
+          }
+          disabled={progress.current > 0 && !closeDestinationWalletId}
+          icon={Trash2}
+          isLoading={closingGoal}
           itemLabel={goal.name}
-          onCancel={() => setShowArchiveConfirmation(false)}
-          onConfirm={() => void handleArchive()}
-          title="Archive this goal?"
-          tone="warning"
-        />
+          onCancel={() => setShowCloseDialog(false)}
+          onConfirm={() => void handleCloseGoal()}
+          title={progress.current > 0 ? "Transfer Remaining Balance to Close Goal" : "Delete this goal?"}
+          tone="danger"
+        >
+          {progress.current > 0 ? (
+            <div className="mt-3 grid gap-3">
+              <SelectField
+                id="close-goal-destination-wallet"
+                label="Destination Wallet for Remaining Funds"
+                value={closeDestinationWalletId}
+                onChange={(event) => setCloseDestinationWalletId(event.target.value)}
+              >
+                {availableDestinationWallets.map((wallet) => (
+                  <option key={wallet.id} value={wallet.id}>
+                    {wallet.name} ({formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)})
+                  </option>
+                ))}
+              </SelectField>
+              {closeError ? (
+                <p className="text-xs font-bold text-kash-expense">{closeError}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </ConfirmationDialog>
       ) : null}
     </div>
   );
 }
+
