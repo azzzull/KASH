@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
 import { localDateKey } from "./calendar";
 import { createCategoryColorResolver } from "./chartColors";
-import type { Category, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
+import type { Category, Counterparty, DebtProgress, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
   bank: "#10B981",
@@ -92,6 +92,20 @@ export type DashboardCalendarActivity = {
   types: TransactionType[];
 };
 
+export type DashboardDebtSummary = {
+  totalDebt: number;
+  totalReceivable: number;
+  activeDebtCount: number;
+  activeReceivableCount: number;
+  counterparties: {
+    id: string;
+    name: string;
+    debtTotal: number;
+    receivableTotal: number;
+    activeItemCount: number;
+  }[];
+};
+
 export type DashboardSummary = {
   period: {
     label: string;
@@ -112,6 +126,7 @@ export type DashboardSummary = {
   walletDistribution: DashboardWalletDistribution[];
   wallets: DashboardWalletItem[];
   goals: DashboardGoalItem[];
+  debts: DashboardDebtSummary;
   recentTransactions: DashboardRecentTransaction[];
   calendarActivity: DashboardCalendarActivity[];
 };
@@ -389,6 +404,8 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     recentTransactionResult,
     goalResult,
     goalProgressResult,
+    counterpartiesResult,
+    debtProgressResult,
   ] = await Promise.all([
     supabase
       .from("wallets")
@@ -433,6 +450,8 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       .neq("status", "cancelled")
       .order("created_at", { ascending: false }),
     supabase.from("goal_progress_view").select("*").eq("user_id", userId),
+    supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true }),
+    supabase.from("debt_progress_view").select("*").eq("user_id", userId),
   ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -443,6 +462,8 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   if (recentTransactionResult.error) throw recentTransactionResult.error;
   if (goalResult.error) throw goalResult.error;
   if (goalProgressResult.error) throw goalProgressResult.error;
+  if (counterpartiesResult.error) throw counterpartiesResult.error;
+  if (debtProgressResult.error) throw debtProgressResult.error;
 
   const balancesByWalletId = new Map((balanceResult.data ?? []).map((balance) => [balance.wallet_id, balance]));
   const wallets = (walletResult.data ?? []).map((wallet) => ({
@@ -456,6 +477,60 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   const dashboardGoals = buildDashboardGoals(goalResult.data ?? [], goalProgressResult.data ?? []);
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
+
+  const counterparties = (counterpartiesResult.data ?? []) as Counterparty[];
+  const debtProgressItems = (debtProgressResult.data ?? []) as DebtProgress[];
+
+  let totalDebt = 0;
+  let totalReceivable = 0;
+  let activeDebtCount = 0;
+  let activeReceivableCount = 0;
+
+  const debtItemsByCounterparty = new Map<string, DebtProgress[]>();
+  for (const item of debtProgressItems) {
+    if (item.status !== "cancelled") {
+      const remaining = moneyValue(item.remaining_amount);
+      if (item.type === "debt") {
+        totalDebt += remaining;
+        if (item.status !== "settled") activeDebtCount++;
+      } else {
+        totalReceivable += remaining;
+        if (item.status !== "settled") activeReceivableCount++;
+      }
+    }
+    const list = debtItemsByCounterparty.get(item.counterparty_id) ?? [];
+    list.push(item);
+    debtItemsByCounterparty.set(item.counterparty_id, list);
+  }
+
+  const dashboardCounterparties = counterparties
+    .map((cp: Counterparty) => {
+      const items = debtItemsByCounterparty.get(cp.id) ?? [];
+      let cpDebt = 0;
+      let cpReceivable = 0;
+      let activeCount = 0;
+
+      for (const item of items) {
+        if (item.status === "cancelled") continue;
+        const rem = moneyValue(item.remaining_amount);
+        if (item.type === "debt") {
+          cpDebt += rem;
+        } else {
+          cpReceivable += rem;
+        }
+        if (item.status !== "settled") activeCount++;
+      }
+
+      return {
+        id: cp.id,
+        name: cp.name,
+        debtTotal: cpDebt,
+        receivableTotal: cpReceivable,
+        activeItemCount: activeCount,
+      };
+    })
+    .filter((cp) => cp.debtTotal > 0 || cp.receivableTotal > 0 || cp.activeItemCount > 0)
+    .sort((a, b) => (b.debtTotal + b.receivableTotal) - (a.debtTotal + a.receivableTotal));
 
   const dashboardWallets = wallets
     .map((wallet): DashboardWalletItem => ({
@@ -503,6 +578,13 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     walletDistribution: buildWalletDistribution(dashboardWallets),
     wallets: dashboardWallets,
     goals: dashboardGoals,
+    debts: {
+      totalDebt,
+      totalReceivable,
+      activeDebtCount,
+      activeReceivableCount,
+      counterparties: dashboardCounterparties,
+    },
     calendarActivity: buildCalendarActivity(monthTransactions),
     recentTransactions: recentTransactions.map((transaction) => {
       const description = describeTransaction(transaction, walletsById, categoriesById);

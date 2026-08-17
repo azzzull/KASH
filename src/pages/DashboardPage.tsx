@@ -9,6 +9,7 @@ import {
   CreditCard,
   Eye,
   EyeOff,
+  HandCoins,
   Home,
   Info,
   PiggyBank,
@@ -684,12 +685,71 @@ function GoalsSummary({ balancesVisible, currency, summary }: { balancesVisible:
   );
 }
 
-function LaterSprintPanel({ title, description }: { title: string; description: string }) {
+function DebtReceivableSummary({
+  balancesVisible,
+  currency,
+  summary,
+}: {
+  balancesVisible: boolean;
+  currency: string;
+  summary: DashboardSummary;
+}) {
+  const { totalDebt, totalReceivable, counterparties } = summary.debts;
+
+  if (totalDebt === 0 && totalReceivable === 0 && counterparties.length === 0) {
+    return (
+      <EmptyPanel
+        title="No obligations yet"
+        description="Track money you owe or money owed to you."
+        className="min-h-44"
+      />
+    );
+  }
+
   return (
-    <div className="flex min-h-44 items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
-      <div>
-        <p className="text-sm font-extrabold text-slate-900">{title}</p>
-        <p className="mt-2 text-sm font-medium text-slate-600">{description}</p>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-slate-50 p-2.5">
+          <span className="text-[11px] font-bold text-slate-600">You Owe</span>
+          <p className="mt-1 text-sm font-black text-slate-900">
+            {formatPrivateAmount(totalDebt, currency, balancesVisible)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-slate-50 p-2.5">
+          <span className="text-[11px] font-bold text-slate-600">Owed to You</span>
+          <p className="mt-1 text-sm font-black text-slate-900">
+            {formatPrivateAmount(totalReceivable, currency, balancesVisible)}
+          </p>
+        </div>
+      </div>
+
+      <div className="divide-y divide-slate-100 border-t border-slate-100 pt-1">
+        {counterparties.slice(0, 3).map((cp) => (
+          <Link
+            key={cp.id}
+            to={`/debts/${cp.id}`}
+            className="flex items-center justify-between py-2 text-xs transition hover:bg-slate-50"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-bold text-slate-900">{cp.name}</p>
+              <p className="text-[11px] font-semibold text-slate-600">
+                {cp.activeItemCount} active item{cp.activeItemCount !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="text-right">
+              {cp.debtTotal > 0 && (
+                <p className="font-extrabold text-kash-expense">
+                  -{formatPrivateAmount(cp.debtTotal, currency, balancesVisible)}
+                </p>
+              )}
+              {cp.receivableTotal > 0 && (
+                <p className="font-extrabold text-kash-emerald">
+                  +{formatPrivateAmount(cp.receivableTotal, currency, balancesVisible)}
+                </p>
+              )}
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -811,6 +871,7 @@ export function DashboardPage() {
 
   useAppEvent(appEvents.transactionSaved, () => void loadDashboard());
   useAppEvent(appEvents.goalSaved, () => void loadDashboard());
+  useAppEvent(appEvents.debtSaved, () => void loadDashboard());
 
   useEffect(() => {
     window.localStorage.removeItem(LEGACY_DASHBOARD_BALANCES_VISIBLE_KEY);
@@ -923,17 +984,24 @@ export function DashboardPage() {
 
         <DashboardCard className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">Debt & Receivable</h2>
-            <span className="text-xs font-bold text-slate-600">Later</span>
+            <div className="flex items-center gap-2">
+              <HandCoins aria-hidden="true" className="text-kash-emerald" size={18} />
+              <h2 className="text-base font-extrabold text-slate-900">Debt & Receivable</h2>
+            </div>
+            <Link to="/debts" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
+              View All
+            </Link>
           </div>
-          <LaterSprintPanel title="Debt & Receivable summary" description="Debt and receivable data is not implemented in this Sprint 6 correction." />
+          <DebtReceivableSummary balancesVisible={balancesVisible} summary={summary} currency={currency} />
         </DashboardCard>
       </div>
 
       <DashboardCard className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-extrabold text-slate-900">Recent Transactions</h2>
-          <span className="text-xs font-bold text-slate-600">View All later</span>
+          <Link to="/transactions" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
+            View All
+          </Link>
         </div>
         <RecentTransactions balancesVisible={balancesVisible} summary={summary} currency={currency} />
       </DashboardCard>
