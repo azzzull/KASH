@@ -130,3 +130,86 @@ export type Notification = {
   is_read: boolean;
   created_at: string;
 };
+
+export type DebtType = "debt" | "receivable";
+export type DebtStatus = "active" | "partially_paid" | "settled" | "cancelled";
+export type PaymentMode = "wallet" | "historical";
+
+export type Counterparty = {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Debt = {
+  id: string;
+  user_id: string;
+  counterparty_id: string;
+  type: DebtType;
+  title: string;
+  original_amount: MoneyAmount;
+  due_date: string | null;
+  note: string | null;
+  status: DebtStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DebtPayment = {
+  id: string;
+  user_id: string;
+  counterparty_id: string;
+  debt_type: DebtType;
+  payment_mode: PaymentMode;
+  total_amount: MoneyAmount;
+  payment_date: string;
+  wallet_id: string | null;
+  transaction_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type DebtPaymentAllocation = {
+  id: string;
+  debt_payment_id: string;
+  debt_id: string;
+  user_id: string;
+  allocated_amount: MoneyAmount;
+  created_at: string;
+};
+
+export type DebtProgress = {
+  debt_id: string;
+  user_id: string;
+  counterparty_id: string;
+  counterparty_name: string;
+  type: DebtType;
+  title: string;
+  original_amount: MoneyAmount;
+  due_date: string | null;
+  note: string | null;
+  status: DebtStatus;
+  created_at: string;
+  updated_at: string;
+  total_paid: MoneyAmount;
+  remaining_amount: MoneyAmount;
+  percentage: MoneyAmount;
+};
+
+export type CounterpartySummary = {
+  counterparty_id: string;
+  user_id: string;
+  counterparty_name: string;
+  debt_type: DebtType | null;
+  total_original: MoneyAmount;
+  total_paid: MoneyAmount;
+  remaining_amount: MoneyAmount;
+  active_item_count: number;
+  settled_item_count: number;
+  total_item_count: number;
+  created_at: string;
+  updated_at: string;
+};
+

@@ -331,6 +331,10 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     throw new Error("Goal transfers are managed from Goals and cannot be edited here.");
   }
 
+  if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "receivable_payment") {
+    throw new Error("Debt & Receivable settlement transactions are managed from Debt & Receivable and cannot be edited here.");
+  }
+
   if (transaction.status === "void") {
     throw new Error("Voided transactions cannot be edited.");
   }
@@ -390,6 +394,10 @@ export async function voidTransaction(id: string) {
 
   if (transaction.related_entity_type === "goal_contribution" || transaction.related_entity_type === "goal_refund") {
     throw new Error("Goal transfers are managed from Goals and cannot be voided here.");
+  }
+
+  if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "receivable_payment") {
+    throw new Error("Debt & Receivable settlement transactions are managed from Debt & Receivable and cannot be voided here.");
   }
 
   return supabase

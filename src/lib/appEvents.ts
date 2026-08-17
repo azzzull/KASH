@@ -1,4 +1,5 @@
 export const appEvents = {
+  debtSaved: "kash:debt-saved",
   goalSaved: "kash:goal-saved",
   transactionSaved: "kash:transaction-saved",
 } as const;
@@ -7,6 +8,10 @@ export type AppEventName = (typeof appEvents)[keyof typeof appEvents];
 
 export function emitAppEvent(eventName: AppEventName) {
   window.dispatchEvent(new CustomEvent(eventName));
+}
+
+export function emitDebtSaved() {
+  emitAppEvent(appEvents.debtSaved);
 }
 
 export function emitGoalSaved() {

@@ -60,7 +60,7 @@ export const mobileMoreItems: NavItem[] = [
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
     { label: "Goals", path: "/goals", icon: Crosshair },
     { label: "Shared Savings", path: "/shared", icon: UsersRound },
-    { label: "Debt & Receivable", path: "/debts", icon: CreditCard },
+    { label: "Debt & Receivable", path: "/debts", icon: HandCoins },
     { label: "Settings", path: "/settings", icon: Settings },
 ];
 

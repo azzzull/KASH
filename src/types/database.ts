@@ -1,12 +1,21 @@
 import type {
   Category,
   CategoryType,
+  Counterparty,
+  CounterpartySummary,
   CurrencyCode,
+  Debt,
+  DebtPayment,
+  DebtPaymentAllocation,
+  DebtProgress,
+  DebtStatus,
+  DebtType,
   Goal,
   GoalContribution,
   GoalProgress,
   GoalStatus,
   Notification,
+  PaymentMode,
   Profile,
   Transaction,
   TransactionStatus,
@@ -135,6 +144,67 @@ export type Database = {
         Update: Partial<Omit<GoalContribution, "id" | "goal_id" | "user_id" | "wallet_id" | "created_at">>;
         Relationships: [];
       };
+      counterparties: {
+        Row: Counterparty;
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Counterparty, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      debts: {
+        Row: Debt;
+        Insert: {
+          id?: string;
+          user_id: string;
+          counterparty_id: string;
+          type: DebtType;
+          title: string;
+          original_amount: string;
+          due_date?: string | null;
+          note?: string | null;
+          status?: DebtStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Debt, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      debt_payments: {
+        Row: DebtPayment;
+        Insert: {
+          id?: string;
+          user_id: string;
+          counterparty_id: string;
+          debt_type: DebtType;
+          payment_mode: PaymentMode;
+          total_amount: string;
+          payment_date?: string;
+          wallet_id?: string | null;
+          transaction_id?: string | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Omit<DebtPayment, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      debt_payment_allocations: {
+        Row: DebtPaymentAllocation;
+        Insert: {
+          id?: string;
+          debt_payment_id: string;
+          debt_id: string;
+          user_id: string;
+          allocated_amount: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<DebtPaymentAllocation, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
       notifications: {
         Row: Notification;
         Insert: {
@@ -161,6 +231,18 @@ export type Database = {
       };
       goal_progress_view: {
         Row: GoalProgress;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      debt_progress_view: {
+        Row: DebtProgress;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      counterparty_summary_view: {
+        Row: CounterpartySummary;
         Insert: never;
         Update: never;
         Relationships: [];
@@ -195,12 +277,27 @@ export type Database = {
         };
         Returns: Json;
       };
+      record_counterparty_settlement: {
+        Args: {
+          p_counterparty_id: string;
+          p_debt_type: DebtType;
+          p_payment_mode: PaymentMode;
+          p_amount: string;
+          p_wallet_id?: string | null;
+          p_payment_date?: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       wallet_type: Wallet["wallet_type"];
       transaction_type: Transaction["type"];
       transaction_status: Transaction["status"];
       goal_status: GoalStatus;
+      debt_type: DebtType;
+      debt_status: DebtStatus;
+      payment_mode: PaymentMode;
     };
     CompositeTypes: Record<string, never>;
   };

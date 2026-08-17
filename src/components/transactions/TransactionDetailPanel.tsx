@@ -99,6 +99,17 @@ export function TransactionDetailPanel({
   const amount = toNumber(transaction.amount);
   const fee = toNumber(transaction.transfer_fee);
 
+  const isLinked =
+    transaction.related_entity_type === "goal_contribution" ||
+    transaction.related_entity_type === "goal_refund" ||
+    transaction.related_entity_type === "debt_payment" ||
+    transaction.related_entity_type === "receivable_payment";
+
+  const linkedMessage =
+    transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "receivable_payment"
+      ? "Settlement transaction linked to Debt & Receivable. Edits and voids are managed from Debt & Receivable."
+      : "Goal transfer linked to Goals. Edits and voids are managed from Goals.";
+
   return (
     <aside className={`overflow-y-auto border border-slate-200 bg-white p-5 shadow-soft ${className}`}>
       <div className="flex items-start justify-between gap-4">
@@ -117,6 +128,12 @@ export function TransactionDetailPanel({
         {isVoid ? <p className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">Voided</p> : null}
       </div>
 
+      {isLinked ? (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
+          {linkedMessage}
+        </div>
+      ) : null}
+
       <dl className="mt-6 divide-y divide-slate-100 border-y border-slate-100">
         <DetailLine label="Date" value={dateLabel} />
         <DetailLine label={transaction.type === "transfer" ? "From" : "Wallet"} value={transaction.wallet?.name ?? "Wallet"} />
@@ -133,7 +150,7 @@ export function TransactionDetailPanel({
       {onEdit || onDuplicate || onVoid ? (
         <div className="mt-6 grid grid-cols-3 gap-2 rounded-lg border border-slate-200 p-2">
           {onEdit ? (
-            <button disabled={isVoid} type="button" onClick={onEdit} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:text-slate-600">
+            <button disabled={isVoid || isLinked} type="button" onClick={onEdit} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:text-slate-600">
               <Edit3 size={17} />
               Edit
             </button>
@@ -145,7 +162,7 @@ export function TransactionDetailPanel({
             </button>
           ) : null}
           {onVoid ? (
-            <button disabled={isVoid} type="button" onClick={onVoid} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent">
+            <button disabled={isVoid || isLinked} type="button" onClick={onVoid} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent">
               <Trash2 size={17} />
               Void
             </button>
