@@ -4,12 +4,20 @@ const getOAuthRedirectUrl = () => {
     if (typeof window === "undefined") return undefined;
 
     const configuredOrigin =
-        import.meta.env.VITE_APP_URL ||
-        import.meta.env.VITE_SITE_URL ||
-        window.location.origin;
-    const baseUrl = configuredOrigin.replace(/\/$/, "");
+        import.meta.env.VITE_APP_URL || import.meta.env.VITE_SITE_URL;
 
-    return `${baseUrl}/dashboard`;
+    if (configuredOrigin) {
+        return `${configuredOrigin.replace(/\/$/, "")}/dashboard`;
+    }
+
+    const origin = window.location.origin;
+    const hostname = new URL(origin).hostname;
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return "https://my-kash.netlify.app/dashboard";
+    }
+
+    return `${origin.replace(/\/$/, "")}/dashboard`;
 };
 
 export async function signInWithGoogle() {
