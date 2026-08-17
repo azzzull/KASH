@@ -64,16 +64,23 @@ export function SettleInstallmentModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="settle-modal-title"
     >
-      <div className="relative my-8 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl transition-all">
+      <button
+        type="button"
+        className="absolute inset-0 h-full w-full cursor-default"
+        aria-label="Close modal backdrop"
+        onClick={onClose}
+      />
+
+      <div className="relative flex max-h-[92dvh] w-full max-w-md flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl transition-all sm:max-h-[88dvh] sm:rounded-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
           <div>
-            <h3 id="settle-modal-title" className="text-xl font-black text-slate-900">
+            <h3 id="settle-modal-title" className="text-lg font-black text-slate-900 sm:text-xl">
               Early Settlement
             </h3>
             <p className="mt-0.5 text-xs font-semibold text-slate-600">
@@ -83,105 +90,108 @@ export function SettleInstallmentModal({
           <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
 
-        {error && (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-white p-3 text-xs font-bold text-kash-expense shadow-sm">
-            {error}
-          </div>
-        )}
+        <form onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 sm:px-6">
+            {error && (
+              <div className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense shadow-sm">
+                {error}
+              </div>
+            )}
 
-        <form onSubmit={submit} className="mt-5 space-y-4">
-          {/* Settlement Amount Summary */}
-          <div className="rounded-xl border border-kash-emerald/20 bg-kash-selected/30 p-4 text-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-kash-emeraldDark">
-              Total Remaining Balance to Settle
-            </span>
-            <p className="mt-1 text-2xl font-black text-slate-900">
-              {formatCurrency(remainingAmount)}
-            </p>
-            <p className="mt-1 text-xs font-semibold text-slate-600">
-              Settles {remainingCount} remaining installments at once
-            </p>
-          </div>
-
-          {/* Payment Mode Selector */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-              Settlement Method *
-            </label>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentMode("wallet")}
-                className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-extrabold transition ${
-                  paymentMode === "wallet"
-                    ? "bg-kash-emerald text-white shadow-sm"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <WalletCards size={15} />
-                Pay from Wallet
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMode("historical")}
-                className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-extrabold transition ${
-                  paymentMode === "historical"
-                    ? "bg-kash-emerald text-white shadow-sm"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <History size={15} />
-                Historical Settlement
-              </button>
+            {/* Settlement Amount Summary */}
+            <div className="rounded-xl border border-kash-emerald/20 bg-kash-selected/30 p-4 text-center">
+              <span className="text-xs font-bold uppercase tracking-wider text-kash-emeraldDark">
+                Total Remaining Balance to Settle
+              </span>
+              <p className="mt-1 text-2xl font-black text-slate-900">
+                {formatCurrency(remainingAmount)}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-600">
+                Settles {remainingCount} remaining installments at once
+              </p>
             </div>
+
+            {/* Payment Mode Selector */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+                Settlement Method *
+              </label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMode("wallet")}
+                  className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-extrabold transition ${
+                    paymentMode === "wallet"
+                      ? "bg-kash-emerald text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <WalletCards size={15} />
+                  Pay from Wallet
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMode("historical")}
+                  className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-extrabold transition ${
+                    paymentMode === "historical"
+                      ? "bg-kash-emerald text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <History size={15} />
+                  Already Settled
+                </button>
+              </div>
+            </div>
+
+            {/* Wallet Selection (If wallet mode) */}
+            {paymentMode === "wallet" && (
+              <SelectField
+                id="settle-wallet"
+                label="Deduct Total from Wallet *"
+                value={selectedWalletId}
+                onChange={(e) => setSelectedWalletId(e.target.value)}
+              >
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </SelectField>
+            )}
+
+            {/* Paid Date */}
+            <label className="block">
+              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Settlement Date *</span>
+              <input
+                type="date"
+                required
+                value={paidAt}
+                onChange={(e) => setPaidAt(e.target.value)}
+                className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
+              />
+            </label>
+
+            {/* Note */}
+            <label className="block">
+              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Note (Optional)</span>
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
+              />
+            </label>
           </div>
 
-          {/* Wallet Selector */}
-          {paymentMode === "wallet" && (
-            <SelectField
-              id="settle-wallet"
-              label="Select Wallet *"
-              value={selectedWalletId}
-              onChange={(e) => setSelectedWalletId(e.target.value)}
-            >
-              {wallets.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </SelectField>
-          )}
-
-          {/* Settlement Date */}
-          <label className="block">
-            <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Settlement Date *</span>
-            <input
-              type="date"
-              value={paidAt}
-              onChange={(e) => setPaidAt(e.target.value)}
-              className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-              required
-            />
-          </label>
-
-          {/* Note */}
-          <label className="block">
-            <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Note</span>
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-            />
-          </label>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3">
+          {/* Fixed Footer */}
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/90 px-5 py-3.5 backdrop-blur-sm sm:px-6">
             <Button variant="secondary" type="button" onClick={onClose} disabled={saving}>
               Cancel
             </Button>
             <Button type="submit" disabled={saving}>
+              <CheckCircle2 size={16} />
               {saving ? "Settling..." : "Complete Settlement"}
             </Button>
           </div>
