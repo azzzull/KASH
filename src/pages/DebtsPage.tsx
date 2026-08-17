@@ -19,6 +19,7 @@ import {
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
 import { Button } from "../components/ui/Button";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
@@ -529,27 +530,16 @@ function CreateObligationModal({
             </button>
           </div>
 
-          {/* Counterparty Name with datalist suggestions */}
-          <div className="w-full max-w-full min-w-0">
-            <label className="block text-sm font-bold text-slate-900" htmlFor="counterparty-name">
-              Person / Counterparty *
-            </label>
-            <input
-              id="counterparty-name"
-              list="existing-counterparties"
-              type="text"
-              placeholder="e.g. Budi, Andi"
-              value={counterpartyName}
-              onChange={(e) => setCounterpartyName(e.target.value)}
-              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
-              required
-            />
-            <datalist id="existing-counterparties">
-              {allCounterparties.map((cp) => (
-                <option key={cp.id} value={cp.name} />
-              ))}
-            </datalist>
-          </div>
+          {/* Counterparty Searchable Combobox */}
+          <CounterpartyCombobox
+            id="obligation-counterparty"
+            label="Person / Counterparty *"
+            counterparties={allCounterparties}
+            value={counterpartyName}
+            onChange={(name) => setCounterpartyName(name)}
+            placeholder="Select saved person or type a new name..."
+            required
+          />
 
           {/* Items Section */}
           <div className="space-y-3">
