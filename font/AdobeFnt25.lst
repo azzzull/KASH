@@ -1,0 +1,699 @@
+%!Adobe-FontList 1.25
+%Locale:0x409
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-ExtraLightItalic
+FamilyName:Mulish
+StyleName:ExtraLight Italic
+FullName:Mulish ExtraLight Italic
+MenuName:Mulish ExtraLight
+FamilyPrefix:MulishItalic
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\Mulish-Italic-VariableFont_wght.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:TrueTypeVariableFont
+FileLength:217648
+FileModTime:1757372758
+WeightClass:200
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish ExtraLight
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-ExtraLight
+FamilyName:Mulish
+StyleName:ExtraLight
+FullName:Mulish ExtraLight
+MenuName:Mulish ExtraLight
+FamilyPrefix:MulishRoman
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\Mulish-VariableFont_wght.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:TrueTypeVariableFont
+FileLength:210380
+FileModTime:1757372758
+WeightClass:200
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish ExtraLight
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\OFL.txt
+FileModTime:1786375214
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\README.txt
+FileModTime:1786375214
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-Black
+FamilyName:Mulish
+StyleName:Black
+FullName:Mulish Black
+MenuName:Mulish Black
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-Black.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106572
+FileModTime:1757372758
+WeightClass:900
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish Black
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-BlackItalic
+FamilyName:Mulish
+StyleName:Black Italic
+FullName:Mulish Black Italic
+MenuName:Mulish Black
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-BlackItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:110196
+FileModTime:1757372758
+WeightClass:900
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish Black
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-Bold
+FamilyName:Mulish
+StyleName:Bold
+FullName:Mulish Bold
+MenuName:Mulish
+StyleBits:2
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-Bold.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106572
+FileModTime:1757372758
+WeightClass:700
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-BoldItalic
+FamilyName:Mulish
+StyleName:Bold Italic
+FullName:Mulish Bold Italic
+MenuName:Mulish
+StyleBits:3
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-BoldItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:110256
+FileModTime:1757372758
+WeightClass:700
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-ExtraBold
+FamilyName:Mulish
+StyleName:ExtraBold
+FullName:Mulish ExtraBold
+MenuName:Mulish ExtraBold
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-ExtraBold.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106532
+FileModTime:1757372758
+WeightClass:800
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish ExtraBold
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-ExtraBoldItalic
+FamilyName:Mulish
+StyleName:ExtraBold Italic
+FullName:Mulish ExtraBold Italic
+MenuName:Mulish ExtraBold
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-ExtraBoldItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:110252
+FileModTime:1757372758
+WeightClass:800
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish ExtraBold
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-ExtraLight
+FamilyName:Mulish
+StyleName:ExtraLight
+FullName:Mulish ExtraLight
+MenuName:Mulish ExtraLight
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-ExtraLight.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106376
+FileModTime:1757372758
+WeightClass:250
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish ExtraLight
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-ExtraLightItalic
+FamilyName:Mulish
+StyleName:ExtraLight Italic
+FullName:Mulish ExtraLight Italic
+MenuName:Mulish ExtraLight
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-ExtraLightItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:109996
+FileModTime:1757372758
+WeightClass:250
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish ExtraLight
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-Italic
+FamilyName:Mulish
+StyleName:Italic
+FullName:Mulish Italic
+MenuName:Mulish
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-Italic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:110056
+FileModTime:1757372758
+WeightClass:400
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-Light
+FamilyName:Mulish
+StyleName:Light
+FullName:Mulish Light
+MenuName:Mulish Light
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-Light.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106568
+FileModTime:1757372758
+WeightClass:300
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish Light
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-LightItalic
+FamilyName:Mulish
+StyleName:Light Italic
+FullName:Mulish Light Italic
+MenuName:Mulish Light
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-LightItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:110188
+FileModTime:1757372758
+WeightClass:300
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish Light
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-Medium
+FamilyName:Mulish
+StyleName:Medium
+FullName:Mulish Medium
+MenuName:Mulish Medium
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-Medium.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106564
+FileModTime:1757372758
+WeightClass:500
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish Medium
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-MediumItalic
+FamilyName:Mulish
+StyleName:Medium Italic
+FullName:Mulish Medium Italic
+MenuName:Mulish Medium
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-MediumItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:110156
+FileModTime:1757372758
+WeightClass:500
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish Medium
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-Regular
+FamilyName:Mulish
+StyleName:Regular
+FullName:Mulish Regular
+MenuName:Mulish
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-Regular.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106524
+FileModTime:1757372758
+WeightClass:400
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-SemiBold
+FamilyName:Mulish
+StyleName:SemiBold
+FullName:Mulish SemiBold
+MenuName:Mulish SemiBold
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-SemiBold.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:106504
+FileModTime:1757372758
+WeightClass:600
+WidthClass:5
+AngleClass:0
+NameArray:0,Win,1,Mulish SemiBold
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Mulish-SemiBoldItalic
+FamilyName:Mulish
+StyleName:SemiBold Italic
+FullName:Mulish SemiBold Italic
+MenuName:Mulish SemiBold
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\Mulish\static\Mulish-SemiBoldItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:110116
+FileModTime:1757372758
+WeightClass:600
+WidthClass:5
+AngleClass:1
+NameArray:0,Win,1,Mulish SemiBold
+NameArray:0,Win,16,Mulish
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-Bold
+FamilyName:PostNord Sans
+StyleName:Bold
+FullName:PostNord Sans Bold
+MenuName:PostNord Sans
+StyleBits:2
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansBold.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:48132
+FileModTime:1644012054
+WeightClass:700
+WidthClass:5
+AngleClass:0
+NameArray:0,Mac,4,PostNord Sans Bold
+NameArray:0,Win,1,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansBold.woff2
+FileModTime:1786370838
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-BoldItalic
+FamilyName:PostNord Sans
+StyleName:Bold Italic
+FullName:PostNord Sans Bold Italic
+MenuName:PostNord Sans
+StyleBits:3
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansBoldItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:49196
+FileModTime:1644012054
+WeightClass:700
+WidthClass:5
+AngleClass:1
+NameArray:0,Mac,4,PostNord Sans Bold Italic
+NameArray:0,Win,1,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansBoldItalic.woff2
+FileModTime:1786370839
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-Light
+FamilyName:PostNord Sans
+StyleName:Light
+FullName:PostNord Sans Light
+MenuName:PostNord Sans Light
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansLight.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:47608
+FileModTime:1644012054
+WeightClass:300
+WidthClass:5
+AngleClass:0
+NameArray:0,Mac,4,PostNord Sans Light
+NameArray:0,Win,1,PostNord Sans Light
+NameArray:0,Win,16,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansLight.woff2
+FileModTime:1786370838
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-LightItalic
+FamilyName:PostNord Sans
+StyleName:Light Italic
+FullName:PostNord Sans Light Italic
+MenuName:PostNord Sans Light
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansLightItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:48672
+FileModTime:1644012054
+WeightClass:300
+WidthClass:5
+AngleClass:1
+NameArray:0,Mac,4,PostNord Sans Light Italic
+NameArray:0,Win,1,PostNord Sans Light
+NameArray:0,Win,16,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansLightItalic.woff2
+FileModTime:1786370840
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-Medium
+FamilyName:PostNord Sans
+StyleName:Medium
+FullName:PostNord Sans Medium
+MenuName:PostNord Sans Medium
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansMedium.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:48404
+FileModTime:1644012054
+WeightClass:500
+WidthClass:5
+AngleClass:0
+NameArray:0,Mac,4,PostNord Sans Medium
+NameArray:0,Win,1,PostNord Sans Medium
+NameArray:0,Win,16,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansMedium.woff2
+FileModTime:1786370838
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-MediumItalic
+FamilyName:PostNord Sans
+StyleName:Medium Italic
+FullName:PostNord Sans Medium Italic
+MenuName:PostNord Sans Medium
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansMediumItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:49428
+FileModTime:1644012054
+WeightClass:500
+WidthClass:5
+AngleClass:1
+NameArray:0,Mac,4,PostNord Sans Medium Italic
+NameArray:0,Win,1,PostNord Sans Medium
+NameArray:0,Win,16,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansMediumItalic.woff2
+FileModTime:1786370840
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-Regular
+FamilyName:PostNord Sans
+StyleName:Regular
+FullName:PostNord Sans Regular
+MenuName:PostNord Sans
+StyleBits:0
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansRegular.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:48508
+FileModTime:1644012054
+WeightClass:400
+WidthClass:5
+AngleClass:0
+NameArray:0,Mac,4,PostNord Sans Regular
+NameArray:0,Win,1,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansRegular.woff2
+FileModTime:1786370839
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:PostNordSans-RegularItalic
+FamilyName:PostNord Sans
+StyleName:Regular Italic
+FullName:PostNord Sans Regular Italic
+MenuName:PostNord Sans
+StyleBits:1
+WritingScript:Roman
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansRegularItalic.ttf
+DataFormat:sfntData
+hasSVG:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:49428
+FileModTime:1644012054
+WeightClass:400
+WidthClass:5
+AngleClass:1
+NameArray:0,Mac,4,PostNord Sans Regular Italic
+NameArray:0,Win,1,PostNord Sans
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:D:\azul\KASH Project\Font\postnord-sans\PostNordSansRegularItalic.woff2
+FileModTime:1786370840
+%EndFont
+

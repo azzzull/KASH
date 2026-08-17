@@ -1,0 +1,132 @@
+import type {
+  Category,
+  CategoryType,
+  CurrencyCode,
+  Notification,
+  Profile,
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+  Wallet,
+  WalletBalance,
+  WalletType,
+} from "./domain";
+
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+export type Database = {
+  public: {
+    Tables: {
+      profiles: {
+        Row: Profile;
+        Insert: {
+          id: string;
+          email: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          default_currency?: CurrencyCode;
+          timezone?: string;
+          locale?: string;
+          onboarding_completed?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Profile, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      wallets: {
+        Row: Wallet;
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          wallet_type: WalletType;
+          institution_name?: string | null;
+          account_reference?: string | null;
+          initial_balance?: string;
+          currency?: CurrencyCode;
+          icon?: string | null;
+          color?: string | null;
+          include_in_net_worth?: boolean;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Wallet, "id" | "user_id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      categories: {
+        Row: Category;
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          name: string;
+          category_type: CategoryType;
+          icon?: string | null;
+          color?: string | null;
+          is_system?: boolean;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Category, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      transactions: {
+        Row: Transaction;
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: TransactionType;
+          amount: string;
+          wallet_id: string;
+          category_id?: string | null;
+          destination_wallet_id?: string | null;
+          transfer_fee?: string;
+          transaction_date?: string;
+          title?: string | null;
+          note?: string | null;
+          attachment_url?: string | null;
+          status?: TransactionStatus;
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Transaction, "id" | "user_id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: Notification;
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          message: string;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Omit<Notification, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+    };
+    Views: {
+      wallet_balance_view: {
+        Row: WalletBalance;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
+    Functions: Record<string, never>;
+    Enums: {
+      wallet_type: Wallet["wallet_type"];
+      transaction_type: Transaction["type"];
+      transaction_status: Transaction["status"];
+    };
+    CompositeTypes: Record<string, never>;
+  };
+};

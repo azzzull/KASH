@@ -1,0 +1,15 @@
+export type AppRoute =
+  | "/login"
+  | "/onboarding"
+  | "/dashboard"
+  | "/transactions"
+  | "/wallets"
+  | "/wallets/:id"
+  | "/calendar"
+  | "/analytics"
+  | "/goals"
+  | "/debts"
+  | "/shared"
+  | "/notifications"
+  | "/settings"
+  | "/settings/categories";
