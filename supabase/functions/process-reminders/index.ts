@@ -181,10 +181,23 @@ serve(async (req: Request) => {
     );
 
     // ============================================================
-    // 4. OPTIONAL SIMULATED DATE
+    // 4. VAULT SECRETS PROVISIONING (FOR DAILY PG_CRON)
+    // ============================================================
+    try {
+      await supabase.rpc("setup_kash_vault_secrets", {
+        p_project_url: supabaseUrl,
+        p_cron_secret: cronSecret,
+      });
+    } catch (vaultErr) {
+      console.warn("Failed ensuring Vault secrets:", vaultErr);
+    }
+
+    // ============================================================
+    // 5. OPTIONAL SIMULATED DATE
     // ============================================================
 
     let simulatedDate: string | undefined;
+    let inspectCron = false;
 
     try {
       const body = await req.json();
@@ -199,12 +212,16 @@ serve(async (req: Request) => {
         simulatedDate =
           body.current_date;
       }
+
+      if (body?.inspect_cron === true) {
+        inspectCron = true;
+      }
     } catch {
       // Optional body.
     }
 
     // ============================================================
-    // 5. PROCESS REMINDERS IN DATABASE
+    // 6. PROCESS REMINDERS IN DATABASE
     // ============================================================
 
     const {
@@ -231,6 +248,33 @@ serve(async (req: Request) => {
         ? reminderRows
         : []) as ReminderNotificationRow[];
 
+    if (inspectCron) {
+      // Safely test the Vault invoker function
+      let vaultInvokerResult: unknown = null;
+      try {
+        const { data: invRes, error: invErr } = await supabase.rpc("invoke_process_reminders_cron");
+        vaultInvokerResult = invErr ? { error: invErr.message } : { request_id: invRes };
+      } catch (e: any) {
+        vaultInvokerResult = { error: e.message };
+      }
+
+      // Fetch cron job registration details
+      const { data: cronJobData } = await supabase.rpc("get_cron_job_info");
+
+      return jsonResponse({
+        success: true,
+        cron_inspection: {
+          cron_job: cronJobData ?? [],
+          vault_invoker_test: vaultInvokerResult,
+        },
+        reminders_processed: reminders.length,
+        pushes_delivered: 0,
+        devices_targeted: 0,
+        expired_subscriptions_deactivated: 0,
+        details: [],
+      });
+    }
+
     if (reminders.length === 0) {
       return jsonResponse({
         success: true,
@@ -254,6 +298,7 @@ serve(async (req: Request) => {
       notification_id: string;
       user_id: string;
       title: string;
+      target_path: string;
       push_success: boolean;
       delivered: number;
       devices_targeted: number;
@@ -263,6 +308,38 @@ serve(async (req: Request) => {
 
     for (const reminder of reminders) {
       try {
+        // Canonical Route Resolution:
+        // 1. If reminder has specific target_path, use it.
+        // 2. Otherwise, look up the created notification to resolve /subscriptions/<id>
+        let targetPath = reminder.target_path;
+
+        if (!targetPath || targetPath === "/subscriptions" || targetPath === "/dashboard") {
+          const { data: notif } = await supabase
+            .from("notifications")
+            .select("entity_type, entity_id, metadata")
+            .eq("id", reminder.notification_id)
+            .maybeSingle();
+
+          if (notif) {
+            if (notif.entity_type === "recurring_obligation" && notif.entity_id) {
+              targetPath = `/subscriptions/${notif.entity_id}`;
+            } else if (notif.entity_type === "counterparty" && notif.entity_id) {
+              targetPath = `/debts/${notif.entity_id}`;
+            } else if (notif.entity_type === "goal" && notif.entity_id) {
+              targetPath = `/goals/${notif.entity_id}`;
+            } else if (notif.entity_type === "wallet" && notif.entity_id) {
+              targetPath = `/wallets/${notif.entity_id}`;
+            } else if (typeof notif.metadata?.target_path === "string" && notif.metadata.target_path) {
+              targetPath = notif.metadata.target_path;
+            }
+          }
+        }
+
+        // Fallback to /subscriptions if still unresolved for recurring reminders
+        if (!targetPath || !targetPath.startsWith("/")) {
+          targetPath = "/subscriptions";
+        }
+
         const response = await fetch(
           `${supabaseUrl}/functions/v1/send-push`,
           {
@@ -282,9 +359,7 @@ serve(async (req: Request) => {
                 reminder.title,
               message:
                 reminder.message,
-              target_path:
-                reminder.target_path ||
-                "/subscriptions",
+              target_path: targetPath,
             }),
           },
         );
@@ -336,6 +411,7 @@ serve(async (req: Request) => {
               reminder.user_id,
             title:
               reminder.title,
+            target_path: targetPath,
             push_success: false,
             delivered,
             devices_targeted: devices,
@@ -354,6 +430,7 @@ serve(async (req: Request) => {
             reminder.user_id,
           title:
             reminder.title,
+          target_path: targetPath,
           push_success: true,
           delivered,
           devices_targeted: devices,
@@ -373,6 +450,7 @@ serve(async (req: Request) => {
             reminder.user_id,
           title:
             reminder.title,
+          target_path: reminder.target_path || "/subscriptions",
           push_success: false,
           delivered: 0,
           devices_targeted: 0,
@@ -380,7 +458,7 @@ serve(async (req: Request) => {
           error:
             error instanceof Error
               ? error.message
-              : "Unknown send-push invocation error",
+              : "Unknown push error",
         });
       }
     }
