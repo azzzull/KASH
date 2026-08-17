@@ -1,8 +1,16 @@
 import type { Session, User } from "@supabase/supabase-js";
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Profile } from "../types/domain";
 import {
   getCurrentProfile,
+  resendConfirmationEmail as resendConfirmationEmailRequest,
   signInWithEmailPassword,
   signInWithGoogle as signInWithGoogleRequest,
   signOut as signOutRequest,
@@ -18,37 +26,75 @@ type AuthContextValue = {
   user: User | null;
   profile: Profile | null;
   profileLoading: boolean;
+
   refreshProfile: () => Promise<void>;
-  signInWithGoogle: () => Promise<{ errorMessage: string | null }>;
-  signInWithPassword: (email: string, password: string) => Promise<{ errorMessage: string | null }>;
+
+  signInWithGoogle: () => Promise<{
+    errorMessage: string | null;
+  }>;
+
+  signInWithPassword: (
+    email: string,
+    password: string,
+  ) => Promise<{
+    errorMessage: string | null;
+  }>;
+
   signUpWithPassword: (
     email: string,
     password: string,
     fullName?: string,
-  ) => Promise<{ errorMessage: string | null; needsEmailConfirmation?: boolean }>;
+  ) => Promise<{
+    errorMessage: string | null;
+    needsEmailConfirmation?: boolean;
+  }>;
+
+  resendConfirmationEmail: (
+    email: string,
+  ) => Promise<{
+    errorMessage: string | null;
+  }>;
+
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function formatAuthError(error: Error | { message?: string } | null): string {
-  if (!error || !error.message) return "An unexpected error occurred. Please try again.";
+function formatAuthError(
+  error: Error | { message?: string } | null,
+): string {
+  if (!error || !error.message) {
+    return "An unexpected error occurred. Please try again.";
+  }
 
   const message = error.message.toLowerCase();
 
-  if (message.includes("invalid login credentials") || message.includes("invalid credentials")) {
+  if (
+    message.includes("invalid login credentials") ||
+    message.includes("invalid credentials")
+  ) {
     return "Invalid email or password. Please try again.";
   }
-  if (message.includes("user already registered") || message.includes("already exists")) {
+
+  if (
+    message.includes("user already registered") ||
+    message.includes("already exists")
+  ) {
     return "An account with this email already exists. Please sign in.";
   }
+
   if (message.includes("password should be at least")) {
     return "Password must be at least 6 characters.";
   }
+
   if (message.includes("email not confirmed")) {
     return "Please check your inbox to confirm your email before signing in.";
   }
-  if (message.includes("rate limit") || message.includes("too many requests")) {
+
+  if (
+    message.includes("rate limit") ||
+    message.includes("too many requests")
+  ) {
     return "Too many attempts. Please wait a few moments and try again.";
   }
 
@@ -94,7 +140,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const refreshProfile = async () => {
-    if (!session?.user.id || !isSupabaseConfigured) return;
+    if (!session?.user.id || !isSupabaseConfigured) {
+      return;
+    }
+
     await loadProfile(session.user.id);
   };
 
@@ -109,7 +158,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     let mounted = true;
 
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setSession(data.session);
       setStatus(data.session ? "authenticated" : "unauthenticated");
@@ -145,48 +196,135 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user: session?.user ?? null,
       profile,
       profileLoading,
+
       refreshProfile,
+
       signInWithGoogle: async () => {
         if (!isSupabaseConfigured) {
-          return { errorMessage: "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." };
+          return {
+            errorMessage:
+              "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+          };
         }
 
         const { error } = await signInWithGoogleRequest();
-        return { errorMessage: error ? formatAuthError(error) : null };
+
+        return {
+          errorMessage: error ? formatAuthError(error) : null,
+        };
       },
-      signInWithPassword: async (email: string, password: string) => {
+
+      signInWithPassword: async (
+        email: string,
+        password: string,
+      ) => {
         if (!isSupabaseConfigured) {
-          return { errorMessage: "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." };
+          return {
+            errorMessage:
+              "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+          };
         }
 
-        const { error } = await signInWithEmailPassword(email, password);
-        return { errorMessage: error ? formatAuthError(error) : null };
+        const { error } = await signInWithEmailPassword(
+          email,
+          password,
+        );
+
+        return {
+          errorMessage: error ? formatAuthError(error) : null,
+        };
       },
-      signUpWithPassword: async (email: string, password: string, fullName?: string) => {
+
+      signUpWithPassword: async (
+        email: string,
+        password: string,
+        fullName?: string,
+      ) => {
         if (!isSupabaseConfigured) {
-          return { errorMessage: "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY." };
+          return {
+            errorMessage:
+              "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+          };
         }
 
-        const { data, error } = await signUpWithEmailPassword(email, password, fullName);
+        const { data, error } = await signUpWithEmailPassword(
+          email,
+          password,
+          fullName,
+        );
 
         if (error) {
-          return { errorMessage: formatAuthError(error) };
+          return {
+            errorMessage: formatAuthError(error),
+          };
         }
 
-        const needsEmailConfirmation = Boolean(data?.user && !data?.session);
-        return { errorMessage: null, needsEmailConfirmation };
+        /*
+         * When email confirmation is enabled,
+         * Supabase may return a user object without a session.
+         *
+         * For an already-registered account,
+         * Supabase can return an empty identities array to avoid
+         * leaking whether a user exists.
+         */
+        if (
+          data?.user &&
+          Array.isArray(data.user.identities) &&
+          data.user.identities.length === 0
+        ) {
+          return {
+            errorMessage:
+              "An account with this email already exists. Please sign in instead.",
+          };
+        }
+
+        const needsEmailConfirmation = Boolean(
+          data?.user && !data?.session,
+        );
+
+        return {
+          errorMessage: null,
+          needsEmailConfirmation,
+        };
       },
+
+      resendConfirmationEmail: async (email: string) => {
+        if (!isSupabaseConfigured) {
+          return {
+            errorMessage:
+              "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
+          };
+        }
+
+        const { error } =
+          await resendConfirmationEmailRequest(email);
+
+        return {
+          errorMessage: error ? formatAuthError(error) : null,
+        };
+      },
+
       signOut: async () => {
         await signOutRequest();
+
         setSession(null);
         setProfile(null);
         setStatus("unauthenticated");
       },
     }),
-    [profile, profileLoading, session, status],
+    [
+      profile,
+      profileLoading,
+      session,
+      status,
+    ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

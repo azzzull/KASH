@@ -74,7 +74,18 @@ export async function completeProfileOnboarding(userId: string) {
     .single();
 }
 
+export async function resendConfirmationEmail(email: string) {
+  return supabase.auth.resend({
+    type: "signup",
+    email: email.trim(),
+    options: {
+      emailRedirectTo: getOAuthRedirectUrl(),
+    },
+  });
+}
+
 export async function signOut() {
   return supabase.auth.signOut();
 }
+
 
