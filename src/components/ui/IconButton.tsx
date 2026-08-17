@@ -10,12 +10,12 @@ export function IconButton({ icon: Icon, label, className = "", ...props }: Icon
   return (
     <button
       aria-label={label}
-      className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-kash-emerald/15 bg-white text-slate-700 transition hover:border-kash-emeraldDark hover:bg-kash-selected hover:text-kash-emeraldDark active:bg-kash-selected ${className}`}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-kash-emerald/40 ${className}`}
       title={label}
       type="button"
       {...props}
     >
-      <Icon aria-hidden="true" size={18} strokeWidth={2} />
+      <Icon aria-hidden="true" size={18} strokeWidth={2.2} />
     </button>
   );
 }

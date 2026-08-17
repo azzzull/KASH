@@ -1,9 +1,10 @@
-import { ArrowLeft, Archive, Edit3, Loader2, SlidersHorizontal, Trash2, WalletCards } from "lucide-react";
+import { ArrowLeft, Archive, Edit3, Loader2, SlidersHorizontal, Trash2, WalletCards, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
+import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
@@ -130,9 +131,7 @@ function EditWalletModal({
             <h2 className="text-xl font-extrabold text-slate-900">Edit Wallet</h2>
             <p className="mt-1 text-sm font-semibold text-slate-700">Balance changes should come from the ledger once transactions exist.</p>
           </div>
-          <Button onClick={onClose} variant="secondary">
-            Close
-          </Button>
+          <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
         {error ? (
           <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
@@ -312,9 +311,7 @@ function AdjustmentModal({
             <h2 className="text-xl font-extrabold text-slate-900">Adjust Balance</h2>
             <p className="mt-1 text-sm font-semibold text-slate-700">Reconcile KASH with the real balance in this wallet.</p>
           </div>
-          <Button onClick={onClose} variant="secondary">
-            Close
-          </Button>
+          <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
 
         {error ? (

@@ -52,40 +52,55 @@ select {
   box-sizing: border-box;
 }
 
-/* Fix native date, datetime-local, and time input sizing & overflow in WebKit / iOS Safari / Blink */
+/* Fix native date, datetime-local, and time input sizing, overflow & vertical alignment */
 input[type="date"],
 input[type="datetime-local"],
 input[type="time"] {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  display: block;
+  display: flex;
+  align-items: center;
   box-sizing: border-box;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+  line-height: normal;
 }
 
-/* WebKit Shadow DOM Date/Time value container & sub-elements */
+/* WebKit Shadow DOM Date/Time value container & sub-elements (iOS Safari & Chrome) */
 input[type="date"]::-webkit-date-and-time-value,
 input[type="datetime-local"]::-webkit-date-and-time-value,
 input[type="time"]::-webkit-date-and-time-value {
   text-align: left;
-  min-height: 1.25em;
+  min-height: 1.5em;
+  height: 100%;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  margin: 0;
-  padding: 0;
+  margin: auto 0;
+  display: flex;
+  align-items: center;
 }
 
 input[type="date"]::-webkit-datetime-edit,
 input[type="datetime-local"]::-webkit-datetime-edit,
 input[type="time"]::-webkit-datetime-edit {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
 }
 
 button:focus-visible,

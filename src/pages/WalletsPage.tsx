@@ -1,8 +1,9 @@
-import { Loader2, Plus, WalletCards } from "lucide-react";
+import { Loader2, Plus, WalletCards, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { FormField } from "../components/ui/FormField";
+import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
@@ -150,17 +151,15 @@ function WalletFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close add wallet" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-extrabold text-slate-900">Add Wallet</h2>
             <p className="mt-1 text-sm font-semibold text-slate-700">Initial balance is stored on the wallet, not as a transaction.</p>
           </div>
-          <Button onClick={onClose} variant="secondary">
-            Close
-          </Button>
+          <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
 
         {error ? (
@@ -169,7 +168,7 @@ function WalletFormModal({
           </div>
         ) : null}
 
-        <form className="mt-5 grid gap-4" onSubmit={submit}>
+        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <SelectField
             id="wallet-type"
             label="Wallet Type"

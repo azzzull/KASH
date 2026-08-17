@@ -20,6 +20,7 @@ import { TransactionDetailPanel } from "../components/transactions/TransactionDe
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
+import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../lib/transactions";
@@ -386,7 +387,7 @@ function TransactionFormModal({
             <p className="text-xs font-bold uppercase text-slate-600">{transaction.type}</p>
             <h2 className="mt-1 text-xl font-extrabold text-slate-900">{mode === "duplicate" ? "Duplicate Transaction" : "Edit Transaction"}</h2>
           </div>
-          <Button onClick={onClose} variant="secondary">Close</Button>
+          <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
 
         {error ? <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</div> : null}
@@ -506,9 +507,7 @@ function AdvancedFilterContent({
           <h2 className="text-base font-extrabold text-slate-900">Filter Transactions</h2>
           <p className="mt-1 text-xs font-semibold text-slate-600">Narrow your ledger by date, wallet, category, or status.</p>
         </div>
-        <button aria-label="Close filters" className="rounded-full p-2 text-slate-600 hover:bg-slate-100" onClick={onClose} type="button">
-          <X size={17} />
-        </button>
+        <IconButton icon={X} label="Close filters" onClick={onClose} />
       </div>
 
       <div className="mt-4 grid gap-3">

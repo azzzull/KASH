@@ -1,7 +1,8 @@
-import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2 } from "lucide-react";
+import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
+import { IconButton } from "../ui/IconButton";
 import { SelectField } from "../ui/SelectField";
 import { getActiveCategories } from "../../lib/categories";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
@@ -216,9 +217,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </p>
             </div>
           </div>
-          <Button onClick={onClose} variant="secondary">
-            Close
-          </Button>
+          <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
 
         {error ? (

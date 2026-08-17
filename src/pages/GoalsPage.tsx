@@ -10,12 +10,14 @@ import {
     Plus,
     Sparkles,
     Trophy,
+    X,
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { FormField } from "../components/ui/FormField";
+import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { useAppEvent } from "../hooks/useAppEvent";
@@ -220,9 +222,7 @@ function CreateGoalModal({
                             for this goal.
                         </p>
                     </div>
-                    <Button onClick={onClose} variant="secondary">
-                        Close
-                    </Button>
+                    <IconButton icon={X} label="Close" onClick={onClose} />
                 </div>
 
                 {error ? (
@@ -259,18 +259,51 @@ function CreateGoalModal({
                         placeholder="25.000.000"
                         value={form.targetAmount}
                     />
-                    <FormField
-                        id="goal-deadline"
-                        label="Deadline"
-                        onChange={(event) =>
-                            setForm((current) => ({
-                                ...current,
-                                deadline: event.target.value,
-                            }))
-                        }
-                        type="date"
-                        value={form.deadline}
-                    />
+                    <div className="w-full max-w-full min-w-0">
+                        <div className="flex items-center justify-between">
+                            <label
+                                className="block text-sm font-bold text-slate-900"
+                                htmlFor="goal-deadline"
+                            >
+                                Deadline (Optional)
+                            </label>
+                            {form.deadline ? (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            deadline: "",
+                                        }))
+                                    }
+                                    className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline"
+                                >
+                                    Clear deadline
+                                </button>
+                            ) : (
+                                <span className="text-xs font-semibold text-slate-600">
+                                    No deadline
+                                </span>
+                            )}
+                        </div>
+                        <input
+                            id="goal-deadline"
+                            type="date"
+                            value={form.deadline}
+                            onChange={(event) =>
+                                setForm((current) => ({
+                                    ...current,
+                                    deadline: event.target.value,
+                                }))
+                            }
+                            className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
+                        />
+                        <span className="mt-1.5 block text-xs font-medium text-slate-600">
+                            {form.deadline
+                                ? "KASH will track progress towards this target date."
+                                : "Optional. You can leave this empty if there is no deadline."}
+                        </span>
+                    </div>
                     <FormField
                         id="goal-pocket-institution"
                         label="Pocket Institution"

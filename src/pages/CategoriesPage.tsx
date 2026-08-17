@@ -1,8 +1,9 @@
-import { Archive, Edit3, Loader2, Plus, Tags } from "lucide-react";
+import { Archive, Edit3, Loader2, Plus, Tags, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
+import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { archiveCategory, createCategory, getSystemCategories, getUserCategories, updateCategory } from "../lib/categories";
@@ -126,9 +127,9 @@ function CategoryFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close category form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-extrabold text-slate-900">{isEditing ? "Edit Category" : "New Category"}</h2>
@@ -136,9 +137,7 @@ function CategoryFormModal({
               {isEditing ? "Category type is locked to protect future transaction meaning." : "Create a custom income or expense category."}
             </p>
           </div>
-          <Button onClick={onClose} variant="secondary">
-            Close
-          </Button>
+          <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
 
         {error ? (
@@ -147,7 +146,7 @@ function CategoryFormModal({
           </div>
         ) : null}
 
-        <form className="mt-5 grid gap-4" onSubmit={submit}>
+        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <FormField id="category-name" label="Name" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Coffee" value={form.name} />
           <SelectField
             disabled={isEditing}

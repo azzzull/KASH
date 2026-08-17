@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { formatCurrency, toNumber } from "../../lib/money";
+import { IconButton } from "../ui/IconButton";
 import type { TransactionType } from "../../types/domain";
 import type { TransactionWithMeta } from "../../lib/transactions";
 
@@ -104,14 +105,7 @@ export function TransactionDetailPanel({
         <span className={`flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
           <Icon aria-hidden="true" size={21} />
         </span>
-        <button
-          type="button"
-          aria-label="Close transaction detail"
-          onClick={onClose}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100"
-        >
-          <X size={18} />
-        </button>
+        <IconButton icon={X} label="Close transaction detail" onClick={onClose} />
       </div>
 
       <div className="mt-6">

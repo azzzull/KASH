@@ -141,7 +141,7 @@ export async function createGoal(input: CreateGoalInput) {
   await getAuthenticatedUserId();
 
   return supabase.rpc("create_goal_with_pocket", {
-    p_deadline: input.deadline,
+    p_deadline: input.deadline?.trim() || null,
     p_icon: input.icon,
     p_name: input.name,
     p_note: input.note,
@@ -154,7 +154,7 @@ export async function updateGoal(id: string, input: UpdateGoalInput) {
   const updatePayload: Database["public"]["Tables"]["goals"]["Update"] = {
     name: input.name,
     target_amount: input.targetAmount,
-    deadline: input.deadline,
+    deadline: input.deadline?.trim() || null,
     icon: input.icon,
     image_url: input.imageUrl ?? null,
     note: input.note,
