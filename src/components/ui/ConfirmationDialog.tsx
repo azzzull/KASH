@@ -74,11 +74,11 @@ export function ConfirmationDialog({
         {itemLabel ? <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-900">{itemLabel}</div> : null}
         {children ? <div className="mt-4">{children}</div> : null}
 
-        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Button disabled={isLoading} onClick={onCancel} variant="secondary">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+          <Button disabled={isLoading} onClick={onCancel} variant="secondary" className="justify-center">
             {cancelLabel}
           </Button>
-          <Button className={styles.confirm} disabled={disabled || isLoading} onClick={onConfirm}>
+          <Button className={`${styles.confirm} justify-center`} disabled={disabled || isLoading} onClick={onConfirm}>
             {isLoading ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
             {confirmLabel}
           </Button>

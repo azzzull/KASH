@@ -185,14 +185,14 @@ export function SubscriptionDetailPage() {
         </div>
 
         {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
           {obligation.status === "active" && openPendingPayment && (
             <Button
               onClick={() => setPayModalPayment(openPendingPayment)}
-              className="gap-2 text-xs font-extrabold"
+              className="flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold sm:flex-initial"
             >
-              <CheckCircle2 size={16} />
-              Pay Current Bill
+              <CheckCircle2 size={15} className="shrink-0" />
+              <span className="truncate">Pay Bill</span>
             </Button>
           )}
 
@@ -200,10 +200,10 @@ export function SubscriptionDetailPage() {
             <Button
               variant="secondary"
               onClick={() => setSettleModalOpen(true)}
-              className="gap-2 text-xs font-extrabold"
+              className="flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold sm:flex-initial"
             >
-              <CreditCard size={15} />
-              Early Settlement
+              <CreditCard size={15} className="shrink-0" />
+              <span className="truncate">Settle Early</span>
             </Button>
           )}
 
@@ -211,10 +211,10 @@ export function SubscriptionDetailPage() {
             <Button
               variant="secondary"
               onClick={() => setCancelModalOpen(true)}
-              className="gap-2 border-kash-expense/30 text-xs font-extrabold text-kash-expense hover:bg-kash-expense/10"
+              className="flex-1 justify-center gap-1.5 border-kash-expense/30 px-3 py-2 text-xs font-extrabold text-kash-expense hover:bg-kash-expense/10 sm:flex-initial"
             >
-              <XCircle size={15} />
-              Cancel Subscription
+              <XCircle size={15} className="shrink-0" />
+              <span className="truncate">Cancel Plan</span>
             </Button>
           )}
 
@@ -222,10 +222,10 @@ export function SubscriptionDetailPage() {
             <Button
               variant="secondary"
               onClick={() => setDeleteModalOpen(true)}
-              className="text-xs font-extrabold text-slate-600 hover:text-kash-expense"
+              className="col-span-2 flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold text-slate-600 hover:text-kash-expense sm:col-span-1 sm:flex-initial"
             >
-              <Trash2 size={15} />
-              Delete
+              <Trash2 size={15} className="shrink-0" />
+              <span className="truncate">Delete</span>
             </Button>
           )}
         </div>

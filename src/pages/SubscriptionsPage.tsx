@@ -338,12 +338,12 @@ export function SubscriptionsPage() {
               <div
                 key={ob.id}
                 onClick={() => navigate(`/subscriptions/${ob.id}`)}
-                className="group flex cursor-pointer flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald/40 hover:shadow-md sm:flex-row sm:items-center sm:p-5"
+                className="group flex w-full cursor-pointer flex-col justify-between gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald/40 hover:shadow-md sm:flex-row sm:items-center sm:p-5"
               >
                 {/* Left: Icon & Info */}
-                <div className="flex items-start gap-3.5">
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
                   <span
-                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition group-hover:scale-105 ${
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition group-hover:scale-105 ${
                       isInstallment
                         ? "bg-[#F28C45]/15 text-[#F28C45]"
                         : "bg-kash-selected text-kash-emeraldDark"
@@ -352,10 +352,10 @@ export function SubscriptionsPage() {
                     {isInstallment ? <CreditCard size={20} /> : <Repeat size={20} />}
                   </span>
 
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className="text-base font-extrabold text-slate-900 transition group-hover:text-kash-emerald"
+                        className="truncate text-base font-extrabold text-slate-900 transition group-hover:text-kash-emerald"
                       >
                         {ob.name}
                       </span>
@@ -404,9 +404,9 @@ export function SubscriptionsPage() {
                 </div>
 
                 {/* Right: Amount & Actions */}
-                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                <div className="flex items-center justify-between gap-3 border-t border-slate-100/80 pt-3 sm:border-0 sm:pt-0 sm:justify-end sm:gap-4">
                   <div className="text-left sm:text-right">
-                    <p className="text-base font-black text-slate-900">
+                    <p className="text-base font-black leading-tight text-slate-900">
                       {formatCurrency(ob.amount)}
                       <span className="text-xs font-bold text-slate-600">
                         {isInstallment ? " /mo" : ` /${ob.frequency === "monthly" ? "mo" : ob.frequency === "yearly" ? "yr" : ob.frequency}`}
