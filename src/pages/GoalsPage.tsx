@@ -276,7 +276,7 @@ function CreateGoalModal({
                                             deadline: "",
                                         }))
                                     }
-                                    className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline"
+                                    className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark active:text-kash-emeraldPressed hover:underline transition"
                                 >
                                     Clear deadline
                                 </button>
