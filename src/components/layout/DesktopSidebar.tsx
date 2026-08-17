@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { navGroups } from "../../app/navigation";
 import { useAuth } from "../../context/AuthContext";
-import { getUnreadNotificationCount } from "../../lib/notifications";
+import { useNotifications } from "../../context/NotificationContext";
 import { KashLogo } from "../brand/KashLogo";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
@@ -11,10 +11,10 @@ import { NotificationsPopover } from "./NotificationsPopover";
 export function DesktopSidebar() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const displayName = profile?.full_name || profile?.email || "Account";
@@ -26,12 +26,6 @@ export function DesktopSidebar() {
     setLogoutOpen(false);
     navigate("/login", { replace: true });
   };
-
-  useEffect(() => {
-    void getUnreadNotificationCount()
-      .then((result) => setUnreadCount(result.unreadCount))
-      .catch(() => setUnreadCount(0));
-  }, []);
 
   useEffect(() => {
     if (!notificationsOpen) return;
@@ -96,7 +90,6 @@ export function DesktopSidebar() {
             <NotificationsPopover
               className="left-[calc(100%+4px)] top-[calc(100%+4px)]"
               onClose={() => setNotificationsOpen(false)}
-              onUnreadChange={setUnreadCount}
             />
           ) : null}
         </div>

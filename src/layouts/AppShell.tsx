@@ -1,6 +1,7 @@
 import { Plus, RefreshCw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import { NotificationProvider } from "../context/NotificationContext";
 import { AppHeader } from "../components/layout/AppHeader";
 import { DesktopSidebar } from "../components/layout/DesktopSidebar";
 import { MobileBottomNav } from "../components/layout/MobileBottomNav";
@@ -119,74 +120,76 @@ export function AppShell() {
   };
 
   return (
-    <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
-      <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
-        <DesktopSidebar />
-        <div className="flex min-w-0 flex-1 flex-col lg:h-[100dvh] lg:min-h-0">
-          <AppHeader visible={mobileHeaderVisible} />
-          <main ref={contentRef} className="flex-1 px-4 py-5 pb-28 md:px-6 lg:min-h-0 lg:overflow-y-auto lg:pb-8">
-            <Outlet />
-          </main>
-        </div>
-      </div>
-
-      <button
-        aria-label="Add transaction"
-        className="fixed bottom-8 right-8 z-30 hidden h-14 w-14 items-center justify-center rounded-full bg-kash-emerald text-white shadow-soft transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 lg:flex"
-        onClick={() => setQuickAddOpen(true)}
-        type="button"
-      >
-        <Plus aria-hidden="true" size={24} strokeWidth={2.4} />
-      </button>
-
-      <MobileBottomNav onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
-      <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
-      <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
-      {transactionMode ? (
-        <TransactionModal mode={transactionMode} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
-      ) : null}
-      {successMessage ? (
-        <div className="fixed bottom-24 left-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-soft md:left-auto md:right-8 md:w-80">
-          {successMessage}
-        </div>
-      ) : null}
-      {updateRegistration ? (
-        <div className="fixed bottom-24 left-4 right-4 z-50 rounded-lg border border-kash-emerald/20 bg-white p-3 text-sm shadow-soft md:left-auto md:right-8 md:w-80 lg:bottom-8">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-kash-selected text-kash-emerald">
-              <RefreshCw aria-hidden="true" size={16} strokeWidth={2.4} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-extrabold text-slate-900">Update ready</p>
-              <p className="mt-1 font-semibold leading-5 text-slate-600">Refresh to use the latest KASH version.</p>
-              <div className="mt-3 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={refreshApp}
-                  className="rounded-lg bg-kash-emerald px-3 py-2 text-xs font-extrabold text-white transition hover:bg-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-                >
-                  Refresh
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUpdateRegistration(null)}
-                  className="rounded-lg px-3 py-2 text-xs font-extrabold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-                >
-                  Later
-                </button>
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-label="Dismiss update notice"
-              onClick={() => setUpdateRegistration(null)}
-              className="rounded-full p-1 text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-            >
-              <X aria-hidden="true" size={16} />
-            </button>
+    <NotificationProvider>
+      <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
+        <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
+          <DesktopSidebar />
+          <div className="flex min-w-0 flex-1 flex-col lg:h-[100dvh] lg:min-h-0">
+            <AppHeader visible={mobileHeaderVisible} />
+            <main ref={contentRef} className="flex-1 px-4 py-5 pb-28 md:px-6 lg:min-h-0 lg:overflow-y-auto lg:pb-8">
+              <Outlet />
+            </main>
           </div>
         </div>
-      ) : null}
-    </div>
+
+        <button
+          aria-label="Add transaction"
+          className="fixed bottom-8 right-8 z-30 hidden h-14 w-14 items-center justify-center rounded-full bg-kash-emerald text-white shadow-soft transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 lg:flex"
+          onClick={() => setQuickAddOpen(true)}
+          type="button"
+        >
+          <Plus aria-hidden="true" size={24} strokeWidth={2.4} />
+        </button>
+
+        <MobileBottomNav onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
+        <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
+        <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
+        {transactionMode ? (
+          <TransactionModal mode={transactionMode} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
+        ) : null}
+        {successMessage ? (
+          <div className="fixed bottom-24 left-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-soft md:left-auto md:right-8 md:w-80">
+            {successMessage}
+          </div>
+        ) : null}
+        {updateRegistration ? (
+          <div className="fixed bottom-24 left-4 right-4 z-50 rounded-lg border border-kash-emerald/20 bg-white p-3 text-sm shadow-soft md:left-auto md:right-8 md:w-80 lg:bottom-8">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-kash-selected text-kash-emerald">
+                <RefreshCw aria-hidden="true" size={16} strokeWidth={2.4} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-extrabold text-slate-900">Update ready</p>
+                <p className="mt-1 font-semibold leading-5 text-slate-600">Refresh to use the latest KASH version.</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={refreshApp}
+                    className="rounded-lg bg-kash-emerald px-3 py-2 text-xs font-extrabold text-white transition hover:bg-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUpdateRegistration(null)}
+                    className="rounded-lg px-3 py-2 text-xs font-extrabold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+                  >
+                    Later
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss update notice"
+                onClick={() => setUpdateRegistration(null)}
+                className="rounded-full p-1 text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+              >
+                <X aria-hidden="true" size={16} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </NotificationProvider>
   );
 }

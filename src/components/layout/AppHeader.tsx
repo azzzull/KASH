@@ -2,7 +2,7 @@ import { Bell, LogOut, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getUnreadNotificationCount } from "../../lib/notifications";
+import { useNotifications } from "../../context/NotificationContext";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
 import kashLogo from "../../../logo/SVG/KASHLogo.svg";
@@ -14,11 +14,11 @@ type AppHeaderProps = {
 export function AppHeader({ visible }: AppHeaderProps) {
     const navigate = useNavigate();
     const { profile, signOut } = useAuth();
+    const { unreadCount } = useNotifications();
     const notificationsRef = useRef<HTMLDivElement>(null);
     const profileMenuRef = useRef<HTMLDivElement>(null);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
     const initial =
         profile?.full_name?.charAt(0) ?? profile?.email.charAt(0) ?? "A";
 
@@ -26,12 +26,6 @@ export function AppHeader({ visible }: AppHeaderProps) {
         await signOut();
         navigate("/login", { replace: true });
     };
-
-    useEffect(() => {
-        void getUnreadNotificationCount()
-            .then((result) => setUnreadCount(result.unreadCount))
-            .catch(() => setUnreadCount(0));
-    }, []);
 
     useEffect(() => {
         if (!notificationsOpen) return;
@@ -107,7 +101,6 @@ export function AppHeader({ visible }: AppHeaderProps) {
                             <NotificationsPopover
                                 className="!fixed !left-4 !right-4 top-[4.25rem] max-h-[75vh] !w-auto !max-w-none"
                                 onClose={() => setNotificationsOpen(false)}
-                                onUnreadChange={setUnreadCount}
                             />
                         ) : null}
                     </div>

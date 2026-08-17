@@ -119,15 +119,38 @@ export type GoalProgress = {
   percentage: MoneyAmount;
 };
 
+export type NotificationType =
+  | "debt_due_soon"
+  | "debt_due_today"
+  | "debt_overdue"
+  | "receivable_due_soon"
+  | "receivable_due_today"
+  | "receivable_overdue"
+  | "goal_completed"
+  | "goal_milestone"
+  | "subscription_due_soon"
+  | "subscription_due_today"
+  | "subscription_overdue"
+  | "installment_due_soon"
+  | "installment_due_today"
+  | "installment_overdue"
+  | "shared_invitation"
+  | "shared_contribution_pending"
+  | "shared_contribution_verified"
+  | "shared_contribution_rejected"
+  | (string & {});
+
 export type Notification = {
   id: string;
   user_id: string;
-  type: string;
+  type: NotificationType;
   title: string;
   message: string;
   entity_type: string | null;
   entity_id: string | null;
+  metadata: Record<string, unknown>;
   is_read: boolean;
+  read_at: string | null;
   created_at: string;
 };
 

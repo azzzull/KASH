@@ -1,6 +1,7 @@
 export const appEvents = {
   debtSaved: "kash:debt-saved",
   goalSaved: "kash:goal-saved",
+  notificationsUpdated: "kash:notifications-updated",
   transactionSaved: "kash:transaction-saved",
 } as const;
 
@@ -16,6 +17,10 @@ export function emitDebtSaved() {
 
 export function emitGoalSaved() {
   emitAppEvent(appEvents.goalSaved);
+}
+
+export function emitNotificationsUpdated() {
+  emitAppEvent(appEvents.notificationsUpdated);
 }
 
 export function emitTransactionSaved() {

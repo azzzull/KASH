@@ -215,7 +215,9 @@ export type Database = {
           message: string;
           entity_type?: string | null;
           entity_id?: string | null;
+          metadata?: Json;
           is_read?: boolean;
+          read_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Omit<Notification, "id" | "user_id" | "created_at">>;
@@ -288,6 +290,20 @@ export type Database = {
           p_note?: string | null;
         };
         Returns: Json;
+      };
+      mark_notification_read: {
+        Args: {
+          p_notification_id: string;
+        };
+        Returns: void;
+      };
+      mark_all_notifications_read: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
+      clear_read_notifications: {
+        Args: Record<string, never>;
+        Returns: number;
       };
     };
     Enums: {
