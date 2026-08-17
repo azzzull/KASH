@@ -331,8 +331,13 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     throw new Error("Goal transfers are managed from Goals and cannot be edited here.");
   }
 
-  if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "receivable_payment") {
-    throw new Error("Debt & Receivable settlement transactions are managed from Debt & Receivable and cannot be edited here.");
+  if (
+    transaction.related_entity_type === "debt_payment" ||
+    transaction.related_entity_type === "receivable_payment" ||
+    transaction.related_entity_type === "debt_creation" ||
+    transaction.related_entity_type === "receivable_creation"
+  ) {
+    throw new Error("Debt & Receivable transactions are managed from Debt & Receivable and cannot be edited here.");
   }
 
   if (transaction.status === "void") {
@@ -350,33 +355,24 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     await assertWalletCanCover(userId, input.walletId, nextOutgoingAmount, restoredOutgoingAmount);
   }
 
-  const payload: Database["public"]["Tables"]["transactions"]["Update"] = {
+  const updatePayload: Database["public"]["Tables"]["transactions"]["Update"] = {
     amount: input.amount,
-    note: input.note,
-    title: input.title,
-    transaction_date: toTransactionDate(input.transactionDate),
+    category_id: input.categoryId ?? null,
+    destination_wallet_id: input.destinationWalletId ?? null,
+    note: input.note?.trim() || null,
+    title: (input.title ?? transaction.title ?? "").trim(),
+    transaction_date: input.transactionDate ?? transaction.transaction_date,
+    transfer_fee: input.transferFee ?? "0",
     wallet_id: input.walletId,
   };
 
-  if (transaction.type === "income" || transaction.type === "expense") {
-    payload.category_id = input.categoryId ?? null;
-    payload.destination_wallet_id = null;
-    payload.transfer_fee = "0";
-  }
-
-  if (transaction.type === "transfer") {
-    payload.category_id = null;
-    payload.destination_wallet_id = input.destinationWalletId ?? null;
-    payload.transfer_fee = input.transferFee ?? "0";
-  }
-
-  if (transaction.type === "adjustment") {
-    payload.category_id = null;
-    payload.destination_wallet_id = null;
-    payload.transfer_fee = "0";
-  }
-
-  return supabase.from("transactions").update(payload).eq("id", transaction.id).eq("user_id", userId).select("*").single();
+  return supabase
+    .from("transactions")
+    .update(updatePayload)
+    .eq("id", transaction.id)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
 }
 
 export async function voidTransaction(id: string) {
@@ -396,8 +392,13 @@ export async function voidTransaction(id: string) {
     throw new Error("Goal transfers are managed from Goals and cannot be voided here.");
   }
 
-  if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "receivable_payment") {
-    throw new Error("Debt & Receivable settlement transactions are managed from Debt & Receivable and cannot be voided here.");
+  if (
+    transaction.related_entity_type === "debt_payment" ||
+    transaction.related_entity_type === "receivable_payment" ||
+    transaction.related_entity_type === "debt_creation" ||
+    transaction.related_entity_type === "receivable_creation"
+  ) {
+    throw new Error("Debt & Receivable transactions are managed from Debt & Receivable and cannot be voided here.");
   }
 
   return supabase

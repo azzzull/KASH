@@ -359,18 +359,25 @@ export async function renameCounterparty(id: string, name: string): Promise<{ da
     .single();
 }
 
-export async function createDebt(input: CreateDebtInput): Promise<{ data: Debt | null; error: any }> {
-  const res = await createMultipleDebts([input]);
+export async function createDebt(
+  input: CreateDebtInput,
+  options?: { walletId?: string | null; counterpartyName?: string },
+): Promise<{ data: Debt | null; error: any }> {
+  const res = await createMultipleDebts([input], options);
   return { data: res.data ? res.data[0] ?? null : null, error: res.error };
 }
 
-export async function createMultipleDebts(inputs: CreateDebtInput[]): Promise<{ data: Debt[] | null; error: any }> {
+export async function createMultipleDebts(
+  inputs: CreateDebtInput[],
+  options?: { walletId?: string | null; counterpartyName?: string },
+): Promise<{ data: Debt[] | null; error: any }> {
   if (inputs.length === 0) {
     return { data: [], error: null };
   }
 
   const userId = await getAuthenticatedUserId();
   const payloads: Database["public"]["Tables"]["debts"]["Insert"][] = [];
+  let totalAmountNumber = 0;
 
   for (const input of inputs) {
     const rawDigits = parseMoneyInputDigits(input.originalAmount);
@@ -380,6 +387,8 @@ export async function createMultipleDebts(inputs: CreateDebtInput[]): Promise<{ 
     if (!input.title.trim()) {
       return { data: null, error: new Error("Every item must have a title / description.") };
     }
+
+    totalAmountNumber += toNumber(rawDigits);
 
     payloads.push({
       user_id: userId,
@@ -391,6 +400,33 @@ export async function createMultipleDebts(inputs: CreateDebtInput[]): Promise<{ 
       note: input.note?.trim() || null,
       status: "active",
     });
+  }
+
+  // If a wallet is chosen for initial money movement:
+  // Debt -> money received into wallet (+adjustment)
+  // Receivable -> money paid/lent from wallet (-adjustment)
+  if (options?.walletId) {
+    const type = inputs[0].type;
+    const cpName = options.counterpartyName?.trim() || "Counterparty";
+
+    const { error: txError } = await supabase.from("transactions").insert({
+      user_id: userId,
+      type: "adjustment",
+      amount: type === "debt" ? totalAmountNumber.toString() : (-totalAmountNumber).toString(),
+      wallet_id: options.walletId,
+      destination_wallet_id: null,
+      transfer_fee: "0",
+      transaction_date: new Date().toISOString(),
+      title: type === "debt" ? `Debt Inflow: ${cpName}` : `Receivable Outflow: ${cpName}`,
+      note: inputs.length === 1 ? inputs[0].note?.trim() || null : `${inputs.length} items tracked`,
+      status: "completed",
+      related_entity_type: type === "debt" ? "debt_creation" : "receivable_creation",
+      related_entity_id: inputs[0].counterpartyId,
+    });
+
+    if (txError) {
+      return { data: null, error: txError };
+    }
   }
 
   return supabase.from("debts").insert(payloads).select("*");

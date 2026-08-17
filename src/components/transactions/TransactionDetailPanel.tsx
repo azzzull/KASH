@@ -103,11 +103,16 @@ export function TransactionDetailPanel({
     transaction.related_entity_type === "goal_contribution" ||
     transaction.related_entity_type === "goal_refund" ||
     transaction.related_entity_type === "debt_payment" ||
-    transaction.related_entity_type === "receivable_payment";
+    transaction.related_entity_type === "receivable_payment" ||
+    transaction.related_entity_type === "debt_creation" ||
+    transaction.related_entity_type === "receivable_creation";
 
   const linkedMessage =
-    transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "receivable_payment"
-      ? "Settlement transaction linked to Debt & Receivable. Edits and voids are managed from Debt & Receivable."
+    transaction.related_entity_type === "debt_payment" ||
+    transaction.related_entity_type === "receivable_payment" ||
+    transaction.related_entity_type === "debt_creation" ||
+    transaction.related_entity_type === "receivable_creation"
+      ? "Obligation transaction linked to Debt & Receivable. Managed directly from Debt & Receivable."
       : "Goal transfer linked to Goals. Edits and voids are managed from Goals.";
 
   return (

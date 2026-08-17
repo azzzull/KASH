@@ -85,7 +85,7 @@ export function DebtsPage() {
   useAppEvent(appEvents.transactionSaved, loadData);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 pb-20 pt-2 md:pb-8">
+    <div className="mx-auto w-full max-w-[1180px] space-y-4">
       <PageHeader
         eyebrow="Finance"
         icon={HandCoins}
@@ -101,14 +101,14 @@ export function DebtsPage() {
 
       {/* Overview Totals (Never Netted) */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <section className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+        <section className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Total You Owe</span>
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-kash-expense/10 text-kash-expense">
-              <ArrowUpRight aria-hidden="true" size={19} strokeWidth={2.4} />
+            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">Total You Owe</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-expense/10 text-kash-expense">
+              <ArrowUpRight aria-hidden="true" size={17} strokeWidth={2.4} />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">
+          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
             {formatCurrency(totalDebt, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
@@ -116,14 +116,14 @@ export function DebtsPage() {
           </p>
         </section>
 
-        <section className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+        <section className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600">Total Owed to You</span>
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-kash-emerald/10 text-kash-emerald">
-              <ArrowDownLeft aria-hidden="true" size={19} strokeWidth={2.4} />
+            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">Total Owed to You</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-emerald/10 text-kash-emerald">
+              <ArrowDownLeft aria-hidden="true" size={17} strokeWidth={2.4} />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">
+          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
             {formatCurrency(totalReceivable, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
@@ -133,46 +133,52 @@ export function DebtsPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Type Segments */}
-        <div className="flex rounded-lg bg-slate-100 p-1">
+        <div className="flex rounded-lg border border-slate-200 bg-white p-1">
           <button
             type="button"
             onClick={() => setTypeFilter("all")}
-            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${typeFilter === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-              }`}
+            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${
+              typeFilter === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            }`}
           >
             All
           </button>
           <button
             type="button"
             onClick={() => setTypeFilter("debt")}
-            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${typeFilter === "debt" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-              }`}
+            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${
+              typeFilter === "debt" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            }`}
           >
             Debt (You Owe)
           </button>
           <button
             type="button"
             onClick={() => setTypeFilter("receivable")}
-            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${typeFilter === "receivable" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-              }`}
+            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${
+              typeFilter === "receivable" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            }`}
           >
             Receivable (Owed to You)
           </button>
         </div>
 
         {/* Status & Search */}
-        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/30"
-          >
-            <option value="active">Active Obligations</option>
-            <option value="settled">Settled Obligations</option>
-            <option value="all">All Statuses</option>
-          </select>
+        <div className="flex flex-wrap items-end gap-3 sm:flex-nowrap">
+          <div className="min-w-[190px]">
+            <SelectField
+              id="debt-status-filter"
+              label="Status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            >
+              <option value="active">Active Obligations</option>
+              <option value="settled">Settled Obligations</option>
+              <option value="all">All Statuses</option>
+            </SelectField>
+          </div>
 
           <div className="relative min-w-[180px] flex-1 sm:w-60">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={15} />
@@ -181,7 +187,7 @@ export function DebtsPage() {
               placeholder="Search person..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs font-bold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/30"
+              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
             />
           </div>
         </div>
@@ -224,7 +230,7 @@ export function DebtsPage() {
             return (
               <div
                 key={cp.id}
-                className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-soft transition hover:border-slate-300"
+                className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
@@ -247,7 +253,7 @@ export function DebtsPage() {
                   <div className="mt-4 space-y-3">
                     {/* Debt Row */}
                     {(hasDebt || cp.settledDebtCount > 0) && (
-                      <div className="rounded-lg bg-slate-50 p-3">
+                      <div className="rounded-lg border border-slate-100 bg-white p-3 shadow-none">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-600">You Owe:</span>
                           <span className="font-black text-slate-900">
@@ -271,7 +277,7 @@ export function DebtsPage() {
 
                     {/* Receivable Row */}
                     {(hasReceivable || cp.settledReceivableCount > 0) && (
-                      <div className="rounded-lg bg-slate-50 p-3">
+                      <div className="rounded-lg border border-slate-100 bg-white p-3 shadow-none">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-600">Owes You:</span>
                           <span className="font-black text-slate-900">
@@ -353,8 +359,22 @@ function CreateObligationModal({
   const [items, setItems] = useState<
     { id: string; title: string; originalAmount: string; dueDate: string; note: string }[]
   >([{ id: "1", title: "", originalAmount: "", dueDate: "", note: "" }]);
+  const [linkWallet, setLinkWallet] = useState(false);
+  const [selectedWalletId, setSelectedWalletId] = useState("");
+  const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getWallets()
+      .then((res) => {
+        if (res.data) {
+          setWallets(res.data);
+          if (res.data.length > 0) setSelectedWalletId(res.data[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const addItemRow = () => {
     setItems((prev) => [
@@ -391,6 +411,11 @@ function CreateObligationModal({
     }, 0);
   }, [items]);
 
+  const selectedWallet = useMemo(
+    () => wallets.find((w) => w.id === selectedWalletId),
+    [wallets, selectedWalletId],
+  );
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!counterpartyName.trim()) {
@@ -409,6 +434,11 @@ function CreateObligationModal({
         setError(`Item #${i + 1} ("${item.title}") must have an amount greater than zero.`);
         return;
       }
+    }
+
+    if (linkWallet && !selectedWalletId) {
+      setError("Please select a wallet to process the funds.");
+      return;
     }
 
     setSaving(true);
@@ -433,7 +463,10 @@ function CreateObligationModal({
         note: item.note.trim() || null,
       }));
 
-      const { error: batchError } = await createMultipleDebts(debtInputs);
+      const { error: batchError } = await createMultipleDebts(debtInputs, {
+        walletId: linkWallet ? selectedWalletId : null,
+        counterpartyName: cp.name,
+      });
 
       if (batchError) {
         setError(batchError.message ?? "Failed to create obligation records. Please try again.");
@@ -441,6 +474,9 @@ function CreateObligationModal({
         return;
       }
 
+      if (linkWallet) {
+        emitTransactionSaved();
+      }
       onSaved();
     } catch (err: any) {
       setError(err?.message ?? "An unexpected error occurred.");
@@ -470,12 +506,12 @@ function CreateObligationModal({
 
         <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           {/* Type Toggle */}
-          <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 bg-white p-1">
             <button
               type="button"
               onClick={() => setType("debt")}
               className={`rounded-md py-2.5 text-xs font-black transition ${type === "debt"
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-kash-emerald text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
                 }`}
             >
@@ -485,7 +521,7 @@ function CreateObligationModal({
               type="button"
               onClick={() => setType("receivable")}
               className={`rounded-md py-2.5 text-xs font-black transition ${type === "receivable"
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-kash-emerald text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
                 }`}
             >
@@ -534,7 +570,7 @@ function CreateObligationModal({
             {items.map((item, index) => (
               <div
                 key={item.id}
-                className="relative space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4 transition"
+                className="relative space-y-3 rounded-xl border border-slate-200 bg-white p-4 transition"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-700">Item #{index + 1}</span>
@@ -631,8 +667,66 @@ function CreateObligationModal({
             </button>
           </div>
 
+          {/* Optional Wallet Movement (Pinjam masuk rekening / Nalangin potong rekening) */}
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3.5">
+            <label className="flex cursor-pointer select-none items-start gap-3">
+              <input
+                type="checkbox"
+                checked={linkWallet}
+                onChange={(e) => {
+                  setLinkWallet(e.target.checked);
+                  if (e.target.checked && !selectedWalletId && wallets.length > 0) {
+                    setSelectedWalletId(wallets[0].id);
+                  }
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-kash-emerald focus:ring-kash-emerald"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900">
+                  {type === "debt"
+                    ? "Deposit money into my wallet (Uang pinjaman masuk ke rekening)"
+                    : "Pay from my wallet (Uang ditalangin / dipinjamkan keluar dari rekening)"}
+                </p>
+                <p className="text-[11px] font-medium text-slate-600">
+                  {type === "debt"
+                    ? "Centang jika uang pinjaman ini Anda terima langsung ke rekening/dompet KASH saat ini."
+                    : "Centang jika Anda membayarkan/mentransfer uang ini dari rekening KASH sekarang (misal: ditalangin dulu untuk di-reimburse nanti)."}
+                </p>
+              </div>
+            </label>
+
+            {linkWallet && (
+              <div className="space-y-2 border-t border-slate-100 pt-2">
+                <SelectField
+                  id="obligation-wallet"
+                  label={type === "debt" ? "Destination Wallet *" : "Source Wallet *"}
+                  value={selectedWalletId}
+                  onChange={(e) => setSelectedWalletId(e.target.value)}
+                  required
+                >
+                  {wallets.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")})
+                    </option>
+                  ))}
+                </SelectField>
+
+                {selectedWallet && (
+                  <div className="flex items-center justify-between rounded-lg bg-emerald-50/70 p-2.5 text-xs font-semibold text-slate-800">
+                    <span>
+                      {type === "debt" ? "Wallet will receive:" : "Wallet will be deducted by:"}
+                    </span>
+                    <span className={`font-extrabold ${type === "debt" ? "text-kash-emeraldDark" : "text-kash-expense"}`}>
+                      {type === "debt" ? "+" : "-"}{formatCurrency(totalAmountSum, "IDR")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Live Total Summary */}
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3.5">
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3.5">
             <div>
               <span className="text-xs font-bold uppercase text-slate-600">Total Obligation</span>
               <p className="text-xs font-semibold text-slate-600">{items.length} item{items.length !== 1 ? "s" : ""}</p>
@@ -857,7 +951,7 @@ export function SettlementModal({
           />
 
           {/* Real-Time Live Preview */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Settlement Preview</p>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between">

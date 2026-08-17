@@ -28,6 +28,7 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
+import { SelectField } from "../components/ui/SelectField";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitDebtSaved, emitTransactionSaved } from "../lib/appEvents";
 import {
@@ -42,6 +43,7 @@ import {
   type DebtPaymentWithMeta,
 } from "../lib/debts";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
+import { getWallets, type WalletWithBalance } from "../lib/wallets";
 import type { Debt, DebtProgress, DebtType } from "../types/domain";
 import { SettlementModal } from "./DebtsPage";
 
@@ -127,7 +129,7 @@ export function DebtDetailPage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-20 pt-2 md:pb-8">
+    <div className="mx-auto w-full max-w-[1180px] space-y-4">
       {/* Navigation & Header */}
       <div>
         <Link
@@ -140,7 +142,7 @@ export function DebtDetailPage() {
 
         <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-kash-emerald100 text-kash-emeraldDark ring-1 ring-kash-emerald/30">
               <User size={24} />
             </div>
             <div>
@@ -183,14 +185,14 @@ export function DebtDetailPage() {
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Debt Card */}
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600">You Owe {counterparty.name}</span>
+            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">You Owe {counterparty.name}</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-expense/10 text-kash-expense">
               <ArrowUpRight size={17} strokeWidth={2.4} />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">
+          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
             {formatCurrency(summary.totalDebtRemaining, "IDR")}
           </p>
           <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs font-semibold text-slate-600">
@@ -200,14 +202,14 @@ export function DebtDetailPage() {
         </section>
 
         {/* Receivable Card */}
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-soft">
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600">{counterparty.name} Owes You</span>
+            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">{counterparty.name} Owes You</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-emerald/10 text-kash-emerald">
               <ArrowDownLeft size={17} strokeWidth={2.4} />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-black text-slate-900 md:text-3xl">
+          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
             {formatCurrency(summary.totalReceivableRemaining, "IDR")}
           </p>
           <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs font-semibold text-slate-600">
@@ -546,8 +548,8 @@ function PaymentHistoryCard({ payment }: { payment: DebtPaymentWithMeta }) {
 
       {/* Allocation breakdown */}
       {expanded && payment.allocations.length > 0 && (
-        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs">
-          <p className="font-bold uppercase tracking-wider text-slate-600 text-[10px]">Allocation Breakdown</p>
+        <div className="mt-3 rounded-lg border border-slate-100 bg-white p-3 text-xs shadow-none">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Allocation Breakdown</p>
           <div className="mt-2 divide-y divide-slate-200">
             {payment.allocations.map((alloc) => (
               <div key={alloc.id} className="flex justify-between py-1.5">
@@ -577,8 +579,22 @@ function CreateItemModal({
   const [items, setItems] = useState<
     { id: string; title: string; originalAmount: string; dueDate: string; note: string }[]
   >([{ id: "1", title: "", originalAmount: "", dueDate: "", note: "" }]);
+  const [linkWallet, setLinkWallet] = useState(false);
+  const [selectedWalletId, setSelectedWalletId] = useState("");
+  const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getWallets()
+      .then((res) => {
+        if (res.data) {
+          setWallets(res.data);
+          if (res.data.length > 0) setSelectedWalletId(res.data[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const addItemRow = () => {
     setItems((prev) => [
@@ -615,6 +631,11 @@ function CreateItemModal({
     }, 0);
   }, [items]);
 
+  const selectedWallet = useMemo(
+    () => wallets.find((w) => w.id === selectedWalletId),
+    [wallets, selectedWalletId],
+  );
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -631,6 +652,11 @@ function CreateItemModal({
       }
     }
 
+    if (linkWallet && !selectedWalletId) {
+      setError("Please select a wallet to process the funds.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -644,7 +670,10 @@ function CreateItemModal({
         note: item.note.trim() || null,
       }));
 
-      const { error: batchError } = await createMultipleDebts(debtInputs);
+      const { error: batchError } = await createMultipleDebts(debtInputs, {
+        walletId: linkWallet ? selectedWalletId : null,
+        counterpartyName: counterparty.name,
+      });
 
       if (batchError) {
         setError(batchError.message ?? "Failed to create items. Please try again.");
@@ -652,6 +681,9 @@ function CreateItemModal({
         return;
       }
 
+      if (linkWallet) {
+        emitTransactionSaved();
+      }
       onSaved();
     } catch (err: any) {
       setError(err?.message ?? "An unexpected error occurred.");
@@ -678,12 +710,12 @@ function CreateItemModal({
         ) : null}
 
         <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
-          <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 bg-white p-1">
             <button
               type="button"
               onClick={() => setType("debt")}
               className={`rounded-md py-2.5 text-xs font-black transition ${
-                type === "debt" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                type === "debt" ? "bg-kash-emerald text-white shadow-sm" : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Debt (I Owe)
@@ -692,7 +724,7 @@ function CreateItemModal({
               type="button"
               onClick={() => setType("receivable")}
               className={`rounded-md py-2.5 text-xs font-black transition ${
-                type === "receivable" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                type === "receivable" ? "bg-kash-emerald text-white shadow-sm" : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Receivable (Owed to Me)
@@ -718,7 +750,7 @@ function CreateItemModal({
             {items.map((item, index) => (
               <div
                 key={item.id}
-                className="relative space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4 transition"
+                className="relative space-y-3 rounded-xl border border-slate-200 bg-white p-4 transition"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-700">Item #{index + 1}</span>
@@ -815,8 +847,66 @@ function CreateItemModal({
             </button>
           </div>
 
+          {/* Optional Wallet Movement (Pinjam masuk rekening / Nalangin potong rekening) */}
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3.5">
+            <label className="flex cursor-pointer select-none items-start gap-3">
+              <input
+                type="checkbox"
+                checked={linkWallet}
+                onChange={(e) => {
+                  setLinkWallet(e.target.checked);
+                  if (e.target.checked && !selectedWalletId && wallets.length > 0) {
+                    setSelectedWalletId(wallets[0].id);
+                  }
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-kash-emerald focus:ring-kash-emerald"
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900">
+                  {type === "debt"
+                    ? "Deposit money into my wallet (Uang pinjaman masuk ke rekening)"
+                    : "Pay from my wallet (Uang ditalangin / dipinjamkan keluar dari rekening)"}
+                </p>
+                <p className="text-[11px] font-medium text-slate-600">
+                  {type === "debt"
+                    ? "Centang jika uang pinjaman ini Anda terima langsung ke rekening/dompet KASH saat ini."
+                    : "Centang jika Anda membayarkan/mentransfer uang ini dari rekening KASH sekarang (misal: ditalangin dulu untuk di-reimburse nanti)."}
+                </p>
+              </div>
+            </label>
+
+            {linkWallet && (
+              <div className="space-y-2 border-t border-slate-100 pt-2">
+                <SelectField
+                  id="item-obligation-wallet"
+                  label={type === "debt" ? "Destination Wallet *" : "Source Wallet *"}
+                  value={selectedWalletId}
+                  onChange={(e) => setSelectedWalletId(e.target.value)}
+                  required
+                >
+                  {wallets.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")})
+                    </option>
+                  ))}
+                </SelectField>
+
+                {selectedWallet && (
+                  <div className="flex items-center justify-between rounded-lg bg-emerald-50/70 p-2.5 text-xs font-semibold text-slate-800">
+                    <span>
+                      {type === "debt" ? "Wallet will receive:" : "Wallet will be deducted by:"}
+                    </span>
+                    <span className={`font-extrabold ${type === "debt" ? "text-kash-emeraldDark" : "text-kash-expense"}`}>
+                      {type === "debt" ? "+" : "-"}{formatCurrency(totalAmountSum, "IDR")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Live Total Summary */}
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3.5">
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3.5">
             <div>
               <span className="text-xs font-bold uppercase text-slate-600">Total</span>
               <p className="text-xs font-semibold text-slate-600">{items.length} item{items.length !== 1 ? "s" : ""}</p>
