@@ -378,9 +378,9 @@ function TransactionFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close transaction form" onClick={onClose} type="button" />
-      <section ref={modalRef} className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section ref={modalRef} className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase text-slate-600">{transaction.type}</p>
@@ -391,7 +391,7 @@ function TransactionFormModal({
 
         {error ? <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</div> : null}
 
-        <form className="mt-5 grid gap-4" onSubmit={submit}>
+        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <FormField
             hasError={amountHasError}
             id="transaction-edit-amount"

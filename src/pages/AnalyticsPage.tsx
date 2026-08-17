@@ -805,19 +805,19 @@ function PeriodControls({
       </SelectField>
       {period === "custom" ? (
         <>
-          <label className="block">
-            <span className="text-xs font-extrabold uppercase text-slate-600">Start Date</span>
+          <label className="block w-full max-w-full min-w-0">
+            <span className="block text-xs font-extrabold uppercase text-slate-600">Start Date</span>
             <input
-              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-bold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 md:text-sm"
               type="date"
               value={customStartDate}
               onChange={(event) => onCustomStartDateChange(event.target.value)}
             />
           </label>
-          <label className="block">
-            <span className="text-xs font-extrabold uppercase text-slate-600">End Date</span>
+          <label className="block w-full max-w-full min-w-0">
+            <span className="block text-xs font-extrabold uppercase text-slate-600">End Date</span>
             <input
-              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-bold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 md:text-sm"
               type="date"
               value={customEndDate}
               onChange={(event) => onCustomEndDateChange(event.target.value)}

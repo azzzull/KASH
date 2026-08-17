@@ -42,6 +42,52 @@ textarea {
   font: inherit;
 }
 
+/* Universal Form Control Width & Box Sizing */
+input,
+textarea,
+select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Fix native date, datetime-local, and time input sizing & overflow in WebKit / iOS Safari / Blink */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: block;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* WebKit Shadow DOM Date/Time value container & sub-elements */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.25em;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
 button:focus-visible,
 a:focus-visible {
   outline: 2px solid #10b981;
@@ -60,4 +106,3 @@ a:focus-visible {
     font-size: 16px !important;
   }
 }
-

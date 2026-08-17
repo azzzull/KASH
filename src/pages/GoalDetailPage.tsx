@@ -164,9 +164,9 @@ function GoalEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close edit goal" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-extrabold text-slate-900">Edit Goal</h2>
@@ -183,7 +183,7 @@ function GoalEditModal({
           </div>
         ) : null}
 
-        <form className="mt-5 grid gap-4" onSubmit={submit}>
+        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <FormField id="edit-goal-name" label="Goal Name" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} />
           <FormField
             id="edit-goal-target"
@@ -277,9 +277,9 @@ function ContributionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close contribution form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-extrabold text-slate-900">Add Contribution</h2>
@@ -296,7 +296,7 @@ function ContributionModal({
           </div>
         ) : null}
 
-        <form className="mt-5 grid gap-4" onSubmit={submit}>
+        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <SelectField id="contribution-wallet" label="From Wallet" onChange={(event) => setForm((current) => ({ ...current, walletId: event.target.value }))} value={form.walletId}>
             {sourceWallets.length === 0 ? <option value="">No source wallets</option> : null}
             {sourceWallets.map((wallet) => (

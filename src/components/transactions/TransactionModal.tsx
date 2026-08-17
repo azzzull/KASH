@@ -201,9 +201,9 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/35" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close transaction form" onClick={onClose} />
-      <section ref={modalRef} className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+      <section ref={modalRef} className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100">
@@ -234,7 +234,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             <div className="h-12 rounded-lg bg-slate-100" />
           </div>
         ) : (
-          <form className="mt-5 grid gap-4" onSubmit={submit}>
+          <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
             <FormField
               hasError={amountHasError}
               id={`${mode}-amount`}
