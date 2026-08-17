@@ -236,3 +236,72 @@ export type CounterpartySummary = {
   updated_at: string;
 };
 
+export type RecurringObligationType = "subscription" | "bill" | "paylater" | "installment";
+export type RecurringFrequency = "monthly" | "yearly" | "weekly" | "quarterly";
+export type RecurringObligationStatus = "active" | "paused" | "cancelled" | "completed";
+export type RecurringPaymentStatus = "pending" | "paid" | "overdue" | "skipped";
+
+export type RecurringObligation = {
+  id: string;
+  user_id: string;
+  type: RecurringObligationType;
+  name: string;
+  provider: string | null;
+  amount: MoneyAmount;
+  category_id: string | null;
+  frequency: RecurringFrequency;
+  billing_day: number | null;
+  start_date: string;
+  end_date: string | null;
+  next_due_date: string | null;
+  status: RecurringObligationStatus;
+  default_wallet_id: string | null;
+  reminder_offsets: number[];
+  overdue_reminder_enabled: boolean;
+  installment_total_amount: MoneyAmount | null;
+  installment_count: number | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecurringPayment = {
+  id: string;
+  user_id: string;
+  obligation_id: string;
+  due_date: string;
+  amount: MoneyAmount;
+  status: RecurringPaymentStatus;
+  paid_at: string | null;
+  payment_mode: PaymentMode | null;
+  wallet_id: string | null;
+  transaction_id: string | null;
+  installment_number: number | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecurringObligationSummary = RecurringObligation & {
+  paid_count: number;
+  remaining_count: number;
+  total_paid_amount: MoneyAmount;
+  remaining_amount: MoneyAmount;
+  progress_percentage: MoneyAmount;
+};
+
+export type PushSubscriptionRecord = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  device_label: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  last_used_at: string | null;
+};
+
+

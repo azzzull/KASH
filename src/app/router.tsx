@@ -27,6 +27,8 @@ const NotificationsPage = lazyPage(() => import("../pages/NotificationsPage"), "
 const OnboardingPage = lazyPage(() => import("../pages/OnboardingPage"), "OnboardingPage");
 const SettingsPage = lazyPage(() => import("../pages/SettingsPage"), "SettingsPage");
 const SharedSavingsPage = lazyPage(() => import("../pages/SharedSavingsPage"), "SharedSavingsPage");
+const SubscriptionsPage = lazyPage(() => import("../pages/SubscriptionsPage"), "SubscriptionsPage");
+const SubscriptionDetailPage = lazyPage(() => import("../pages/SubscriptionDetailPage"), "SubscriptionDetailPage");
 const TransactionsPage = lazyPage(() => import("../pages/TransactionsPage"), "TransactionsPage");
 const WalletsPage = lazyPage(() => import("../pages/WalletsPage"), "WalletsPage");
 const WalletDetailPage = lazyPage(() => import("../pages/WalletDetailPage"), "WalletDetailPage");
@@ -84,6 +86,8 @@ export const router = createBrowserRouter([
           { path: "/goals/:id", element: routeElement(<GoalDetailPage />) },
           { path: "/debts", element: routeElement(<DebtsPage />) },
           { path: "/debts/:counterpartyId", element: routeElement(<DebtDetailPage />) },
+          { path: "/subscriptions", element: routeElement(<SubscriptionsPage />) },
+          { path: "/subscriptions/:id", element: routeElement(<SubscriptionDetailPage />) },
           { path: "/shared", element: routeElement(<SharedSavingsPage />) },
           { path: "/notifications", element: routeElement(<NotificationsPage />) },
           { path: "/settings", element: routeElement(<SettingsPage />) },

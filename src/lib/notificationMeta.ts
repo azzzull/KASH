@@ -148,6 +148,8 @@ export function getNotificationTargetPath(notification: Notification): string | 
   if (!notification.entity_type || !notification.entity_id) return null;
 
   switch (notification.entity_type) {
+    case "recurring_obligation":
+      return `/subscriptions/${notification.entity_id}`;
     case "counterparty":
       return `/debts/${notification.entity_id}`;
     case "debt":
@@ -167,6 +169,9 @@ export function getNotificationTargetPath(notification: Notification): string | 
     case "shared_contribution":
       return "/shared";
     default:
+      if (typeof notification.metadata?.target_path === "string" && notification.metadata.target_path) {
+        return notification.metadata.target_path;
+      }
       return null;
   }
 }

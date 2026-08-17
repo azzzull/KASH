@@ -17,6 +17,14 @@ import type {
   Notification,
   PaymentMode,
   Profile,
+  PushSubscriptionRecord,
+  RecurringFrequency,
+  RecurringObligation,
+  RecurringObligationStatus,
+  RecurringObligationSummary,
+  RecurringObligationType,
+  RecurringPayment,
+  RecurringPaymentStatus,
   Transaction,
   TransactionStatus,
   TransactionType,
@@ -223,6 +231,99 @@ export type Database = {
         Update: Partial<Omit<Notification, "id" | "user_id" | "created_at">>;
         Relationships: [];
       };
+      recurring_obligations: {
+        Row: RecurringObligation;
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: RecurringObligationType;
+          name: string;
+          provider?: string | null;
+          amount: string;
+          category_id?: string | null;
+          frequency?: RecurringFrequency;
+          billing_day?: number | null;
+          start_date: string;
+          end_date?: string | null;
+          next_due_date?: string | null;
+          status?: RecurringObligationStatus;
+          default_wallet_id?: string | null;
+          reminder_offsets?: number[];
+          overdue_reminder_enabled?: boolean;
+          installment_total_amount?: string | null;
+          installment_count?: number | null;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<RecurringObligation, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      recurring_payments: {
+        Row: RecurringPayment;
+        Insert: {
+          id?: string;
+          user_id: string;
+          obligation_id: string;
+          due_date: string;
+          amount: string;
+          status?: RecurringPaymentStatus;
+          paid_at?: string | null;
+          payment_mode?: PaymentMode | null;
+          wallet_id?: string | null;
+          transaction_id?: string | null;
+          installment_number?: number | null;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<RecurringPayment, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: PushSubscriptionRecord;
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          device_label?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          last_used_at?: string | null;
+        };
+        Update: Partial<Omit<PushSubscriptionRecord, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      notification_reminder_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          obligation_id: string;
+          payment_id: string;
+          reminder_offset: number;
+          due_date: string;
+          notification_id: string | null;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          obligation_id: string;
+          payment_id: string;
+          reminder_offset: number;
+          due_date: string;
+          notification_id?: string | null;
+          sent_at?: string;
+        };
+        Update: Partial<{
+          notification_id?: string | null;
+        }>;
+        Relationships: [];
+      };
     };
     Views: {
       wallet_balance_view: {
@@ -245,6 +346,12 @@ export type Database = {
       };
       counterparty_summary_view: {
         Row: CounterpartySummary;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      recurring_obligations_summary_view: {
+        Row: RecurringObligationSummary;
         Insert: never;
         Update: never;
         Relationships: [];
@@ -305,6 +412,73 @@ export type Database = {
         Args: Record<string, never>;
         Returns: number;
       };
+      create_recurring_obligation: {
+        Args: {
+          p_type: RecurringObligationType;
+          p_name: string;
+          p_amount: string;
+          p_start_date: string;
+          p_frequency?: RecurringFrequency;
+          p_provider?: string | null;
+          p_category_id?: string | null;
+          p_default_wallet_id?: string | null;
+          p_reminder_offsets?: number[];
+          p_overdue_reminder_enabled?: boolean;
+          p_installment_total_amount?: string | null;
+          p_installment_count?: number | null;
+          p_already_paid_count?: number;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      record_recurring_payment: {
+        Args: {
+          p_payment_id: string;
+          p_payment_mode: PaymentMode;
+          p_wallet_id?: string | null;
+          p_paid_at?: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
+      settle_remaining_installment: {
+        Args: {
+          p_obligation_id: string;
+          p_payment_mode: PaymentMode;
+          p_wallet_id?: string | null;
+          p_paid_at?: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
+      cancel_recurring_obligation: {
+        Args: {
+          p_obligation_id: string;
+        };
+        Returns: void;
+      };
+      upsert_push_subscription: {
+        Args: {
+          p_endpoint: string;
+          p_p256dh: string;
+          p_auth: string;
+          p_user_agent?: string | null;
+          p_device_label?: string | null;
+        };
+        Returns: void;
+      };
+      process_recurring_reminders: {
+        Args: {
+          p_current_date?: string;
+        };
+        Returns: {
+          notification_id: string;
+          user_id: string;
+          title: string;
+          message: string;
+          target_path: string;
+        }[];
+      };
     };
     Enums: {
       wallet_type: Wallet["wallet_type"];
@@ -314,6 +488,10 @@ export type Database = {
       debt_type: DebtType;
       debt_status: DebtStatus;
       payment_mode: PaymentMode;
+      recurring_obligation_type: RecurringObligationType;
+      recurring_frequency: RecurringFrequency;
+      recurring_obligation_status: RecurringObligationStatus;
+      recurring_payment_status: RecurringPaymentStatus;
     };
     CompositeTypes: Record<string, never>;
   };
