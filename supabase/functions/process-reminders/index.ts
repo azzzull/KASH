@@ -1,8 +1,26 @@
+/// <reference path="../types.d.ts" />
+
 // ============================================================
 // Supabase Edge Function: process-reminders
-// Trusted Scheduled Bridge:
-// Cron -> process_recurring_reminders() (Atomically creates & deduplicates in-app notifications)
-//      -> Sends Web Push to all active device subscriptions
+//
+// Trusted scheduled reminder orchestrator.
+//
+// Cron
+//   ↓
+// process-reminders
+//   ↓
+// PostgreSQL process_recurring_reminders()
+//   ↓
+// in-app notifications
+//   ↓
+// send-push
+//   ↓
+// Web Push devices
+//
+// SECURITY:
+// - Not callable from frontend.
+// - Requires KASH_REMINDER_CRON_SECRET.
+// - Calls send-push using KASH_PUSH_INTERNAL_SECRET.
 // ============================================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -10,7 +28,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-kash-cron-secret",
 };
 
 interface ReminderNotificationRow {
@@ -21,157 +40,382 @@ interface ReminderNotificationRow {
   target_path: string;
 }
 
+interface SendPushResponse {
+  success?: boolean;
+  delivered?: number;
+  total_devices?: number;
+  expired_deactivated?: number;
+  error?: string;
+}
+
+function jsonResponse(
+  body: Record<string, unknown>,
+  status = 200,
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  let result = 0;
+
+  for (let i = 0; i < a.length; i += 1) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+
+  return result === 0;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", {
+      headers: corsHeaders,
+    });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse(
+      {
+        success: false,
+        error: "Method not allowed.",
+      },
+      405,
+    );
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // ============================================================
+    // 1. SERVER ENV
+    // ============================================================
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Missing Supabase environment variables: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-    }
+    const supabaseUrl =
+      Deno.env.get("SUPABASE_URL");
 
-    // 1. Authorize: Only service_role or valid Bearer token can invoke scheduled batch processor
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized: Missing Authorization header." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    const supabaseServiceKey =
+      Deno.env.get(
+        "SUPABASE_SERVICE_ROLE_KEY",
+      );
+
+    const cronSecret =
+      Deno.env.get(
+        "KASH_REMINDER_CRON_SECRET",
+      );
+
+    const pushInternalSecret =
+      Deno.env.get(
+        "KASH_PUSH_INTERNAL_SECRET",
+      );
+
+    if (!supabaseUrl) {
+      throw new Error(
+        "Missing SUPABASE_URL.",
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Optional override date for manual simulation / testing
-    let simulatedDate: string | undefined = undefined;
-    if (req.method === "POST") {
-      try {
-        const body = await req.json();
-        if (body?.current_date) {
-          simulatedDate = body.current_date;
-        }
-      } catch {
-        // Body is optional (e.g. GET from simple cron)
-      }
+    if (!supabaseServiceKey) {
+      throw new Error(
+        "Missing SUPABASE_SERVICE_ROLE_KEY.",
+      );
     }
 
-    // 2. Authoritative Database Processor: Claims reminders and creates in-app notifications
-    const { data: reminderRows, error: rpcError } = await supabase.rpc(
+    if (!cronSecret) {
+      throw new Error(
+        "Missing KASH_REMINDER_CRON_SECRET.",
+      );
+    }
+
+    if (!pushInternalSecret) {
+      throw new Error(
+        "Missing KASH_PUSH_INTERNAL_SECRET.",
+      );
+    }
+
+    // ============================================================
+    // 2. CRON AUTH
+    // ============================================================
+
+    const requestSecret =
+      req.headers.get(
+        "x-kash-cron-secret",
+      ) ??
+      req.headers.get("apikey");
+
+    if (
+      !requestSecret ||
+      !safeEqual(
+        requestSecret,
+        cronSecret,
+      )
+    ) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "Unauthorized.",
+        },
+        401,
+      );
+    }
+
+    // ============================================================
+    // 3. PRIVILEGED DB CLIENT
+    // ============================================================
+
+    const supabase = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      },
+    );
+
+    // ============================================================
+    // 4. OPTIONAL SIMULATED DATE
+    // ============================================================
+
+    let simulatedDate: string | undefined;
+
+    try {
+      const body = await req.json();
+
+      if (
+        typeof body?.current_date ===
+        "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(
+          body.current_date,
+        )
+      ) {
+        simulatedDate =
+          body.current_date;
+      }
+    } catch {
+      // Optional body.
+    }
+
+    // ============================================================
+    // 5. PROCESS REMINDERS IN DATABASE
+    // ============================================================
+
+    const {
+      data: reminderRows,
+      error: rpcError,
+    } = await supabase.rpc(
       "process_recurring_reminders",
-      simulatedDate ? { p_current_date: simulatedDate } : {}
+      simulatedDate
+        ? {
+          p_current_date:
+            simulatedDate,
+        }
+        : {},
     );
 
     if (rpcError) {
-      throw rpcError;
-    }
-
-    const reminders: ReminderNotificationRow[] = reminderRows || [];
-
-    if (reminders.length === 0) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "No new reminders due for processing at this time.",
-          reminders_processed: 0,
-          pushes_delivered: 0,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      throw new Error(
+        `process_recurring_reminders failed: ${rpcError.message}`,
       );
     }
 
-    // 3. For each newly created notification, deliver Web Push to user's active device subscriptions
+    const reminders =
+      (Array.isArray(reminderRows)
+        ? reminderRows
+        : []) as ReminderNotificationRow[];
+
+    if (reminders.length === 0) {
+      return jsonResponse({
+        success: true,
+        reminders_processed: 0,
+        pushes_delivered: 0,
+        devices_targeted: 0,
+        expired_subscriptions_deactivated: 0,
+        details: [],
+      });
+    }
+
+    // ============================================================
+    // 6. SEND PUSH FOR EACH LOGICAL NOTIFICATION
+    // ============================================================
+
     let totalPushesDelivered = 0;
-    const expiredSubIds: string[] = [];
-    const processedSummary: Array<{
+    let totalDevicesTargeted = 0;
+    let totalExpiredDeactivated = 0;
+
+    const details: Array<{
       notification_id: string;
       user_id: string;
       title: string;
+      push_success: boolean;
+      delivered: number;
       devices_targeted: number;
+      expired_deactivated: number;
+      error?: string;
     }> = [];
 
     for (const reminder of reminders) {
-      // Query active push subscriptions for this user
-      const { data: subscriptions, error: subError } = await supabase
-        .from("push_subscriptions")
-        .select("id, endpoint, p256dh, auth")
-        .eq("user_id", reminder.user_id)
-        .eq("is_active", true);
-
-      if (subError) {
-        console.error(`Error querying push subscriptions for user ${reminder.user_id}:`, subError);
-        continue;
-      }
-
-      const activeSubs = subscriptions || [];
-      const pushPayload = JSON.stringify({
-        title: reminder.title,
-        body: reminder.message,
-        target_path: reminder.target_path || "/subscriptions",
-        notification_id: reminder.notification_id,
-      });
-
-      let deliveredForReminder = 0;
-
-      for (const sub of activeSubs) {
-        try {
-          const response = await fetch(sub.endpoint, {
+      try {
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/send-push`,
+          {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
-              TTL: "86400",
+              "Content-Type":
+                "application/json",
+              "x-kash-push-secret":
+                pushInternalSecret,
             },
-            body: pushPayload,
+            body: JSON.stringify({
+              user_id:
+                reminder.user_id,
+              notification_id:
+                reminder.notification_id,
+              title:
+                reminder.title,
+              message:
+                reminder.message,
+              target_path:
+                reminder.target_path ||
+                "/subscriptions",
+            }),
+          },
+        );
+
+        let pushResult:
+          | SendPushResponse
+          | null = null;
+
+        try {
+          pushResult =
+            await response.json();
+        } catch {
+          pushResult = null;
+        }
+
+        const delivered =
+          pushResult?.delivered ?? 0;
+
+        const devices =
+          pushResult?.total_devices ?? 0;
+
+        const expired =
+          pushResult?.expired_deactivated ??
+          0;
+
+        totalPushesDelivered += delivered;
+        totalDevicesTargeted += devices;
+        totalExpiredDeactivated += expired;
+
+        if (!response.ok) {
+          const message =
+            pushResult?.error ??
+            `send-push returned HTTP ${response.status}`;
+
+          console.error(
+            `send-push failed for notification ${reminder.notification_id}: ${message}`,
+          );
+
+          /*
+           * IMPORTANT:
+           *
+           * Do not fail the reminder itself.
+           * In-app notification has already been persisted.
+           */
+          details.push({
+            notification_id:
+              reminder.notification_id,
+            user_id:
+              reminder.user_id,
+            title:
+              reminder.title,
+            push_success: false,
+            delivered,
+            devices_targeted: devices,
+            expired_deactivated:
+              expired,
+            error: message,
           });
 
-          if (response.status === 201 || response.status === 200) {
-            deliveredForReminder++;
-            totalPushesDelivered++;
-          } else if (response.status === 404 || response.status === 410) {
-            // Subscription expired or unregistered by browser
-            expiredSubIds.push(sub.id);
-          }
-        } catch (err) {
-          console.error(`Failed to dispatch push to endpoint for subscription ${sub.id}:`, err);
+          continue;
         }
+
+        details.push({
+          notification_id:
+            reminder.notification_id,
+          user_id:
+            reminder.user_id,
+          title:
+            reminder.title,
+          push_success: true,
+          delivered,
+          devices_targeted: devices,
+          expired_deactivated:
+            expired,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to invoke send-push for notification ${reminder.notification_id}:`,
+          error,
+        );
+
+        details.push({
+          notification_id:
+            reminder.notification_id,
+          user_id:
+            reminder.user_id,
+          title:
+            reminder.title,
+          push_success: false,
+          delivered: 0,
+          devices_targeted: 0,
+          expired_deactivated: 0,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unknown send-push invocation error",
+        });
       }
-
-      processedSummary.push({
-        notification_id: reminder.notification_id,
-        user_id: reminder.user_id,
-        title: reminder.title,
-        devices_targeted: activeSubs.length,
-      });
     }
 
-    // 4. Deactivate expired subscriptions if any
-    if (expiredSubIds.length > 0) {
-      await supabase
-        .from("push_subscriptions")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
-        .in("id", expiredSubIds);
-    }
+    // ============================================================
+    // 7. SUCCESS
+    // ============================================================
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        reminders_processed: reminders.length,
-        pushes_delivered: totalPushesDelivered,
-        expired_subscriptions_deactivated: expiredSubIds.length,
-        details: processedSummary,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({
+      success: true,
+      reminders_processed:
+        reminders.length,
+      pushes_delivered:
+        totalPushesDelivered,
+      devices_targeted:
+        totalDevicesTargeted,
+      expired_subscriptions_deactivated:
+        totalExpiredDeactivated,
+      details,
+    });
   } catch (error) {
-    console.error("process-reminders error:", error);
-    return new Response(
-      JSON.stringify({
+    console.error(
+      "process-reminders error:",
+      error,
+    );
+
+    return jsonResponse(
+      {
         success: false,
-        error: error instanceof Error ? error.message : "Internal Server Error",
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        error:
+          error instanceof Error
+            ? error.message
+            : "Internal Server Error",
+      },
+      500,
     );
   }
 });
