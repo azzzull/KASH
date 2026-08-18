@@ -57,6 +57,7 @@ import {
 import { formatCurrency, toNumber } from "../lib/money";
 import type {
   SharedSavingsBalance,
+  SharedSavingsInvite,
   SharedSavingsLedger,
   SharedSavingsMemberShare,
   SharedSavingsRequest,
@@ -72,6 +73,7 @@ export function SharedSavingsDetailPage() {
   const [members, setMembers] = useState<SharedSavingsMemberShare[]>([]);
   const [requests, setRequests] = useState<SharedSavingsRequest[]>([]);
   const [ledger, setLedger] = useState<SharedSavingsLedger[]>([]);
+  const [invites, setInvites] = useState<SharedSavingsInvite[]>([]);
   const [approvers, setApprovers] = useState<string[]>([]);
   const [myShare, setMyShare] = useState(0);
   const [isOwner, setIsOwner] = useState(false);
@@ -109,6 +111,7 @@ export function SharedSavingsDetailPage() {
       setMembers(detail.members);
       setRequests(detail.requests);
       setLedger(detail.ledger);
+      setInvites(detail.invites ?? []);
       setApprovers(detail.approvers);
       setMyShare(detail.myShare);
       setIsOwner(detail.isOwner);
@@ -565,12 +568,51 @@ export function SharedSavingsDetailPage() {
               );
             })}
           </div>
+
+          {/* Pending Sent Invites */}
+          {invites.length > 0 && (
+            <div className="space-y-3 pt-3">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Undangan Terkirim ({invites.length})
+              </h4>
+              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                {invites.map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between p-3.5 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <Mail size={16} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-900 truncate">{inv.invited_email}</p>
+                        <p className="text-[11px] text-slate-500">
+                          Berlaku hingga:{" "}
+                          {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
+                            new Date(inv.expires_at)
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-800 shrink-0">
+                      Menunggu Konfirmasi
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
       {/* Tab 2: Requests & Approvals */}
       {activeTab === "requests" && (
         <section className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+            <span className="font-extrabold text-slate-900">Permintaan Transaksi:</span> Tab ini memproses transaksi
+            keuangan (<span className="font-bold text-kash-emeraldDark">Setoran</span>,{" "}
+            <span className="font-bold text-blue-700">Penarikan Porsi</span>, atau{" "}
+            <span className="font-bold text-amber-700">Pengeluaran Bersama</span>) yang diajukan oleh anggota.
+          </div>
+
           {/* Sub-filter tabs */}
           <div className="flex items-center gap-2">
             {(["pending", "approved", "rejected", "all"] as const).map((filter) => (

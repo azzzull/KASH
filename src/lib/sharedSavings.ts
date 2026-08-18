@@ -119,6 +119,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
   members: SharedSavingsMemberShare[];
   requests: SharedSavingsRequest[];
   ledger: SharedSavingsLedger[];
+  invites: SharedSavingsInvite[];
   approvers: string[]; // user_ids
   myShare: number;
   isOwner: boolean;
@@ -135,6 +136,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     requestsResult,
     ledgerResult,
     walletsResult,
+    invitesResult,
   ] = await Promise.all([
     supabase
       .from("shared_savings_balance_view")
@@ -163,6 +165,13 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     supabase
       .from("wallets")
       .select("id, name"),
+    supabase
+      .from("shared_savings_invites")
+      .select("*")
+      .eq("shared_savings_id", spaceId)
+      .eq("status", "pending")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false }),
   ]);
 
   if (spaceResult.error) throw spaceResult.error;
@@ -212,6 +221,10 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     amount: toNumber(l.amount),
   }));
 
+  const invites: SharedSavingsInvite[] = (invitesResult.data ?? []).map((inv) => ({
+    ...inv,
+  }));
+
   return {
     space: {
       ...space,
@@ -223,6 +236,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     members,
     requests,
     ledger,
+    invites,
     approvers: approverIds,
     myShare,
     isOwner,
