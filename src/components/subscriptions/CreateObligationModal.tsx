@@ -60,7 +60,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
           setWallets(walRes.data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const isInstallmentType = type === "paylater" || type === "installment";
@@ -199,11 +199,10 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                     key={item.id}
                     type="button"
                     onClick={() => handleTypeChange(item.id as RecurringObligationType)}
-                    className={`rounded-lg py-2.5 text-center text-xs font-extrabold transition ${
-                      type === item.id
+                    className={`rounded-lg py-2.5 text-center text-xs font-extrabold transition ${type === item.id
                         ? "bg-kash-emerald text-white shadow-sm"
                         : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    }`}
+                      }`}
                   >
                     {item.label}
                   </button>
@@ -309,11 +308,10 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                     key={preset.count}
                     type="button"
                     onClick={() => setInstallmentCount(preset.count)}
-                    className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${
-                      installmentCount === preset.count
+                    className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${installmentCount === preset.count
                         ? "bg-kash-emerald text-white shadow-sm"
                         : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-                    }`}
+                      }`}
                   >
                     {preset.label}
                   </button>
@@ -358,7 +356,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
                 <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  First Due Date (Tanggal Jatuh Tempo) *
+                  First Due Date *
                 </span>
                 <input
                   type="date"
@@ -428,11 +426,10 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                       key={opt.value}
                       type="button"
                       onClick={() => toggleReminderOffset(opt.value)}
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
-                        active
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${active
                           ? "bg-kash-selected text-kash-emeraldDark ring-1 ring-kash-emerald"
                           : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       <Bell size={13} />
                       {opt.label}
