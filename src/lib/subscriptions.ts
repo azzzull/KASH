@@ -332,32 +332,34 @@ export async function deleteRecurringObligation(
   id: string,
 ): Promise<{ error: Error | null }> {
   try {
-    const userId = await getAuthenticatedUserId();
+    const { error: rpcError } = await (supabase.rpc as any)("delete_recurring_obligation", {
+      p_obligation_id: id,
+    });
 
-    // 1. Delete associated notification reminder logs
-    await supabase
-      .from("notification_reminder_logs")
-      .delete()
-      .eq("obligation_id", id)
-      .eq("user_id", userId);
+    if (rpcError) {
+      // Fallback: direct table deletion
+      const userId = await getAuthenticatedUserId();
+      await supabase
+        .from("notification_reminder_logs")
+        .delete()
+        .eq("obligation_id", id)
+        .eq("user_id", userId);
 
-    // 2. Delete associated payment occurrences
-    const { error: payErr } = await supabase
-      .from("recurring_payments")
-      .delete()
-      .eq("obligation_id", id)
-      .eq("user_id", userId);
+      await supabase
+        .from("recurring_payments")
+        .delete()
+        .eq("obligation_id", id)
+        .eq("user_id", userId);
 
-    if (payErr) throw payErr;
+      const { error: obErr } = await supabase
+        .from("recurring_obligations")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", userId);
 
-    // 3. Delete the recurring obligation
-    const { error: obErr } = await supabase
-      .from("recurring_obligations")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId);
+      if (obErr) throw obErr;
+    }
 
-    if (obErr) throw obErr;
     return { error: null };
   } catch (error) {
     return { error: error as Error };
