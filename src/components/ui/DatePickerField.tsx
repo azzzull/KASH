@@ -1,4 +1,5 @@
-import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "@headlessui/react";
+import { Calendar as CalendarIcon, Check, ChevronDown, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type DatePickerFieldProps = {
@@ -31,6 +32,9 @@ const MONTH_NAMES = [
 ];
 
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => padZero(i));
+const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => padZero(i));
 
 function padZero(n: number): string {
   return String(n).padStart(2, "0");
@@ -79,6 +83,45 @@ function formatDisplayString(valueStr: string, enableTime: boolean): string {
   return `${dateFormatted}, ${parsed.hours}:${parsed.minutes}`;
 }
 
+function TimeDropdown({
+  ariaLabel,
+  onChange,
+  options,
+  value,
+}: {
+  ariaLabel: string;
+  onChange: (val: string) => void;
+  options: string[];
+  value: string;
+}) {
+  return (
+    <Listbox value={value} onChange={onChange}>
+      <div className="relative">
+        <ListboxButton
+          aria-label={ariaLabel}
+          className="group flex h-8 items-center justify-between gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 transition hover:border-kash-emerald/50 hover:bg-kash-selected/40 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-[rgba(16,185,129,0.20)]"
+        >
+          <span>{value}</span>
+          <ChevronDown size={13} className="text-slate-600 transition group-data-[open]:rotate-180" />
+        </ListboxButton>
+
+        <ListboxOptions className="absolute z-60 bottom-full mb-1.5 max-h-48 w-18 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none">
+          {options.map((opt) => (
+            <ListboxOption
+              key={opt}
+              value={opt}
+              className="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold text-slate-700 transition data-[active]:bg-kash-selected data-[active]:text-kash-emerald data-[selected]:font-black data-[selected]:text-kash-emeraldDark"
+            >
+              <span>{opt}</span>
+              <Check className="hidden group-data-[selected]:block text-kash-emerald" size={12} />
+            </ListboxOption>
+          ))}
+        </ListboxOptions>
+      </div>
+    </Listbox>
+  );
+}
+
 export function DatePickerField({
   className = "",
   disabled = false,
@@ -104,6 +147,7 @@ export function DatePickerField({
   const [selectedMinutes, setSelectedMinutes] = useState(() => parsedValue.minutes);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   // Sync internal state when external value changes
   useEffect(() => {
@@ -115,6 +159,18 @@ export function DatePickerField({
       setSelectedMinutes(p.minutes);
     }
   }, [value]);
+
+  // Auto-scroll into view when opened
+  useEffect(() => {
+    if (isOpen && popoverRef.current) {
+      // Smoothly scroll popover into view if cut off
+      popoverRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+  }, [isOpen]);
 
   // Click outside to close
   useEffect(() => {
@@ -156,12 +212,16 @@ export function DatePickerField({
     }
   };
 
-  const handleTimeChange = (newHours: string, newMinutes: string) => {
+  const handleHourChange = (newHours: string) => {
     setSelectedHours(newHours);
+    const currentDatePart = parsedValue.dateStr;
+    onChange(`${currentDatePart}T${newHours}:${selectedMinutes}`);
+  };
+
+  const handleMinuteChange = (newMinutes: string) => {
     setSelectedMinutes(newMinutes);
     const currentDatePart = parsedValue.dateStr;
-    const nextVal = `${currentDatePart}T${newHours}:${newMinutes}`;
-    onChange(nextVal);
+    onChange(`${currentDatePart}T${selectedHours}:${newMinutes}`);
   };
 
   const handleSetNow = () => {
@@ -279,7 +339,10 @@ export function DatePickerField({
 
       {/* Popover Calendar Container */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-100 sm:w-80">
+        <div
+          ref={popoverRef}
+          className="absolute z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-100 sm:w-80"
+        >
           {/* Header Month / Year Navigation */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <button
@@ -345,7 +408,7 @@ export function DatePickerField({
             })}
           </div>
 
-          {/* Optional Time Picker Section (Jam & Menit) */}
+          {/* Standardized Custom Time Picker Section (Jam & Menit) */}
           {enableTime && (
             <div className="mt-3 border-t border-slate-100 pt-3">
               <div className="flex items-center justify-between">
@@ -355,35 +418,23 @@ export function DatePickerField({
                 </span>
 
                 <div className="flex items-center gap-1.5">
-                  {/* Hours */}
-                  <select
-                    aria-label="Hours"
+                  {/* Hours Dropdown */}
+                  <TimeDropdown
+                    ariaLabel="Pilih Jam"
                     value={selectedHours}
-                    onChange={(e) => handleTimeChange(e.target.value, selectedMinutes)}
-                    className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-900 focus:border-kash-emerald focus:ring-2 focus:ring-[rgba(16,185,129,0.20)]"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => padZero(i)).map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
-                    ))}
-                  </select>
+                    options={HOUR_OPTIONS}
+                    onChange={handleHourChange}
+                  />
 
-                  <span className="text-xs font-bold text-slate-600">:</span>
+                  <span className="text-xs font-black text-slate-700">:</span>
 
-                  {/* Minutes */}
-                  <select
-                    aria-label="Minutes"
+                  {/* Minutes Dropdown */}
+                  <TimeDropdown
+                    ariaLabel="Pilih Menit"
                     value={selectedMinutes}
-                    onChange={(e) => handleTimeChange(selectedHours, e.target.value)}
-                    className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-900 focus:border-kash-emerald focus:ring-2 focus:ring-[rgba(16,185,129,0.20)]"
-                  >
-                    {Array.from({ length: 60 }, (_, i) => padZero(i)).map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
+                    options={MINUTE_OPTIONS}
+                    onChange={handleMinuteChange}
+                  />
                 </div>
               </div>
             </div>
