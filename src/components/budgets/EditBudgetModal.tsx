@@ -1,10 +1,11 @@
-import { Check, Lock, X } from "lucide-react";
+import { Check, Lock, Plus, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { getActiveCategories } from "../../lib/categories";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { updateBudget } from "../../lib/budgets";
 import type { BudgetWithProgress, Category } from "../../types/domain";
+import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
@@ -30,6 +31,7 @@ export function EditBudgetModal({
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
     budget.included_category_ids ?? []
   );
+  const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
@@ -136,9 +138,19 @@ export function EditBudgetModal({
             </label>
           ) : (
             <div>
-              <label className="block text-sm font-bold text-slate-900 mb-1.5">
-                Kategori Pengeluaran Amplop ({selectedCategoryIds.length} dipilih)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-bold text-slate-900">
+                  Kategori Pengeluaran Amplop ({selectedCategoryIds.length} dipilih)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCategoryModal(true)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  Tambah Kategori
+                </button>
+              </div>
               <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 p-2 space-y-1.5 bg-slate-50/50">
                 {categories.map((c) => {
                   const isChecked = selectedCategoryIds.includes(c.id);
@@ -223,6 +235,20 @@ export function EditBudgetModal({
             </Button>
           </div>
         </form>
+
+        <QuickCreateCategoryModal
+          isOpen={showQuickCategoryModal}
+          categoryType="expense"
+          onClose={() => setShowQuickCategoryModal(false)}
+          onCreated={(newCat) => {
+            setCategories((prev) => {
+              const exists = prev.some((c) => c.id === newCat.id);
+              return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
+            });
+            setSelectedCategoryIds((prev) => (prev.includes(newCat.id) ? prev : [...prev, newCat.id]));
+            setShowQuickCategoryModal(false);
+          }}
+        />
       </div>
     </div>
   );

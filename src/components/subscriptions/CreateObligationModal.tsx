@@ -6,6 +6,7 @@ import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } fr
 import { createRecurringObligation, type CreateRecurringObligationInput } from "../../lib/subscriptions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import type { Category, RecurringFrequency, RecurringObligationType } from "../../types/domain";
+import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
@@ -39,6 +40,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
   const [frequency, setFrequency] = useState<RecurringFrequency>("monthly");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [categoryId, setCategoryId] = useState("");
+  const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [defaultWalletId, setDefaultWalletId] = useState("");
   const [reminderOffsets, setReminderOffsets] = useState<number[]>([7, 3, 1, 0]);
   const [overdueReminder, setOverdueReminder] = useState(true);
@@ -342,8 +344,24 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
               <SelectField
                 id="obligation-category"
                 label="Expense Category"
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickCategoryModal(true)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                  >
+                    <Plus size={13} strokeWidth={2.5} />
+                    Tambah
+                  </button>
+                }
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === "__create_new__") {
+                    setShowQuickCategoryModal(true);
+                  } else {
+                    setCategoryId(e.target.value);
+                  }
+                }}
               >
                 <option value="">No Category</option>
                 {categories.map((cat) => (
@@ -351,6 +369,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                     {cat.name}
                   </option>
                 ))}
+                <option value="__create_new__">+ Tambah Kategori Baru...</option>
               </SelectField>
             </div>
 
@@ -416,6 +435,20 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             </Button>
           </div>
         </form>
+
+        <QuickCreateCategoryModal
+          isOpen={showQuickCategoryModal}
+          categoryType="expense"
+          onClose={() => setShowQuickCategoryModal(false)}
+          onCreated={(newCat) => {
+            setCategories((prev) => {
+              const exists = prev.some((c) => c.id === newCat.id);
+              return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
+            });
+            setCategoryId(newCat.id);
+            setShowQuickCategoryModal(false);
+          }}
+        />
       </div>
     </div>
   );

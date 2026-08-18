@@ -1,10 +1,11 @@
-import { Check, FolderPlus, Layers, Tag, X } from "lucide-react";
+import { Check, FolderPlus, Layers, Plus, Tag, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { getActiveCategories } from "../../lib/categories";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { createCategoryBudget, createEnvelopeBudget } from "../../lib/budgets";
 import type { Category, BudgetType } from "../../types/domain";
+import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
@@ -23,6 +24,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [startPeriod, setStartPeriod] = useState(() => {
     if (initialMonth) return `${initialMonth.substring(0, 7)}-01`;
@@ -199,21 +201,48 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             <SelectField
               id="budget-category"
               label="Pilih Kategori Pengeluaran"
+              action={
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCategoryModal(true)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  Tambah Kategori
+                </button>
+              }
               required
               value={categoryId}
-              onChange={(e) => handleCategoryChange(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value === "__create_new__") {
+                  setShowQuickCategoryModal(true);
+                } else {
+                  handleCategoryChange(e.target.value);
+                }
+              }}
             >
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
+              <option value="__create_new__">+ Tambah Kategori Baru...</option>
             </SelectField>
           ) : (
             <div>
-              <label className="block text-sm font-bold text-slate-900 mb-1.5">
-                Kategori Pengeluaran Tergabung ({selectedCategoryIds.length} dipilih)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-bold text-slate-900">
+                  Kategori Pengeluaran Tergabung ({selectedCategoryIds.length} dipilih)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCategoryModal(true)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  Tambah Kategori
+                </button>
+              </div>
               <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2.5 space-y-1.5 bg-slate-50/50">
                 {categories.length === 0 ? (
                   <p className="p-2 text-xs text-slate-600">Tidak ada kategori pengeluaran tersedia.</p>
@@ -322,6 +351,25 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             </Button>
           </div>
         </form>
+
+        <QuickCreateCategoryModal
+          isOpen={showQuickCategoryModal}
+          categoryType="expense"
+          onClose={() => setShowQuickCategoryModal(false)}
+          onCreated={(newCat) => {
+            setCategories((prev) => {
+              const exists = prev.some((c) => c.id === newCat.id);
+              return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
+            });
+            if (type === "category") {
+              setCategoryId(newCat.id);
+              setName(newCat.name);
+            } else {
+              setSelectedCategoryIds((prev) => (prev.includes(newCat.id) ? prev : [...prev, newCat.id]));
+            }
+            setShowQuickCategoryModal(false);
+          }}
+        />
       </div>
     </div>
   );
