@@ -167,7 +167,7 @@ export function EditBudgetModal({
                             : "border-slate-300 bg-white"
                         }`}
                       >
-                        {isChecked && <Check size={11} strokeWidth={3.5} />}
+                        {isChecked && <Check size={11} strokeWidth={3.5} className="text-white" stroke="white" />}
                       </div>
                     </button>
                   );
