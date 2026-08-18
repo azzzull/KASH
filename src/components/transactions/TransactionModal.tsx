@@ -248,9 +248,10 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             />
 
             {mode !== "transfer" ? (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="block text-sm font-bold text-slate-900">Category</span>
+              <SelectField
+                id={`${mode}-category`}
+                label="Category"
+                action={
                   <button
                     type="button"
                     onClick={() => setShowQuickCategoryModal(true)}
@@ -259,27 +260,23 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                     <Plus size={13} strokeWidth={2.5} />
                     Tambah Kategori
                   </button>
-                </div>
-                <SelectField
-                  id={`${mode}-category`}
-                  label="Category"
-                  onChange={(event) => {
-                    if (event.target.value === "__create_new__") {
-                      setShowQuickCategoryModal(true);
-                    } else {
-                      setCategoryId(event.target.value);
-                    }
-                  }}
-                  value={categoryId}
-                >
-                  {filteredCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                  <option value="__create_new__">+ Tambah Kategori Baru...</option>
-                </SelectField>
-              </div>
+                }
+                onChange={(event) => {
+                  if (event.target.value === "__create_new__") {
+                    setShowQuickCategoryModal(true);
+                  } else {
+                    setCategoryId(event.target.value);
+                  }
+                }}
+                value={categoryId}
+              >
+                {filteredCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+                <option value="__create_new__">+ Tambah Kategori Baru...</option>
+              </SelectField>
             ) : null}
 
             <SelectField id={`${mode}-wallet`} label={mode === "transfer" ? "From" : "Wallet"} onChange={(event) => setWalletId(event.target.value)} value={walletId}>

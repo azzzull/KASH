@@ -10,12 +10,13 @@ type SelectFieldChangeEvent = {
 
 type SelectFieldProps = {
   "aria-label"?: string;
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
   defaultValue?: string;
   disabled?: boolean;
   id?: string;
-  label: string;
+  label?: string;
   name?: string;
   onChange?: (event: SelectFieldChangeEvent) => void;
   required?: boolean;
@@ -48,7 +49,7 @@ function getOptions(children: ReactNode): SelectOption[] {
   });
 }
 
-export function SelectField({ "aria-label": ariaLabel, children, className = "", defaultValue, disabled, id, label, name, onChange, required, value }: SelectFieldProps) {
+export function SelectField({ "aria-label": ariaLabel, action, children, className = "", defaultValue, disabled, id, label, name, onChange, required, value }: SelectFieldProps) {
   const options = useMemo(() => getOptions(children), [children]);
   const fallbackValue = defaultValue ?? options.find((option) => !option.disabled)?.value ?? "";
   const [internalValue, setInternalValue] = useState(fallbackValue);
@@ -64,8 +65,11 @@ export function SelectField({ "aria-label": ariaLabel, children, className = "",
     <Listbox disabled={disabled} value={selectedValue} onChange={handleChange}>
       <div className={`relative block w-full max-w-full min-w-0 ${className}`}>
         {name ? <input name={name} required={required} type="hidden" value={selectedValue} /> : null}
-        {label ? (
-          <span className="block text-sm font-bold text-slate-900">{label}</span>
+        {(label || action) ? (
+          <div className="flex items-center justify-between gap-2">
+            {label ? <span className="block text-sm font-bold text-slate-900">{label}</span> : <span />}
+            {action}
+          </div>
         ) : null}
         <ListboxButton
           aria-label={ariaLabel}
