@@ -1,4 +1,4 @@
-import { FolderPlus, Layers, Tag, X } from "lucide-react";
+import { Check, FolderPlus, Layers, Tag, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { getActiveCategories } from "../../lib/categories";
@@ -238,12 +238,15 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                           />
                           {c.name}
                         </span>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {}} // Handled by button click
-                          className="h-4 w-4 rounded text-kash-emerald focus:ring-kash-emerald"
-                        />
+                        <div
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                            isChecked
+                              ? "border-kash-emerald bg-kash-emerald text-white"
+                              : "border-slate-300 bg-white"
+                          }`}
+                        >
+                          {isChecked && <Check size={11} strokeWidth={3.5} />}
+                        </div>
                       </button>
                     );
                   })

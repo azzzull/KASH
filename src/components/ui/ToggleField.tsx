@@ -16,7 +16,7 @@ export function ToggleField({ description, id, label, ...props }: ToggleFieldPro
         {description ? <span className="mt-1 block text-xs font-medium text-slate-700">{description}</span> : null}
       </span>
       <input
-        className="h-5 w-5 rounded border-slate-300 text-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
+        className="h-5 w-5 rounded border-slate-300 accent-kash-emerald text-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
         id={id}
         type="checkbox"
         {...props}

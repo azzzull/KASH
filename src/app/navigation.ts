@@ -56,11 +56,11 @@ export const navGroups: NavGroup[] = [
 export const mobilePrimaryItems: NavItem[] = [
     { label: "Home", path: "/dashboard", icon: Home },
     { label: "Transactions", path: "/transactions", icon: ReceiptText },
-    { label: "Budgets", path: "/budgets", icon: Scale },
     { label: "Analytics", path: "/analytics", icon: BarChart3 },
 ];
 
 export const mobileMoreItems: NavItem[] = [
+    { label: "Budgets", path: "/budgets", icon: Scale },
     { label: "Wallets", path: "/wallets", icon: WalletCards },
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
     { label: "Goals", path: "/goals", icon: Crosshair },
