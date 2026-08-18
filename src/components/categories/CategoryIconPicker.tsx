@@ -1,6 +1,6 @@
 import { Check, ChevronDown, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
-import { categoryIconOptions, getCategoryIcon, type CategoryIconOption } from "../../lib/categoryMeta";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { categoryIconOptions, getCategoryIcon } from "../../lib/categoryMeta";
 
 type CategoryIconPickerProps = {
   value: string;
@@ -28,11 +28,13 @@ export function CategoryIconPicker({
   value,
   onChange,
   accentColor = "#10B981",
-  label = "Pilih Ikon",
+  label = "Ikon Kategori",
 }: CategoryIconPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [activeGroup, setActiveGroup] = useState("Semua");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedOption = useMemo(
     () => categoryIconOptions.find((opt) => opt.value === value) ?? categoryIconOptions[0],
@@ -55,8 +57,39 @@ export function CategoryIconPicker({
     });
   }, [search, activeGroup]);
 
+  // Handle outside click & Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    // Auto-focus search input when opened
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      clearTimeout(timer);
+    };
+  }, [isOpen]);
+
   return (
-    <div className="w-full">
+    <div ref={containerRef} className={`relative block w-full max-w-full min-w-0 ${isOpen ? "z-40" : "z-10"}`}>
       {label && (
         <label className="block text-sm font-bold text-slate-900 mb-1.5">{label}</label>
       )}
@@ -64,8 +97,12 @@ export function CategoryIconPicker({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
-        className="flex h-12 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left transition hover:border-kash-emerald/50 hover:bg-kash-selected/30 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`flex h-11 w-full items-center justify-between gap-3 rounded-lg border bg-white px-3 text-left transition ${
+          isOpen
+            ? "border-kash-emerald ring-4 ring-[rgba(16,185,129,0.20)] shadow-xs"
+            : "border-slate-200 hover:border-kash-emerald/50 hover:bg-kash-selected/30"
+        }`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <span
@@ -78,138 +115,127 @@ export function CategoryIconPicker({
             {selectedOption.label}
           </span>
         </div>
-        <ChevronDown size={17} className="shrink-0 text-slate-600" />
+        <ChevronDown
+          size={17}
+          className={`shrink-0 text-slate-600 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-kash-emerald" : ""
+          }`}
+        />
       </button>
 
-      {/* Icon Picker Modal */}
+      {/* Dropdown Popover (Compact DatePicker-like popup) */}
       {isOpen && (
-        <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="flex max-h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-              <div className="flex items-center gap-2.5">
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-xs"
-                  style={{ backgroundColor: accentColor }}
-                >
-                  <CurrentIcon size={18} strokeWidth={2.4} />
-                </span>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900">Koleksi Ikon Kategori</h3>
-                  <p className="text-[11px] font-semibold text-slate-600">
-                    Pilih ikon yang paling sesuai untuk kategori ini
-                  </p>
-                </div>
-              </div>
+        <div
+          className="absolute left-0 top-[calc(100%+6px)] z-50 flex max-h-72 w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
+          style={{ width: "100%", minWidth: "280px" }}
+        >
+          {/* Search bar inside popup */}
+          <div className="relative mb-2 shrink-0">
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600"
+            />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Cari ikon (kopi, bensin, wifi, kado, gym)..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/70 pl-8 pr-7 text-xs font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:bg-white focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+            />
+            {search && (
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-900"
               >
-                <X size={18} />
+                <X size={12} />
               </button>
-            </div>
+            )}
+          </div>
 
-            {/* Search & Group Filter Bar */}
-            <div className="border-b border-slate-100 p-3 space-y-2 bg-slate-50/50">
-              <div className="relative">
-                <Search
-                  size={15}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
-                />
-                <input
-                  type="text"
-                  placeholder="Cari ikon (misal: kopi, bensin, wifi, kado, gym, game)..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-xs font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
-                />
+          {/* Group Filter Chips */}
+          <div className="mb-2 flex shrink-0 gap-1 overflow-x-auto pb-1 no-scrollbar text-xs">
+            {GROUPS.map((grp) => (
+              <button
+                key={grp}
+                type="button"
+                onClick={() => setActiveGroup(grp)}
+                className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold transition ${
+                  activeGroup === grp
+                    ? "bg-kash-emerald text-white shadow-xs"
+                    : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {grp}
+              </button>
+            ))}
+          </div>
+
+          {/* Icons Grid (Compact & Scrollable) */}
+          <div className="flex-1 overflow-y-auto p-0.5 no-scrollbar max-h-40 min-h-[120px]">
+            {filteredIcons.length === 0 ? (
+              <div className="py-6 text-center text-xs font-semibold text-slate-600">
+                Tidak ada ikon untuk &quot;{search}&quot;.
               </div>
+            ) : (
+              <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5">
+                {filteredIcons.map((opt) => {
+                  const IconComp = opt.icon;
+                  const isSelected = opt.value === value;
 
-              {/* Group Chips */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-                {GROUPS.map((grp) => (
-                  <button
-                    key={grp}
-                    type="button"
-                    onClick={() => setActiveGroup(grp)}
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
-                      activeGroup === grp
-                        ? "bg-kash-emerald text-white shadow-xs"
-                        : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    {grp}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Icons Grid */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {filteredIcons.length === 0 ? (
-                <div className="py-10 text-center text-xs font-semibold text-slate-600">
-                  Tidak ditemukan ikon dengan kata kunci &quot;{search}&quot;.
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                  {filteredIcons.map((opt) => {
-                    const IconComp = opt.icon;
-                    const isSelected = opt.value === value;
-
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => {
-                          onChange(opt.value);
-                          setIsOpen(false);
-                        }}
-                        className={`group relative flex flex-col items-center justify-center rounded-xl p-2.5 text-center transition ${
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.value);
+                        setIsOpen(false);
+                      }}
+                      className={`group relative flex flex-col items-center justify-center rounded-lg p-1.5 text-center transition ${
+                        isSelected
+                          ? "border-2 border-kash-emerald bg-kash-selected/70 text-kash-emeraldDark"
+                          : "border border-slate-100 bg-white hover:border-kash-emerald/40 hover:bg-slate-50 text-slate-700"
+                      }`}
+                      title={opt.label}
+                    >
+                      <span
+                        className={`flex h-7 w-7 items-center justify-center rounded-md transition ${
                           isSelected
-                            ? "border-2 border-kash-emerald bg-kash-selected/70 text-kash-emeraldDark shadow-xs"
-                            : "border border-slate-100 bg-white hover:border-kash-emerald/40 hover:bg-slate-50 text-slate-700"
+                            ? "text-white shadow-xs"
+                            : "bg-slate-100 group-hover:bg-slate-200 text-slate-700"
                         }`}
-                        title={opt.label}
+                        style={{
+                          backgroundColor: isSelected ? accentColor : undefined,
+                        }}
                       >
-                        <span
-                          className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${
-                            isSelected
-                              ? "text-white shadow-xs"
-                              : "bg-slate-100 group-hover:bg-slate-200 text-slate-700"
-                          }`}
-                          style={{
-                            backgroundColor: isSelected ? accentColor : undefined,
-                          }}
-                        >
-                          <IconComp size={18} strokeWidth={2.2} />
+                        <IconComp size={15} strokeWidth={2.2} />
+                      </span>
+                      <span className="mt-1 line-clamp-1 w-full text-[9px] font-bold text-slate-600 group-hover:text-slate-900">
+                        {opt.label.split(" ")[0]}
+                      </span>
+                      {isSelected && (
+                        <span className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-kash-emerald text-white">
+                          <Check size={8} strokeWidth={3.5} />
                         </span>
-                        <span className="mt-1.5 line-clamp-1 w-full text-[10px] font-bold text-slate-600 group-hover:text-slate-900">
-                          {opt.label.split(" ")[0]}
-                        </span>
-                        {isSelected && (
-                          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-kash-emerald text-white">
-                            <Check size={10} strokeWidth={3.5} />
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
-              <span>{filteredIcons.length} ikon tersedia</span>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="font-bold text-kash-emerald hover:text-kash-emeraldDark"
-              >
-                Selesai
-              </button>
-            </div>
+          {/* Footer inside popup */}
+          <div className="mt-2 flex shrink-0 items-center justify-between border-t border-slate-100 pt-1.5 text-[10px] font-semibold text-slate-600">
+            <span>{filteredIcons.length} ikon</span>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="font-bold text-kash-emerald hover:text-kash-emeraldDark"
+            >
+              Tutup
+            </button>
           </div>
         </div>
       )}

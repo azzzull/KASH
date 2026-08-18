@@ -163,7 +163,7 @@ export function QuickCreateCategoryModal({
           />
 
           {/* Color Palette Picker */}
-          <div>
+          <div className="relative z-10">
             <label className="block text-sm font-bold text-slate-900 mb-2">
               Warna Kategori
             </label>

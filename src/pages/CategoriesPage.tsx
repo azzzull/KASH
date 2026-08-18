@@ -181,7 +181,7 @@ function CategoryFormModal({
             accentColor={form.color}
             onChange={(selectedIcon) => setForm((current) => ({ ...current, icon: selectedIcon }))}
           />
-          <fieldset>
+          <fieldset className="relative z-10">
             <legend className="text-sm font-bold text-slate-900">Color Accent</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {categoryColors.map((color) => (
