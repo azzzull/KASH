@@ -4,6 +4,8 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Edit2,
   Layers,
   ReceiptText,
@@ -13,7 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { EditBudgetModal } from "../../src/components/budgets/EditBudgetModal";
+import { EditBudgetModal } from "../components/budgets/EditBudgetModal";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
@@ -24,6 +26,27 @@ import { appEvents } from "../lib/appEvents";
 import { archiveBudget, deleteBudget, getBudgetDetail, getBudgetMatchingTransactions } from "../lib/budgets";
 import { formatCurrency } from "../lib/money";
 import type { BudgetWithProgress, Transaction } from "../types/domain";
+
+const MONTH_NAMES = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
+function formatMonthYearLabel(dateStr: string): string {
+  if (!dateStr) return "";
+  const [year, month] = dateStr.split("-").map(Number);
+  return `${MONTH_NAMES[month - 1]} ${year}`;
+}
 
 export function BudgetDetailPage() {
   const { id: budgetId } = useParams<{ id: string }>();
@@ -45,6 +68,15 @@ export function BudgetDetailPage() {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Synchronize state when URL month searchParam changes
+  useEffect(() => {
+    const paramMonth = searchParams.get("month");
+    if (paramMonth) {
+      const normalized = `${paramMonth.substring(0, 7)}-01`;
+      setCurrentMonth((prev) => (prev !== normalized ? normalized : prev));
+    }
+  }, [searchParams]);
 
   const loadData = useCallback(async () => {
     if (!budgetId) return;
@@ -73,6 +105,26 @@ export function BudgetDetailPage() {
   useAppEvent(appEvents.budgetSaved, () => {
     void loadData();
   });
+
+  const handleMonthChange = (newMonth: string) => {
+    const normalized = `${newMonth.substring(0, 7)}-01`;
+    setCurrentMonth(normalized);
+    setSearchParams({ month: normalized }, { replace: true });
+  };
+
+  const handlePrevMonth = () => {
+    const [year, month] = currentMonth.split("-").map(Number);
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    handleMonthChange(`${prevYear}-${String(prevMonth).padStart(2, "0")}-01`);
+  };
+
+  const handleNextMonth = () => {
+    const [year, month] = currentMonth.split("-").map(Number);
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    handleMonthChange(`${nextYear}-${String(nextMonth).padStart(2, "0")}-01`);
+  };
 
   const handleArchive = async () => {
     if (!budgetId) return;
@@ -140,15 +192,41 @@ export function BudgetDetailPage() {
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-5 p-4 md:p-6">
-      {/* Top Breadcrumb & Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Top Breadcrumb, Month Selector & Actions */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link
           to={`/budgets?month=${currentMonth}`}
-          className="flex items-center gap-1.5 text-xs font-extrabold text-slate-600 transition hover:text-kash-emeraldDark"
+          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-600 transition hover:text-kash-emeraldDark"
         >
           <ArrowLeft size={16} />
           Kembali ke Budgets
         </Link>
+
+        {/* Month Selector Bar */}
+        <div className="flex items-center justify-between gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-1 shadow-xs">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Bulan Sebelumnya"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          <div className="flex items-center gap-1.5 px-1.5 text-xs font-extrabold text-slate-800">
+            <Calendar size={14} className="text-kash-emerald" />
+            <span>{formatMonthYearLabel(currentMonth)}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Bulan Berikutnya"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           <Button

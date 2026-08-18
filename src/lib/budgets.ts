@@ -99,11 +99,135 @@ export async function getMonthlyBudgetOverview(periodStart?: string): Promise<Mo
 }
 
 /**
- * Fetch single budget detail by ID for a specific month.
+ * Fetch single budget detail by ID for a specific month with multi-tier fallback.
  */
-export async function getBudgetDetail(budgetId: string, periodStart?: string): Promise<BudgetWithProgress | null> {
-  const list = await getMonthlyBudgets(periodStart);
-  return list.find((b) => b.budget_id === budgetId) ?? null;
+export async function getBudgetDetail(
+  budgetId: string,
+  periodStart?: string,
+): Promise<BudgetWithProgress | null> {
+  const normPeriod = periodStart
+    ? `${periodStart.substring(0, 7)}-01`
+    : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
+
+  // 1. Try finding in the specified month's progress RPC
+  try {
+    const list = await getMonthlyBudgets(normPeriod);
+    const found = list.find((b) => b.budget_id === budgetId);
+    if (found) return found;
+  } catch (err) {
+    console.warn("getMonthlyBudgets RPC error in getBudgetDetail:", err);
+  }
+
+  // 2. Fallback: Query budget record directly from database
+  const { data: budgetRow, error: budgetError } = await supabase
+    .from("budgets")
+    .select("*, category:categories(*)")
+    .eq("id", budgetId)
+    .maybeSingle();
+
+  if (budgetError || !budgetRow) {
+    return null;
+  }
+
+  // If budget start_period is different from requested month, try fetching with its start_period
+  if (budgetRow.start_period && budgetRow.start_period !== normPeriod) {
+    try {
+      const fallbackList = await getMonthlyBudgets(budgetRow.start_period);
+      const foundInStart = fallbackList.find((b) => b.budget_id === budgetId);
+      if (foundInStart) return foundInStart;
+    } catch {
+      // Continue to direct build
+    }
+  }
+
+  // 3. Direct Construction Fallback: Fetch latest version & category mappings
+  const [{ data: versionRows }, { data: envelopeCategories }] = await Promise.all([
+    supabase
+      .from("budget_versions")
+      .select("*")
+      .eq("budget_id", budgetId)
+      .order("effective_from_period", { ascending: false })
+      .limit(1),
+    budgetRow.type === "envelope"
+      ? supabase
+          .from("budget_envelope_categories")
+          .select("category_id, category:categories(id, name)")
+          .eq("envelope_id", budgetId)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const latestVersion = versionRows?.[0];
+  const baseAmount = latestVersion ? toNumber(latestVersion.amount) : 0;
+  const rolloverEnabled = Boolean(latestVersion?.rollover_enabled);
+
+  const includedCategoryIds: string[] =
+    budgetRow.type === "category"
+      ? budgetRow.category_id
+        ? [budgetRow.category_id]
+        : []
+      : ((envelopeCategories as any[]) ?? []).map((ec) => ec.category_id);
+
+  const includedCategoryNames: string[] =
+    budgetRow.type === "category"
+      ? (budgetRow as any).category?.name
+        ? [(budgetRow as any).category.name]
+        : []
+      : ((envelopeCategories as any[]) ?? []).map((ec) => ec.category?.name).filter(Boolean);
+
+  // Compute spending for this month
+  const startDate = `${normPeriod.substring(0, 7)}-01`;
+  const [year, month] = startDate.split("-").map(Number);
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+
+  let spent = 0;
+  if (includedCategoryIds.length > 0) {
+    const { data: txRows } = await supabase
+      .from("transactions")
+      .select("amount")
+      .eq("type", "expense")
+      .eq("status", "completed")
+      .in("category_id", includedCategoryIds)
+      .gte("transaction_date", `${startDate}T00:00:00`)
+      .lt("transaction_date", `${endDate}T00:00:00`);
+
+    spent = (txRows ?? []).reduce((acc, row) => acc + toNumber(row.amount), 0);
+  }
+
+  const effectiveBudget = baseAmount;
+  const remaining = effectiveBudget - spent;
+  const usagePercentage = effectiveBudget > 0 ? (spent / effectiveBudget) * 100 : 0;
+  const status =
+    spent >= effectiveBudget && effectiveBudget > 0
+      ? "over_budget"
+      : effectiveBudget > 0 && spent / effectiveBudget >= 0.8
+      ? "near_limit"
+      : "healthy";
+
+  return {
+    budget_id: budgetRow.id,
+    name: budgetRow.name,
+    type: budgetRow.type,
+    category_id: budgetRow.category_id,
+    category_name: (budgetRow as any).category?.name ?? null,
+    category_icon: (budgetRow as any).category?.icon ?? null,
+    category_color: (budgetRow as any).category?.color ?? null,
+    note: budgetRow.note,
+    repeat_monthly: budgetRow.repeat_monthly,
+    start_period: budgetRow.start_period,
+    end_period: budgetRow.end_period,
+    base_amount: baseAmount,
+    rollover_enabled: rolloverEnabled,
+    rollover_amount: 0,
+    effective_budget: effectiveBudget,
+    spent,
+    remaining,
+    usage_percentage: usagePercentage,
+    status,
+    included_category_ids: includedCategoryIds,
+    included_category_names: includedCategoryNames,
+  };
 }
 
 /**
