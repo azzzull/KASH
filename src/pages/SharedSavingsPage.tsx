@@ -349,40 +349,69 @@ export function SharedSavingsPage() {
             <div className="grid gap-3">
               {invites.map((inv) => {
                 const isResponding = respondingInviteId === inv.id;
+                const target = inv.shared_savings?.target_amount ? toNumber(inv.shared_savings.target_amount) : null;
 
                 return (
                   <div
                     key={inv.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="flex items-start gap-3.5 min-w-0">
                       <span
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
                         style={{ backgroundColor: inv.shared_savings?.color || "#10B981" }}
                       >
-                        <Users size={20} strokeWidth={2.2} />
+                        <Users size={22} strokeWidth={2.2} />
                       </span>
-                      <div className="min-w-0">
-                        <h4 className="text-sm font-extrabold text-slate-900 truncate">
+                      <div className="min-w-0 space-y-1">
+                        <h4 className="text-base font-extrabold text-slate-900 truncate">
                           {inv.shared_savings?.name || "Tabungan Bersama"}
                         </h4>
-                        <p className="text-xs text-slate-600">
-                          Diundang oleh <span className="font-bold text-slate-800">{inv.inviter_name}</span>
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-slate-500">
-                          Berlaku hingga:{" "}
-                          {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(inv.expires_at))}
-                        </p>
+
+                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-600">
+                          <p>
+                            Pemilik (Owner):{" "}
+                            <span className="font-extrabold text-slate-900">{inv.owner_name}</span>
+                          </p>
+                          {inv.inviter_name !== inv.owner_name && (
+                            <p>
+                              Diundang oleh:{" "}
+                              <span className="font-bold text-slate-800">{inv.inviter_name}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-[11px] text-slate-500">
+                          {target !== null && (
+                            <span className="font-semibold text-kash-emeraldDark">
+                              Target: {formatCurrency(target, currency)}
+                            </span>
+                          )}
+                          {inv.shared_savings?.deadline && (
+                            <span>
+                              Deadline:{" "}
+                              {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
+                                new Date(inv.shared_savings.deadline)
+                              )}
+                            </span>
+                          )}
+                          <span>
+                            Undangan berlaku s/d:{" "}
+                            {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
+                              new Date(inv.expires_at)
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
                       <Button
                         type="button"
                         variant="secondary"
                         disabled={isResponding}
                         onClick={() => void handleInviteAction(inv.id, "reject")}
-                        className="min-h-9 px-3 text-xs text-slate-600 hover:text-kash-expense"
+                        className="min-h-9 px-3.5 text-xs text-slate-600 hover:text-kash-expense hover:bg-red-50"
                       >
                         <X size={14} />
                         Tolak

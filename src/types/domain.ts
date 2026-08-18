@@ -433,6 +433,8 @@ export type SharedSavingsInvite = {
   responded_at: string | null;
   shared_savings?: SharedSavings | null;
   inviter_name?: string | null;
+  inviter_email?: string | null;
+  owner_name?: string | null;
 };
 
 export type SharedSavingsRequest = {

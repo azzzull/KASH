@@ -84,7 +84,11 @@ export async function getSharedSavingsSpaces(): Promise<SharedSavingsSpaceSummar
     pendingCountBySpace.set(r.shared_savings_id, (pendingCountBySpace.get(r.shared_savings_id) ?? 0) + 1);
   });
 
-  return spacesData.map((space): SharedSavingsSpaceSummary => {
+  const mySpaces = spacesData.filter((space) => {
+    return space.owner_user_id === userId || userSharesMap.has(space.shared_savings_id);
+  });
+
+  return mySpaces.map((space): SharedSavingsSpaceSummary => {
     const isOwner = space.owner_user_id === userId;
     const isAccountHolder = space.account_holder_user_id === userId;
     const isApprover = approverSet.has(space.shared_savings_id);
@@ -270,10 +274,26 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
     .order("created_at", { ascending: false });
 
   if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const ownerUserIds = Array.from(
+    new Set(data.map((inv: any) => inv.shared_savings?.owner_user_id).filter(Boolean))
+  );
+
+  let ownerMap = new Map<string, string>();
+  if (ownerUserIds.length > 0) {
+    const { data: ownerProfiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", ownerUserIds);
+    ownerMap = new Map((ownerProfiles ?? []).map((p) => [p.id, p.full_name || p.email]));
+  }
 
   return (data ?? []).map((inv: any) => ({
     ...inv,
     inviter_name: inv.inviter?.full_name || inv.inviter?.email || "User",
+    inviter_email: inv.inviter?.email || null,
+    owner_name: ownerMap.get(inv.shared_savings?.owner_user_id) || "User",
   }));
 }
 
