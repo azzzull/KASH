@@ -82,12 +82,18 @@ export function BudgetDetailPage() {
     if (!budgetId) return;
     setLoading(true);
     try {
-      const [bData, txList] = await Promise.all([
-        getBudgetDetail(budgetId, currentMonth),
-        getBudgetMatchingTransactions(budgetId, currentMonth),
-      ]);
+      const bData = await getBudgetDetail(budgetId, currentMonth);
       setBudget(bData);
-      setTransactions(txList);
+      if (bData) {
+        const txList = await getBudgetMatchingTransactions(
+          budgetId,
+          currentMonth,
+          bData.included_category_ids,
+        );
+        setTransactions(txList);
+      } else {
+        setTransactions([]);
+      }
     } catch (err) {
       console.error("Error loading budget detail:", err);
     } finally {

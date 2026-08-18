@@ -338,29 +338,49 @@ export async function deleteBudget(budgetId: string): Promise<boolean> {
 export async function getBudgetMatchingTransactions(
   budgetId: string,
   periodStart: string,
-): Promise<Transaction[]> {
-  const budget = await getBudgetDetail(budgetId, periodStart);
-  if (!budget || !budget.included_category_ids || budget.included_category_ids.length === 0) {
-    return [];
+  targetCategoryIds?: string[],
+): Promise<any[]> {
+  let categoryIds = targetCategoryIds;
+  if (!categoryIds || categoryIds.length === 0) {
+    const budget = await getBudgetDetail(budgetId, periodStart);
+    if (!budget || !budget.included_category_ids || budget.included_category_ids.length === 0) {
+      return [];
+    }
+    categoryIds = budget.included_category_ids;
   }
 
-  // Calculate local month start and end
-  const startDate = `${periodStart.substring(0, 7)}-01`;
-  const [year, month] = periodStart.split("-").map(Number);
+  const normPeriod = periodStart
+    ? `${periodStart.substring(0, 7)}-01`
+    : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
+
+  const [year, month] = normPeriod.split("-").map(Number);
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
   const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("*, category:categories(*), wallet:wallets(*)")
-    .eq("type", "expense")
-    .eq("status", "completed")
-    .in("category_id", budget.included_category_ids)
-    .gte("transaction_date", `${startDate}T00:00:00`)
-    .lt("transaction_date", `${endDate}T00:00:00`)
-    .order("transaction_date", { ascending: false });
+  const [{ data: txRows, error: txError }, { data: catRows }, { data: walRows }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("*")
+      .eq("type", "expense")
+      .eq("status", "completed")
+      .in("category_id", categoryIds)
+      .gte("transaction_date", `${normPeriod}T00:00:00`)
+      .lt("transaction_date", `${endDate}T00:00:00`)
+      .order("transaction_date", { ascending: false }),
+    supabase.from("categories").select("*"),
+    supabase.from("wallets").select("*"),
+  ]);
 
-  if (error) throw error;
-  return (data ?? []) as unknown as Transaction[];
+  if (txError) throw txError;
+
+  const categoriesById = new Map(((catRows as any[]) ?? []).map((c) => [c.id, c]));
+  const walletsById = new Map(((walRows as any[]) ?? []).map((w) => [w.id, w]));
+
+  return ((txRows as any[]) ?? []).map((tx) => ({
+    ...tx,
+    category: tx.category_id ? categoriesById.get(tx.category_id) ?? null : null,
+    wallet: tx.wallet_id ? walletsById.get(tx.wallet_id) ?? null : null,
+    destinationWallet: tx.destination_wallet_id ? walletsById.get(tx.destination_wallet_id) ?? null : null,
+  }));
 }
