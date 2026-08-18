@@ -106,6 +106,11 @@ export type DashboardDebtSummary = {
   }[];
 };
 
+export type DashboardSharedSavingsSummary = {
+  totalShare: number;
+  spaceCount: number;
+};
+
 export type DashboardSummary = {
   period: {
     label: string;
@@ -127,8 +132,9 @@ export type DashboardSummary = {
   wallets: DashboardWalletItem[];
   goals: DashboardGoalItem[];
   debts: DashboardDebtSummary;
-  recentTransactions: DashboardRecentTransaction[];
+  sharedSavings: DashboardSharedSavingsSummary;
   calendarActivity: DashboardCalendarActivity[];
+  recentTransactions: DashboardRecentTransaction[];
 };
 
 export type DashboardSummaryOptions = {
@@ -406,6 +412,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     goalProgressResult,
     counterpartiesResult,
     debtProgressResult,
+    sharedSavingsResult,
   ] = await Promise.all([
     supabase
       .from("wallets")
@@ -452,6 +459,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     supabase.from("goal_progress_view").select("*").eq("user_id", userId),
     supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true }),
     supabase.from("debt_progress_view").select("*").eq("user_id", userId),
+    supabase.from("shared_savings_member_shares_view").select("*").eq("user_id", userId),
   ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -464,6 +472,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   if (goalProgressResult.error) throw goalProgressResult.error;
   if (counterpartiesResult.error) throw counterpartiesResult.error;
   if (debtProgressResult.error) throw debtProgressResult.error;
+  if (sharedSavingsResult.error) throw sharedSavingsResult.error;
 
   const balancesByWalletId = new Map((balanceResult.data ?? []).map((balance) => [balance.wallet_id, balance]));
   const wallets = (walletResult.data ?? []).map((wallet) => ({
@@ -545,11 +554,18 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     }))
     .sort((a, b) => b.balance - a.balance);
 
+  const sharedSavingsShares = (sharedSavingsResult.data ?? []).reduce((sum, row: any) => {
+    const s = moneyValue(row.current_share);
+    return s > 0 ? sum + s : sum;
+  }, 0);
+  const sharedSavingsSpaceCount = (sharedSavingsResult.data ?? []).filter((row: any) => row.member_status === "active").length;
+
   const currentMonthMetrics = calculateMonthlyMetrics(monthTransactions);
   const previousMonthMetrics = calculateMonthlyMetrics(previousMonthTransactions);
-  const netWorth = dashboardWallets
-    .filter((wallet) => wallet.includeInNetWorth)
-    .reduce((sum, wallet) => sum + wallet.balance, 0);
+  const netWorth =
+    dashboardWallets
+      .filter((wallet) => wallet.includeInNetWorth)
+      .reduce((sum, wallet) => sum + wallet.balance, 0) + sharedSavingsShares;
   const availableBalance = dashboardWallets
     .filter((wallet) => wallet.includeInNetWorth && isLiquidWallet(wallet.walletType))
     .reduce((sum, wallet) => sum + wallet.availableBalance, 0);
@@ -584,6 +600,10 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       activeDebtCount,
       activeReceivableCount,
       counterparties: dashboardCounterparties,
+    },
+    sharedSavings: {
+      totalShare: sharedSavingsShares,
+      spaceCount: sharedSavingsSpaceCount,
     },
     calendarActivity: buildCalendarActivity(monthTransactions),
     recentTransactions: recentTransactions.map((transaction) => {

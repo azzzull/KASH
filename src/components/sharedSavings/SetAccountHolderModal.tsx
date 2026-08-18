@@ -1,0 +1,131 @@
+import { Landmark, UserCheck, X } from "lucide-react";
+import type { FormEvent } from "react";
+import { useState } from "react";
+import { Button } from "../ui/Button";
+import { IconButton } from "../ui/IconButton";
+import { SelectField } from "../ui/SelectField";
+import { setSharedSavingsAccountHolder } from "../../lib/sharedSavings";
+import type { SharedSavingsMemberShare } from "../../types/domain";
+
+type SetAccountHolderModalProps = {
+  isOpen: boolean;
+  spaceId: string;
+  spaceName: string;
+  members: SharedSavingsMemberShare[];
+  currentAccountHolderId: string;
+  onClose: () => void;
+  onUpdated: () => void;
+};
+
+export function SetAccountHolderModal({
+  isOpen,
+  spaceId,
+  spaceName,
+  members,
+  currentAccountHolderId,
+  onClose,
+  onUpdated,
+}: SetAccountHolderModalProps) {
+  const activeMembers = members.filter((m) => m.member_status === "active");
+  const [selectedUserId, setSelectedUserId] = useState(currentAccountHolderId || activeMembers[0]?.user_id || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId) {
+      setError("Pilih anggota yang ditunjuk sebagai Account Holder.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await setSharedSavingsAccountHolder(spaceId, selectedUserId);
+      onUpdated();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "Gagal mengubah Account Holder.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const memberOptions = activeMembers.map((m) => ({
+    value: m.user_id,
+    label: `${m.member_name || m.member_email} (${m.member_email})`,
+  }));
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-white shadow-xs">
+              <Landmark size={20} strokeWidth={2.2} />
+            </span>
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">Tunjuk Account Holder</h2>
+              <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
+            </div>
+          </div>
+          <IconButton icon={X} label="Tutup" onClick={onClose} />
+        </div>
+
+        {/* Body */}
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4">
+          {error && (
+            <div className="rounded-xl border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
+              {error}
+            </div>
+          )}
+
+          <SelectField
+            id="account-holder"
+            label="Pilih Account Holder (Pemegang Rekening Fisik)"
+            value={selectedUserId}
+            onChange={(e) => {
+              setSelectedUserId(e.target.value);
+              if (error) setError(null);
+            }}
+          >
+            {activeMembers.map((m) => (
+              <option key={m.user_id} value={m.user_id}>
+                {m.member_name || m.member_email} ({m.member_email})
+              </option>
+            ))}
+          </SelectField>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+            <span className="font-extrabold text-slate-900">Prinsip KASH:</span> Account Holder adalah anggota yang
+            memegang rekening bank/e-wallet fisik tempat dana bersama disimpan.{" "}
+            <span className="font-bold text-slate-900">
+              Account Holder TIDAK otomatis memiliki semua saldo tabungan
+            </span>
+            , melainkan hanya porsi pribadi mereka.
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
+              Batal
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan Account Holder"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

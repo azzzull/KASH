@@ -340,6 +340,13 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     throw new Error("Debt & Receivable transactions are managed from Debt & Receivable and cannot be edited here.");
   }
 
+  if (
+    transaction.related_entity_type === "shared_savings_contribution" ||
+    transaction.related_entity_type === "shared_savings_withdrawal"
+  ) {
+    throw new Error("Transaksi Tabungan Bersama dikelola langsung dari ruang Tabungan Bersama dan tidak dapat diedit di sini.");
+  }
+
   if (transaction.status === "void") {
     throw new Error("Voided transactions cannot be edited.");
   }
@@ -399,6 +406,13 @@ export async function voidTransaction(id: string) {
     transaction.related_entity_type === "receivable_creation"
   ) {
     throw new Error("Debt & Receivable transactions are managed from Debt & Receivable and cannot be voided here.");
+  }
+
+  if (
+    transaction.related_entity_type === "shared_savings_contribution" ||
+    transaction.related_entity_type === "shared_savings_withdrawal"
+  ) {
+    throw new Error("Transaksi Tabungan Bersama dikelola langsung dari ruang Tabungan Bersama dan tidak dapat dibatalkan di sini.");
   }
 
   return supabase

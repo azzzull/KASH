@@ -105,15 +105,20 @@ export function TransactionDetailPanel({
     transaction.related_entity_type === "debt_payment" ||
     transaction.related_entity_type === "receivable_payment" ||
     transaction.related_entity_type === "debt_creation" ||
-    transaction.related_entity_type === "receivable_creation";
+    transaction.related_entity_type === "receivable_creation" ||
+    transaction.related_entity_type === "shared_savings_contribution" ||
+    transaction.related_entity_type === "shared_savings_withdrawal";
 
   const linkedMessage =
-    transaction.related_entity_type === "debt_payment" ||
-    transaction.related_entity_type === "receivable_payment" ||
-    transaction.related_entity_type === "debt_creation" ||
-    transaction.related_entity_type === "receivable_creation"
-      ? "Obligation transaction linked to Debt & Receivable. Managed directly from Debt & Receivable."
-      : "Goal transfer linked to Goals. Edits and voids are managed from Goals.";
+    transaction.related_entity_type === "shared_savings_contribution" ||
+    transaction.related_entity_type === "shared_savings_withdrawal"
+      ? "Transaksi Tabungan Bersama. Dikelola langsung dari ruang Tabungan Bersama."
+      : transaction.related_entity_type === "debt_payment" ||
+        transaction.related_entity_type === "receivable_payment" ||
+        transaction.related_entity_type === "debt_creation" ||
+        transaction.related_entity_type === "receivable_creation"
+        ? "Obligation transaction linked to Debt & Receivable. Managed directly from Debt & Receivable."
+        : "Goal transfer linked to Goals. Edits and voids are managed from Goals.";
 
   return (
     <aside className={`overflow-y-auto border border-slate-200 bg-white p-5 shadow-soft ${className}`}>

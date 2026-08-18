@@ -42,7 +42,7 @@ export const navGroups: NavGroup[] = [
         items: [
             { label: "Wallets", path: "/wallets", icon: WalletCards },
             { label: "Goals", path: "/goals", icon: Crosshair },
-            { label: "Shared Savings", path: "/shared", icon: UsersRound },
+            { label: "Shared Savings", path: "/shared-savings", icon: UsersRound },
             { label: "Debt & Receivable", path: "/debts", icon: HandCoins },
             { label: "Bills & Subscriptions", path: "/subscriptions", icon: Repeat },
         ],
@@ -64,7 +64,7 @@ export const mobileMoreItems: NavItem[] = [
     { label: "Wallets", path: "/wallets", icon: WalletCards },
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
     { label: "Goals", path: "/goals", icon: Crosshair },
-    { label: "Shared Savings", path: "/shared", icon: UsersRound },
+    { label: "Shared Savings", path: "/shared-savings", icon: UsersRound },
     { label: "Debt & Receivable", path: "/debts", icon: HandCoins },
     { label: "Bills & Subscriptions", path: "/subscriptions", icon: Repeat },
     { label: "Settings", path: "/settings", icon: Settings },

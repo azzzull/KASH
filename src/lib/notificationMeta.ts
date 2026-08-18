@@ -182,9 +182,12 @@ export function getNotificationTargetPath(notification: Notification): string | 
       return `/wallets/${notification.entity_id}`;
     case "transaction":
       return "/transactions";
+    case "shared_savings":
     case "shared_saving":
+      return `/shared-savings/${notification.entity_id}`;
+    case "shared_savings_invite":
     case "shared_contribution":
-      return "/shared";
+      return "/shared-savings";
     default:
       if (typeof notification.metadata?.target_path === "string" && notification.metadata.target_path) {
         return notification.metadata.target_path;

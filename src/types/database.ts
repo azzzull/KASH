@@ -38,6 +38,15 @@ import type {
   Wallet,
   WalletBalance,
   WalletType,
+  SharedSavings,
+  SharedSavingsMember,
+  SharedSavingsApprover,
+  SharedSavingsInvite,
+  SharedSavingsRequest,
+  SharedSavingsLedger,
+  SharedSavingsMemberAllocation,
+  SharedSavingsBalance,
+  SharedSavingsMemberShare,
 } from "./domain";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -390,6 +399,84 @@ export type Database = {
         Update: Partial<Omit<BudgetEnvelopeCategory, "id" | "budget_id">>;
         Relationships: [];
       };
+      shared_savings: {
+        Row: SharedSavings;
+        Insert: Partial<SharedSavings>;
+        Update: Partial<SharedSavings>;
+        Relationships: [];
+      };
+      shared_savings_members: {
+        Row: SharedSavingsMember;
+        Insert: Partial<SharedSavingsMember>;
+        Update: Partial<SharedSavingsMember>;
+        Relationships: [];
+      };
+      shared_savings_approvers: {
+        Row: SharedSavingsApprover;
+        Insert: Partial<SharedSavingsApprover>;
+        Update: Partial<SharedSavingsApprover>;
+        Relationships: [];
+      };
+      shared_savings_invites: {
+        Row: SharedSavingsInvite;
+        Insert: Partial<SharedSavingsInvite>;
+        Update: Partial<SharedSavingsInvite>;
+        Relationships: [];
+      };
+      shared_savings_requests: {
+        Row: SharedSavingsRequest;
+        Insert: Partial<SharedSavingsRequest>;
+        Update: Partial<SharedSavingsRequest>;
+        Relationships: [];
+      };
+      shared_savings_ledger: {
+        Row: SharedSavingsLedger;
+        Insert: Partial<SharedSavingsLedger>;
+        Update: Partial<SharedSavingsLedger>;
+        Relationships: [];
+      };
+      shared_savings_member_allocations: {
+        Row: SharedSavingsMemberAllocation;
+        Insert: Partial<SharedSavingsMemberAllocation>;
+        Update: Partial<SharedSavingsMemberAllocation>;
+        Relationships: [];
+      };
+      shared_savings_notification_logs: {
+        Row: {
+          id: string;
+          shared_savings_id: string;
+          event_type: string;
+          reference_value: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          shared_savings_id: string;
+          event_type: string;
+          reference_value: string;
+          created_at?: string;
+        };
+        Update: Partial<{
+          id: string;
+          shared_savings_id: string;
+          event_type: string;
+          reference_value: string;
+          created_at: string;
+        }>;
+        Relationships: [];
+      };
+      shared_savings_balance_view: {
+        Row: SharedSavingsBalance;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      shared_savings_member_shares_view: {
+        Row: SharedSavingsMemberShare;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Functions: {
       get_monthly_budget_progress: {
@@ -605,6 +692,128 @@ export type Database = {
           message: string;
           target_path: string;
         }[];
+      };
+      create_shared_savings: {
+        Args: {
+          p_name: string;
+          p_target_amount?: number | null;
+          p_deadline?: string | null;
+          p_icon?: string;
+          p_color?: string;
+        };
+        Returns: string;
+      };
+      invite_shared_savings_member: {
+        Args: {
+          p_shared_savings_id: string;
+          p_email: string;
+        };
+        Returns: string;
+      };
+      respond_shared_savings_invite: {
+        Args: {
+          p_invite_id: string;
+          p_action: "accept" | "reject";
+        };
+        Returns: boolean;
+      };
+      submit_shared_contribution_request: {
+        Args: {
+          p_shared_savings_id: string;
+          p_source_wallet_id: string;
+          p_amount: number;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      submit_shared_withdrawal_request: {
+        Args: {
+          p_shared_savings_id: string;
+          p_destination_wallet_id: string;
+          p_amount: number;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      submit_shared_spending_request: {
+        Args: {
+          p_shared_savings_id: string;
+          p_title: string;
+          p_amount: number;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      approve_shared_contribution: {
+        Args: {
+          p_request_id: string;
+        };
+        Returns: boolean;
+      };
+      approve_shared_withdrawal: {
+        Args: {
+          p_request_id: string;
+        };
+        Returns: boolean;
+      };
+      approve_shared_spending: {
+        Args: {
+          p_request_id: string;
+        };
+        Returns: boolean;
+      };
+      reject_shared_request: {
+        Args: {
+          p_request_id: string;
+          p_reason?: string | null;
+        };
+        Returns: boolean;
+      };
+      cancel_shared_request: {
+        Args: {
+          p_request_id: string;
+        };
+        Returns: boolean;
+      };
+      update_shared_savings_settings: {
+        Args: {
+          p_shared_savings_id: string;
+          p_name: string;
+          p_target_amount?: number | null;
+          p_deadline?: string | null;
+          p_icon?: string | null;
+          p_color?: string | null;
+        };
+        Returns: boolean;
+      };
+      transfer_shared_savings_ownership: {
+        Args: {
+          p_shared_savings_id: string;
+          p_new_owner_user_id: string;
+        };
+        Returns: boolean;
+      };
+      set_shared_savings_account_holder: {
+        Args: {
+          p_shared_savings_id: string;
+          p_new_account_holder_user_id: string;
+        };
+        Returns: boolean;
+      };
+      set_shared_savings_approver: {
+        Args: {
+          p_shared_savings_id: string;
+          p_user_id: string;
+          p_is_approver: boolean;
+        };
+        Returns: boolean;
+      };
+      remove_shared_savings_member: {
+        Args: {
+          p_shared_savings_id: string;
+          p_user_id: string;
+        };
+        Returns: boolean;
       };
     };
     Enums: {

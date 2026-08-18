@@ -376,5 +376,154 @@ export type MonthlyBudgetOverview = {
   over_budget_count: number;
 };
 
+// ============================================================
+// SHARED SAVINGS (TABUNGAN BERSAMA) DOMAIN TYPES
+// ============================================================
 
+export type SharedSavingsStatus = "active" | "closed" | "archived";
+export type SharedSavingsMemberStatus = "active" | "left" | "removed";
+export type SharedSavingsInviteStatus = "pending" | "accepted" | "rejected" | "expired" | "cancelled";
+export type SharedSavingsRequestType = "contribution" | "withdrawal" | "shared_spending";
+export type SharedSavingsRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type SharedSavingsEventType = "contribution" | "personal_withdrawal" | "shared_spending" | "reversal";
 
+export type SharedSavings = {
+  id: string;
+  owner_user_id: string;
+  name: string;
+  target_amount: MoneyAmount | null;
+  deadline: string | null;
+  account_holder_user_id: string;
+  status: SharedSavingsStatus;
+  icon: string;
+  color: string;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+};
+
+export type SharedSavingsMember = {
+  id: string;
+  shared_savings_id: string;
+  user_id: string;
+  joined_at: string;
+  left_at: string | null;
+  status: SharedSavingsMemberStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SharedSavingsApprover = {
+  id: string;
+  shared_savings_id: string;
+  user_id: string;
+  created_at: string;
+};
+
+export type SharedSavingsInvite = {
+  id: string;
+  shared_savings_id: string;
+  inviter_user_id: string;
+  invited_user_id: string | null;
+  invited_email: string;
+  status: SharedSavingsInviteStatus;
+  expires_at: string;
+  created_at: string;
+  accepted_at: string | null;
+  responded_at: string | null;
+  shared_savings?: SharedSavings | null;
+  inviter_name?: string | null;
+};
+
+export type SharedSavingsRequest = {
+  id: string;
+  shared_savings_id: string;
+  request_type: SharedSavingsRequestType;
+  requested_by_user_id: string;
+  amount: MoneyAmount;
+  source_wallet_id: string | null;
+  destination_wallet_id: string | null;
+  title: string | null;
+  note: string | null;
+  status: SharedSavingsRequestStatus;
+  approved_by_user_id: string | null;
+  approved_at: string | null;
+  rejected_by_user_id: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  transaction_id: string | null;
+  created_at: string;
+  updated_at: string;
+  requester_name?: string | null;
+  requester_email?: string | null;
+  requester_avatar_url?: string | null;
+  source_wallet_name?: string | null;
+  destination_wallet_name?: string | null;
+};
+
+export type SharedSavingsLedger = {
+  id: string;
+  shared_savings_id: string;
+  request_id: string;
+  event_type: SharedSavingsEventType;
+  amount: MoneyAmount;
+  title: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type SharedSavingsMemberAllocation = {
+  id: string;
+  shared_savings_id: string;
+  ledger_id: string;
+  user_id: string;
+  amount_signed: MoneyAmount;
+  created_at: string;
+};
+
+export type SharedSavingsBalance = {
+  shared_savings_id: string;
+  owner_user_id: string;
+  name: string;
+  target_amount: MoneyAmount | null;
+  deadline: string | null;
+  account_holder_user_id: string;
+  status: SharedSavingsStatus;
+  icon: string;
+  color: string;
+  created_at: string;
+  current_balance: MoneyAmount;
+  total_contributions: MoneyAmount;
+  total_withdrawals: MoneyAmount;
+  total_spending: MoneyAmount;
+  active_members_count: number;
+};
+
+export type SharedSavingsMemberShare = {
+  shared_savings_id: string;
+  user_id: string;
+  member_status: SharedSavingsMemberStatus;
+  joined_at: string;
+  left_at: string | null;
+  member_name: string | null;
+  member_email: string;
+  member_avatar_url: string | null;
+  current_share: MoneyAmount;
+  total_contributed: MoneyAmount;
+  total_withdrawn: MoneyAmount;
+  total_spent_allocated: MoneyAmount;
+  is_owner?: boolean;
+  is_account_holder?: boolean;
+  is_approver?: boolean;
+};
+
+export type SharedSavingsSpaceSummary = {
+  space: SharedSavingsBalance;
+  myShare: MoneyAmount;
+  isOwner: boolean;
+  isAccountHolder: boolean;
+  isApprover: boolean;
+  pendingRequestsCount: number;
+  ownerName: string;
+  accountHolderName: string;
+};

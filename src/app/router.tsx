@@ -29,6 +29,7 @@ const NotificationsPage = lazyPage(() => import("../pages/NotificationsPage"), "
 const OnboardingPage = lazyPage(() => import("../pages/OnboardingPage"), "OnboardingPage");
 const SettingsPage = lazyPage(() => import("../pages/SettingsPage"), "SettingsPage");
 const SharedSavingsPage = lazyPage(() => import("../pages/SharedSavingsPage"), "SharedSavingsPage");
+const SharedSavingsDetailPage = lazyPage(() => import("../pages/SharedSavingsDetailPage"), "SharedSavingsDetailPage");
 const SubscriptionsPage = lazyPage(() => import("../pages/SubscriptionsPage"), "SubscriptionsPage");
 const SubscriptionDetailPage = lazyPage(() => import("../pages/SubscriptionDetailPage"), "SubscriptionDetailPage");
 const TransactionsPage = lazyPage(() => import("../pages/TransactionsPage"), "TransactionsPage");
@@ -92,7 +93,9 @@ export const router = createBrowserRouter([
           { path: "/debts/:counterpartyId", element: routeElement(<DebtDetailPage />) },
           { path: "/subscriptions", element: routeElement(<SubscriptionsPage />) },
           { path: "/subscriptions/:id", element: routeElement(<SubscriptionDetailPage />) },
-          { path: "/shared", element: routeElement(<SharedSavingsPage />) },
+          { path: "/shared-savings", element: routeElement(<SharedSavingsPage />) },
+          { path: "/shared-savings/:id", element: routeElement(<SharedSavingsDetailPage />) },
+          { path: "/shared", element: <Navigate to="/shared-savings" replace /> },
           { path: "/notifications", element: routeElement(<NotificationsPage />) },
           { path: "/settings", element: routeElement(<SettingsPage />) },
           { path: "/settings/categories", element: routeElement(<CategoriesPage />) },
