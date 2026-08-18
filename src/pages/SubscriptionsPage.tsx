@@ -251,8 +251,8 @@ export function SubscriptionsPage() {
               onClick={() => setActiveTab(tab.id as TabFilter)}
               className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
                 activeTab === tab.id
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "bg-white text-slate-600 hover:bg-slate-100"
+                  ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
+                  : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/60 hover:text-kash-emeraldDark"
               }`}
             >
               {tab.label}

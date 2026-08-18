@@ -174,7 +174,7 @@ export function SubscriptionDetailPage() {
             </div>
 
             <p className="mt-1 text-xs font-semibold text-slate-600">
-              {obligation.category?.name || "Uncategorized"} • Created on{" "}
+              {obligation.category?.name || "Uncategorized"} • First Due Date:{" "}
               {new Date(obligation.start_date).toLocaleDateString("id-ID", {
                 day: "numeric",
                 month: "short",
@@ -218,16 +218,14 @@ export function SubscriptionDetailPage() {
             </Button>
           )}
 
-          {canHardDelete && (
-            <Button
-              variant="secondary"
-              onClick={() => setDeleteModalOpen(true)}
-              className="col-span-2 flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold text-slate-600 hover:text-kash-expense sm:col-span-1 sm:flex-initial"
-            >
-              <Trash2 size={15} className="shrink-0" />
-              <span className="truncate">Delete</span>
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            onClick={() => setDeleteModalOpen(true)}
+            className="flex-1 justify-center gap-1.5 border-slate-200 px-3 py-2 text-xs font-extrabold text-slate-600 hover:border-kash-expense/30 hover:bg-kash-expense/10 hover:text-kash-expense sm:flex-initial"
+          >
+            <Trash2 size={15} className="shrink-0" />
+            <span className="truncate">Delete</span>
+          </Button>
         </div>
       </div>
 
