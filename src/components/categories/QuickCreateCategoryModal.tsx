@@ -1,6 +1,7 @@
 import { Check, Plus, RotateCcw, Tag, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { quickCreateCategory, unarchiveCategory } from "../../lib/categories";
 import { categoryColors, categoryIconOptions, getCategoryIcon } from "../../lib/categoryMeta";
 import type { Category, CategoryType } from "../../types/domain";
@@ -113,9 +114,9 @@ export function QuickCreateCategoryModal({
 
   const SelectedIcon = getCategoryIcon(icon);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={(e) => {
         e.stopPropagation();
         onClose();
@@ -227,6 +228,7 @@ export function QuickCreateCategoryModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
