@@ -241,11 +241,18 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                         <div
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
                             isChecked
-                              ? "border-kash-emerald bg-kash-emerald text-white"
+                              ? "border-kash-emerald bg-kash-emerald"
                               : "border-slate-300 bg-white"
                           }`}
                         >
-                          {isChecked && <Check size={11} strokeWidth={3.5} className="text-white" stroke="white" />}
+                          {isChecked && (
+                            <Check
+                              size={11}
+                              strokeWidth={3.5}
+                              className="text-white"
+                              style={{ color: "#ffffff", stroke: "#ffffff" }}
+                            />
+                          )}
                         </div>
                       </button>
                     );
