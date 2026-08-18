@@ -104,3 +104,88 @@ export async function archiveCategory(category: Category) {
     .select("*")
     .single();
 }
+
+export async function unarchiveCategory(categoryId: string) {
+  return supabase
+    .from("categories")
+    .update({ is_archived: false })
+    .eq("id", categoryId)
+    .eq("is_system", false)
+    .select("*")
+    .single();
+}
+
+export type QuickCreateCategoryResult =
+  | { success: true; category: Category; restored?: boolean }
+  | { success: false; error: string; archivedCategory?: Category };
+
+export async function quickCreateCategory(input: {
+  name: string;
+  categoryType: CategoryType;
+  icon?: string;
+  color?: string;
+}): Promise<QuickCreateCategoryResult> {
+  const name = input.name.trim();
+  if (!name) {
+    return { success: false, error: "Nama kategori tidak boleh kosong." };
+  }
+
+  try {
+    const userId = await getAuthenticatedUserId();
+
+    // Fetch all user and system categories for this type (including archived)
+    const { data: allCategories, error: fetchError } = await supabase
+      .from("categories")
+      .select("*")
+      .or(`user_id.eq.${userId},is_system.eq.true`)
+      .eq("category_type", input.categoryType);
+
+    if (fetchError) {
+      return { success: false, error: fetchError.message || "Gagal memeriksa kategori yang sudah ada." };
+    }
+
+    const normalizedInput = name.toLowerCase();
+    const existing = (allCategories ?? []).find(
+      (c) => c.name.trim().toLowerCase() === normalizedInput,
+    );
+
+    if (existing) {
+      if (existing.is_archived) {
+        return {
+          success: false,
+          error: `Kategori '${existing.name}' sudah ada tetapi diarsipkan.`,
+          archivedCategory: existing,
+        };
+      }
+      return {
+        success: false,
+        error: `Kategori '${existing.name}' sudah ada.`,
+      };
+    }
+
+    const defaultIcon = input.icon || (input.categoryType === "income" ? "briefcase" : "utensils");
+    const defaultColor = input.color || "#10B981";
+
+    const { data: created, error: insertError } = await supabase
+      .from("categories")
+      .insert({
+        user_id: userId,
+        name,
+        category_type: input.categoryType,
+        icon: defaultIcon,
+        color: defaultColor,
+        is_system: false,
+        is_archived: false,
+      })
+      .select("*")
+      .single();
+
+    if (insertError || !created) {
+      return { success: false, error: insertError?.message || "Gagal membuat kategori baru." };
+    }
+
+    return { success: true, category: created };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Terjadi kesalahan saat membuat kategori." };
+  }
+}

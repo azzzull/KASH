@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Filter,
   Loader2,
+  Plus,
   ReceiptText,
   Search,
   SlidersHorizontal,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { QuickCreateCategoryModal } from "../components/categories/QuickCreateCategoryModal";
 import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -278,15 +280,17 @@ function TransactionFormModal({
     const normalizedMessage = message.toLowerCase();
     return normalizedMessage.includes("amount") || normalizedMessage.includes("balance");
   };
+  const [localCategories, setLocalCategories] = useState(categories);
+  const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const duplicateSourceWalletId = wallets.some((wallet) => wallet.id === transaction.wallet_id) ? transaction.wallet_id : wallets[0]?.id ?? "";
   const duplicateDestinationWalletId =
     transaction.destination_wallet_id && wallets.some((wallet) => wallet.id === transaction.destination_wallet_id)
       ? transaction.destination_wallet_id
       : wallets.find((wallet) => wallet.id !== duplicateSourceWalletId)?.id ?? "";
   const duplicateCategoryId =
-    transaction.category_id && categories.some((category) => category.id === transaction.category_id && !category.is_archived)
+    transaction.category_id && localCategories.some((category) => category.id === transaction.category_id && !category.is_archived)
       ? transaction.category_id
-      : categories.find((category) => category.category_type === transaction.type && !category.is_archived)?.id ?? "";
+      : localCategories.find((category) => category.category_type === transaction.type && !category.is_archived)?.id ?? "";
   const [amount, setAmount] = useState(() =>
     transaction.type === "adjustment" ? formatSignedMoneyInput(String(transaction.amount)) : formatDatabaseMoneyDigits(transaction.amount),
   );
@@ -302,8 +306,8 @@ function TransactionFormModal({
   const activeWallets = wallets.filter((wallet) => !wallet.is_archived || wallet.id === transaction.wallet_id || wallet.id === transaction.destination_wallet_id);
   const filteredCategories = useMemo(() => {
     if (transaction.type !== "income" && transaction.type !== "expense") return [];
-    return filterCategoriesByType(categories, transaction.type).filter((category) => !category.is_archived || (mode === "edit" && category.id === transaction.category_id));
-  }, [categories, mode, transaction.category_id, transaction.type]);
+    return filterCategoriesByType(localCategories, transaction.type).filter((category) => !category.is_archived || (mode === "edit" && category.id === transaction.category_id));
+  }, [localCategories, mode, transaction.category_id, transaction.type]);
   const amountValue = transaction.type === "adjustment" ? parseSignedMoneyDigits(amount) : parseMoneyInputDigits(amount);
   const feeValue = parseMoneyInputDigits(transferFee) || "0";
   const amountHasError = isAmountError(error);
@@ -340,23 +344,50 @@ function TransactionFormModal({
     setSaving(true);
     setError(null);
 
-    const noteValue = note.trim() || null;
-    const categoryName = filteredCategories.find((category) => category.id === categoryId)?.name ?? null;
-
     try {
+      const selectedCategory = localCategories.find((category) => category.id === categoryId);
+      const categoryName = selectedCategory?.name ?? "Transaction";
+      const noteValue = note.trim() ? note.trim() : null;
+
       const result =
         mode === "duplicate"
           ? transaction.type === "income"
-            ? await createIncome({ amount: amountValue, categoryId, note: noteValue, title: noteValue ?? categoryName, transactionDate, walletId })
+            ? await createIncome({
+                amount: amountValue,
+                categoryId,
+                note: noteValue,
+                title: noteValue ?? categoryName,
+                transactionDate,
+                walletId,
+              })
             : transaction.type === "expense"
-              ? await createExpense({ amount: amountValue, categoryId, note: noteValue, title: noteValue ?? categoryName, transactionDate, walletId })
+              ? await createExpense({
+                  amount: amountValue,
+                  categoryId,
+                  note: noteValue,
+                  title: noteValue ?? categoryName,
+                  transactionDate,
+                  walletId,
+                })
               : transaction.type === "transfer"
-                ? await createTransfer({ amount: amountValue, destinationWalletId, note: noteValue, transactionDate, transferFee: feeValue, walletId })
-                : await createAdjustment({ amount: amountValue, reason: noteValue ?? "Balance Adjustment", transactionDate, walletId })
+                ? await createTransfer({
+                    amount: amountValue,
+                    destinationWalletId,
+                    note: noteValue,
+                    transactionDate,
+                    transferFee: feeValue,
+                    walletId,
+                  })
+                : await createAdjustment({
+                    amount: amountValue,
+                    reason: noteValue ?? "Balance Adjustment",
+                    transactionDate,
+                    walletId,
+                  })
           : await updateTransaction(transaction, {
               amount: amountValue,
-              categoryId,
-              destinationWalletId,
+              categoryId: transaction.type === "income" || transaction.type === "expense" ? categoryId : null,
+              destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
               note: noteValue,
               title: transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
               transactionDate,
@@ -404,13 +435,38 @@ function TransactionFormModal({
           />
 
           {(transaction.type === "income" || transaction.type === "expense") ? (
-            <SelectField id="transaction-edit-category" label="Category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-              {filteredCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </SelectField>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="block text-sm font-bold text-slate-900">Category</span>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCategoryModal(true)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  Tambah Kategori
+                </button>
+              </div>
+              <SelectField
+                id="transaction-edit-category"
+                label="Category"
+                value={categoryId}
+                onChange={(event) => {
+                  if (event.target.value === "__create_new__") {
+                    setShowQuickCategoryModal(true);
+                  } else {
+                    setCategoryId(event.target.value);
+                  }
+                }}
+              >
+                {filteredCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+                <option value="__create_new__">+ Tambah Kategori Baru...</option>
+              </SelectField>
+            </div>
           ) : null}
 
           <SelectField id="transaction-edit-wallet" label={transaction.type === "transfer" ? "From" : "Wallet"} value={walletId} onChange={(event) => setWalletId(event.target.value)}>
@@ -456,6 +512,22 @@ function TransactionFormModal({
             {mode === "duplicate" ? "Create Duplicate" : "Save Changes"}
           </Button>
         </form>
+
+        {(transaction.type === "income" || transaction.type === "expense") ? (
+          <QuickCreateCategoryModal
+            isOpen={showQuickCategoryModal}
+            categoryType={transaction.type}
+            onClose={() => setShowQuickCategoryModal(false)}
+            onCreated={(newCat) => {
+              setLocalCategories((prev) => {
+                const exists = prev.some((c) => c.id === newCat.id);
+                return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
+              });
+              setCategoryId(newCat.id);
+              setShowQuickCategoryModal(false);
+            }}
+          />
+        ) : null}
       </section>
     </div>
   );

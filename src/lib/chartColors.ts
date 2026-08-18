@@ -1,57 +1,80 @@
 import type { Category } from "../types/domain";
 
-export const KASH_CHART_COLORS = [
-  "#10B981",
-  "#F5B82E",
-  "#22B8A7",
-  "#4F7DF3",
-  "#8B5CF6",
-  "#F28C45",
-  "#E50914",
-  "#475569",
+/**
+ * Curated, harmonious, modern, readable KASH chart palette for category composition.
+ * Saturated yet muted, high contrast, and perfectly legible on white/light KASH UI.
+ */
+export const KASH_CATEGORY_PALETTE = [
+  "#10B981", // Emerald
+  "#3B82F6", // Modern Blue
+  "#F59E0B", // Amber Gold
+  "#8B5CF6", // Purple / Violet
+  "#06B6D4", // Cyan
+  "#F97316", // Bright Orange
+  "#EC4899", // Rose / Pink
+  "#6366F1", // Indigo
+  "#14B8A6", // Teal
+  "#84CC16", // Lime
+  "#D97706", // Deep Ochre
+  "#A855F7", // Bright Violet
 ] as const;
 
-function hashString(value: string) {
-  let hash = 0;
+export const KASH_CHART_COLORS = KASH_CATEGORY_PALETTE;
 
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) | 0;
+/**
+ * FNV-1a 32-bit stable hash function.
+ */
+function fnv1aHash(str: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
-
-  return hash;
+  return hash >>> 0;
 }
 
-function categoryColorKey(category: Category) {
-  return `${category.category_type}:${category.name}:${category.id}`;
+/**
+ * Returns a 100% deterministic chart color for any category based on stable identity.
+ * Same category ID or normalized name ALWAYS maps to the exact same color
+ * regardless of array order, sorting, reload, or page context.
+ */
+export function getCategoryChartColor(
+  category: { id?: string | null; name?: string | null; color?: string | null } | string | null | undefined,
+): string {
+  if (!category) return "#64748B"; // slate-500 fallback for uncategorized
+
+  let identifier = "";
+  if (typeof category === "string") {
+    identifier = category;
+  } else {
+    if (category.id && category.id !== "uncategorized") {
+      identifier = category.id;
+    } else if (category.name) {
+      identifier = category.name.trim().toLowerCase();
+    }
+  }
+
+  if (!identifier || identifier === "uncategorized") {
+    return "#64748B";
+  }
+
+  const hash = fnv1aHash(identifier);
+  const paletteIndex = hash % KASH_CATEGORY_PALETTE.length;
+  return KASH_CATEGORY_PALETTE[paletteIndex];
+}
+
+/**
+ * Backward-compatible resolver factory returning the shared deterministic resolver.
+ */
+export function createCategoryColorResolver(_categories?: Category[]) {
+  return (category: Category | null | undefined) => {
+    return getCategoryChartColor(category);
+  };
 }
 
 export function isApprovedChartColor(color: string | null | undefined) {
-  return Boolean(color && KASH_CHART_COLORS.some((approvedColor) => approvedColor.toLowerCase() === color.toLowerCase()));
-}
-
-export function createCategoryColorResolver(categories: Category[]) {
-  const sortedCategories = [...categories].sort((first, second) => categoryColorKey(first).localeCompare(categoryColorKey(second)));
-  const colorByCategoryId = new Map<string, string>();
-  const usedPaletteIndexes = new Set<number>();
-
-  sortedCategories.forEach((category) => {
-    const approvedColorIndex = isApprovedChartColor(category.color)
-      ? KASH_CHART_COLORS.findIndex((color) => color.toLowerCase() === category.color?.toLowerCase())
-      : -1;
-    let paletteIndex = approvedColorIndex >= 0 ? approvedColorIndex : Math.abs(hashString(categoryColorKey(category))) % KASH_CHART_COLORS.length;
-
-    if (usedPaletteIndexes.size < KASH_CHART_COLORS.length) {
-      while (usedPaletteIndexes.has(paletteIndex)) {
-        paletteIndex = (paletteIndex + 1) % KASH_CHART_COLORS.length;
-      }
-      usedPaletteIndexes.add(paletteIndex);
-    }
-
-    colorByCategoryId.set(category.id, KASH_CHART_COLORS[paletteIndex]);
-  });
-
-  return (category: Category | null | undefined) => {
-    if (!category) return "#475569";
-    return colorByCategoryId.get(category.id) ?? "#475569";
-  };
+  return Boolean(
+    color &&
+      KASH_CATEGORY_PALETTE.some((approvedColor) => approvedColor.toLowerCase() === color.toLowerCase()),
+  );
 }

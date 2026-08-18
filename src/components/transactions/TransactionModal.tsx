@@ -1,5 +1,6 @@
-import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2, X } from "lucide-react";
+import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2, Plus, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
@@ -58,6 +59,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const [walletId, setWalletId] = useState("");
   const [destinationWalletId, setDestinationWalletId] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [transferFee, setTransferFee] = useState("0");
   const [transactionDate, setTransactionDate] = useState(currentLocalDateTimeValue());
@@ -85,7 +87,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setDestinationWalletId((current) => current || walletResult.data.find((wallet) => wallet.id !== walletResult.data?.[0]?.id)?.id || "");
 
     const nextCategories = filterCategoriesByType(categoryResult.data, mode === "income" ? "income" : "expense");
-    setCategoryId((current) => current || firstValue(nextCategories));
+    setCategoryId((current) => (nextCategories.some((cat) => cat.id === current) ? current : firstValue(nextCategories)));
     setLoading(false);
   };
 
@@ -95,7 +97,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
   useEffect(() => {
     const nextCategories = filterCategoriesByType(categories, mode === "income" ? "income" : "expense");
-    setCategoryId(firstValue(nextCategories));
+    setCategoryId((current) => (nextCategories.some((cat) => cat.id === current) ? current : firstValue(nextCategories)));
   }, [categories, mode]);
 
   useEffect(() => {
@@ -246,13 +248,38 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             />
 
             {mode !== "transfer" ? (
-              <SelectField id={`${mode}-category`} label="Category" onChange={(event) => setCategoryId(event.target.value)} value={categoryId}>
-                {filteredCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </SelectField>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="block text-sm font-bold text-slate-900">Category</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickCategoryModal(true)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                  >
+                    <Plus size={13} strokeWidth={2.5} />
+                    Tambah Kategori
+                  </button>
+                </div>
+                <SelectField
+                  id={`${mode}-category`}
+                  label="Category"
+                  onChange={(event) => {
+                    if (event.target.value === "__create_new__") {
+                      setShowQuickCategoryModal(true);
+                    } else {
+                      setCategoryId(event.target.value);
+                    }
+                  }}
+                  value={categoryId}
+                >
+                  {filteredCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                  <option value="__create_new__">+ Tambah Kategori Baru...</option>
+                </SelectField>
+              </div>
             ) : null}
 
             <SelectField id={`${mode}-wallet`} label={mode === "transfer" ? "From" : "Wallet"} onChange={(event) => setWalletId(event.target.value)} value={walletId}>
@@ -283,19 +310,14 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </>
             ) : null}
 
-            <DatePickerField
-              id={`${mode}-date`}
-              label="Date"
-              enableTime
-              onChange={(val) => setTransactionDate(val)}
-              value={transactionDate}
-            />
-            <FormField id={`${mode}-note`} label="Note" onChange={(event) => setNote(event.target.value)} placeholder="Optional note" value={note} />
+            <DatePickerField id={`${mode}-date`} label="Date and Time" enableTime onChange={(value) => setTransactionDate(value)} value={transactionDate} />
 
-            {mode === "transfer" ? (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-extrabold text-slate-900">Transfer Summary</p>
-                <dl className="mt-3 grid gap-2 text-sm font-semibold text-slate-700">
+            <FormField id={`${mode}-note`} label="Note" onChange={(event) => setNote(event.target.value)} placeholder="Add transaction note (optional)" value={note} />
+
+            {mode === "transfer" && selectedWallet && destinationWallet ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+                <p className="font-bold text-slate-900">Transfer breakdown</p>
+                <dl className="mt-2 space-y-1">
                   <div className="flex justify-between gap-4">
                     <dt>From {selectedWallet?.name ?? "-"}</dt>
                     <dd>{formatCurrency(amountNumber, selectedWallet?.currency ?? "IDR")}</dd>
@@ -328,6 +350,20 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             </Button>
           </form>
         )}
+
+        <QuickCreateCategoryModal
+          isOpen={showQuickCategoryModal}
+          categoryType={mode === "income" ? "income" : "expense"}
+          onClose={() => setShowQuickCategoryModal(false)}
+          onCreated={(newCat) => {
+            setCategories((prev) => {
+              const exists = prev.some((c) => c.id === newCat.id);
+              return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
+            });
+            setCategoryId(newCat.id);
+            setShowQuickCategoryModal(false);
+          }}
+        />
       </section>
     </div>
   );
