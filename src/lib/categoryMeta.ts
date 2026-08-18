@@ -1,51 +1,246 @@
 import {
+  Activity,
+  AlertCircle,
+  Apple,
+  Armchair,
+  Award,
+  Baby,
+  BarChart3,
+  Bed,
+  Beer,
+  Bike,
+  BookOpen,
+  Bookmark,
   Briefcase,
+  Building2,
   Bus,
+  Cake,
+  Calculator,
+  Camera,
+  Car,
+  Cat,
+  CheckCircle2,
   Circle,
+  Coffee,
+  Coins,
+  Compass,
+  CreditCard,
+  CupSoda,
+  Dog,
+  DollarSign,
+  Droplet,
+  Dumbbell,
+  Film,
+  Fish,
+  Flame,
+  Flower2,
+  Folder,
+  Fuel,
+  Gamepad2,
   Gift,
+  Globe,
   GraduationCap,
   HandHeart,
+  Headphones,
+  Heart,
   HeartPulse,
+  HelpCircle,
+  Home,
+  Hospital,
+  IceCream,
+  Key,
+  Landmark,
   Laptop,
+  Lightbulb,
+  Luggage,
+  Moon,
+  Music,
+  Navigation,
+  Package,
+  Palmtree,
+  PartyPopper,
+  Pencil,
+  Phone,
+  Pill,
+  Pizza,
   Plane,
+  Popcorn,
   Receipt,
   RotateCcw,
+  Scissors,
+  School,
+  Shield,
+  Ship,
+  Shirt,
   ShoppingBag,
+  ShoppingCart,
+  Smile,
+  Soup,
   Sparkles,
+  Star,
+  Stethoscope,
   Store,
+  Sun,
+  Tag,
   Ticket,
+  Train,
+  Trees,
   TrendingUp,
-  Utensils,
+  Truck,
+  Tv,
+  Tv2,
+  Umbrella,
   Users,
+  Utensils,
+  Wallet,
+  Watch,
+  Wifi,
+  Wine,
+  Wrench,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 
-export const categoryColors = ["#10B981", "#E50914", "#FBBF24", "#4F7DF3", "#8B5CF6", "#22B8A7", "#91A3BB"] as const;
-
-export const categoryIconOptions = [
-  { value: "utensils", label: "Food", icon: Utensils },
-  { value: "bus", label: "Transport", icon: Bus },
-  { value: "shopping-bag", label: "Shopping", icon: ShoppingBag },
-  { value: "receipt", label: "Bills", icon: Receipt },
-  { value: "briefcase", label: "Work", icon: Briefcase },
-  { value: "laptop", label: "Freelance", icon: Laptop },
-  { value: "store", label: "Business", icon: Store },
-  { value: "gift", label: "Gift", icon: Gift },
-  { value: "trending-up", label: "Investment", icon: TrendingUp },
-  { value: "rotate-ccw", label: "Refund", icon: RotateCcw },
-  { value: "heart-pulse", label: "Health", icon: HeartPulse },
-  { value: "graduation-cap", label: "Education", icon: GraduationCap },
-  { value: "sparkles", label: "Lifestyle", icon: Sparkles },
-  { value: "ticket", label: "Entertainment", icon: Ticket },
-  { value: "plane", label: "Travel", icon: Plane },
-  { value: "users", label: "Family", icon: Users },
-  { value: "hand-heart", label: "Donation", icon: HandHeart },
-  { value: "circle", label: "Other", icon: Circle },
+export const categoryColors = [
+  "#10B981",
+  "#E50914",
+  "#FBBF24",
+  "#4F7DF3",
+  "#8B5CF6",
+  "#22B8A7",
+  "#F97316",
+  "#EC4899",
+  "#06B6D4",
+  "#64748B",
+  "#91A3BB",
 ] as const;
 
-export function getCategoryIcon(iconKey: string | null | undefined) {
-  return categoryIconOptions.find((option) => option.value === iconKey)?.icon ?? Circle;
+export type CategoryIconOption = {
+  value: string;
+  label: string;
+  group: string;
+  keywords?: string[];
+  icon: LucideIcon;
+};
+
+export const categoryIconOptions: CategoryIconOption[] = [
+  // 1. Food & Beverage
+  { value: "utensils", label: "Makan & Restoran", group: "Kuliner", keywords: ["food", "restaurant", "makan", "lunch", "dinner"], icon: Utensils },
+  { value: "coffee", label: "Kopi & Kafe", group: "Kuliner", keywords: ["cafe", "coffee", "kopi", "starbucks", "nongkrong"], icon: Coffee },
+  { value: "cup-soda", label: "Minuman / Boba", group: "Kuliner", keywords: ["drink", "boba", "soda", "juice", "tea"], icon: CupSoda },
+  { value: "pizza", label: "Fast Food / Pizza", group: "Kuliner", keywords: ["pizza", "burger", "junkfood", "snack"], icon: Pizza },
+  { value: "cake", label: "Kue & Bakery", group: "Kuliner", keywords: ["cake", "bakery", "roti", "dessert", "snack"], icon: Cake },
+  { value: "ice-cream", label: "Es Krim / Gelato", group: "Kuliner", keywords: ["icecream", "gelato", "dessert"], icon: IceCream },
+  { value: "apple", label: "Buah & Sayur", group: "Kuliner", keywords: ["fruit", "vegetable", "groceries", "sehat"], icon: Apple },
+  { value: "fish", label: "Daging & Seafood", group: "Kuliner", keywords: ["fish", "meat", "pasar", "seafood"], icon: Fish },
+  { value: "soup", label: "Masakan Rumah", group: "Kuliner", keywords: ["soup", "kuah", "bakso", "soto"], icon: Soup },
+  { value: "beer", label: "Bar & Beer", group: "Kuliner", keywords: ["beer", "alcohol", "bar", "party"], icon: Beer },
+  { value: "wine", label: "Wine & Dining", group: "Kuliner", keywords: ["wine", "dining", "cocktail"], icon: Wine },
+
+  // 2. Transport & Vehicles
+  { value: "bus", label: "Bus & Angkutan", group: "Transportasi", keywords: ["bus", "transjakarta", "public", "transport"], icon: Bus },
+  { value: "car", label: "Mobil & Kendaraan", group: "Transportasi", keywords: ["car", "mobil", "gocar", "grabcar", "toll"], icon: Car },
+  { value: "bike", label: "Motor & Sepeda", group: "Transportasi", keywords: ["motor", "gojek", "grabbike", "sepeda"], icon: Bike },
+  { value: "fuel", label: "Bensin & BBM", group: "Transportasi", keywords: ["bensin", "bbm", "pertamina", "shell", "spbu"], icon: Fuel },
+  { value: "train", label: "Kereta & KRL / MRT", group: "Transportasi", keywords: ["train", "krl", "mrt", "lrt", "commuter"], icon: Train },
+  { value: "plane", label: "Pesawat & Penerbangan", group: "Transportasi", keywords: ["flight", "plane", "pesawat", "airport"], icon: Plane },
+  { value: "navigation", label: "Parkir & Tol / GPS", group: "Transportasi", keywords: ["parking", "toll", "gps", "parkir"], icon: Navigation },
+  { value: "wrench", label: "Servis & Bengkel", group: "Transportasi", keywords: ["repair", "servis", "bengkel", "maintenance"], icon: Wrench },
+  { value: "ship", label: "Kapal & Ferry", group: "Transportasi", keywords: ["boat", "ship", "ferry", "laut"], icon: Ship },
+  { value: "truck", label: "Logistik & Pindahan", group: "Transportasi", keywords: ["truck", "moving", "cargo"], icon: Truck },
+
+  // 3. Shopping & Personal Goods
+  { value: "shopping-bag", label: "Belanja & Mall", group: "Belanja", keywords: ["shopping", "mall", "toko", "belanja"], icon: ShoppingBag },
+  { value: "shopping-cart", label: "Supermarket & Groceries", group: "Belanja", keywords: ["supermarket", "minimarket", "groceries", "sembako"], icon: ShoppingCart },
+  { value: "tag", label: "Diskon & Promo", group: "Belanja", keywords: ["tag", "promo", "discount", "sale"], icon: Tag },
+  { value: "shirt", label: "Pakaian & Fashion", group: "Belanja", keywords: ["fashion", "clothes", "baju", "sepatu", "apparel"], icon: Shirt },
+  { value: "package", label: "Paket & Online Shop", group: "Belanja", keywords: ["package", "shopee", "tokopedia", "paket", "kurir"], icon: Package },
+  { value: "watch", label: "Aksesoris & Jam", group: "Belanja", keywords: ["watch", "accessories", "jewelry", "perhiasan"], icon: Watch },
+  { value: "scissors", label: "Salon & Barbershop", group: "Belanja", keywords: ["barber", "salon", "grooming", "potong"], icon: Scissors },
+  { value: "gift", label: "Hadiah & Kado", group: "Belanja", keywords: ["gift", "present", "kado", "hampers"], icon: Gift },
+
+  // 4. Bills & Home Utilities
+  { value: "receipt", label: "Tagihan & Billing", group: "Tagihan", keywords: ["bill", "receipt", "tagihan", "invoice"], icon: Receipt },
+  { value: "zap", label: "Listrik & PLN", group: "Tagihan", keywords: ["electric", "pln", "listrik", "token"], icon: Zap },
+  { value: "droplet", label: "Air & PDAM", group: "Tagihan", keywords: ["water", "pdam", "air", "aqua"], icon: Droplet },
+  { value: "flame", label: "Gas & LPG", group: "Tagihan", keywords: ["gas", "lpg", "elpiji", "masak"], icon: Flame },
+  { value: "wifi", label: "Internet & Wi-Fi", group: "Tagihan", keywords: ["wifi", "internet", "indihome", "biznet", "firstmedia"], icon: Wifi },
+  { value: "phone", label: "Pulsa & Paket Data", group: "Tagihan", keywords: ["phone", "pulsa", "kuota", "telkomsel", "indosat", "xl"], icon: Phone },
+  { value: "shield", label: "Asuransi & Proteksi", group: "Tagihan", keywords: ["insurance", "asuransi", "bpjs", "protection"], icon: Shield },
+  { value: "lightbulb", label: "Peralatan Rumah", group: "Tagihan", keywords: ["furniture", "lampu", "home", "perabot"], icon: Lightbulb },
+
+  // 5. Housing & Family
+  { value: "home", label: "Sewa / Cicilan Rumah", group: "Keluarga", keywords: ["rent", "house", "kontrakan", "kos", "kpr", "apartemen"], icon: Home },
+  { value: "users", label: "Keluarga & Anak", group: "Keluarga", keywords: ["family", "kids", "keluarga", "anak", "orangtua"], icon: Users },
+  { value: "baby", label: "Kebutuhan Bayi", group: "Keluarga", keywords: ["baby", "popok", "susu", "bayi"], icon: Baby },
+  { value: "cat", label: "Hewan Peliharaan (Kucing)", group: "Keluarga", keywords: ["pet", "cat", "kucing", "petshop"], icon: Cat },
+  { value: "dog", label: "Hewan Peliharaan (Anjing)", group: "Keluarga", keywords: ["pet", "dog", "anjing", "petshop"], icon: Dog },
+  { value: "flower2", label: "Taman & Tanaman", group: "Keluarga", keywords: ["garden", "plants", "tanaman", "bunga"], icon: Flower2 },
+  { value: "bed", label: "Hotel & Penginapan", group: "Keluarga", keywords: ["hotel", "villa", "staycation", "penginapan"], icon: Bed },
+
+  // 6. Work, Income & Business
+  { value: "briefcase", label: "Gaji & Kantor", group: "Pekerjaan", keywords: ["salary", "gaji", "work", "job", "kantor"], icon: Briefcase },
+  { value: "laptop", label: "Freelance & Remote", group: "Pekerjaan", keywords: ["freelance", "sidejob", "project", "remote"], icon: Laptop },
+  { value: "store", label: "Usaha & Bisnis", group: "Pekerjaan", keywords: ["business", "toko", "omset", "dagang"], icon: Store },
+  { value: "building-2", label: "Korporat & Kantor", group: "Pekerjaan", keywords: ["office", "corporate", "b2b"], icon: Building2 },
+  { value: "trending-up", label: "Investasi & Trading", group: "Pekerjaan", keywords: ["investment", "stocks", "reksadana", "crypto", "cuan"], icon: TrendingUp },
+  { value: "landmark", label: "Dividen & Bunga Bank", group: "Pekerjaan", keywords: ["dividend", "bank", "interest", "deposito"], icon: Landmark },
+  { value: "dollar-sign", label: "Cash / Dollar", group: "Pekerjaan", keywords: ["cash", "money", "uang", "valas"], icon: DollarSign },
+  { value: "coins", label: "Koin / Uang Kembalian", group: "Pekerjaan", keywords: ["coins", "uang", "receh"], icon: Coins },
+  { value: "wallet", label: "Dompet & Tabungan", group: "Pekerjaan", keywords: ["wallet", "savings", "tabungan"], icon: Wallet },
+  { value: "rotate-ccw", label: "Refund / Pengembalian", group: "Pekerjaan", keywords: ["refund", "cashback", "kembali"], icon: RotateCcw },
+
+  // 7. Entertainment & Leisure
+  { value: "ticket", label: "Bioskop & Konser", group: "Hiburan", keywords: ["cinema", "xxi", "concert", "tiket", "nonton"], icon: Ticket },
+  { value: "gamepad-2", label: "Game & Top Up", group: "Hiburan", keywords: ["game", "steam", "playstation", "mobilelegends", "topup"], icon: Gamepad2 },
+  { value: "film", label: "Streaming Film (Netflix)", group: "Hiburan", keywords: ["netflix", "disney", "youtube", "movie", "film"], icon: Film },
+  { value: "music", label: "Musik (Spotify / Apple)", group: "Hiburan", keywords: ["spotify", "music", "lagu", "audio"], icon: Music },
+  { value: "headphones", label: "Podcast & Audio", group: "Hiburan", keywords: ["podcast", "audio", "headset"], icon: Headphones },
+  { value: "camera", label: "Fotografi & Kamera", group: "Hiburan", keywords: ["photo", "camera", "foto", "studio"], icon: Camera },
+  { value: "tv-2", label: "TV Kabel & Langganan", group: "Hiburan", keywords: ["tv", "cable", "streaming"], icon: Tv2 },
+  { value: "popcorn", label: "Camilan & Rekreasi", group: "Hiburan", keywords: ["snack", "popcorn", "jalan-jalan"], icon: Popcorn },
+  { value: "party-popper", label: "Pesta & Event", group: "Hiburan", keywords: ["party", "celebration", "ultah", "acara"], icon: PartyPopper },
+  { value: "sparkles", label: "Lifestyle & Hobi", group: "Hiburan", keywords: ["lifestyle", "hobi", "special", "beauty"], icon: Sparkles },
+
+  // 8. Health, Wellness & Sport
+  { value: "heart-pulse", label: "Kesehatan & Medis", group: "Kesehatan", keywords: ["health", "medis", "sehat", "dokter"], icon: HeartPulse },
+  { value: "hospital", label: "Rumah Sakit & Klinik", group: "Kesehatan", keywords: ["hospital", "clinic", "rawat"], icon: Hospital },
+  { value: "pill", label: "Obat & Farmasi", group: "Kesehatan", keywords: ["medicine", "pharmacy", "obat", "apotek"], icon: Pill },
+  { value: "activity", label: "Olahraga & Gym", group: "Kesehatan", keywords: ["sport", "gym", "fitness", "workout", "lari"], icon: Activity },
+  { value: "dumbbell", label: "Gym & Fitness", group: "Kesehatan", keywords: ["gym", "barbell", "fitness", "otot"], icon: Dumbbell },
+  { value: "stethoscope", label: "Dokter & Checkup", group: "Kesehatan", keywords: ["doctor", "checkup", "konsultasi"], icon: Stethoscope },
+  { value: "smile", label: "Skincare & Mental Health", group: "Kesehatan", keywords: ["skincare", "mental", "wellness", "relaksasi"], icon: Smile },
+
+  // 9. Education & Self Improvement
+  { value: "graduation-cap", label: "Pendidikan & Kuliah", group: "Edukasi", keywords: ["education", "school", "kuliah", "spp", "sekolah"], icon: GraduationCap },
+  { value: "book-open", label: "Buku & Kursus", group: "Edukasi", keywords: ["book", "course", "kursus", "baca", "belajar"], icon: BookOpen },
+  { value: "school", label: "Sekolah & Les", group: "Edukasi", keywords: ["school", "les", "bimbel"], icon: School },
+  { value: "pencil", label: "Alat Tulis & Kantor", group: "Edukasi", keywords: ["stationery", "pensil", "buku", "atk"], icon: Pencil },
+  { value: "calculator", label: "Akuntansi & Pajak", group: "Edukasi", keywords: ["tax", "calculator", "pajak", "hitung"], icon: Calculator },
+
+  // 10. Travel & Outdoors
+  { value: "luggage", label: "Liburan & Traveling", group: "Travel", keywords: ["travel", "holiday", "liburan", "koper"], icon: Luggage },
+  { value: "palmtree", label: "Pantai & Resort", group: "Travel", keywords: ["beach", "resort", "bali", "pantai"], icon: Palmtree },
+  { value: "globe", label: "Wisata Internasional", group: "Travel", keywords: ["international", "globe", "overseas"], icon: Globe },
+  { value: "compass", label: "Petualangan & Alam", group: "Travel", keywords: ["adventure", "outdoor", "camping", "gunung"], icon: Compass },
+  { value: "trees", label: "Taman & Alam", group: "Travel", keywords: ["nature", "park", "alam", "hutan"], icon: Trees },
+
+  // 11. Social & General
+  { value: "hand-heart", label: "Donasi & Zakat", group: "Sosial", keywords: ["donation", "zakat", "sedekah", "charity", "infaq"], icon: HandHeart },
+  { value: "heart", label: "Amal & Sosial", group: "Sosial", keywords: ["love", "social", "care", "bantuan"], icon: Heart },
+  { value: "star", label: "Favorit & Bintang", group: "Sosial", keywords: ["star", "favorite", "penting"], icon: Star },
+  { value: "award", label: "Prestasi & Reward", group: "Sosial", keywords: ["reward", "bonus", "hadiah", "piala"], icon: Award },
+  { value: "bookmark", label: "Koleksi & Arsip", group: "Sosial", keywords: ["bookmark", "save", "simpan"], icon: Bookmark },
+  { value: "key", label: "Kunci & Keamanan", group: "Sosial", keywords: ["key", "security", "kunci", "akses"], icon: Key },
+  { value: "circle", label: "Lain-lain", group: "Sosial", keywords: ["other", "misc", "lainnya"], icon: Circle },
+];
+
+export function getCategoryIcon(iconKey: string | null | undefined): LucideIcon {
+  if (!iconKey) return Circle;
+  const match = categoryIconOptions.find((option) => option.value === iconKey);
+  return match?.icon ?? Circle;
 }
 
 export function isAllowedCategoryColor(color: string) {
-  return categoryColors.some((value) => value === color);
+  return categoryColors.some((value) => value.toLowerCase() === color.toLowerCase());
 }

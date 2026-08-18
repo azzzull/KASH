@@ -121,3 +121,12 @@ a:focus-visible {
     font-size: 16px !important;
   }
 }
+
+/* Hide scrollbars cleanly while preserving scrollability */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

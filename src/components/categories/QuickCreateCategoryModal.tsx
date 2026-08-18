@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { quickCreateCategory, unarchiveCategory } from "../../lib/categories";
 import { categoryColors, categoryIconOptions, getCategoryIcon } from "../../lib/categoryMeta";
 import type { Category, CategoryType } from "../../types/domain";
+import { CategoryIconPicker } from "./CategoryIconPicker";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
@@ -154,18 +155,12 @@ export function QuickCreateCategoryModal({
           />
 
           {/* Icon Selector */}
-          <SelectField
-            id="quick-category-icon"
+          <CategoryIconPicker
             label="Ikon Kategori"
             value={icon}
-            onChange={(e) => setIcon(e.target.value)}
-          >
-            {categoryIconOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </SelectField>
+            accentColor={color}
+            onChange={(selectedIcon) => setIcon(selectedIcon)}
+          />
 
           {/* Color Palette Picker */}
           <div>

@@ -95,7 +95,7 @@ export function DesktopSidebar() {
         </div>
       </div>
 
-      <nav className="mt-8 min-h-0 flex-1 overflow-y-auto overflow-x-hidden" aria-label="Main navigation">
+      <nav className="mt-8 min-h-0 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar" aria-label="Main navigation">
         <div className="flex flex-col gap-7">
           {navGroups.map((group) => (
             <section key={group.label}>

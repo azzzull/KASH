@@ -1,6 +1,7 @@
 import { Archive, Edit3, Loader2, Plus, Tags, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/Button";
+import { CategoryIconPicker } from "../components/categories/CategoryIconPicker";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
@@ -174,13 +175,12 @@ function CategoryFormModal({
             <option value="expense">Expense</option>
             <option value="income">Income</option>
           </SelectField>
-          <SelectField id="category-icon" label="Icon" onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
-            {categoryIconOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectField>
+          <CategoryIconPicker
+            label="Icon"
+            value={form.icon}
+            accentColor={form.color}
+            onChange={(selectedIcon) => setForm((current) => ({ ...current, icon: selectedIcon }))}
+          />
           <fieldset>
             <legend className="text-sm font-bold text-slate-900">Color Accent</legend>
             <div className="mt-2 flex flex-wrap gap-2">
