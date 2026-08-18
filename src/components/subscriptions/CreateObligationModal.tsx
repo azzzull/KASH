@@ -7,6 +7,7 @@ import { createRecurringObligation, type CreateRecurringObligationInput } from "
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import type { Category, RecurringFrequency, RecurringObligationType } from "../../types/domain";
 import { Button } from "../ui/Button";
+import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { SelectField } from "../ui/SelectField";
@@ -331,13 +332,11 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
 
             {/* First Due Date & Category */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormField
+              <DatePickerField
                 id="obligation-due-date"
-                type="date"
-                required
                 label="First Due Date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(val) => setStartDate(val)}
               />
 
               <SelectField

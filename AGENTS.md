@@ -252,31 +252,38 @@ with Gold used as an accent.
 
 ---
 
-## 7. INTERACTION STATES
+## 7. INTERACTION STATES & UI CONTROLS
 
-Primary:
+### Primary & Action States
+- Default: `#10B981` (Primary Emerald)
+- Hover: `#059669` (Dark Emerald)
+- Pressed: `#047857` (Pressed Emerald)
+- Selected background: `#ECFDF5` (Selected Emerald Tint)
+- Focus border: `#10B981`
+- Focus ring: `rgba(16, 185, 129, 0.20)`
 
-- Default: `#10B981`
-- Hover: `#059669`
-- Pressed: `#047857`
-
-Selected background:
-
-`#ECFDF5`
-
-Focus border:
-
-`#10B981`
-
-Focus ring:
-
-`rgba(16, 185, 129, 0.20)`
-
-Disabled:
-
+### Disabled States
 - Background: `#F1F5F9`
 - Border: `#E2E8F0`
 - Text: `#91A3BB`
+
+### Input & Form Consistency Rules
+1. **Focused Input Borders**:
+   Every text, numeric, date, and form input when active/focused MUST use the KASH Emerald border and ring:
+   `focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]`
+
+2. **Dropdown Uniformity**:
+   All dropdown selects in modals, forms, and filter bars MUST use the standardized `SelectField` component from the design system.
+   Do NOT use unstyled raw HTML `<select>` elements with inconsistent styling.
+
+3. **Filter Tabs & Action Buttons**:
+   Active filter buttons and tabs MUST use the primary brand **Emerald**:
+   - Active: `bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark`
+   - Inactive: `border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/60 hover:text-kash-emeraldDark`
+   - **Do NOT use Slate (`bg-slate-900`) for active filter states or secondary buttons.** The Slate palette is strictly reserved for typography, neutral card backgrounds, and subtle borders on white.
+
+4. **App-Native Date Picker**:
+   Date selections across KASH MUST use the application-native `DatePickerField` component (with consistent emerald selection, month navigation, and popup styling) rather than relying on inconsistent OS/browser default date pickers.
 
 Use these consistently across buttons, controls, navigation, and interactive components.
 
