@@ -34,6 +34,7 @@ export function CategoryIconPicker({
   const [search, setSearch] = useState("");
   const [activeGroup, setActiveGroup] = useState("Semua");
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedOption = useMemo(
@@ -57,6 +58,17 @@ export function CategoryIconPicker({
     });
   }, [search, activeGroup]);
 
+  // Auto-scroll into view when opened (matching DatePickerField behavior)
+  useEffect(() => {
+    if (isOpen && popoverRef.current) {
+      popoverRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+  }, [isOpen]);
+
   // Handle outside click & Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -78,7 +90,7 @@ export function CategoryIconPicker({
 
     // Auto-focus search input when opened
     const timer = setTimeout(() => {
-      searchInputRef.current?.focus();
+      searchInputRef.current?.focus({ preventScroll: true });
     }, 50);
 
     return () => {
@@ -126,6 +138,7 @@ export function CategoryIconPicker({
       {/* Dropdown Popover (Compact DatePicker-like popup) */}
       {isOpen && (
         <div
+          ref={popoverRef}
           className="absolute left-0 top-[calc(100%+6px)] z-50 flex max-h-72 w-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
           style={{ width: "100%", minWidth: "280px" }}
         >
