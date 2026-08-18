@@ -15,6 +15,8 @@ function lazyPage<TModule extends Record<TExport, ComponentType>, TExport extend
 }
 
 const AnalyticsPage = lazyPage(() => import("../pages/AnalyticsPage"), "AnalyticsPage");
+const BudgetsPage = lazyPage(() => import("../pages/BudgetsPage"), "BudgetsPage");
+const BudgetDetailPage = lazyPage(() => import("../pages/BudgetDetailPage"), "BudgetDetailPage");
 const CalendarPage = lazyPage(() => import("../pages/CalendarPage"), "CalendarPage");
 const CategoriesPage = lazyPage(() => import("../pages/CategoriesPage"), "CategoriesPage");
 const DashboardPage = lazyPage(() => import("../pages/DashboardPage"), "DashboardPage");
@@ -78,6 +80,8 @@ export const router = createBrowserRouter([
         children: [
           { path: "/dashboard", element: routeElement(<DashboardPage />) },
           { path: "/transactions", element: routeElement(<TransactionsPage />) },
+          { path: "/budgets", element: routeElement(<BudgetsPage />) },
+          { path: "/budgets/:id", element: routeElement(<BudgetDetailPage />) },
           { path: "/wallets", element: routeElement(<WalletsPage />) },
           { path: "/wallets/:id", element: routeElement(<WalletDetailPage />) },
           { path: "/calendar", element: routeElement(<CalendarPage />) },

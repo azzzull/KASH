@@ -1,4 +1,10 @@
 import type {
+  Budget,
+  BudgetEnvelopeCategory,
+  BudgetStatus,
+  BudgetType,
+  BudgetVersion,
+  BudgetWithProgress,
   Category,
   CategoryType,
   Counterparty,
@@ -14,6 +20,7 @@ import type {
   GoalContribution,
   GoalProgress,
   GoalStatus,
+  MonthlyBudgetOverview,
   Notification,
   PaymentMode,
   Profile,
@@ -356,8 +363,128 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      budgets: {
+        Row: Budget;
+        Insert: Omit<Budget, "created_at" | "updated_at"> & {
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Budget, "id" | "user_id">>;
+        Relationships: [];
+      };
+      budget_versions: {
+        Row: BudgetVersion;
+        Insert: Omit<BudgetVersion, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<BudgetVersion, "id" | "budget_id">>;
+        Relationships: [];
+      };
+      budget_envelope_categories: {
+        Row: BudgetEnvelopeCategory;
+        Insert: Omit<BudgetEnvelopeCategory, "id" | "created_at"> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<BudgetEnvelopeCategory, "id" | "budget_id">>;
+        Relationships: [];
+      };
     };
     Functions: {
+      get_monthly_budget_progress: {
+        Args: {
+          p_period_start?: string | null;
+        };
+        Returns: {
+          budget_id: string;
+          name: string;
+          type: BudgetType;
+          category_id: string | null;
+          category_name: string | null;
+          category_icon: string | null;
+          category_color: string | null;
+          note: string | null;
+          repeat_monthly: boolean;
+          start_period: string;
+          end_period: string | null;
+          base_amount: number;
+          rollover_enabled: boolean;
+          rollover_amount: number;
+          effective_budget: number;
+          spent: number;
+          remaining: number;
+          usage_percentage: number;
+          status: BudgetStatus;
+          included_category_ids: string[];
+          included_category_names: string[];
+        }[];
+      };
+      get_monthly_budget_overview: {
+        Args: {
+          p_period_start?: string | null;
+        };
+        Returns: {
+          period_start: string;
+          total_budget: number;
+          total_spent: number;
+          total_remaining: number;
+          overall_usage_percentage: number;
+          total_budgets_count: number;
+          healthy_count: number;
+          near_limit_count: number;
+          over_budget_count: number;
+        }[];
+      };
+      create_category_budget: {
+        Args: {
+          p_name: string;
+          p_category_id: string;
+          p_amount: number;
+          p_start_period?: string;
+          p_repeat_monthly?: boolean;
+          p_rollover_enabled?: boolean;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      create_envelope_budget: {
+        Args: {
+          p_name: string;
+          p_category_ids: string[];
+          p_amount: number;
+          p_start_period?: string;
+          p_repeat_monthly?: boolean;
+          p_rollover_enabled?: boolean;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
+      update_budget: {
+        Args: {
+          p_budget_id: string;
+          p_name?: string | null;
+          p_note?: string | null;
+          p_effective_period?: string | null;
+          p_amount?: number | null;
+          p_rollover_enabled?: boolean | null;
+          p_category_ids?: string[] | null;
+        };
+        Returns: boolean;
+      };
+      archive_budget: {
+        Args: {
+          p_budget_id: string;
+          p_end_period: string;
+        };
+        Returns: boolean;
+      };
+      delete_budget: {
+        Args: {
+          p_budget_id: string;
+        };
+        Returns: boolean;
+      };
       create_goal_with_pocket: {
         Args: {
           p_name: string;

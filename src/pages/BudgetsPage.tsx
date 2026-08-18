@@ -1,0 +1,369 @@
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  PieChart,
+  Plus,
+  RotateCcw,
+  Scale,
+  Sparkles,
+  Tag,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { BudgetCard } from "../components/budgets/BudgetCard";
+import { CreateBudgetModal } from "../components/budgets/CreateBudgetModal";
+import { Button } from "../components/ui/Button";
+import { DatePickerField } from "../components/ui/DatePickerField";
+import { PageHeader } from "../components/ui/PageHeader";
+import { useAppEvent } from "../hooks/useAppEvent";
+import { appEvents } from "../lib/appEvents";
+import { getMonthlyBudgetOverview, getMonthlyBudgets } from "../lib/budgets";
+import { formatCurrency } from "../lib/money";
+import type { BudgetWithProgress, MonthlyBudgetOverview } from "../types/domain";
+
+const MONTH_NAMES = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
+function formatMonthYearLabel(dateStr: string): string {
+  if (!dateStr) return "";
+  const [year, month] = dateStr.split("-").map(Number);
+  return `${MONTH_NAMES[month - 1]} ${year}`;
+}
+
+export function BudgetsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const paramMonth = searchParams.get("month");
+    if (paramMonth) return `${paramMonth.substring(0, 7)}-01`;
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  });
+
+  const [filterType, setFilterType] = useState<"all" | "category" | "envelope">("all");
+  const [overview, setOverview] = useState<MonthlyBudgetOverview | null>(null);
+  const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [overviewData, budgetList] = await Promise.all([
+        getMonthlyBudgetOverview(currentMonth),
+        getMonthlyBudgets(currentMonth),
+      ]);
+      setOverview(overviewData);
+      setBudgets(budgetList);
+    } catch (err) {
+      console.error("Error loading budgets:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentMonth]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  useAppEvent(appEvents.transactionSaved, () => {
+    void loadData();
+  });
+  useAppEvent(appEvents.budgetSaved, () => {
+    void loadData();
+  });
+
+  const handlePrevMonth = () => {
+    const [year, month] = currentMonth.split("-").map(Number);
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const newDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
+    setCurrentMonth(newDate);
+    setSearchParams({ month: newDate });
+  };
+
+  const handleNextMonth = () => {
+    const [year, month] = currentMonth.split("-").map(Number);
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const newDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+    setCurrentMonth(newDate);
+    setSearchParams({ month: newDate });
+  };
+
+  const handleSetCurrentMonth = () => {
+    const now = new Date();
+    const newDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    setCurrentMonth(newDate);
+    setSearchParams({ month: newDate });
+  };
+
+  const filteredBudgets = useMemo(() => {
+    if (filterType === "all") return budgets;
+    return budgets.filter((b) => b.type === filterType);
+  }, [budgets, filterType]);
+
+  const categoryBudgets = useMemo(() => budgets.filter((b) => b.type === "category"), [budgets]);
+  const envelopeBudgets = useMemo(() => budgets.filter((b) => b.type === "envelope"), [budgets]);
+
+  const overallProgressPercent = Math.min(
+    Math.max(overview?.overall_usage_percentage ?? 0, 0),
+    100
+  );
+
+  return (
+    <div className="mx-auto grid w-full max-w-5xl gap-5 p-4 md:p-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader
+          eyebrow="Planning"
+          icon={Scale}
+          title="Budgets & Amplop"
+          description="Kendalikan pengeluaran bulanan dengan batas anggaran kategori dan amplop belanja."
+        />
+
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+            <Plus size={16} />
+            Buat Budget
+          </Button>
+        </div>
+      </div>
+
+      {/* Month Navigator Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+            aria-label="Bulan Sebelumnya"
+          >
+            <ChevronLeft size={18} />
+          </button>
+
+          <div className="w-48 sm:w-56">
+            <DatePickerField
+              value={currentMonth}
+              onChange={(val) => {
+                if (val) {
+                  const norm = `${val.substring(0, 7)}-01`;
+                  setCurrentMonth(norm);
+                  setSearchParams({ month: norm });
+                }
+              }}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+            aria-label="Bulan Berikutnya"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSetCurrentMonth}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+        >
+          Bulan Ini
+        </button>
+      </div>
+
+      {/* Monthly Overview Progress Card */}
+      {overview && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+            <div>
+              <span className="text-xs font-extrabold uppercase text-slate-600">
+                Ringkasan Anggaran ({formatMonthYearLabel(currentMonth)})
+              </span>
+              <h2 className="mt-0.5 text-xl font-black text-slate-900">
+                {formatCurrency(overview.total_spent)}{" "}
+                <span className="text-sm font-semibold text-slate-600">
+                  / {formatCurrency(overview.total_budget)}
+                </span>
+              </h2>
+            </div>
+
+            {/* Health Badges Counter */}
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+              <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2.5 py-1 text-kash-emeraldDark">
+                <CheckCircle2 size={13} />
+                {overview.healthy_count} Aman
+              </span>
+
+              {overview.near_limit_count > 0 && (
+                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">
+                  <AlertCircle size={13} />
+                  {overview.near_limit_count} Hampir Batas
+                </span>
+              )}
+
+              {overview.over_budget_count > 0 && (
+                <span className="flex items-center gap-1 rounded-full bg-kash-expense/15 px-2.5 py-1 text-kash-expense">
+                  <AlertCircle size={13} />
+                  {overview.over_budget_count} Over Budget
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Numbers Grid */}
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 text-xs">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <span className="font-bold text-slate-600">Total Budget</span>
+              <p className="mt-0.5 text-sm font-black text-slate-900">
+                {formatCurrency(overview.total_budget)}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 p-3">
+              <span className="font-bold text-slate-600">Total Terpakai</span>
+              <p className="mt-0.5 text-sm font-black text-slate-900">
+                {formatCurrency(overview.total_spent)}
+              </p>
+            </div>
+
+            <div className="col-span-2 sm:col-span-1 rounded-xl bg-slate-50 p-3">
+              <span className="font-bold text-slate-600">
+                {Number(overview.total_remaining) < 0 ? "Total Kelebihan" : "Total Sisa Budget"}
+              </span>
+              <p
+                className={`mt-0.5 text-sm font-black ${
+                  Number(overview.total_remaining) < 0 ? "text-kash-expense" : "text-kash-emeraldDark"
+                }`}
+              >
+                {formatCurrency(Math.abs(Number(overview.total_remaining)))}
+              </p>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mt-4">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  overview.over_budget_count > 0
+                    ? "bg-kash-expense"
+                    : overview.near_limit_count > 0
+                    ? "bg-amber-500"
+                    : "bg-kash-emerald"
+                }`}
+                style={{ width: `${overallProgressPercent}%` }}
+              />
+            </div>
+            <div className="mt-1.5 flex items-center justify-between text-xs font-bold text-slate-600">
+              <span>{overview.overall_usage_percentage.toFixed(1)}% anggaran terpakai</span>
+              <span>{overview.total_budgets_count} alokasi aktif</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setFilterType("all")}
+          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
+            filterType === "all"
+              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
+              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          }`}
+        >
+          Semua ({budgets.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterType("category")}
+          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
+            filterType === "category"
+              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
+              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          }`}
+        >
+          Budget Kategori ({categoryBudgets.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterType("envelope")}
+          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
+            filterType === "envelope"
+              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
+              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          }`}
+        >
+          Amplop ({envelopeBudgets.length})
+        </button>
+      </div>
+
+      {/* Budgets List Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"
+            >
+              <div className="h-6 w-32 rounded-md bg-slate-100" />
+              <div className="mt-4 h-4 w-48 rounded-md bg-slate-100" />
+              <div className="mt-6 h-3 w-full rounded-full bg-slate-100" />
+            </div>
+          ))}
+        </div>
+      ) : filteredBudgets.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center shadow-xs">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark mb-3">
+            <Scale size={28} />
+          </div>
+          <h3 className="text-base font-extrabold text-slate-900">Belum Ada Budget di Bulan Ini</h3>
+          <p className="mt-1 max-w-sm text-xs font-semibold text-slate-600">
+            Buat batas anggaran untuk kategori favorit atau kelompokkan kategori ke dalam amplop belanja.
+          </p>
+          <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
+            <Plus size={16} />
+            Buat Budget Sekarang
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {filteredBudgets.map((budget) => (
+            <BudgetCard key={budget.budget_id} budget={budget} periodStart={currentMonth} />
+          ))}
+        </div>
+      )}
+
+      {/* Create Budget Modal */}
+      {showCreateModal && (
+        <CreateBudgetModal
+          initialMonth={currentMonth}
+          onClose={() => setShowCreateModal(false)}
+          onSaved={() => void loadData()}
+        />
+      )}
+    </div>
+  );
+}

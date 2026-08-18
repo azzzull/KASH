@@ -304,4 +304,77 @@ export type PushSubscriptionRecord = {
   last_used_at: string | null;
 };
 
+export type BudgetType = "category" | "envelope";
+export type BudgetStatus = "healthy" | "near_limit" | "over_budget";
+
+export type Budget = {
+  id: string;
+  user_id: string;
+  name: string;
+  type: BudgetType;
+  category_id: string | null;
+  start_period: string; // YYYY-MM-DD (1st of month)
+  end_period: string | null;
+  repeat_monthly: boolean;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BudgetVersion = {
+  id: string;
+  budget_id: string;
+  user_id: string;
+  effective_from_period: string;
+  amount: MoneyAmount;
+  rollover_enabled: boolean;
+  created_at: string;
+};
+
+export type BudgetEnvelopeCategory = {
+  id: string;
+  envelope_id: string;
+  category_id: string;
+  effective_from_period: string;
+  effective_to_period: string | null;
+  created_at: string;
+};
+
+export type BudgetWithProgress = {
+  budget_id: string;
+  name: string;
+  type: BudgetType;
+  category_id: string | null;
+  category_name: string | null;
+  category_icon: string | null;
+  category_color: string | null;
+  note: string | null;
+  repeat_monthly: boolean;
+  start_period: string;
+  end_period: string | null;
+  base_amount: MoneyAmount;
+  rollover_enabled: boolean;
+  rollover_amount: MoneyAmount;
+  effective_budget: MoneyAmount;
+  spent: MoneyAmount;
+  remaining: MoneyAmount;
+  usage_percentage: number;
+  status: BudgetStatus;
+  included_category_ids: string[];
+  included_category_names: string[];
+};
+
+export type MonthlyBudgetOverview = {
+  period_start: string;
+  total_budget: MoneyAmount;
+  total_spent: MoneyAmount;
+  total_remaining: MoneyAmount;
+  overall_usage_percentage: number;
+  total_budgets_count: number;
+  healthy_count: number;
+  near_limit_count: number;
+  over_budget_count: number;
+};
+
+
 

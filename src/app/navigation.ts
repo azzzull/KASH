@@ -8,6 +8,7 @@ import {
     LucideIcon,
     ReceiptText,
     Repeat,
+    Scale,
     Settings,
     Crosshair,
     UsersRound,
@@ -31,6 +32,7 @@ export const navGroups: NavGroup[] = [
         items: [
             { label: "Dashboard", path: "/dashboard", icon: Home },
             { label: "Transactions", path: "/transactions", icon: ReceiptText },
+            { label: "Budgets", path: "/budgets", icon: Scale },
             { label: "Calendar", path: "/calendar", icon: CalendarDays },
             { label: "Analytics", path: "/analytics", icon: BarChart3 },
         ],
@@ -54,6 +56,7 @@ export const navGroups: NavGroup[] = [
 export const mobilePrimaryItems: NavItem[] = [
     { label: "Home", path: "/dashboard", icon: Home },
     { label: "Transactions", path: "/transactions", icon: ReceiptText },
+    { label: "Budgets", path: "/budgets", icon: Scale },
     { label: "Analytics", path: "/analytics", icon: BarChart3 },
 ];
 

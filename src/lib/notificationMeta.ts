@@ -134,6 +134,21 @@ export function getNotificationVisualMeta(type: NotificationType | string): Noti
         categoryLabel: "Contribution Rejected",
       };
 
+    case "budget_near_limit":
+      return {
+        icon: AlertCircle,
+        toneClass: "text-amber-600",
+        badgeBgClass: "bg-amber-100 text-amber-800",
+        categoryLabel: "Budget Near Limit",
+      };
+    case "budget_exceeded":
+      return {
+        icon: AlertCircle,
+        toneClass: "text-kash-expense",
+        badgeBgClass: "bg-kash-expense/15 text-kash-expense",
+        categoryLabel: "Budget Exceeded",
+      };
+
     default:
       return {
         icon: Bell,
@@ -148,6 +163,8 @@ export function getNotificationTargetPath(notification: Notification): string | 
   if (!notification.entity_type || !notification.entity_id) return null;
 
   switch (notification.entity_type) {
+    case "budget":
+      return `/budgets/${notification.entity_id}`;
     case "recurring_obligation":
       return `/subscriptions/${notification.entity_id}`;
     case "counterparty":

@@ -5,13 +5,17 @@ import {
   CalendarDays,
   ChevronRight,
   RefreshCw,
+  Scale,
   TrendingDown,
   TrendingUp,
   WalletCards,
 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { getAnalyticsSummary, type AnalyticsMetricChange, type AnalyticsPeriodKey, type AnalyticsSummary } from "../lib/analytics";
+import { getMonthlyBudgets } from "../lib/budgets";
+import type { BudgetWithProgress } from "../types/domain";
 import { formatCurrency } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
@@ -824,12 +828,76 @@ function PeriodControls({
   );
 }
 
+function BudgetVsActualCard({ currency }: { currency: string }) {
+  const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getMonthlyBudgets()
+      .then((data) => {
+        setBudgets(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading || budgets.length === 0) return null;
+
+  return (
+    <AnalyticsCard className="p-5">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Scale aria-hidden="true" className="text-kash-emerald" size={18} />
+          <h2 className="text-base font-extrabold text-slate-900">Budget vs Actual (Bulan Ini)</h2>
+        </div>
+        <Link to="/budgets" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
+          Lihat Semua
+        </Link>
+      </div>
+
+      <div className="space-y-3.5">
+        {budgets.slice(0, 5).map((b) => {
+          const progress = Math.min(Math.max(b.usage_percentage, 0), 100);
+          const isOver = b.status === "over_budget";
+          const isNear = b.status === "near_limit";
+
+          return (
+            <div key={b.budget_id} className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-900">{b.name}</span>
+                <span className="text-slate-600">
+                  <strong className={isOver ? "text-kash-expense" : "text-slate-900"}>
+                    {formatCurrency(b.spent, currency)}
+                  </strong>{" "}
+                  / {formatCurrency(b.effective_budget, currency)}
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    isOver ? "bg-kash-expense" : isNear ? "bg-amber-500" : "bg-kash-emerald"
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </AnalyticsCard>
+  );
+}
+
 export function AnalyticsPage() {
   const { profile } = useAuth();
   const currency = profile?.default_currency ?? "IDR";
   const [period, setPeriod] = useState<AnalyticsPeriodKey>("this_month");
-  const [customStartDate, setCustomStartDate] = useState(firstDayOfCurrentMonth);
-  const [customEndDate, setCustomEndDate] = useState(() => localDateInputValue(new Date()));
+  const [customStartDate, setCustomStartDate] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
+  );
+  const [customEndDate, setCustomEndDate] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
+  );
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -837,16 +905,17 @@ export function AnalyticsPage() {
   const loadAnalytics = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     try {
-      const nextSummary = await getAnalyticsSummary({
-        customEndDate,
-        customStartDate,
+      const data = await getAnalyticsSummary({
+        customEndDate: period === "custom" ? customEndDate : undefined,
+        customStartDate: period === "custom" ? customStartDate : undefined,
         period,
       });
-      setSummary(nextSummary);
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to load analytics data.");
+      setSummary(data);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error ? loadError.message : "Unable to load analytics summary. Please retry.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -858,19 +927,21 @@ export function AnalyticsPage() {
 
   useAppEvent(appEvents.transactionSaved, () => void loadAnalytics());
 
-  const periodLabel = useMemo(() => summary?.period.label ?? "Selected period", [summary?.period.label]);
-
   if (isLoading && !summary) return <AnalyticsSkeleton />;
 
   if (error && !summary) {
     return (
-      <AnalyticsCard className="mx-auto w-full max-w-[1180px] p-6">
+      <AnalyticsCard className="p-6">
         <p className="text-sm font-bold text-kash-expense">Analytics could not load</p>
         <p className="mt-2 text-sm font-medium text-slate-600">{error}</p>
-        <Button className="mt-5" onClick={() => void loadAnalytics()}>
-          <RefreshCw aria-hidden="true" size={17} />
+        <button
+          type="button"
+          onClick={() => void loadAnalytics()}
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-kash-emerald px-4 py-2 text-sm font-bold text-white transition hover:bg-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+        >
+          <RefreshCw size={17} />
           Retry
-        </Button>
+        </button>
       </AnalyticsCard>
     );
   }
@@ -882,23 +953,22 @@ export function AnalyticsPage() {
       <PageHeader
         eyebrow="Analytics"
         icon={BarChart3}
-        title="Financial Analytics"
-        description={periodLabel}
-        actions={
-          <PeriodControls
-            period={period}
-            customStartDate={customStartDate}
-            customEndDate={customEndDate}
-            onPeriodChange={setPeriod}
-            onCustomStartDateChange={setCustomStartDate}
-            onCustomEndDateChange={setCustomEndDate}
-          />
-        }
+        title="Analytics"
+        description="Comprehensive insights across cash flow, spending distribution, and net worth."
       />
 
-      {error ? <p className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</p> : null}
+      <PeriodControls
+        period={period}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+        onPeriodChange={setPeriod}
+        onCustomStartDateChange={setCustomStartDate}
+        onCustomEndDateChange={setCustomEndDate}
+      />
 
       <SummaryCards summary={summary} currency={currency} />
+
+      <BudgetVsActualCard currency={currency} />
 
       <AnalyticsInsights summary={summary} currency={currency} />
 

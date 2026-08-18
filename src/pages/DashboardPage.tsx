@@ -14,6 +14,7 @@ import {
   Info,
   PiggyBank,
   RefreshCw,
+  Scale,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -22,6 +23,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getDashboardSummary, type DashboardCategorySpend, type DashboardMetricChange, type DashboardSummary } from "../lib/dashboard";
+import { getMonthlyBudgetOverview } from "../lib/budgets";
+import type { MonthlyBudgetOverview } from "../types/domain";
 import { buildCalendarCells, localDateKey } from "../lib/calendar";
 import { formatCurrency } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
@@ -755,6 +758,109 @@ function DebtReceivableSummary({
   );
 }
 
+function BudgetDashboardSummary({
+  balancesVisible,
+  currency,
+}: {
+  balancesVisible: boolean;
+  currency: string;
+}) {
+  const [overview, setOverview] = useState<MonthlyBudgetOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadOverview = useCallback(async () => {
+    try {
+      const data = await getMonthlyBudgetOverview();
+      setOverview(data);
+    } catch {
+      // safe fallback
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadOverview();
+  }, [loadOverview]);
+
+  useAppEvent(appEvents.transactionSaved, () => void loadOverview());
+
+  if (loading) {
+    return <div className="h-32 animate-pulse rounded-lg bg-slate-100" />;
+  }
+
+  if (!overview || overview.total_budgets_count === 0) {
+    return (
+      <EmptyPanel
+        title="Belum ada budget"
+        description="Atur batas belanja bulanan untuk mengendalikan pengeluaran."
+        className="min-h-36"
+      />
+    );
+  }
+
+  const progressPercent = Math.min(Math.max(overview.overall_usage_percentage, 0), 100);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-slate-50 p-2.5">
+          <span className="text-[11px] font-bold text-slate-600">Total Terpakai</span>
+          <p className="mt-1 text-sm font-black text-slate-900">
+            {formatPrivateAmount(Number(overview.total_spent), currency, balancesVisible)}
+          </p>
+        </div>
+        <div className="rounded-lg bg-slate-50 p-2.5">
+          <span className="text-[11px] font-bold text-slate-600">
+            {Number(overview.total_remaining) < 0 ? "Kelebihan" : "Sisa Budget"}
+          </span>
+          <p
+            className={`mt-1 text-sm font-black ${
+              Number(overview.total_remaining) < 0 ? "text-kash-expense" : "text-kash-emeraldDark"
+            }`}
+          >
+            {formatPrivateAmount(Math.abs(Number(overview.total_remaining)), currency, balancesVisible)}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${
+              overview.over_budget_count > 0
+                ? "bg-kash-expense"
+                : overview.near_limit_count > 0
+                ? "bg-amber-500"
+                : "bg-kash-emerald"
+            }`}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <div className="mt-1.5 flex items-center justify-between text-[11px] font-bold text-slate-600">
+          <span>{overview.overall_usage_percentage.toFixed(1)}% terpakai</span>
+          <span>{overview.total_budgets_count} alokasi</span>
+        </div>
+      </div>
+
+      {(overview.near_limit_count > 0 || overview.over_budget_count > 0) && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {overview.near_limit_count > 0 && (
+            <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+              {overview.near_limit_count} hampir batas
+            </span>
+          )}
+          {overview.over_budget_count > 0 && (
+            <span className="rounded bg-kash-expense/15 px-2 py-0.5 text-[10px] font-bold text-kash-expense">
+              {overview.over_budget_count} over budget
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function transactionIcon(type: TransactionType) {
   if (type === "income") return ArrowDownLeft;
   if (type === "expense") return ArrowUpRight;
@@ -958,7 +1064,20 @@ export function DashboardPage() {
         </DashboardCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DashboardCard className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Scale aria-hidden="true" className="text-kash-emerald" size={18} />
+              <h2 className="text-base font-extrabold text-slate-900">Budget</h2>
+            </div>
+            <Link to="/budgets" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
+              View All
+            </Link>
+          </div>
+          <BudgetDashboardSummary balancesVisible={balancesVisible} currency={currency} />
+        </DashboardCard>
+
         <DashboardCard className="p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-base font-extrabold text-slate-900">Wallets</h2>
