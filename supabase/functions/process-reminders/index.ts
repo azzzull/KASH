@@ -261,10 +261,14 @@ serve(async (req: Request) => {
       // Fetch cron job registration details
       const { data: cronJobData } = await supabase.rpc("get_cron_job_info");
 
+      // Fetch cron execution history
+      const { data: cronHistory } = await supabase.rpc("get_cron_run_history");
+
       return jsonResponse({
         success: true,
         cron_inspection: {
           cron_job: cronJobData ?? [],
+          cron_run_history: cronHistory ?? [],
           vault_invoker_test: vaultInvokerResult,
         },
         reminders_processed: reminders.length,
