@@ -1,4 +1,4 @@
-import { Bell, Check, ChevronDown, Info, Plus, X } from "lucide-react";
+import { Bell, Plus, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { getActiveCategories } from "../../lib/categories";
@@ -7,7 +7,9 @@ import { createRecurringObligation, type CreateRecurringObligationInput } from "
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import type { Category, RecurringFrequency, RecurringObligationType } from "../../types/domain";
 import { Button } from "../ui/Button";
+import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
+import { SelectField } from "../ui/SelectField";
 
 type CreateObligationModalProps = {
   onClose: () => void;
@@ -60,7 +62,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
           setWallets(walRes.data);
         }
       })
-      .catch(() => { });
+      .catch(() => {});
   }, []);
 
   const isInstallmentType = type === "paylater" || type === "installment";
@@ -185,9 +187,9 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
 
             {/* Obligation Type Selector */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                Obligation Type *
-              </label>
+              <span className="block text-sm font-bold text-slate-900">
+                Obligation Type
+              </span>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
                   { id: "subscription", label: "Subscription" },
@@ -199,10 +201,11 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                     key={item.id}
                     type="button"
                     onClick={() => handleTypeChange(item.id as RecurringObligationType)}
-                    className={`rounded-lg py-2.5 text-center text-xs font-extrabold transition ${type === item.id
+                    className={`rounded-lg py-2.5 text-center text-xs font-extrabold transition ${
+                      type === item.id
                         ? "bg-kash-emerald text-white shadow-sm"
-                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
+                        : "border border-slate-200 bg-white text-slate-700 hover:border-kash-emerald/40 hover:bg-slate-50"
+                    }`}
                   >
                     {item.label}
                   </button>
@@ -212,85 +215,60 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
 
             {/* Name and Provider */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Obligation Name *</span>
-                <input
-                  type="text"
-                  required
-                  placeholder={type === "subscription" ? "e.g. Netflix, Spotify" : type === "bill" ? "e.g. Electricity, WiFi" : "e.g. SPayLater, Shopee Checkout"}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                />
-              </label>
+              <FormField
+                id="obligation-name"
+                label="Obligation Name"
+                required
+                placeholder={type === "subscription" ? "e.g. Netflix, Spotify" : type === "bill" ? "e.g. Electricity, WiFi" : "e.g. SPayLater, Shopee Checkout"}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
 
-              <label className="block">
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Provider (Optional)</span>
-                <input
-                  type="text"
-                  placeholder="e.g. Shopee, Gojek, Telkomsel, PLN, Kredivo"
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value)}
-                  className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                />
-              </label>
+              <FormField
+                id="obligation-provider"
+                label="Provider (Optional)"
+                placeholder="e.g. Shopee, Gojek, Telkomsel, PLN"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+              />
             </div>
 
-            {/* Amount & Frequency */}
+            {/* Amount & Frequency / Tenor */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  {isInstallmentType ? "Installment Amount / Month *" : "Billing Amount *"}
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  placeholder="150.000"
-                  value={amount}
-                  onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
-                  className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                />
-              </label>
+              <FormField
+                id="obligation-amount"
+                inputMode="numeric"
+                required
+                label={isInstallmentType ? "Installment Amount / Month" : "Billing Amount"}
+                placeholder="150.000"
+                value={amount}
+                onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
+              />
 
               {!isInstallmentType ? (
-                <label className="block">
-                  <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                    Billing Frequency *
-                  </span>
-                  <div className="relative mt-1">
-                    <select
-                      id="obligation-frequency"
-                      value={frequency}
-                      onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}
-                      className="block h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 pr-9 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                    >
-                      {FREQUENCY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600" />
-                  </div>
-                </label>
+                <SelectField
+                  id="obligation-frequency"
+                  label="Billing Frequency"
+                  value={frequency}
+                  onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}
+                >
+                  {FREQUENCY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </SelectField>
               ) : (
-                <label className="block">
-                  <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                    Tenor (Installments / Months) *
-                  </span>
-                  <div className="mt-1">
-                    <input
-                      type="number"
-                      min="1"
-                      max="120"
-                      required
-                      value={installmentCount}
-                      onChange={(e) => setInstallmentCount(e.target.value)}
-                      className="block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                    />
-                  </div>
-                </label>
+                <FormField
+                  id="obligation-tenor"
+                  type="number"
+                  min="1"
+                  max="120"
+                  required
+                  label="Tenor (Installments / Months)"
+                  value={installmentCount}
+                  onChange={(e) => setInstallmentCount(e.target.value)}
+                />
               )}
             </div>
 
@@ -308,10 +286,11 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                     key={preset.count}
                     type="button"
                     onClick={() => setInstallmentCount(preset.count)}
-                    className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${installmentCount === preset.count
+                    className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition ${
+                      installmentCount === preset.count
                         ? "bg-kash-emerald text-white shadow-sm"
                         : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-                      }`}
+                    }`}
                   >
                     {preset.label}
                   </button>
@@ -330,94 +309,72 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                 </div>
 
                 <div className="mt-3 border-t border-kash-emerald/10 pt-3">
-                  <label className="block">
-                    <span className="block text-xs font-bold text-slate-700">
-                      Already paid installments prior to KASH:
+                  <span className="block text-xs font-bold text-slate-700">
+                    Already paid installments prior to KASH:
+                  </span>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={installmentCount}
+                      value={alreadyPaidCount}
+                      onChange={(e) => setAlreadyPaidCount(e.target.value)}
+                      className="block h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
+                    />
+                    <span className="text-xs font-semibold text-slate-600">
+                      of {installmentCount} months ({Math.max(0, parseInt(installmentCount, 10) - (parseInt(alreadyPaidCount, 10) || 0))} remaining)
                     </span>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max={installmentCount}
-                        value={alreadyPaidCount}
-                        onChange={(e) => setAlreadyPaidCount(e.target.value)}
-                        className="block h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                      />
-                      <span className="text-xs font-semibold text-slate-600">
-                        of {installmentCount} months ({Math.max(0, parseInt(installmentCount, 10) - (parseInt(alreadyPaidCount, 10) || 0))} remaining)
-                      </span>
-                    </div>
-                  </label>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* First Due Date & Category */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  First Due Date *
-                </span>
-                <input
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                />
-              </label>
+              <FormField
+                id="obligation-due-date"
+                type="date"
+                required
+                label="First Due Date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
 
-              <label className="block">
-                <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Expense Category
-                </span>
-                <div className="relative mt-1">
-                  <select
-                    id="obligation-category"
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="block h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 pr-9 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                  >
-                    <option value="">No Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600" />
-                </div>
-              </label>
+              <SelectField
+                id="obligation-category"
+                label="Expense Category"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                <option value="">No Category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </SelectField>
             </div>
 
             {/* Default Wallet */}
-            <label className="block">
-              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                Default Payment Wallet (Optional)
-              </span>
-              <div className="relative mt-1">
-                <select
-                  id="obligation-default-wallet"
-                  value={defaultWalletId}
-                  onChange={(e) => setDefaultWalletId(e.target.value)}
-                  className="block h-11 w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 pr-9 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-                >
-                  <option value="">Choose Wallet (Optional)</option>
-                  {wallets.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance)})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600" />
-              </div>
-            </label>
+            <SelectField
+              id="obligation-default-wallet"
+              label="Default Payment Wallet (Optional)"
+              value={defaultWalletId}
+              onChange={(e) => setDefaultWalletId(e.target.value)}
+            >
+              <option value="">Choose Wallet (Optional)</option>
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance)})
+                </option>
+              ))}
+            </SelectField>
 
             {/* Reminder Settings */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
+              <span className="block text-sm font-bold text-slate-900">
                 Reminder Notifications
-              </label>
+              </span>
               <div className="mt-2 flex flex-wrap gap-2">
                 {REMINDER_OFFSET_OPTIONS.map((opt) => {
                   const active = reminderOffsets.includes(opt.value);
@@ -426,10 +383,11 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                       key={opt.value}
                       type="button"
                       onClick={() => toggleReminderOffset(opt.value)}
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${active
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                        active
                           ? "bg-kash-selected text-kash-emeraldDark ring-1 ring-kash-emerald"
                           : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                        }`}
+                      }`}
                     >
                       <Bell size={13} />
                       {opt.label}
@@ -440,16 +398,13 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             </div>
 
             {/* Note */}
-            <label className="block">
-              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Note (Optional)</span>
-              <input
-                type="text"
-                placeholder="e.g. Shared with family, automatic debit"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-              />
-            </label>
+            <FormField
+              id="obligation-note"
+              label="Note (Optional)"
+              placeholder="e.g. Shared with family, automatic debit"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
           </div>
 
           {/* Fixed Footer (Sticky Actions) */}
