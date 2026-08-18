@@ -16,6 +16,7 @@ import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -286,17 +287,16 @@ function CreateGoalModal({
                                 </span>
                             )}
                         </div>
-                        <input
+                        <DatePickerField
                             id="goal-deadline"
-                            type="date"
                             value={form.deadline}
-                            onChange={(event) =>
+                            placeholder="Select Target Date"
+                            onChange={(val) =>
                                 setForm((current) => ({
                                     ...current,
-                                    deadline: event.target.value,
+                                    deadline: val,
                                 }))
                             }
-                            className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
                         />
                         <span className="mt-1.5 block text-xs font-medium text-slate-600">
                             {form.deadline

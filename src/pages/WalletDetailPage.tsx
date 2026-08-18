@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -339,7 +340,13 @@ function AdjustmentModal({
               {adjustmentAmount === 0 ? formatCurrency(0, wallet.currency) : `${adjustmentAmount > 0 ? "+" : "-"}${formatCurrency(Math.abs(adjustmentAmount), wallet.currency)}`}
             </p>
           </div>
-          <FormField id="adjustment-date" label="Date" onChange={(event) => setTransactionDate(event.target.value)} type="datetime-local" value={transactionDate} />
+          <DatePickerField
+            id="adjustment-date"
+            label="Date"
+            enableTime
+            onChange={(val) => setTransactionDate(val)}
+            value={transactionDate}
+          />
           <FormField id="adjustment-reason" label="Reason" onChange={(event) => setReason(event.target.value)} placeholder="Cash count correction" value={reason} />
           <Button disabled={saving} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}

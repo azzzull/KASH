@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/Button";
+import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { SelectField } from "../ui/SelectField";
@@ -282,11 +283,11 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </>
             ) : null}
 
-            <FormField
+            <DatePickerField
               id={`${mode}-date`}
               label="Date"
-              onChange={(event) => setTransactionDate(event.target.value)}
-              type="datetime-local"
+              enableTime
+              onChange={(val) => setTransactionDate(val)}
               value={transactionDate}
             />
             <FormField id={`${mode}-note`} label="Note" onChange={(event) => setNote(event.target.value)} placeholder="Optional note" value={note} />

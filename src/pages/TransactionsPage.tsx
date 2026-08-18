@@ -19,6 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -433,7 +434,13 @@ function TransactionFormModal({
             </>
           ) : null}
 
-          <FormField id="transaction-edit-date" label="Date" type="datetime-local" value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} />
+          <DatePickerField
+            id="transaction-edit-date"
+            label="Date"
+            enableTime
+            value={transactionDate}
+            onChange={(val) => setTransactionDate(val)}
+          />
           <FormField id="transaction-edit-note" label={transaction.type === "adjustment" ? "Reason / Note" : "Note"} value={note} onChange={(event) => setNote(event.target.value)} />
 
           {transaction.type === "transfer" ? (

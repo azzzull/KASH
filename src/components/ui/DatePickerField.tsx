@@ -1,11 +1,12 @@
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Check, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type DatePickerFieldProps = {
   id?: string;
   label?: string;
-  value: string; // "YYYY-MM-DD"
+  value: string; // "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm"
   onChange: (value: string) => void;
+  enableTime?: boolean;
   min?: string;
   max?: string;
   required?: boolean;
@@ -31,58 +32,91 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
-function formatDisplayDate(dateStr: string): string {
-  if (!dateStr) return "Pilih Tanggal";
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (!y || !m || !d) return dateStr;
-  const monthName = MONTH_NAMES[m - 1] || "";
-  return `${d} ${monthName} ${y}`;
+function padZero(n: number): string {
+  return String(n).padStart(2, "0");
 }
 
-function parseDate(dateStr: string): Date {
-  if (!dateStr) return new Date();
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (!y || !m || !d) return new Date();
-  return new Date(y, m - 1, d);
+function parseDateTime(dateStr: string) {
+  if (!dateStr) {
+    const now = new Date();
+    return {
+      dateStr: `${now.getFullYear()}-${padZero(now.getMonth() + 1)}-${padZero(now.getDate())}`,
+      hours: padZero(now.getHours()),
+      minutes: padZero(now.getMinutes()),
+      year: now.getFullYear(),
+      month: now.getMonth(),
+      day: now.getDate(),
+    };
+  }
+
+  const [datePart, timePart] = dateStr.split("T");
+  const [y, m, d] = (datePart || "").split("-").map(Number);
+  const [hh, mm] = (timePart || "").split(":").map(Number);
+
+  const now = new Date();
+  const year = isNaN(y) ? now.getFullYear() : y;
+  const month = isNaN(m) ? now.getMonth() : m - 1;
+  const day = isNaN(d) ? now.getDate() : d;
+  const hours = isNaN(hh) ? padZero(now.getHours()) : padZero(hh);
+  const minutes = isNaN(mm) ? padZero(now.getMinutes()) : padZero(mm);
+
+  return {
+    dateStr: `${year}-${padZero(month + 1)}-${padZero(day)}`,
+    hours,
+    minutes,
+    year,
+    month,
+    day,
+  };
 }
 
-function formatDateString(year: number, month: number, day: number): string {
-  const m = String(month + 1).padStart(2, "0");
-  const d = String(day).padStart(2, "0");
-  return `${year}-${m}-${d}`;
+function formatDisplayString(valueStr: string, enableTime: boolean): string {
+  if (!valueStr) return enableTime ? "Pilih Tanggal & Jam" : "Pilih Tanggal";
+  const parsed = parseDateTime(valueStr);
+  const monthName = MONTH_NAMES[parsed.month] || "";
+  const dateFormatted = `${parsed.day} ${monthName} ${parsed.year}`;
+  if (!enableTime) return dateFormatted;
+  return `${dateFormatted}, ${parsed.hours}:${parsed.minutes}`;
 }
 
 export function DatePickerField({
   className = "",
   disabled = false,
+  enableTime = false,
   id,
   label,
   max,
   min,
   onChange,
-  placeholder = "Pilih Tanggal",
+  placeholder,
   required = false,
   value,
 }: DatePickerFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedDate = useMemo(() => parseDate(value), [value]);
+  const parsedValue = useMemo(() => parseDateTime(value), [value]);
 
-  // View state for month navigation
-  const [viewYear, setViewYear] = useState(() => selectedDate.getFullYear());
-  const [viewMonth, setViewMonth] = useState(() => selectedDate.getMonth());
+  // Calendar navigation month/year
+  const [viewYear, setViewYear] = useState(() => parsedValue.year);
+  const [viewMonth, setViewMonth] = useState(() => parsedValue.month);
+
+  // Time state
+  const [selectedHours, setSelectedHours] = useState(() => parsedValue.hours);
+  const [selectedMinutes, setSelectedMinutes] = useState(() => parsedValue.minutes);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync view month/year when selected value changes
+  // Sync internal state when external value changes
   useEffect(() => {
     if (value) {
-      const d = parseDate(value);
-      setViewYear(d.getFullYear());
-      setViewMonth(d.getMonth());
+      const p = parseDateTime(value);
+      setViewYear(p.year);
+      setViewMonth(p.month);
+      setSelectedHours(p.hours);
+      setSelectedMinutes(p.minutes);
     }
   }, [value]);
 
-  // Close when clicking outside
+  // Click outside to close
   useEffect(() => {
     if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -112,21 +146,43 @@ export function DatePickerField({
     }
   };
 
-  const handleSelectDay = (dayStr: string) => {
-    onChange(dayStr);
+  const handleSelectDay = (dayDateStr: string) => {
+    if (enableTime) {
+      const nextVal = `${dayDateStr}T${selectedHours}:${selectedMinutes}`;
+      onChange(nextVal);
+    } else {
+      onChange(dayDateStr);
+      setIsOpen(false);
+    }
+  };
+
+  const handleTimeChange = (newHours: string, newMinutes: string) => {
+    setSelectedHours(newHours);
+    setSelectedMinutes(newMinutes);
+    const currentDatePart = parsedValue.dateStr;
+    const nextVal = `${currentDatePart}T${newHours}:${newMinutes}`;
+    onChange(nextVal);
+  };
+
+  const handleSetNow = () => {
+    const now = new Date();
+    const dStr = `${now.getFullYear()}-${padZero(now.getMonth() + 1)}-${padZero(now.getDate())}`;
+    const hStr = padZero(now.getHours());
+    const mStr = padZero(now.getMinutes());
+    setSelectedHours(hStr);
+    setSelectedMinutes(mStr);
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+
+    if (enableTime) {
+      onChange(`${dStr}T${hStr}:${mStr}`);
+    } else {
+      onChange(dStr);
+    }
     setIsOpen(false);
   };
 
-  const handleToday = () => {
-    const today = new Date();
-    const todayStr = formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
-    onChange(todayStr);
-    setViewYear(today.getFullYear());
-    setViewMonth(today.getMonth());
-    setIsOpen(false);
-  };
-
-  // Generate calendar grid cells (42 cells: 6 weeks)
+  // Generate 42 calendar grid cells (6 weeks)
   const calendarCells = useMemo(() => {
     const firstDayOfMonth = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sun, 1 = Mon...
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -141,19 +197,21 @@ export function DatePickerField({
       isDisabled: boolean;
     }> = [];
 
-    const todayStr = formatDateString(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${padZero(now.getMonth() + 1)}-${padZero(now.getDate())}`;
+    const currentDatePart = parsedValue.dateStr;
 
-    // Previous month padding
+    // Previous month trailing days
     for (let i = firstDayOfMonth - 1; i >= 0; i--) {
       const d = daysInPrevMonth - i;
       const prevMonth = viewMonth === 0 ? 11 : viewMonth - 1;
       const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
-      const dStr = formatDateString(prevYear, prevMonth, d);
+      const dStr = `${prevYear}-${padZero(prevMonth + 1)}-${padZero(d)}`;
       cells.push({
         dateStr: dStr,
         day: d,
         isCurrentMonth: false,
-        isSelected: dStr === value,
+        isSelected: dStr === currentDatePart && Boolean(value),
         isToday: dStr === todayStr,
         isDisabled: (Boolean(min) && dStr < (min ?? "")) || (Boolean(max) && dStr > (max ?? "")),
       });
@@ -161,18 +219,18 @@ export function DatePickerField({
 
     // Current month days
     for (let d = 1; d <= daysInMonth; d++) {
-      const dStr = formatDateString(viewYear, viewMonth, d);
+      const dStr = `${viewYear}-${padZero(viewMonth + 1)}-${padZero(d)}`;
       cells.push({
         dateStr: dStr,
         day: d,
         isCurrentMonth: true,
-        isSelected: dStr === value,
+        isSelected: dStr === currentDatePart && Boolean(value),
         isToday: dStr === todayStr,
         isDisabled: (Boolean(min) && dStr < (min ?? "")) || (Boolean(max) && dStr > (max ?? "")),
       });
     }
 
-    // Next month padding to reach 42 cells or full weeks
+    // Next month padding to reach full rows
     const remaining = (7 - (cells.length % 7)) % 7;
     const totalNeeded = cells.length + remaining < 35 ? 35 : cells.length + remaining;
     const nextPadding = totalNeeded - cells.length;
@@ -180,19 +238,21 @@ export function DatePickerField({
     for (let d = 1; d <= nextPadding; d++) {
       const nextMonth = viewMonth === 11 ? 0 : viewMonth + 1;
       const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
-      const dStr = formatDateString(nextYear, nextMonth, d);
+      const dStr = `${nextYear}-${padZero(nextMonth + 1)}-${padZero(d)}`;
       cells.push({
         dateStr: dStr,
         day: d,
         isCurrentMonth: false,
-        isSelected: dStr === value,
+        isSelected: dStr === currentDatePart && Boolean(value),
         isToday: dStr === todayStr,
         isDisabled: (Boolean(min) && dStr < (min ?? "")) || (Boolean(max) && dStr > (max ?? "")),
       });
     }
 
     return cells;
-  }, [viewYear, viewMonth, value, min, max]);
+  }, [viewYear, viewMonth, parsedValue.dateStr, value, min, max]);
+
+  const defaultPlaceholder = enableTime ? "Pilih Tanggal & Jam" : "Pilih Tanggal";
 
   return (
     <div ref={containerRef} className={`relative block w-full max-w-full min-w-0 ${className}`}>
@@ -209,18 +269,18 @@ export function DatePickerField({
         }`}
       >
         <span className={`truncate ${value ? "text-slate-900" : "text-slate-600"}`}>
-          {value ? formatDisplayDate(value) : placeholder}
+          {value ? formatDisplayString(value, enableTime) : (placeholder || defaultPlaceholder)}
         </span>
-        <CalendarIcon
-          size={18}
-          className={`shrink-0 transition ${isOpen ? "text-kash-emerald" : "text-slate-600 group-hover:text-kash-emerald"}`}
-        />
+        <div className="flex items-center gap-1.5 shrink-0 text-slate-600 group-hover:text-kash-emerald">
+          {enableTime && <Clock size={16} className={isOpen ? "text-kash-emerald" : ""} />}
+          <CalendarIcon size={18} className={isOpen ? "text-kash-emerald" : ""} />
+        </div>
       </button>
 
-      {/* Custom Popover Calendar */}
+      {/* Popover Calendar Container */}
       {isOpen && (
         <div className="absolute z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-100 sm:w-80">
-          {/* Header Month / Year Nav */}
+          {/* Header Month / Year Navigation */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <button
               type="button"
@@ -245,7 +305,7 @@ export function DatePickerField({
             </button>
           </div>
 
-          {/* Day of week headers */}
+          {/* Day of Week Headers */}
           <div className="mt-2 grid grid-cols-7 gap-1 text-center">
             {DAY_NAMES.map((name, i) => (
               <span
@@ -285,21 +345,66 @@ export function DatePickerField({
             })}
           </div>
 
+          {/* Optional Time Picker Section (Jam & Menit) */}
+          {enableTime && (
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                  <Clock size={14} className="text-kash-emerald" />
+                  Waktu (Time):
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  {/* Hours */}
+                  <select
+                    aria-label="Hours"
+                    value={selectedHours}
+                    onChange={(e) => handleTimeChange(e.target.value, selectedMinutes)}
+                    className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-900 focus:border-kash-emerald focus:ring-2 focus:ring-[rgba(16,185,129,0.20)]"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => padZero(i)).map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+
+                  <span className="text-xs font-bold text-slate-600">:</span>
+
+                  {/* Minutes */}
+                  <select
+                    aria-label="Minutes"
+                    value={selectedMinutes}
+                    onChange={(e) => handleTimeChange(selectedHours, e.target.value)}
+                    className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-900 focus:border-kash-emerald focus:ring-2 focus:ring-[rgba(16,185,129,0.20)]"
+                  >
+                    {Array.from({ length: 60 }, (_, i) => padZero(i)).map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Quick Actions Footer */}
           <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
             <button
               type="button"
-              onClick={handleToday}
+              onClick={handleSetNow}
               className="font-bold text-kash-emerald hover:text-kash-emeraldDark transition"
             >
-              Hari Ini (Today)
+              {enableTime ? "Sekarang (Now)" : "Hari Ini (Today)"}
             </button>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="font-bold text-slate-600 hover:text-slate-800 transition"
+              className="flex items-center gap-1 rounded-md bg-kash-emerald px-2.5 py-1 font-bold text-white shadow-sm hover:bg-kash-emeraldDark transition"
             >
-              Tutup
+              <Check size={13} />
+              Selesai
             </button>
           </div>
         </div>

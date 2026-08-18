@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -209,12 +210,11 @@ function GoalEditModal({
                 <span className="text-xs font-semibold text-slate-600">No deadline</span>
               )}
             </div>
-            <input
+            <DatePickerField
               id="edit-goal-deadline"
-              type="date"
               value={form.deadline}
-              onChange={(event) => setForm((current) => ({ ...current, deadline: event.target.value }))}
-              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
+              placeholder="Select Target Date"
+              onChange={(val) => setForm((current) => ({ ...current, deadline: val }))}
             />
             <span className="mt-1.5 block text-xs font-medium text-slate-600">
               {form.deadline
@@ -349,11 +349,11 @@ function ContributionModal({
             placeholder="500.000"
             value={form.amount}
           />
-          <FormField
+          <DatePickerField
             id="contribution-date"
             label="Date"
-            onChange={(event) => setForm((current) => ({ ...current, contributionDate: event.target.value }))}
-            type="datetime-local"
+            enableTime
+            onChange={(val) => setForm((current) => ({ ...current, contributionDate: val }))}
             value={form.contributionDate}
           />
           <FormField id="contribution-note" label="Note" onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} placeholder="Optional note" value={form.note} />

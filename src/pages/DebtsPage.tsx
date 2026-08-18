@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
 import { Button } from "../components/ui/Button";
+import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -623,11 +624,10 @@ function CreateObligationModal({
                         </button>
                       ) : null}
                     </div>
-                    <input
-                      type="date"
+                    <DatePickerField
                       value={item.dueDate}
-                      onChange={(e) => updateItemRow(item.id, "dueDate", e.target.value)}
-                      className="mt-1.5 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+                      placeholder="Select Due Date"
+                      onChange={(val) => updateItemRow(item.id, "dueDate", val)}
                     />
                   </div>
 
@@ -917,19 +917,13 @@ export function SettlementModal({
           )}
 
           {/* Payment Date */}
-          <div className="w-full max-w-full min-w-0">
-            <label className="block text-sm font-bold text-slate-900" htmlFor="settlement-date">
-              Payment Date & Time *
-            </label>
-            <input
-              id="settlement-date"
-              type="datetime-local"
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
-              required
-            />
-          </div>
+          <DatePickerField
+            id="settlement-date"
+            label="Payment Date & Time *"
+            enableTime
+            value={paymentDate}
+            onChange={(val) => setPaymentDate(val)}
+          />
 
           {/* Note */}
           <FormField

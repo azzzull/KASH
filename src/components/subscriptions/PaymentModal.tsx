@@ -5,6 +5,8 @@ import { formatCurrency } from "../../lib/money";
 import { recordRecurringPayment, type RecurringObligationWithMeta } from "../../lib/subscriptions";
 import type { PaymentMode, RecurringPayment, Wallet } from "../../types/domain";
 import { Button } from "../ui/Button";
+import { DatePickerField } from "../ui/DatePickerField";
+import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { SelectField } from "../ui/SelectField";
 
@@ -163,28 +165,21 @@ export function PaymentModal({
             )}
 
             {/* Paid Date */}
-            <label className="block">
-              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Payment Date *</span>
-              <input
-                type="date"
-                required
-                value={paidAt}
-                onChange={(e) => setPaidAt(e.target.value)}
-                className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-              />
-            </label>
+            <DatePickerField
+              id="payment-date"
+              label="Payment Date"
+              value={paidAt}
+              onChange={(val) => setPaidAt(val)}
+            />
 
             {/* Note */}
-            <label className="block">
-              <span className="block text-xs font-bold uppercase tracking-wider text-slate-600">Note (Optional)</span>
-              <input
-                type="text"
-                placeholder="e.g. Paid via BCA Virtual Account"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="mt-1 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
-              />
-            </label>
+            <FormField
+              id="payment-note"
+              label="Note (Optional)"
+              placeholder="e.g. Paid via BCA Virtual Account"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
           </div>
 
           {/* Fixed Footer */}

@@ -25,6 +25,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -813,11 +814,10 @@ function CreateItemModal({
                         </button>
                       ) : null}
                     </div>
-                    <input
-                      type="date"
+                    <DatePickerField
                       value={item.dueDate}
-                      onChange={(e) => updateItemRow(item.id, "dueDate", e.target.value)}
-                      className="mt-1.5 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+                      placeholder="Select Due Date"
+                      onChange={(val) => updateItemRow(item.id, "dueDate", val)}
                     />
                   </div>
 
@@ -1040,12 +1040,11 @@ function EditItemModal({
                 <span className="text-xs font-semibold text-slate-600">No due date</span>
               )}
             </div>
-            <input
+            <DatePickerField
               id="edit-item-due-date"
-              type="date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
+              placeholder="Select Due Date"
+              onChange={(val) => setDueDate(val)}
             />
           </div>
 
