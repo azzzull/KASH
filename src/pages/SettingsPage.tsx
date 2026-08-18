@@ -1,32 +1,53 @@
 import {
   Bell,
   BellOff,
+  Check,
   ChevronRight,
   Info,
   Loader2,
+  Lock,
+  Mail,
+  Save,
   Settings,
   Smartphone,
   Tags,
+  User as UserIcon,
 } from "lucide-react";
+import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { FormField } from "../components/ui/FormField";
 import { PageHeader } from "../components/ui/PageHeader";
+import { useAuth } from "../context/AuthContext";
+import { updateProfileFullName } from "../lib/auth";
 import {
   getCurrentPushSubscription,
   getPushPermissionState,
   isIosStandalone,
-  isPushSupported,
   subscribeCurrentDevice,
   unsubscribeCurrentDevice,
   type PushPermissionState,
 } from "../lib/pushNotifications";
+import { supabase } from "../lib/supabase";
 
 export function SettingsPage() {
+  const { profile, refreshProfile, user } = useAuth();
+
+  const [displayName, setDisplayName] = useState(profile?.full_name ?? "");
+  const [savingName, setSavingName] = useState(false);
+  const [nameMessage, setNameMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const [permissionState, setPermissionState] = useState<PushPermissionState>("unsupported");
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushMessage, setPushMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (profile?.full_name !== undefined) {
+      setDisplayName(profile.full_name ?? "");
+    }
+  }, [profile?.full_name]);
 
   const checkPushStatus = async () => {
     const state = getPushPermissionState();
@@ -44,32 +65,65 @@ export function SettingsPage() {
     void checkPushStatus();
   }, []);
 
+  const handleSaveDisplayName = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    const trimmedName = displayName.trim();
+    if (!trimmedName) {
+      setNameMessage({ type: "error", text: "Display name cannot be empty." });
+      return;
+    }
+
+    setSavingName(true);
+    setNameMessage(null);
+
+    try {
+      const { error: profileError } = await updateProfileFullName(user.id, trimmedName);
+      if (profileError) {
+        setNameMessage({ type: "error", text: profileError.message || "Failed to update profile." });
+        setSavingName(false);
+        return;
+      }
+
+      // Also update auth user metadata if possible
+      void supabase.auth.updateUser({ data: { full_name: trimmedName } }).catch(() => {});
+
+      await refreshProfile();
+      setNameMessage({ type: "success", text: "Display name updated successfully!" });
+    } catch {
+      setNameMessage({ type: "error", text: "An unexpected error occurred while saving." });
+    } finally {
+      setSavingName(false);
+    }
+  };
+
   const handleSubscribe = async () => {
-    setLoading(true);
-    setMessage(null);
+    setPushLoading(true);
+    setPushMessage(null);
     const result = await subscribeCurrentDevice();
-    setLoading(false);
+    setPushLoading(false);
 
     if (result.success) {
-      setMessage({ type: "success", text: "Push notifications successfully enabled on this device!" });
+      setPushMessage({ type: "success", text: "Push notifications successfully enabled on this device!" });
       void checkPushStatus();
     } else {
-      setMessage({ type: "error", text: result.error || "Failed to enable notifications." });
+      setPushMessage({ type: "error", text: result.error || "Failed to enable notifications." });
       setPermissionState(getPushPermissionState());
     }
   };
 
   const handleUnsubscribe = async () => {
-    setLoading(true);
-    setMessage(null);
+    setPushLoading(true);
+    setPushMessage(null);
     const result = await unsubscribeCurrentDevice();
-    setLoading(false);
+    setPushLoading(false);
 
     if (result.success) {
-      setMessage({ type: "success", text: "Push notifications disabled on this device." });
+      setPushMessage({ type: "success", text: "Push notifications disabled on this device." });
       void checkPushStatus();
     } else {
-      setMessage({ type: "error", text: result.error || "Failed to disable notifications." });
+      setPushMessage({ type: "error", text: result.error || "Failed to disable notifications." });
     }
   };
 
@@ -85,13 +139,90 @@ export function SettingsPage() {
         eyebrow="Account"
         icon={Settings}
         title="Settings"
-        description="Manage preferences and finance setup."
+        description="Manage your profile, preferences, and finance setup."
       />
 
-      <section className="grid gap-3">
+      <section className="grid gap-4">
+        {/* Profile & Account Information Card */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3.5 border-b border-slate-100 pb-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kash-selected text-kash-emeraldDark font-black text-base shadow-sm">
+              {profile?.full_name?.charAt(0)?.toUpperCase() ?? user?.email?.charAt(0)?.toUpperCase() ?? "U"}
+            </span>
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">Profile & Account</h2>
+              <p className="text-xs font-semibold text-slate-600">
+                Update your display name and view account credentials
+              </p>
+            </div>
+          </div>
+
+          {/* Edit Display Name Form */}
+          <form onSubmit={handleSaveDisplayName} className="mt-4 space-y-4">
+            {nameMessage && (
+              <div
+                className={`rounded-lg p-3 text-xs font-bold ${
+                  nameMessage.type === "success"
+                    ? "border border-kash-emerald/30 bg-kash-selected text-kash-emeraldDark"
+                    : "border border-kash-expense/30 bg-kash-expense/10 text-kash-expense"
+                }`}
+              >
+                {nameMessage.text}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                id="settings-display-name"
+                label="Display Name (Full Name)"
+                required
+                placeholder="e.g. John Doe"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+              />
+
+              <label className="block w-full max-w-full min-w-0">
+                <span className="block text-sm font-bold text-slate-900">Email Address</span>
+                <div className="relative mt-2">
+                  <input
+                    type="text"
+                    disabled
+                    value={user?.email ?? profile?.email ?? ""}
+                    className="block h-12 w-full rounded-lg border border-slate-200 bg-slate-100 px-3 pr-9 text-base font-semibold text-slate-600 cursor-not-allowed md:text-sm"
+                  />
+                  <Lock size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                </div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end pt-1">
+              <Button type="submit" disabled={savingName || displayName.trim() === (profile?.full_name ?? "")}>
+                {savingName ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                {savingName ? "Saving..." : "Save Display Name"}
+              </Button>
+            </div>
+          </form>
+
+          {/* Readonly Preferences info */}
+          <div className="mt-4 grid grid-cols-1 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 text-xs">
+            <div className="rounded-lg bg-slate-50 p-3">
+              <span className="font-bold text-slate-600">Default Currency</span>
+              <p className="mt-0.5 font-extrabold text-slate-900">
+                {profile?.default_currency ?? "IDR"} (Indonesian Rupiah)
+              </p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <span className="font-bold text-slate-600">Timezone</span>
+              <p className="mt-0.5 font-extrabold text-slate-900">
+                Asia/Jakarta (WIB)
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Categories Link */}
         <Link
-          className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
+          className="grid grid-cols-[auto_1fr_auto] items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
           to="/settings/categories"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-kash-selected text-kash-emerald">
@@ -99,7 +230,7 @@ export function SettingsPage() {
           </span>
           <span>
             <span className="block text-sm font-extrabold text-slate-900">Categories</span>
-            <span className="mt-1 block text-xs font-semibold text-slate-700">
+            <span className="mt-0.5 block text-xs font-semibold text-slate-700">
               Manage custom income and expense categories.
             </span>
           </span>
@@ -108,7 +239,7 @@ export function SettingsPage() {
 
         {/* Device Push Notifications Card */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-3.5">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark">
                 <Bell size={20} />
@@ -143,24 +274,24 @@ export function SettingsPage() {
             </div>
 
             {/* Action Buttons */}
-            <div>
+            <div className="shrink-0">
               {permissionState === "granted" && isSubscribed ? (
                 <Button
                   variant="secondary"
                   onClick={() => void handleUnsubscribe()}
-                  disabled={loading}
+                  disabled={pushLoading}
                   className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold text-slate-600 hover:text-kash-expense"
                 >
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
+                  {pushLoading ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
                   Disable on This Device
                 </Button>
               ) : permissionState !== "unsupported" ? (
                 <Button
                   onClick={() => void handleSubscribe()}
-                  disabled={loading || permissionState === "denied"}
+                  disabled={pushLoading || permissionState === "denied"}
                   className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
                 >
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
+                  {pushLoading ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
                   Enable Notifications
                 </Button>
               ) : null}
@@ -168,15 +299,15 @@ export function SettingsPage() {
           </div>
 
           {/* Feedback message */}
-          {message && (
+          {pushMessage && (
             <div
               className={`mt-4 rounded-lg p-3 text-xs font-bold ${
-                message.type === "success"
+                pushMessage.type === "success"
                   ? "bg-kash-selected text-kash-emeraldDark"
                   : "bg-kash-expense/10 text-kash-expense"
               }`}
             >
-              {message.text}
+              {pushMessage.text}
             </div>
           )}
 
@@ -199,19 +330,6 @@ export function SettingsPage() {
             </div>
           )}
         </div>
-
-        {/* Profile & Preferences */}
-        <article className="grid grid-cols-[auto_1fr] items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 opacity-75 shadow-sm">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-            <Settings aria-hidden="true" size={19} />
-          </span>
-          <span>
-            <span className="block text-sm font-extrabold text-slate-900">Profile and Preferences</span>
-            <span className="mt-1 block text-xs font-semibold text-slate-700">
-              Timezone: Asia/Jakarta (WIB)
-            </span>
-          </span>
-        </article>
       </section>
     </div>
   );
