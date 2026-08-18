@@ -1,4 +1,4 @@
-import { Archive, Edit3, Loader2, Plus, Tags, X } from "lucide-react";
+import { Archive, Edit3, Loader2, Plus, Tags, Trash2, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -6,7 +6,7 @@ import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
-import { archiveCategory, createCategory, getSystemCategories, getUserCategories, updateCategory } from "../lib/categories";
+import { archiveCategory, createCategory, deleteCategory, getSystemCategories, getUserCategories, updateCategory } from "../lib/categories";
 import { categoryColors, categoryIconOptions, getCategoryIcon, isAllowedCategoryColor } from "../lib/categoryMeta";
 import type { Category, CategoryType } from "../types/domain";
 
@@ -24,7 +24,17 @@ const defaultFormState: CategoryFormState = {
   color: "#E50914",
 };
 
-function CategoryPill({ category, onArchive, onEdit }: { category: Category; onArchive?: () => void; onEdit?: () => void }) {
+function CategoryPill({
+  category,
+  onArchive,
+  onDelete,
+  onEdit,
+}: {
+  category: Category;
+  onArchive?: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
+}) {
   const Icon = getCategoryIcon(category.icon);
 
   return (
@@ -44,15 +54,21 @@ function CategoryPill({ category, onArchive, onEdit }: { category: Category; onA
       {category.is_system ? (
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700">Read only</span>
       ) : (
-        <span className="flex gap-2">
-          <Button onClick={onEdit} variant="secondary">
-            <Edit3 aria-hidden="true" size={16} />
+        <span className="flex items-center gap-1.5">
+          <Button onClick={onEdit} variant="secondary" className="px-2.5 py-1 text-xs">
+            <Edit3 aria-hidden="true" size={14} />
             Edit
           </Button>
-          <Button onClick={onArchive} variant="secondary">
-            <Archive aria-hidden="true" size={16} />
+          <Button onClick={onArchive} variant="secondary" className="px-2.5 py-1 text-xs text-slate-600">
+            <Archive aria-hidden="true" size={14} />
             Archive
           </Button>
+          <IconButton
+            icon={Trash2}
+            label="Hapus Kategori"
+            onClick={onDelete}
+            className="text-slate-500 hover:text-kash-expense"
+          />
         </span>
       )}
     </article>
@@ -221,8 +237,10 @@ export function CategoriesPage() {
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Category | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -278,6 +296,21 @@ export function CategoriesPage() {
     }
   };
 
+  const handleDelete = async (category: Category) => {
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteCategory(category);
+      setDeleteTarget(null);
+      await loadCategories();
+    } catch (err: any) {
+      setError(err.message || "Gagal menghapus kategori.");
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-5 p-4 md:p-6">
       <PageHeader
@@ -322,6 +355,7 @@ export function CategoriesPage() {
                         category={category}
                         key={category.id}
                         onArchive={() => setArchiveTarget(category)}
+                        onDelete={() => setDeleteTarget(category)}
                         onEdit={() => {
                           setEditingCategory(category);
                           setShowForm(true);
@@ -344,6 +378,7 @@ export function CategoriesPage() {
                         category={category}
                         key={category.id}
                         onArchive={() => setArchiveTarget(category)}
+                        onDelete={() => setDeleteTarget(category)}
                         onEdit={() => {
                           setEditingCategory(category);
                           setShowForm(true);
@@ -381,6 +416,7 @@ export function CategoriesPage() {
           }}
         />
       ) : null}
+
       {archiveTarget ? (
         <ConfirmationDialog
           confirmLabel="Archive Category"
@@ -392,6 +428,20 @@ export function CategoriesPage() {
           onConfirm={() => void handleArchive(archiveTarget)}
           title="Archive this category?"
           tone="warning"
+        />
+      ) : null}
+
+      {deleteTarget ? (
+        <ConfirmationDialog
+          confirmLabel={deleting ? "Menghapus..." : "Hapus Permanen"}
+          description="Apakah Anda yakin ingin menghapus kategori ini secara permanen? Kategori yang sudah memiliki riwayat transaksi tidak dapat dihapus dan disarankan untuk diarsipkan."
+          icon={Trash2}
+          isLoading={deleting}
+          itemLabel={deleteTarget.name}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => void handleDelete(deleteTarget)}
+          title="Hapus Kategori Permanen?"
+          tone="danger"
         />
       ) : null}
     </div>

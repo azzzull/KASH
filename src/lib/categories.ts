@@ -115,6 +115,22 @@ export async function unarchiveCategory(categoryId: string) {
     .single();
 }
 
+export async function deleteCategory(category: Category) {
+  if (category.is_system) {
+    throw new Error("Kategori sistem bawaan tidak dapat dihapus.");
+  }
+
+  const { data, error } = await supabase.rpc("delete_custom_category" as any, {
+    p_category_id: category.id,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return { data, error: null };
+}
+
 export type QuickCreateCategoryResult =
   | { success: true; category: Category; restored?: boolean }
   | { success: false; error: string; archivedCategory?: Category };
