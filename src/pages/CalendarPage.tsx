@@ -11,7 +11,7 @@ import {
   startOfLocalMonth,
   type CalendarMonthData,
 } from "../lib/calendar";
-import { formatCurrency } from "../lib/money";
+import { formatCurrency, toNumber } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import type { TransactionWithMeta } from "../lib/transactions";
@@ -270,13 +270,18 @@ function DayTransactionRow({
         </span>
         <span className="text-right">
           <span className={`block text-sm font-extrabold ${transactionTone[transaction.type]}`}>{displayTransactionAmount(transaction, currency)}</span>
+          {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
+            <span className="block text-[11px] font-bold text-kash-expense">
+              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+            </span>
+          ) : null}
           <span className="mt-1 block text-xs font-bold text-slate-600">{formatTime(transaction.transaction_date)}</span>
         </span>
       </span>
 
       <span
         className="hidden items-center gap-4 text-sm md:grid"
-        style={{ gridTemplateColumns: "64px minmax(0, 1.1fr) minmax(110px, 0.9fr) minmax(120px, 1fr) 112px" }}
+        style={{ gridTemplateColumns: "64px minmax(0, 1.1fr) minmax(110px, 0.9fr) minmax(120px, 1fr) 130px" }}
       >
         <span className="font-semibold text-slate-600">{formatTime(transaction.transaction_date)}</span>
         <span className="min-w-0">
@@ -285,7 +290,14 @@ function DayTransactionRow({
         </span>
         <span className="truncate font-semibold text-slate-600">{transactionCategoryLabel(transaction)}</span>
         <span className="truncate font-semibold text-slate-600">{transactionWalletLabel(transaction)}</span>
-        <span className={`text-right font-extrabold ${transactionTone[transaction.type]}`}>{displayTransactionAmount(transaction, currency)}</span>
+        <span className={`text-right font-extrabold ${transactionTone[transaction.type]}`}>
+          <span>{displayTransactionAmount(transaction, currency)}</span>
+          {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
+            <span className="block text-[11px] font-bold text-kash-expense">
+              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+            </span>
+          ) : null}
+        </span>
       </span>
     </button>
   );

@@ -257,13 +257,18 @@ function TransactionRow({
           <span className={`block text-sm font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
             {displayAmount(transaction, currency)}
           </span>
+          {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
+            <span className="block text-[11px] font-bold text-kash-expense">
+              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+            </span>
+          ) : null}
           <span className="mt-1 block text-xs font-bold text-slate-600">{timeLabel}</span>
         </span>
       </span>
 
       <span
         className="hidden items-center gap-4 px-3 py-2.5 text-sm md:grid"
-        style={{ gridTemplateColumns: "40px minmax(0, 1fr) minmax(120px, 180px) 128px 64px 16px" }}
+        style={{ gridTemplateColumns: "40px minmax(0, 1fr) minmax(120px, 180px) 140px 64px 16px" }}
       >
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
           <Icon aria-hidden="true" size={17} strokeWidth={2.2} />
@@ -275,7 +280,12 @@ function TransactionRow({
         </span>
         <span className="min-w-0 truncate font-semibold text-slate-600">{transactionWalletLabel(transaction)}</span>
         <span className={`text-right font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
-          {displayAmount(transaction, currency)}
+          <span>{displayAmount(transaction, currency)}</span>
+          {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
+            <span className="block text-[11px] font-bold text-kash-expense">
+              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+            </span>
+          ) : null}
         </span>
         <span className="text-right font-semibold text-slate-600">{timeLabel}</span>
         <ArrowRight aria-hidden="true" className="justify-self-end text-slate-600" size={16} />
