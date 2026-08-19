@@ -515,11 +515,7 @@ function ItemCard({
           <button
             type="button"
             onClick={onSettle}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition ${
-              isDebt
-                ? "bg-kash-expense/10 text-kash-expense hover:bg-kash-expense hover:text-white"
-                : "bg-kash-emerald/10 text-kash-emeraldDark hover:bg-kash-emerald hover:text-white"
-            }`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-kash-emerald/30 bg-kash-emerald/10 px-3 py-1.5 text-xs font-black text-kash-emeraldDark transition hover:bg-kash-emerald hover:text-white"
           >
             <HandCoins size={14} />
             {isDebt ? "Bayar Item Ini" : "Terima Item Ini"}
@@ -1271,11 +1267,7 @@ function ItemSettlementModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span
-                className={`rounded-md px-2 py-0.5 text-[11px] font-black uppercase ${
-                  isDebt ? "bg-kash-expense/10 text-kash-expense" : "bg-kash-emerald/10 text-kash-emeraldDark"
-                }`}
-              >
+              <span className="rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[11px] font-black uppercase text-kash-emeraldDark">
                 Pelunasan Per Item
               </span>
             </div>
