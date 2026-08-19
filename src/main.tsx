@@ -14,4 +14,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>,
 );
 
+// Handle dynamic import chunk mismatch when a new version is deployed
+window.addEventListener("vite:preloadError", () => {
+  const key = "kash_last_preload_reload";
+  const last = sessionStorage.getItem(key);
+  const now = Date.now();
+  if (!last || now - Number(last) > 10_000) {
+    sessionStorage.setItem(key, String(now));
+    window.location.reload();
+  }
+});
+
 registerServiceWorker();
