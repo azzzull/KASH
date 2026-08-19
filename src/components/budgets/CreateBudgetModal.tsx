@@ -46,20 +46,12 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       if (res.data) {
         const expenseOnly = (res.data as Category[]).filter((c) => c.category_type === "expense");
         setCategories(expenseOnly);
-        if (expenseOnly.length > 0) {
-          setCategoryId(expenseOnly[0].id);
-          setName(expenseOnly[0].name);
-        }
       }
     });
   }, []);
 
   const handleCategoryChange = (newCatId: string) => {
     setCategoryId(newCatId);
-    const cat = categories.find((c) => c.id === newCatId);
-    if (cat && (!name || categories.some((c) => c.name === name))) {
-      setName(cat.name);
-    }
   };
 
   const handleToggleEnvelopeCategory = (catId: string) => {
@@ -190,8 +182,13 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           <FormField
             id="budget-name"
             label={type === "category" ? "Nama Budget" : "Nama Amplop"}
-            required
-            placeholder={type === "category" ? "e.g. Makanan & Minuman" : "e.g. Kebutuhan Hidup (Living)"}
+            placeholder={
+              type === "category"
+                ? categories.find((c) => c.id === categoryId)?.name
+                  ? `misal: Budget ${categories.find((c) => c.id === categoryId)?.name}`
+                  : "misal: Budget Makanan & Minuman"
+                : "misal: Kebutuhan Hidup (Living)"
+            }
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -200,7 +197,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           {type === "category" ? (
             <SelectField
               id="budget-category"
-              label="Pilih Kategori Pengeluaran"
+              label="Pilih Kategori Pengeluaran *"
               action={
                 <button
                   type="button"
@@ -221,6 +218,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 }
               }}
             >
+              <option value="">-- Pilih Kategori --</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

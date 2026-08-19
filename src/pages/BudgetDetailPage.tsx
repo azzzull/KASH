@@ -404,11 +404,18 @@ export function BudgetDetailPage() {
           <div className="mt-3 divide-y divide-slate-100">
             {transactions.map((tx) => (
               <div key={tx.id} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-sm font-bold text-slate-900">
-                    {tx.title || (tx as any).category?.name || "Pengeluaran"}
-                  </p>
-                  <p className="text-[11px] font-semibold text-slate-600">
+                <div className="min-w-0 pr-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-bold text-slate-900 truncate">
+                      {tx.title || (tx as any).category?.name || "Pengeluaran"}
+                    </p>
+                    {(tx as any).category?.name && (
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                        {(tx as any).category.name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-[11px] font-semibold text-slate-600">
                     {new Date(tx.transaction_date).toLocaleDateString("id-ID", {
                       day: "numeric",
                       month: "short",
@@ -418,7 +425,7 @@ export function BudgetDetailPage() {
                   </p>
                 </div>
 
-                <span className="text-sm font-black text-kash-expense">
+                <span className="text-sm font-black text-kash-expense whitespace-nowrap">
                   -{formatCurrency(tx.amount)}
                 </span>
               </div>
