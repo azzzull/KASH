@@ -472,6 +472,9 @@ export type SharedSavingsLedger = {
   title: string | null;
   note: string | null;
   created_at: string;
+  requester_name?: string | null;
+  requester_user_id?: string | null;
+  requester_avatar_url?: string | null;
 };
 
 export type SharedSavingsMemberAllocation = {

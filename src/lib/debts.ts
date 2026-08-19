@@ -72,6 +72,7 @@ export type RecordSettlementInput = {
   walletId?: string | null;
   paymentDate?: string;
   note?: string | null;
+  debtId?: string | null;
 };
 
 async function getAuthenticatedUserId() {
@@ -508,5 +509,23 @@ export async function recordCounterpartySettlement(input: RecordSettlementInput)
     p_wallet_id: input.paymentMode === "wallet" ? input.walletId ?? null : null,
     p_payment_date: input.paymentDate ? new Date(input.paymentDate).toISOString() : new Date().toISOString(),
     p_note: input.note?.trim() || null,
+    p_debt_id: input.debtId ?? null,
   });
 }
+
+export async function getOpenDebtItems(counterpartyId: string, debtType: DebtType): Promise<DebtProgress[]> {
+  const userId = await getAuthenticatedUserId();
+  const { data, error } = await supabase
+    .from("debt_progress_view")
+    .select("*")
+    .eq("counterparty_id", counterpartyId)
+    .eq("user_id", userId)
+    .eq("type", debtType)
+    .in("status", ["active", "partially_paid"])
+    .gt("remaining_amount", 0)
+    .order("due_date", { ascending: true, nullsFirst: false });
+
+  if (error) throw error;
+  return (data ?? []) as DebtProgress[];
+}
+

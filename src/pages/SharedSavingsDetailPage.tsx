@@ -823,12 +823,16 @@ export function SharedSavingsDetailPage() {
 
                       <div className="min-w-0">
                         <p className="text-xs font-extrabold text-slate-900 truncate">
-                          {l.title ||
-                            (l.event_type === "contribution"
-                              ? "Setoran Anggota"
-                              : l.event_type === "personal_withdrawal"
-                              ? "Penarikan Porsi"
-                              : "Pengeluaran Bersama")}
+                          {l.event_type === "contribution"
+                            ? "Setoran"
+                            : l.event_type === "personal_withdrawal"
+                            ? "Penarikan Porsi"
+                            : (l.title || "Pengeluaran Bersama")}
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-700 truncate">
+                          {l.event_type === "shared_spending"
+                            ? `Diajukan oleh: ${l.requester_name || "Anggota"}`
+                            : (l.requester_name || "Anggota")}
                         </p>
                         {l.note && <p className="text-[11px] text-slate-500 truncate">{l.note}</p>}
                         <p className="text-[10px] text-slate-400">

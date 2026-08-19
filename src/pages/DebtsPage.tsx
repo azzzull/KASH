@@ -33,6 +33,7 @@ import {
   createMultipleDebts,
   findOrCreateCounterparty,
   getCounterparties,
+  getOpenDebtItems,
   recordCounterpartySettlement,
   type CounterpartyWithSummary,
   type CreateDebtInput,
@@ -137,12 +138,14 @@ export function DebtsPage() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Type Segments */}
-        <div className="flex rounded-lg border border-slate-200 bg-white p-1">
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => setTypeFilter("all")}
-            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${
-              typeFilter === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
+              typeFilter === "all"
+                ? "bg-kash-emerald text-white shadow-xs"
+                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
             }`}
           >
             All
@@ -150,8 +153,10 @@ export function DebtsPage() {
           <button
             type="button"
             onClick={() => setTypeFilter("debt")}
-            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${
-              typeFilter === "debt" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
+              typeFilter === "debt"
+                ? "bg-kash-emerald text-white shadow-xs"
+                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
             }`}
           >
             Debt (You Owe)
@@ -159,8 +164,10 @@ export function DebtsPage() {
           <button
             type="button"
             onClick={() => setTypeFilter("receivable")}
-            className={`rounded-md px-3 py-1.5 text-xs font-extrabold transition ${
-              typeFilter === "receivable" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+            className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
+              typeFilter === "receivable"
+                ? "bg-kash-emerald text-white shadow-xs"
+                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
             }`}
           >
             Receivable (Owed to You)
@@ -749,6 +756,9 @@ export function SettlementModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [allocationMode, setAllocationMode] = useState<"auto" | "specific">("auto");
+  const [openItems, setOpenItems] = useState<any[]>([]);
+  const [selectedDebtId, setSelectedDebtId] = useState<string>("");
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("wallet");
   const [amount, setAmount] = useState("");
   const [walletId, setWalletId] = useState("");
@@ -773,10 +783,27 @@ export function SettlementModal({
         if (liquid) setWalletId(liquid.id);
       }
     });
-  }, []);
+
+    getOpenDebtItems(counterparty.id, debtType).then((items) => {
+      setOpenItems(items);
+      if (items.length > 0) {
+        setSelectedDebtId(items[0].debt_id);
+      }
+    }).catch((err) => {
+      console.error("Failed to load open items:", err);
+    });
+  }, [counterparty.id, debtType]);
+
+  const selectedItem = useMemo(() => {
+    return openItems.find((item) => item.debt_id === selectedDebtId) ?? openItems[0] ?? null;
+  }, [openItems, selectedDebtId]);
+
+  const maxAllowedAmount = allocationMode === "specific" && selectedItem
+    ? toNumber(selectedItem.remaining_amount)
+    : totalOutstanding;
 
   const parsedAmount = toNumber(parseMoneyInputDigits(amount) || "0");
-  const remainingAfterPayment = Math.max(totalOutstanding - parsedAmount, 0);
+  const remainingAfterPayment = Math.max(maxAllowedAmount - parsedAmount, 0);
   const selectedWallet = wallets.find((w) => w.id === walletId);
 
   const submit = async (e: FormEvent) => {
@@ -785,10 +812,22 @@ export function SettlementModal({
       setError("Settlement amount must be greater than zero.");
       return;
     }
-    if (parsedAmount > totalOutstanding) {
-      setError(`Payment amount cannot exceed the total outstanding balance of ${formatCurrency(totalOutstanding, "IDR")}.`);
-      return;
+    if (allocationMode === "specific") {
+      if (!selectedItem) {
+        setError("Please select a specific obligation item.");
+        return;
+      }
+      if (parsedAmount > maxAllowedAmount) {
+        setError(`Payment amount cannot exceed the remaining balance of ${formatCurrency(maxAllowedAmount, "IDR")} for "${selectedItem.title}".`);
+        return;
+      }
+    } else {
+      if (parsedAmount > totalOutstanding) {
+        setError(`Payment amount cannot exceed the total outstanding balance of ${formatCurrency(totalOutstanding, "IDR")}.`);
+        return;
+      }
     }
+
     if (paymentMode === "wallet" && !walletId) {
       setError("Please select a wallet.");
       return;
@@ -806,6 +845,7 @@ export function SettlementModal({
         walletId: paymentMode === "wallet" ? walletId : null,
         paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
         note: note.trim() || null,
+        debtId: allocationMode === "specific" && selectedItem ? selectedItem.debt_id : null,
       });
 
       if (settlementError) {
@@ -846,21 +886,72 @@ export function SettlementModal({
         ) : null}
 
         <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
-          {/* Mode Switcher */}
-          <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+          {/* Settlement Allocation Mode Switcher */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Metode Alokasi Pelunasan
+            </label>
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setAllocationMode("auto")}
+                className={`rounded-lg py-2 text-xs font-black transition ${
+                  allocationMode === "auto"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Alokasi Otomatis (FIFO)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllocationMode("specific")}
+                disabled={openItems.length === 0}
+                className={`rounded-lg py-2 text-xs font-black transition ${
+                  allocationMode === "specific"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 disabled:opacity-50"
+                }`}
+              >
+                Pilih Item Tertentu ({openItems.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Specific Item Selector (when in specific item mode) */}
+          {allocationMode === "specific" && openItems.length > 0 && (
+            <SelectField
+              id="settlement-specific-item"
+              label="Pilih Item Kewajiban *"
+              value={selectedDebtId}
+              onChange={(e) => setSelectedDebtId(e.target.value)}
+              required
+            >
+              {openItems.map((item) => (
+                <option key={item.debt_id} value={item.debt_id}>
+                  {item.title} (Sisa: {formatCurrency(toNumber(item.remaining_amount), "IDR")})
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {/* Payment Method Switcher */}
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
             <button
               type="button"
               onClick={() => setPaymentMode("wallet")}
-              className={`rounded-md py-2.5 text-xs font-black transition ${paymentMode === "wallet" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-                }`}
+              className={`rounded-lg py-2.5 text-xs font-black transition ${
+                paymentMode === "wallet" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+              }`}
             >
               {isDebt ? "Pay from Wallet" : "Receive into Wallet"}
             </button>
             <button
               type="button"
               onClick={() => setPaymentMode("historical")}
-              className={`rounded-md py-2.5 text-xs font-black transition ${paymentMode === "historical" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-                }`}
+              className={`rounded-lg py-2.5 text-xs font-black transition ${
+                paymentMode === "historical" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+              }`}
             >
               {isDebt ? "Record Previous Payment" : "Record Previous Collection"}
             </button>
@@ -881,10 +972,12 @@ export function SettlementModal({
               </label>
               <button
                 type="button"
-                onClick={() => setAmount(formatMoneyDigits(totalOutstanding.toString()))}
+                onClick={() => setAmount(formatMoneyDigits(maxAllowedAmount.toString()))}
                 className="text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark hover:underline"
               >
-                Pay Full ({formatCurrency(totalOutstanding, "IDR")})
+                {allocationMode === "specific" && selectedItem
+                  ? `Bayar Penuh Item (${formatCurrency(maxAllowedAmount, "IDR")})`
+                  : `Bayar Penuh Total (${formatCurrency(maxAllowedAmount, "IDR")})`}
               </button>
             </div>
             <input
@@ -939,6 +1032,14 @@ export function SettlementModal({
             <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Settlement Preview</p>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between">
+                <span className="font-semibold text-slate-700">Metode Alokasi:</span>
+                <span className="font-black text-slate-900">
+                  {allocationMode === "specific" && selectedItem
+                    ? `Item: ${selectedItem.title}`
+                    : "Alokasi Otomatis (FIFO)"}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span className="font-semibold text-slate-700">Settlement Amount:</span>
                 <span className="font-black text-slate-900">{formatCurrency(parsedAmount, "IDR")}</span>
               </div>
@@ -953,7 +1054,11 @@ export function SettlementModal({
                 </span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-2">
-                <span className="font-bold text-slate-900">Remaining {isDebt ? "Debt" : "Receivable"}:</span>
+                <span className="font-bold text-slate-900">
+                  {allocationMode === "specific"
+                    ? `Sisa Item "${selectedItem?.title ?? "Item"}":`
+                    : `Remaining ${isDebt ? "Debt" : "Receivable"}:`}
+                </span>
                 <span className="font-black text-slate-900">{formatCurrency(remainingAfterPayment, "IDR")}</span>
               </div>
             </div>

@@ -101,12 +101,6 @@ export function SharedSavingsPage() {
         icon={UsersRound}
         title="Tabungan Bersama"
         description="Kelola dana tabungan bersama anggota keluarga atau teman secara transparan & aman."
-        actions={
-          <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
-            <Plus aria-hidden="true" size={18} />
-            Buat Tabungan Bersama
-          </Button>
-        }
       />
 
       {error && (
@@ -119,64 +113,51 @@ export function SharedSavingsPage() {
         </section>
       )}
 
-      {/* Summary Cards */}
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold text-slate-600">Total Porsi Saya</p>
-          <p className="mt-1 text-lg font-black text-kash-emeraldDark">
-            {formatCurrency(totals.totalMyShare, currency)}
-          </p>
-          <p className="mt-1 text-[11px] font-semibold text-slate-500">Milik Anda di semua ruang</p>
+      {/* Header Toolbar: Left Tabs & Right Create Button */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("spaces")}
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold transition ${
+              activeTab === "spaces"
+                ? "bg-kash-emerald text-white shadow-xs"
+                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
+            }`}
+          >
+            <Users size={15} />
+            Tabungan Bersama ({spaces.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("invites")}
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold transition ${
+              activeTab === "invites"
+                ? "bg-kash-emerald text-white shadow-xs"
+                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
+            }`}
+          >
+            <Mail size={15} />
+            Undangan Masuk
+            {invites.length > 0 && (
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                  activeTab === "invites"
+                    ? "bg-white text-kash-emeraldDark"
+                    : "bg-kash-emerald text-white"
+                }`}
+              >
+                {invites.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold text-slate-600">Total Saldo Bersama</p>
-          <p className="mt-1 text-lg font-black text-slate-900">
-            {formatCurrency(totals.totalPool, currency)}
-          </p>
-          <p className="mt-1 text-[11px] font-semibold text-slate-500">Gabungan seluruh anggota</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold text-slate-600">Ruang Tabungan Aktif</p>
-          <p className="mt-1 text-lg font-black text-slate-900">{spaces.length}</p>
-          <p className="mt-1 text-[11px] font-semibold text-slate-500">Ruang yang Anda ikuti</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-bold text-slate-600">Undangan Masuk</p>
-          <p className="mt-1 text-lg font-black text-blue-600">{invites.length}</p>
-          <p className="mt-1 text-[11px] font-semibold text-slate-500">Menunggu tanggapan</p>
-        </div>
-      </section>
-
-      {/* Tab Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab("spaces")}
-          className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold transition ${
-            activeTab === "spaces"
-              ? "bg-kash-emerald text-white shadow-xs"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
-          }`}
-        >
-          <Users size={15} />
-          Tabungan Bersama ({spaces.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("invites")}
-          className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold transition ${
-            activeTab === "invites"
-              ? "bg-kash-emerald text-white shadow-xs"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
-          }`}
-        >
-          <Mail size={15} />
-          Undangan Masuk {invites.length > 0 && <span className="rounded-full bg-blue-600 px-1.5 py-0.2 text-[10px] font-black text-white">{invites.length}</span>}
-        </button>
+        <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
+          <Plus aria-hidden="true" size={18} />
+          Buat Tabungan Bersama
+        </Button>
       </div>
 
       {/* Loading Skeleton */}

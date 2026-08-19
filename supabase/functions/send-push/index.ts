@@ -3,11 +3,13 @@
 // ============================================================
 // Supabase Edge Function: send-push
 //
-// INTERNAL-ONLY Web Push sender.
+// INTERNAL-ONLY Web Push sender & dispatcher.
 //
-// process-reminders
+// Business RPC / Backend event / process-reminders
 //      ↓
-// send-push
+// notifications row created / webhook
+//      ↓
+// send-push (Canonical route resolution + deduplication)
 //      ↓
 // Web Push service (Apple / Google / Mozilla)
 //      ↓
@@ -31,10 +33,13 @@ const corsHeaders = {
 };
 
 interface PushRequestPayload {
-  user_id: string;
+  user_id?: string;
   notification_id?: string;
-  title: string;
-  message: string;
+  title?: string;
+  message?: string;
+  entity_type?: string;
+  entity_id?: string;
+  metadata?: Record<string, unknown>;
   target_path?: string;
 }
 
@@ -70,6 +75,46 @@ function safeEqual(a: string, b: string): boolean {
   }
 
   return result === 0;
+}
+
+function resolveCanonicalTargetPath(
+  entityType?: string | null,
+  entityId?: string | null,
+  metadata?: Record<string, unknown> | null,
+  explicitPath?: string | null,
+): string {
+  if (explicitPath && explicitPath.startsWith("/") && explicitPath !== "/dashboard") {
+    return explicitPath;
+  }
+
+  if (typeof metadata?.target_path === "string" && metadata.target_path.startsWith("/")) {
+    return metadata.target_path;
+  }
+
+  switch (entityType) {
+    case "recurring_obligation":
+      return entityId ? `/subscriptions/${entityId}` : "/subscriptions";
+    case "counterparty":
+    case "debt":
+    case "receivable":
+      return entityId ? `/debts/${entityId}` : "/debts";
+    case "goal":
+      return entityId ? `/goals/${entityId}` : "/goals";
+    case "budget":
+      return entityId ? `/budgets/${entityId}` : "/budgets";
+    case "wallet":
+      return entityId ? `/wallets/${entityId}` : "/wallets";
+    case "shared_savings":
+    case "shared_saving":
+      return entityId ? `/shared-savings/${entityId}` : "/shared-savings";
+    case "shared_savings_invite":
+    case "shared_contribution":
+      return "/shared-savings";
+    case "transaction":
+      return "/transactions";
+    default:
+      return "/dashboard";
+  }
 }
 
 serve(async (req: Request) => {
@@ -155,17 +200,17 @@ serve(async (req: Request) => {
       return jsonResponse(
         {
           success: false,
-          error: "Unauthorized.",
+          error: "Unauthorized internal push request.",
         },
         401,
       );
     }
 
     // ============================================================
-    // 3. PARSE REQUEST
+    // 3. PARSE PAYLOAD
     // ============================================================
 
-    let body: PushRequestPayload;
+    let body: PushRequestPayload = {};
 
     try {
       body = await req.json();
@@ -173,22 +218,7 @@ serve(async (req: Request) => {
       return jsonResponse(
         {
           success: false,
-          error: "Invalid JSON body.",
-        },
-        400,
-      );
-    }
-
-    if (
-      !body.user_id ||
-      !body.title ||
-      !body.message
-    ) {
-      return jsonResponse(
-        {
-          success: false,
-          error:
-            "Missing required fields: user_id, title, message.",
+          error: "Invalid JSON request body.",
         },
         400,
       );
@@ -210,7 +240,76 @@ serve(async (req: Request) => {
     );
 
     // ============================================================
-    // 5. FETCH ACTIVE DEVICE SUBSCRIPTIONS
+    // 5. RESOLVE NOTIFICATION DETAILS & DEDUPLICATION
+    // ============================================================
+
+    let targetUserId = body.user_id;
+    let pushTitle = body.title;
+    let pushMessage = body.message;
+    let entityType = body.entity_type;
+    let entityId = body.entity_id;
+    let metadata = body.metadata;
+
+    if (body.notification_id) {
+      // Check if already dispatched to prevent duplicate pushes
+      const { data: existingDelivery } = await supabase
+        .from("notification_push_deliveries")
+        .select("id, status")
+        .eq("notification_id", body.notification_id)
+        .maybeSingle();
+
+      if (existingDelivery && existingDelivery.status === "delivered") {
+        return jsonResponse({
+          success: true,
+          delivered: 0,
+          status: "already_delivered",
+          message: "Notification already dispatched.",
+        });
+      }
+
+      // Load full notification row if title/message missing
+      if (!pushTitle || !pushMessage || !targetUserId) {
+        const { data: notifRow, error: notifErr } = await supabase
+          .from("notifications")
+          .select("id, user_id, title, message, entity_type, entity_id, metadata")
+          .eq("id", body.notification_id)
+          .single();
+
+        if (notifErr || !notifRow) {
+          return jsonResponse({
+            success: false,
+            error: `Notification ${body.notification_id} not found.`,
+          }, 404);
+        }
+
+        targetUserId = notifRow.user_id;
+        pushTitle = notifRow.title;
+        pushMessage = notifRow.message;
+        entityType = notifRow.entity_type;
+        entityId = notifRow.entity_id;
+        metadata = notifRow.metadata as Record<string, unknown>;
+      }
+    }
+
+    if (!targetUserId || !pushTitle || !pushMessage) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "Missing required fields: user_id, title, message.",
+        },
+        400,
+      );
+    }
+
+    const resolvedTargetPath = resolveCanonicalTargetPath(
+      entityType,
+      entityId,
+      metadata,
+      body.target_path,
+    );
+
+    // ============================================================
+    // 6. FETCH ACTIVE DEVICE SUBSCRIPTIONS
     // ============================================================
 
     const {
@@ -219,7 +318,7 @@ serve(async (req: Request) => {
     } = await supabase
       .from("push_subscriptions")
       .select("id, endpoint, p256dh, auth")
-      .eq("user_id", body.user_id)
+      .eq("user_id", targetUserId)
       .eq("is_active", true);
 
     if (subError) {
@@ -233,16 +332,31 @@ serve(async (req: Request) => {
         []) as PushSubscriptionRow[];
 
     if (activeSubscriptions.length === 0) {
+      // Record delivery attempt as no_devices
+      if (body.notification_id) {
+        await supabase
+          .from("notification_push_deliveries")
+          .upsert({
+            notification_id: body.notification_id,
+            user_id: targetUserId,
+            status: "no_devices",
+            attempted_at: new Date().toISOString(),
+            devices_targeted: 0,
+            devices_delivered: 0,
+          }, { onConflict: "notification_id" });
+      }
+
       return jsonResponse({
         success: true,
         delivered: 0,
         total_devices: 0,
         expired_deactivated: 0,
+        status: "no_devices",
       });
     }
 
     // ============================================================
-    // 6. VAPID CONFIG
+    // 7. VAPID CONFIG & PUSH PAYLOAD
     // ============================================================
 
     webpush.setVapidDetails(
@@ -251,17 +365,12 @@ serve(async (req: Request) => {
       vapidPrivateKey,
     );
 
-    // ============================================================
-    // 7. PUSH PAYLOAD
-    // ============================================================
-
+    // Pure actual title and body — NO "From KASH" injected
     const payload = JSON.stringify({
-      title: body.title,
-      body: body.message,
-      notification_id:
-        body.notification_id ?? null,
-      target_path:
-        body.target_path ?? "/dashboard",
+      title: pushTitle,
+      body: pushMessage,
+      notification_id: body.notification_id ?? null,
+      target_path: resolvedTargetPath,
     });
 
     let delivered = 0;
@@ -344,35 +453,45 @@ serve(async (req: Request) => {
     // ============================================================
 
     if (expiredIds.length > 0) {
-      const { error: deactivateError } =
-        await supabase
-          .from("push_subscriptions")
-          .update({
-            is_active: false,
-            updated_at:
-              new Date().toISOString(),
-          })
-          .in("id", expiredIds);
-
-      if (deactivateError) {
-        console.error(
-          "Failed to deactivate expired subscriptions:",
-          deactivateError,
-        );
-      }
+      await supabase
+        .from("push_subscriptions")
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", expiredIds);
     }
 
     // ============================================================
-    // 10. SUCCESS
+    // 10. RECORD DELIVERY STATE
+    // ============================================================
+
+    if (body.notification_id) {
+      const deliveryStatus = delivered > 0 ? "delivered" : failures.length > 0 ? "failed" : "no_devices";
+      await supabase
+        .from("notification_push_deliveries")
+        .upsert({
+          notification_id: body.notification_id,
+          user_id: targetUserId,
+          status: deliveryStatus,
+          attempted_at: new Date().toISOString(),
+          delivered_at: delivered > 0 ? new Date().toISOString() : null,
+          devices_targeted: activeSubscriptions.length,
+          devices_delivered: delivered,
+          error_message: failures.length > 0 ? failures.map((f) => f.error).join("; ") : null,
+        }, { onConflict: "notification_id" });
+    }
+
+    // ============================================================
+    // 11. SUCCESS RESPONSE
     // ============================================================
 
     return jsonResponse({
       success: true,
       delivered,
-      total_devices:
-        activeSubscriptions.length,
-      expired_deactivated:
-        expiredIds.length,
+      total_devices: activeSubscriptions.length,
+      expired_deactivated: expiredIds.length,
+      target_path: resolvedTargetPath,
       failures,
     });
   } catch (error) {

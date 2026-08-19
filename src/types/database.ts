@@ -605,10 +605,11 @@ export type Database = {
           p_counterparty_id: string;
           p_debt_type: DebtType;
           p_payment_mode: PaymentMode;
-          p_amount: string;
+          p_amount: string | number;
           p_wallet_id?: string | null;
           p_payment_date?: string;
           p_note?: string | null;
+          p_debt_id?: string | null;
         };
         Returns: Json;
       };

@@ -33,13 +33,37 @@ export function transactionIcon(type: TransactionType) {
 export function transactionTitle(transaction: TransactionWithMeta) {
   if (transaction.title) return transaction.title;
   if (transaction.type === "transfer") return `Transfer to ${transaction.destinationWallet?.name ?? "Wallet"}`;
-  if (transaction.type === "adjustment") return "Balance Adjustment";
+  if (transaction.type === "adjustment") {
+    if (transaction.related_entity_type === "debt_payment") return "Debt Payment";
+    if (transaction.related_entity_type === "receivable_payment") return "Receivable Collection";
+    if (transaction.related_entity_type === "shared_savings_contribution") return "Shared Savings Contribution";
+    if (transaction.related_entity_type === "shared_savings_withdrawal") return "Shared Savings Withdrawal";
+    if (transaction.related_entity_type === "goal_contribution") return "Goal Contribution";
+    if (transaction.related_entity_type === "goal_refund") return "Goal Refund";
+    return "Balance Adjustment";
+  }
   return transaction.category?.name ?? (transaction.type === "income" ? "Income" : "Expense");
 }
 
 export function transactionCategoryLabel(transaction: TransactionWithMeta) {
   if (transaction.type === "transfer") return "Transfer";
-  if (transaction.type === "adjustment") return "Adjustment";
+  if (transaction.type === "adjustment") {
+    if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return "Debt";
+    if (transaction.related_entity_type === "receivable_payment" || transaction.related_entity_type === "receivable_creation") return "Receivable";
+    if (
+      transaction.related_entity_type === "shared_savings_contribution" ||
+      transaction.related_entity_type === "shared_savings_withdrawal"
+    ) {
+      return "Shared Savings";
+    }
+    if (
+      transaction.related_entity_type === "goal_contribution" ||
+      transaction.related_entity_type === "goal_refund"
+    ) {
+      return "Goal";
+    }
+    return "Adjustment";
+  }
   return transaction.category?.name ?? "Uncategorized";
 }
 

@@ -134,7 +134,7 @@ export function BudgetsPage() {
         <PageHeader
           eyebrow="Planning"
           icon={Scale}
-          title="Budgets & Amplop"
+          title="Budget"
           description="Kendalikan pengeluaran bulanan dengan batas anggaran kategori dan amplop belanja."
         />
 

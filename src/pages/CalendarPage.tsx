@@ -53,6 +53,20 @@ function formatSignedCurrency(amount: number, currency = "IDR") {
   return `${amount > 0 ? "+" : ""}${formatCurrency(amount, currency)}`;
 }
 
+function formatCompactAmount(amount: number): string {
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000_000) {
+    return `${(amount / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} M`;
+  }
+  if (abs >= 1_000_000) {
+    return `${(amount / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
+  }
+  if (abs >= 1_000) {
+    return `${Math.round(amount / 1_000).toLocaleString("id-ID")} rb`;
+  }
+  return `${amount.toLocaleString("id-ID")}`;
+}
+
 function CalendarSkeleton() {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -133,13 +147,22 @@ function CalendarGrid({
               } ${cell.isCurrentMonth ? "" : "text-slate-400"}`}
             >
               <span className={`font-extrabold ${cell.isCurrentMonth ? "" : "text-slate-400"}`}>{dayNumber}</span>
-              <span className="flex min-h-3 max-w-full flex-wrap items-center justify-center gap-1" aria-hidden="true">
-                {dayData
-                  ? activityOrder
-                      .filter((type) => dayData.types.includes(type))
-                      .map((type) => <span key={type} className={`h-1.5 w-1.5 rounded-full ${activityDotClass[type]}`} />)
-                  : null}
-              </span>
+              {dayData && dayData.summary.transactionCount > 0 ? (
+                <div className="flex w-full flex-col items-center gap-0.5 px-0.5 text-[9px] md:text-[10px] font-black leading-tight overflow-hidden">
+                  {dayData.summary.income > 0 && (
+                    <span className="truncate text-kash-emerald">
+                      +Rp{formatCompactAmount(dayData.summary.income)}
+                    </span>
+                  )}
+                  {dayData.summary.expense > 0 && (
+                    <span className="truncate text-kash-expense">
+                      -Rp{formatCompactAmount(dayData.summary.expense)}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="flex min-h-3" aria-hidden="true" />
+              )}
             </button>
           );
         })}

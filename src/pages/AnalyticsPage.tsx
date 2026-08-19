@@ -832,6 +832,10 @@ function BudgetVsActualCard({ currency }: { currency: string }) {
   const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const monthYearLabel = useMemo(() => {
+    return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date());
+  }, []);
+
   useEffect(() => {
     getMonthlyBudgets()
       .then((data) => {
@@ -848,7 +852,7 @@ function BudgetVsActualCard({ currency }: { currency: string }) {
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Scale aria-hidden="true" className="text-kash-emerald" size={18} />
-          <h2 className="text-base font-extrabold text-slate-900">Budget vs Actual (Bulan Ini)</h2>
+          <h2 className="text-base font-extrabold text-slate-900">Budget ({monthYearLabel})</h2>
         </div>
         <Link to="/budgets" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
           Lihat Semua

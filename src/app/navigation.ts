@@ -32,7 +32,7 @@ export const navGroups: NavGroup[] = [
         items: [
             { label: "Dashboard", path: "/dashboard", icon: Home },
             { label: "Transactions", path: "/transactions", icon: ReceiptText },
-            { label: "Budgets", path: "/budgets", icon: Scale },
+            { label: "Budget", path: "/budgets", icon: Scale },
             { label: "Calendar", path: "/calendar", icon: CalendarDays },
             { label: "Analytics", path: "/analytics", icon: BarChart3 },
         ],

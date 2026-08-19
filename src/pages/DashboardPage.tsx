@@ -23,10 +23,10 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getDashboardSummary, type DashboardCategorySpend, type DashboardMetricChange, type DashboardSummary } from "../lib/dashboard";
-import { getMonthlyBudgetOverview } from "../lib/budgets";
-import type { MonthlyBudgetOverview } from "../types/domain";
+import { getMonthlyBudgetOverview, getMonthlyBudgets } from "../lib/budgets";
+import type { BudgetWithProgress, MonthlyBudgetOverview } from "../types/domain";
 import { buildCalendarCells, localDateKey } from "../lib/calendar";
-import { formatCurrency } from "../lib/money";
+import { formatCurrency, toNumber } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
@@ -765,13 +765,13 @@ function BudgetDashboardSummary({
   balancesVisible: boolean;
   currency: string;
 }) {
-  const [overview, setOverview] = useState<MonthlyBudgetOverview | null>(null);
+  const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadOverview = useCallback(async () => {
+  const loadBudgets = useCallback(async () => {
     try {
-      const data = await getMonthlyBudgetOverview();
-      setOverview(data);
+      const data = await getMonthlyBudgets();
+      setBudgets(data);
     } catch {
       // safe fallback
     } finally {
@@ -780,16 +780,17 @@ function BudgetDashboardSummary({
   }, []);
 
   useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
+    void loadBudgets();
+  }, [loadBudgets]);
 
-  useAppEvent(appEvents.transactionSaved, () => void loadOverview());
+  useAppEvent(appEvents.transactionSaved, () => void loadBudgets());
+  useAppEvent(appEvents.budgetSaved, () => void loadBudgets());
 
   if (loading) {
-    return <div className="h-32 animate-pulse rounded-lg bg-slate-100" />;
+    return <div className="h-36 animate-pulse rounded-lg bg-slate-100" />;
   }
 
-  if (!overview || overview.total_budgets_count === 0) {
+  if (budgets.length === 0) {
     return (
       <EmptyPanel
         title="Belum ada budget"
@@ -799,64 +800,59 @@ function BudgetDashboardSummary({
     );
   }
 
-  const progressPercent = Math.min(Math.max(overview.overall_usage_percentage, 0), 100);
-
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg bg-slate-50 p-2.5">
-          <span className="text-[11px] font-bold text-slate-600">Total Terpakai</span>
-          <p className="mt-1 text-sm font-black text-slate-900">
-            {formatPrivateAmount(Number(overview.total_spent), currency, balancesVisible)}
-          </p>
-        </div>
-        <div className="rounded-lg bg-slate-50 p-2.5">
-          <span className="text-[11px] font-bold text-slate-600">
-            {Number(overview.total_remaining) < 0 ? "Kelebihan" : "Sisa Budget"}
-          </span>
-          <p
-            className={`mt-1 text-sm font-black ${
-              Number(overview.total_remaining) < 0 ? "text-kash-expense" : "text-kash-emeraldDark"
-            }`}
-          >
-            {formatPrivateAmount(Math.abs(Number(overview.total_remaining)), currency, balancesVisible)}
-          </p>
-        </div>
+      <div className="space-y-3">
+        {budgets.slice(0, 4).map((b) => {
+          const progress = Math.min(Math.max(b.usage_percentage, 0), 100);
+          const isOver = b.status === "over_budget";
+          const isNear = b.status === "near_limit";
+          const spentNum = toNumber(b.spent);
+          const effectiveNum = toNumber(b.effective_budget);
+
+          return (
+            <div key={b.budget_id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-xs font-black text-slate-900">{b.name}</p>
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                    isOver
+                      ? "bg-kash-expense/15 text-kash-expense"
+                      : isNear
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-kash-selected text-kash-emeraldDark"
+                  }`}
+                >
+                  {b.usage_percentage.toFixed(0)}%
+                </span>
+              </div>
+
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    isOver ? "bg-kash-expense" : isNear ? "bg-amber-500" : "bg-kash-emerald"
+                  }`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              <div className="mt-1 flex items-center justify-between text-[11px] font-bold text-slate-600">
+                <span>{formatPrivateAmount(spentNum, currency, balancesVisible)}</span>
+                <span>/ {formatPrivateAmount(effectiveNum, currency, balancesVisible)}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div>
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              overview.over_budget_count > 0
-                ? "bg-kash-expense"
-                : overview.near_limit_count > 0
-                ? "bg-amber-500"
-                : "bg-kash-emerald"
-            }`}
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-        <div className="mt-1.5 flex items-center justify-between text-[11px] font-bold text-slate-600">
-          <span>{overview.overall_usage_percentage.toFixed(1)}% terpakai</span>
-          <span>{overview.total_budgets_count} alokasi</span>
-        </div>
+      <div className="pt-1 text-center border-t border-slate-100">
+        <Link
+          to="/budgets"
+          className="inline-flex items-center gap-1 text-xs font-extrabold text-kash-emeraldDark hover:text-kash-emerald hover:underline"
+        >
+          Lihat semua {budgets.length} budget &rarr;
+        </Link>
       </div>
-
-      {(overview.near_limit_count > 0 || overview.over_budget_count > 0) && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {overview.near_limit_count > 0 && (
-            <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-              {overview.near_limit_count} hampir batas
-            </span>
-          )}
-          {overview.over_budget_count > 0 && (
-            <span className="rounded bg-kash-expense/15 px-2 py-0.5 text-[10px] font-bold text-kash-expense">
-              {overview.over_budget_count} over budget
-            </span>
-          )}
-        </div>
-      )}
     </div>
   );
 }

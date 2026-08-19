@@ -220,10 +220,20 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     destination_wallet_name: r.destination_wallet_id ? walletNameMap.get(r.destination_wallet_id) || "Wallet" : null,
   }));
 
-  const ledger: SharedSavingsLedger[] = (ledgerResult.data ?? []).map((l) => ({
-    ...l,
-    amount: toNumber(l.amount),
-  }));
+  const requestMap = new Map(requests.map((r) => [r.id, r]));
+  const memberNameMap = new Map(members.map((m) => [m.user_id, m.member_name || m.member_email || "Anggota"]));
+
+  const ledger: SharedSavingsLedger[] = (ledgerResult.data ?? []).map((l) => {
+    const req = requestMap.get(l.request_id);
+    const reqName = req?.requester_name || (req?.requested_by_user_id ? memberNameMap.get(req.requested_by_user_id) : null);
+    return {
+      ...l,
+      amount: toNumber(l.amount),
+      requester_name: reqName || null,
+      requester_user_id: req?.requested_by_user_id || null,
+      requester_avatar_url: req?.requester_avatar_url || null,
+    };
+  });
 
   const invites: SharedSavingsInvite[] = (invitesResult.data ?? []).map((inv) => ({
     ...inv,
