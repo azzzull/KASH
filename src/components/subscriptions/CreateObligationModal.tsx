@@ -32,6 +32,32 @@ const REMINDER_OFFSET_OPTIONS = [
   { value: 0, label: "Due day" },
 ];
 
+function findSmartCategory(targetType: RecurringObligationType, catList: Category[]): string {
+  const norm = (str: string) => str.toLowerCase().trim();
+
+  if (targetType === "subscription") {
+    const found = catList.find((c) => {
+      const n = norm(c.name);
+      return n.includes("langganan") || n.includes("subscription") || n.includes("hiburan") || n.includes("entertainment") || n.includes("digital");
+    });
+    if (found) return found.id;
+  } else if (targetType === "bill") {
+    const found = catList.find((c) => {
+      const n = norm(c.name);
+      return n.includes("tagihan") || n.includes("bill") || n.includes("utilitas") || n.includes("utility") || n.includes("listrik") || n.includes("air") || n.includes("internet") || n.includes("pulsa");
+    });
+    if (found) return found.id;
+  } else if (targetType === "paylater" || targetType === "installment") {
+    const found = catList.find((c) => {
+      const n = norm(c.name);
+      return n.includes("cicilan") || n.includes("installment") || n.includes("paylater") || n.includes("belanja") || n.includes("shopping");
+    });
+    if (found) return found.id;
+  }
+
+  return "";
+}
+
 export function CreateObligationModal({ onClose, onSaved }: CreateObligationModalProps) {
   const [type, setType] = useState<RecurringObligationType>("subscription");
   const [name, setName] = useState("");
@@ -59,7 +85,8 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
         if (catRes.data) {
           const expCategories = (catRes.data as Category[]).filter((c) => c.category_type === "expense");
           setCategories(expCategories);
-          if (expCategories.length > 0) setCategoryId(expCategories[0].id);
+          const smartCat = findSmartCategory(type, expCategories);
+          if (smartCat) setCategoryId(smartCat);
         }
         if (walRes.data) {
           setWallets(walRes.data);
@@ -76,6 +103,12 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
       setInstallmentCount("1");
     } else if (newType === "installment" && (installmentCount === "1" || !installmentCount)) {
       setInstallmentCount("12");
+    }
+
+    // Smart category adjustment if not manually customized
+    const smartCat = findSmartCategory(newType, categories);
+    if (smartCat) {
+      setCategoryId(smartCat);
     }
   };
 
