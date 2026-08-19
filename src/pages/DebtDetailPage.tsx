@@ -37,6 +37,7 @@ import {
   createMultipleDebts,
   deleteOrCancelDebt,
   getCounterpartyDetail,
+  recordCounterpartySettlement,
   renameCounterparty,
   updateDebt,
   type CounterpartyDetail,
@@ -45,7 +46,7 @@ import {
 } from "../lib/debts";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
-import type { Debt, DebtProgress, DebtType } from "../types/domain";
+import type { Counterparty, Debt, DebtProgress, DebtType, PaymentMode } from "../types/domain";
 import { SettlementModal } from "./DebtsPage";
 
 type ActiveTab = "active" | "settled" | "history";
@@ -59,6 +60,7 @@ export function DebtDetailPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("active");
 
   const [settlementTarget, setSettlementTarget] = useState<DebtType | null>(null);
+  const [settlingItem, setSettlingItem] = useState<DebtProgress | null>(null);
   const [createItemModalOpen, setCreateItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DebtProgress | null>(null);
   const [deletingItem, setDeletingItem] = useState<DebtProgress | null>(null);
@@ -271,6 +273,7 @@ export function DebtDetailPage() {
               <ItemCard
                 key={item.debt_id}
                 item={item}
+                onSettle={() => setSettlingItem(item)}
                 onEdit={() => setEditingItem(item)}
                 onDelete={() => setDeletingItem(item)}
               />
@@ -321,6 +324,19 @@ export function DebtDetailPage() {
           onClose={() => setSettlementTarget(null)}
           onSaved={() => {
             setSettlementTarget(null);
+            emitDebtSaved();
+            emitTransactionSaved();
+          }}
+        />
+      )}
+
+      {settlingItem && (
+        <ItemSettlementModal
+          counterparty={counterparty}
+          item={settlingItem}
+          onClose={() => setSettlingItem(null)}
+          onSaved={() => {
+            setSettlingItem(null);
             emitDebtSaved();
             emitTransactionSaved();
           }}
@@ -384,10 +400,12 @@ export function DebtDetailPage() {
 
 function ItemCard({
   item,
+  onSettle,
   onEdit,
   onDelete,
 }: {
   item: DebtProgress;
+  onSettle?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -466,30 +484,47 @@ function ItemCard({
         </div>
       </div>
 
-      {/* Due Date & Status Footer */}
-      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] font-semibold text-slate-600">
-        <span className="flex items-center gap-1">
-          <CalendarDays size={13} />
-          {item.due_date
-            ? `Due: ${new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(
-                new Date(`${item.due_date}T00:00:00`),
-              )}`
-            : "No due date"}
-        </span>
+      {/* Due Date, Status Footer & Settle Item Action */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-[11px] font-semibold text-slate-600">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1">
+            <CalendarDays size={13} />
+            {item.due_date
+              ? `Due: ${new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(
+                  new Date(`${item.due_date}T00:00:00`),
+                )}`
+              : "No due date"}
+          </span>
 
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
-            item.status === "settled"
-              ? "bg-emerald-50 text-emerald-700"
-              : item.status === "cancelled"
-                ? "bg-slate-100 text-slate-600"
-                : item.status === "partially_paid"
-                  ? "bg-blue-50 text-blue-700"
-                  : "bg-slate-100 text-slate-700"
-          }`}
-        >
-          {item.status.replace("_", " ")}
-        </span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+              item.status === "settled"
+                ? "bg-emerald-50 text-emerald-700"
+                : item.status === "cancelled"
+                  ? "bg-slate-100 text-slate-600"
+                  : item.status === "partially_paid"
+                    ? "bg-blue-50 text-blue-700"
+                    : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            {item.status.replace("_", " ")}
+          </span>
+        </div>
+
+        {onSettle && remaining > 0 && (item.status === "active" || item.status === "partially_paid") ? (
+          <button
+            type="button"
+            onClick={onSettle}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition ${
+              isDebt
+                ? "bg-kash-expense/10 text-kash-expense hover:bg-kash-expense hover:text-white"
+                : "bg-kash-emerald/10 text-kash-emeraldDark hover:bg-kash-emerald hover:text-white"
+            }`}
+          >
+            <HandCoins size={14} />
+            {isDebt ? "Bayar Item Ini" : "Terima Item Ini"}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -1136,6 +1171,256 @@ function RenameCounterpartyModal({
             <Button disabled={saving} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
               Save Name
+            </Button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ItemSettlementModal({
+  item,
+  counterparty,
+  onClose,
+  onSaved,
+}: {
+  item: DebtProgress;
+  counterparty: Counterparty;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("wallet");
+  const remaining = toNumber(item.remaining_amount);
+  const [amount, setAmount] = useState(() => formatMoneyDigits(remaining.toString()));
+  const [walletId, setWalletId] = useState("");
+  const [paymentDate, setPaymentDate] = useState(() => {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+    return local.toISOString().slice(0, 16);
+  });
+  const [note, setNote] = useState("");
+  const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isDebt = item.type === "debt";
+
+  useEffect(() => {
+    getWallets().then((res) => {
+      if (res.data) {
+        setWallets(res.data);
+        const liquid = res.data.find((w) => !w.is_archived);
+        if (liquid) setWalletId(liquid.id);
+      }
+    });
+  }, []);
+
+  const parsedAmount = toNumber(parseMoneyInputDigits(amount) || "0");
+  const remainingAfterPayment = Math.max(remaining - parsedAmount, 0);
+  const selectedWallet = wallets.find((w) => w.id === walletId);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (parsedAmount <= 0) {
+      setError("Nominal pelunasan harus lebih besar dari nol.");
+      return;
+    }
+    if (parsedAmount > remaining) {
+      setError(`Nominal pelunasan tidak boleh melebihi sisa tagihan item sebesar ${formatCurrency(remaining, "IDR")}.`);
+      return;
+    }
+
+    if (paymentMode === "wallet" && !walletId) {
+      setError("Silakan pilih dompet.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { error: settlementError } = await recordCounterpartySettlement({
+        counterpartyId: counterparty.id,
+        debtType: item.type,
+        paymentMode,
+        amount: parseMoneyInputDigits(amount),
+        walletId: paymentMode === "wallet" ? walletId : null,
+        paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
+        note: note.trim() || null,
+        debtId: item.debt_id,
+      });
+
+      if (settlementError) {
+        setError(settlementError.message ?? "Gagal memproses pelunasan item. Silakan coba lagi.");
+        setSaving(false);
+        return;
+      }
+
+      onSaved();
+    } catch (err: any) {
+      setError(err?.message ?? "Terjadi kesalahan tidak terduga.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
+      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close form" onClick={onClose} />
+      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`rounded-md px-2 py-0.5 text-[11px] font-black uppercase ${
+                  isDebt ? "bg-kash-expense/10 text-kash-expense" : "bg-kash-emerald/10 text-kash-emeraldDark"
+                }`}
+              >
+                Pelunasan Per Item
+              </span>
+            </div>
+            <h2 className="mt-1 text-xl font-extrabold text-slate-900">
+              {isDebt ? `Bayar Utang: ${item.title}` : `Terima Piutang: ${item.title}`}
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-slate-700">
+              Pihak: <span className="font-bold text-slate-900">{counterparty.name}</span> • Sisa Tagihan Item:{" "}
+              <span className="font-bold text-slate-900">{formatCurrency(remaining, "IDR")}</span>
+            </p>
+          </div>
+          <IconButton icon={X} label="Close" onClick={onClose} />
+        </div>
+
+        {error ? (
+          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+
+        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          {/* Payment Method Switcher */}
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => setPaymentMode("wallet")}
+              className={`rounded-lg py-2.5 text-xs font-black transition ${
+                paymentMode === "wallet" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              {isDebt ? "Bayar Lewat Dompet" : "Terima Masuk Dompet"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMode("historical")}
+              className={`rounded-lg py-2.5 text-xs font-black transition ${
+                paymentMode === "historical" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              {isDebt ? "Catat Riwayat (Luar Dompet)" : "Catat Riwayat (Luar Dompet)"}
+            </button>
+          </div>
+
+          {paymentMode === "historical" && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-xs font-semibold text-blue-900">
+              Mencatat pembayaran yang sudah terjadi di luar aplikasi. Sisa utang item ini akan berkurang tanpa mengubah saldo dompet Anda.
+            </div>
+          )}
+
+          {/* Amount input & Quick Full Settlement shortcut */}
+          <div className="w-full max-w-full min-w-0">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-bold text-slate-900" htmlFor="item-settlement-amount">
+                Nominal Pelunasan *
+              </label>
+              <button
+                type="button"
+                onClick={() => setAmount(formatMoneyDigits(remaining.toString()))}
+                className="text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark hover:underline"
+              >
+                Bayar Penuh ({formatCurrency(remaining, "IDR")})
+              </button>
+            </div>
+            <input
+              id="item-settlement-amount"
+              inputMode="numeric"
+              type="text"
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
+              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
+              required
+            />
+          </div>
+
+          {/* Wallet Selector (Wallet mode only) */}
+          {paymentMode === "wallet" && (
+            <SelectField
+              id="item-settlement-wallet"
+              label={isDebt ? "Bayar dari Dompet *" : "Masuk ke Dompet *"}
+              value={walletId}
+              onChange={(e) => setWalletId(e.target.value)}
+              required
+            >
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {/* Payment Date */}
+          <DatePickerField
+            id="item-settlement-date"
+            label="Tanggal & Waktu Pelunasan *"
+            enableTime
+            value={paymentDate}
+            onChange={(val) => setPaymentDate(val)}
+          />
+
+          {/* Note */}
+          <FormField
+            id="item-settlement-note"
+            label="Catatan (Opsional)"
+            placeholder="misal: Transfer BCA, bukti lunas"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+
+          {/* Live Preview */}
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Ringkasan Pelunasan Item</p>
+            <div className="mt-3 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="font-semibold text-slate-700">Target Item:</span>
+                <span className="font-black text-slate-900">{item.title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-slate-700">Nominal Pelunasan:</span>
+                <span className="font-black text-slate-900">{formatCurrency(parsedAmount, "IDR")}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold text-slate-700">Efek ke Dompet:</span>
+                <span className="font-black text-slate-900">
+                  {paymentMode === "historical"
+                    ? "Tidak ada perubahan (Riwayat)"
+                    : isDebt
+                      ? `-${formatCurrency(parsedAmount, "IDR")} (${selectedWallet?.name ?? "Dompet"})`
+                      : `+${formatCurrency(parsedAmount, "IDR")} (${selectedWallet?.name ?? "Dompet"})`}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 pt-2">
+                <span className="font-bold text-slate-900">Sisa Tagihan Item Ini:</span>
+                <span className={`font-black ${remainingAfterPayment === 0 ? "text-kash-emeraldDark" : "text-slate-900"}`}>
+                  {formatCurrency(remainingAfterPayment, "IDR")} {remainingAfterPayment === 0 ? "(Lunas)" : ""}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <Button disabled={saving} type="submit">
+              {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
+              {isDebt ? "Konfirmasi Pembayaran Item Ini" : "Konfirmasi Penerimaan Item Ini"}
             </Button>
           </div>
         </form>
