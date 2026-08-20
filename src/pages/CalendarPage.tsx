@@ -419,17 +419,12 @@ export function CalendarPage() {
         </section>
       ) : null}
 
-      {selectedTransaction ? (
-        <>
-          <div className="fixed inset-0 z-30 bg-slate-900/25 md:hidden" onClick={() => setSelectedTransaction(null)} />
-          <TransactionDetailPanel
-            className="fixed inset-x-0 bottom-0 z-40 max-h-[92vh] rounded-t-2xl md:absolute md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[360px] md:rounded-lg"
-            currency={currency}
-            transaction={selectedTransaction}
-            onClose={() => setSelectedTransaction(null)}
-          />
-        </>
-      ) : null}
+      <TransactionDetailPanel
+        currency={currency}
+        isOpen={Boolean(selectedTransaction)}
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </div>
   );
 }

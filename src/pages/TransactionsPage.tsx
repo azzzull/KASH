@@ -660,14 +660,20 @@ function AdvancedFilterPanel({
   onUpdate: <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) => void;
   wallets: Wallet[];
 }) {
+  const { t } = useI18n();
+
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-slate-900/30 md:hidden" role="dialog" aria-modal="true">
-        <button aria-label="Close filters" className="absolute inset-0 h-full w-full cursor-default" onClick={onClose} type="button" />
-        <section className="absolute inset-x-0 bottom-0 max-h-[82vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 shadow-soft">
-          <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-slate-200" />
+      <div className="md:hidden">
+        <Modal
+          isOpen
+          onClose={onClose}
+          maxWidth="md"
+          title={t("transactions.filterTitle") || "Filter Transaksi"}
+          description={t("transactions.filterSubtitle") || "Persempit buku kas berdasarkan tanggal, dompet, kategori, atau status."}
+        >
           <AdvancedFilterContent categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
-        </section>
+        </Modal>
       </div>
       <div className="absolute right-[calc(100%+4px)] top-[calc(100%+4px)] z-40 hidden w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-soft md:block">
         <AdvancedFilterContent categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
@@ -1024,20 +1030,26 @@ export function TransactionsPage() {
 
       </div>
 
-      {selectedTransaction ? (
-        <>
-          <div className="fixed inset-0 z-30 bg-slate-900/25 md:hidden" onClick={() => setSelectedTransaction(null)} />
-          <TransactionDetailPanel
-            className="fixed inset-x-0 bottom-0 z-40 max-h-[92vh] rounded-t-2xl md:absolute md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[360px] md:rounded-lg"
-            currency={currency}
-            transaction={selectedTransaction}
-            onClose={() => setSelectedTransaction(null)}
-            onEdit={() => setEditState({ mode: "edit", transaction: selectedTransaction })}
-            onDuplicate={() => setEditState({ mode: "duplicate", transaction: selectedTransaction })}
-            onVoid={() => setVoidTarget(selectedTransaction)}
-          />
-        </>
-      ) : null}
+      <TransactionDetailPanel
+        currency={currency}
+        isOpen={Boolean(selectedTransaction)}
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+        onEdit={() => {
+          const tx = selectedTransaction;
+          setSelectedTransaction(null);
+          if (tx) setEditState({ mode: "edit", transaction: tx });
+        }}
+        onDuplicate={() => {
+          const tx = selectedTransaction;
+          setSelectedTransaction(null);
+          if (tx) setEditState({ mode: "duplicate", transaction: tx });
+        }}
+        onVoid={() => {
+          const tx = selectedTransaction;
+          if (tx) setVoidTarget(tx);
+        }}
+      />
 
       {editState ? (
         <TransactionFormModal

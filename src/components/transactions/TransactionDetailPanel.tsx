@@ -8,11 +8,10 @@ import {
   CreditCard,
   Edit3,
   Trash2,
-  X,
 } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { formatCurrency, toNumber } from "../../lib/money";
-import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 import type { TransactionType } from "../../types/domain";
 import type { TransactionWithMeta } from "../../lib/transactions";
 
@@ -101,24 +100,27 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function TransactionDetailPanel({
-  className = "",
+export function TransactionDetailModal({
   currency,
+  isOpen,
   onClose,
   onDuplicate,
   onEdit,
   onVoid,
   transaction,
 }: {
-  className?: string;
   currency: string;
+  isOpen: boolean;
   onClose: () => void;
   onDuplicate?: () => void;
   onEdit?: () => void;
   onVoid?: () => void;
-  transaction: TransactionWithMeta;
+  transaction: TransactionWithMeta | null;
 }) {
   const { t, formatDate, formatCurrency } = useI18n();
+
+  if (!transaction) return null;
+
   const Icon = transactionIcon(transaction.type);
   const dateLabel = formatDate(new Date(transaction.transaction_date));
   const isVoid = transaction.status === "void";
@@ -184,65 +186,80 @@ export function TransactionDetailPanel({
         : (t("transactions.linkedGoal") || "Transaksi terhubung dengan Target Tabungan. Perubahan dan pembatalan dikelola dari halaman Target Tabungan.");
 
   return (
-    <aside className={`overflow-y-auto border border-slate-200 bg-white p-5 shadow-soft ${className}`}>
-      <div className="flex items-start justify-between gap-4">
-        <span className={`flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
-          <Icon aria-hidden="true" size={21} />
-        </span>
-        <IconButton icon={X} label="Close transaction detail" onClick={onClose} />
-      </div>
-
-      <div className="mt-6">
-        <p className="text-sm font-bold text-slate-600">{transaction.type === "transfer" ? (t("transactions.transfer") || "Transfer") : getTranslatedCategoryLabel()}</p>
-        <h2 className="mt-2 text-xl font-extrabold text-slate-900">{getTranslatedTitle()}</h2>
-        <p className={`mt-4 break-words text-3xl font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
-          {displayTransactionAmount(transaction, currency)}
-        </p>
-        {isVoid ? <p className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">{t("transactions.voided") || "Dibatalkan"}</p> : null}
-      </div>
-
-      {isLinked ? (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
-          {linkedMessage}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      title={
+        <div className="flex items-center gap-3">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
+            <Icon aria-hidden="true" size={20} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              {transaction.type === "transfer" ? (t("transactions.transfer") || "Transfer") : getTranslatedCategoryLabel()}
+            </p>
+            <h2 className="text-lg font-extrabold text-slate-900 truncate">
+              {getTranslatedTitle()}
+            </h2>
+          </div>
         </div>
-      ) : null}
-
-      <dl className="mt-6 divide-y divide-slate-100 border-y border-slate-100">
-        <DetailLine label={t("common.date") || "Tanggal"} value={dateLabel} />
-        <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
-        {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
-        {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}
-        {transaction.envelope ? <DetailLine label={t("envelopes.title") || "Amplop"} value={transaction.envelope.name} /> : null}
-        {transaction.type === "transfer" ? <DetailLine label={t("transactions.transferFee") || "Biaya Transfer"} value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
-        {transaction.type === "transfer" ? <DetailLine label={t("transactions.totalDeducted") || "Total Terpotong"} value={formatCurrency(amount + fee, currency)} /> : null}
-        {transaction.type === "transfer" ? <DetailLine label={t("transactions.destinationReceived") || "Diterima Tujuan"} value={formatCurrency(amount, currency)} /> : null}
-        <DetailLine label={t("transactions.note") || "Catatan"} value={transaction.note || "-"} />
-        <DetailLine label={t("common.status") || "Status"} value={isVoid ? (t("transactions.voided") || "Dibatalkan") : (t("transactions.completed") || "Selesai")} />
-        <DetailLine label={t("transactions.transactionId") || "ID Transaksi"} value={transaction.id} />
-      </dl>
-
-      {onEdit || onDuplicate || onVoid ? (
-        <div className="mt-6 grid grid-cols-3 gap-2 rounded-lg border border-slate-200 p-2">
-          {onEdit ? (
-            <button disabled={isVoid || isLinked} type="button" onClick={onEdit} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:text-slate-600">
-              <Edit3 size={17} />
-              {t("common.edit") || "Edit"}
-            </button>
-          ) : null}
-          {onDuplicate ? (
-            <button type="button" onClick={onDuplicate} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50">
-              <Copy size={17} />
-              {t("transactions.duplicate") || "Duplikat"}
-            </button>
-          ) : null}
-          {onVoid ? (
-            <button disabled={isVoid || isLinked} type="button" onClick={onVoid} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent">
-              <Trash2 size={17} />
-              {t("transactions.void") || "Void"}
-            </button>
-          ) : null}
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <p className={`break-words text-3xl font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
+            {displayTransactionAmount(transaction, currency)}
+          </p>
+          {isVoid ? <p className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">{t("transactions.voided") || "Dibatalkan"}</p> : null}
         </div>
-      ) : null}
-    </aside>
+
+        {isLinked ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
+            {linkedMessage}
+          </div>
+        ) : null}
+
+        <dl className="divide-y divide-slate-100 border-y border-slate-100">
+          <DetailLine label={t("common.date") || "Tanggal"} value={dateLabel} />
+          <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
+          {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
+          {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}
+          {transaction.envelope ? <DetailLine label={t("envelopes.title") || "Amplop"} value={transaction.envelope.name} /> : null}
+          {transaction.type === "transfer" ? <DetailLine label={t("transactions.transferFee") || "Biaya Transfer"} value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
+          {transaction.type === "transfer" ? <DetailLine label={t("transactions.totalDeducted") || "Total Terpotong"} value={formatCurrency(amount + fee, currency)} /> : null}
+          {transaction.type === "transfer" ? <DetailLine label={t("transactions.destinationReceived") || "Diterima Tujuan"} value={formatCurrency(amount, currency)} /> : null}
+          <DetailLine label={t("transactions.note") || "Catatan"} value={transaction.note || "-"} />
+          <DetailLine label={t("common.status") || "Status"} value={isVoid ? (t("transactions.voided") || "Dibatalkan") : (t("transactions.completed") || "Selesai")} />
+          <DetailLine label={t("transactions.transactionId") || "ID Transaksi"} value={transaction.id} />
+        </dl>
+
+        {onEdit || onDuplicate || onVoid ? (
+          <div className="grid grid-cols-3 gap-2 rounded-lg border border-slate-200 p-2">
+            {onEdit ? (
+              <button disabled={isVoid || isLinked} type="button" onClick={onEdit} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:text-slate-600">
+                <Edit3 size={17} />
+                {t("common.edit") || "Edit"}
+              </button>
+            ) : null}
+            {onDuplicate ? (
+              <button type="button" onClick={onDuplicate} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                <Copy size={17} />
+                {t("transactions.duplicate") || "Duplikat"}
+              </button>
+            ) : null}
+            {onVoid ? (
+              <button disabled={isVoid || isLinked} type="button" onClick={onVoid} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent">
+                <Trash2 size={17} />
+                {t("transactions.void") || "Void"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </Modal>
   );
 }
+
+// Retain alias for any existing imports
+export { TransactionDetailModal as TransactionDetailPanel };

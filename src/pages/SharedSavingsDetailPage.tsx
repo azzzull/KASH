@@ -36,6 +36,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ContributeSharedModal } from "../components/sharedSavings/ContributeSharedModal";
 import { WithdrawSharedModal } from "../components/sharedSavings/WithdrawSharedModal";
@@ -1013,19 +1014,14 @@ export function SharedSavingsDetailPage() {
 
       {/* Reject Request Dialog */}
       {rejectingRequest && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-          onClick={() => setRejectingRequest(null)}
+        <Modal
+          isOpen
+          onClose={() => setRejectingRequest(null)}
+          maxWidth="sm"
+          dismissible={!processingRequestId}
+          title={t("shared.rejectRequestTitle")}
         >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl animate-in zoom-in-95 duration-150 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-extrabold text-slate-900">{t("shared.rejectRequestTitle")}</h3>
-              <IconButton icon={X} label="Tutup" onClick={() => setRejectingRequest(null)} />
-            </div>
-
+          <div className="space-y-4 pt-1">
             <p className="text-xs text-slate-600">
               {t("shared.rejectRequestTitle")}:{" "}
               <span className="font-bold text-slate-900">
@@ -1066,7 +1062,7 @@ export function SharedSavingsDetailPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
