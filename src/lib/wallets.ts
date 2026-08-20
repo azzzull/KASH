@@ -15,6 +15,9 @@ type CreateFirstWalletInput = {
 
 export type WalletWithBalance = Wallet & {
   balance: WalletBalance | null;
+  goal_id?: string | null;
+  goal_name?: string | null;
+  goal_target_amount?: string | number | null;
 };
 
 export type CreateWalletInput = CreateFirstWalletInput;
@@ -43,7 +46,7 @@ async function getAuthenticatedUserId() {
   return user.id;
 }
 
-function attachBalances(wallets: Wallet[], balances: WalletBalance[]) {
+function attachBalances(wallets: any[], balances: WalletBalance[]): WalletWithBalance[] {
   return wallets.map((wallet) => ({
     ...wallet,
     balance: balances.find((balance) => balance.wallet_id === wallet.id) ?? null,
@@ -53,7 +56,7 @@ function attachBalances(wallets: Wallet[], balances: WalletBalance[]) {
 export async function getWallets() {
   const { data: wallets, error: walletError } = await supabase
     .from("wallets")
-    .select("*")
+    .select("*, goals!goals_wallet_id_fkey(id, name, target_amount, deadline, status)")
     .eq("is_archived", false)
     .order("created_at", { ascending: true });
 
@@ -67,11 +70,25 @@ export async function getWallets() {
     return { data: null, error: balanceError };
   }
 
-  return { data: attachBalances(wallets, balances), error: null };
+  const mappedWallets = (wallets as any[]).map((w) => {
+    const linkedGoal = Array.isArray(w.goals) ? w.goals[0] : w.goals;
+    return {
+      ...w,
+      goal_id: linkedGoal?.id ?? null,
+      goal_name: linkedGoal?.name ?? null,
+      goal_target_amount: linkedGoal?.target_amount ?? null,
+    };
+  });
+
+  return { data: attachBalances(mappedWallets, balances), error: null };
 }
 
 export async function getWalletById(id: string) {
-  const { data: wallet, error: walletError } = await supabase.from("wallets").select("*").eq("id", id).single();
+  const { data: wallet, error: walletError } = await supabase
+    .from("wallets")
+    .select("*, goals!goals_wallet_id_fkey(id, name, target_amount, deadline, status)")
+    .eq("id", id)
+    .single();
 
   if (walletError || !wallet) {
     return { data: null, error: walletError };
@@ -87,7 +104,18 @@ export async function getWalletById(id: string) {
     return { data: null, error: balanceError };
   }
 
-  return { data: { ...wallet, balance }, error: null };
+  const linkedGoal = Array.isArray((wallet as any).goals) ? (wallet as any).goals[0] : (wallet as any).goals;
+
+  return {
+    data: {
+      ...wallet,
+      balance,
+      goal_id: linkedGoal?.id ?? null,
+      goal_name: linkedGoal?.name ?? null,
+      goal_target_amount: linkedGoal?.target_amount ?? null,
+    } as WalletWithBalance,
+    error: null,
+  };
 }
 
 export async function getWalletTransactionCount(walletId: string) {

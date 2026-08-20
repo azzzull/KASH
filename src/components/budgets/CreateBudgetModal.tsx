@@ -84,8 +84,10 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
         setGoals(goalRes.data);
       }
       if (walletRes.data) {
-        const savingsOnly = (walletRes.data as WalletWithBalance[]).filter((w) => w.wallet_type === "savings");
-        setSavingsWallets(savingsOnly);
+        const pureSavingsOnly = (walletRes.data as WalletWithBalance[]).filter(
+          (w) => w.wallet_type === "savings" && !w.goal_id
+        );
+        setSavingsWallets(pureSavingsOnly);
       }
     });
   }, []);

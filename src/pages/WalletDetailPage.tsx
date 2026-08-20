@@ -625,7 +625,7 @@ export function WalletDetailPage() {
       </Link>
 
       <PageHeader
-        eyebrow={typeOption.label}
+        eyebrow={wallet.goal_name ? "Goal Pocket" : wallet.wallet_type === "savings" ? "Savings Pocket" : typeOption.label}
         icon={Icon}
         title={wallet.name}
         description={wallet.institution_name ?? "Wallet details and balance controls."}
@@ -654,6 +654,30 @@ export function WalletDetailPage() {
           </div>
         }
       />
+
+      {wallet.goal_id ? (
+        <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-black">
+              🎯
+            </div>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
+                Kantong Terhubung ke Target Tabungan (Goal)
+              </p>
+              <p className="text-sm font-bold text-slate-900">
+                {wallet.goal_name} {wallet.goal_target_amount ? `(Target: ${formatCurrency(Number(wallet.goal_target_amount), wallet.currency)})` : ""}
+              </p>
+            </div>
+          </div>
+          <Link
+            to={`/goals/${wallet.goal_id}`}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 self-start sm:self-center"
+          >
+            Lihat Target Goal
+          </Link>
+        </section>
+      ) : null}
 
       {isInvestment ? (
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

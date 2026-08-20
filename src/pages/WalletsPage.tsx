@@ -57,7 +57,8 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
   const accent = wallet.color ?? "#10B981";
-  const isSavingsPocket = wallet.wallet_type === "savings";
+  const isGoalPocket = Boolean(wallet.goal_id);
+  const isSavingsPocket = wallet.wallet_type === "savings" && !wallet.goal_id;
 
   return (
     <Link
@@ -70,16 +71,20 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
       <span className="min-w-0">
         <span className="block truncate text-sm font-extrabold text-slate-900">{wallet.name}</span>
         <span className="mt-1 block truncate text-xs font-semibold text-slate-700">
-          {[wallet.institution_name, typeOption.label].filter(Boolean).join(" / ")}
+          {[wallet.institution_name, isGoalPocket ? "Goal Pocket" : typeOption.label].filter(Boolean).join(" / ")}
         </span>
       </span>
       <span className="min-w-[8.5rem] text-right">
         <span className="block text-sm font-extrabold text-slate-900">
           {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
         </span>
-        {isSavingsPocket ? (
-          <span className="mt-1 block text-xs font-bold text-kash-emerald">
-            Savings pocket
+        {isGoalPocket ? (
+          <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200/60">
+            🎯 Goal: {wallet.goal_name}
+          </span>
+        ) : isSavingsPocket ? (
+          <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-kash-emeraldDark bg-kash-selected border border-kash-emerald/20">
+            🏦 Savings pocket
           </span>
         ) : wallet.wallet_type === "investment" && wallet.balance?.return_percentage !== undefined ? (
           <span className={`mt-1 block text-xs font-bold ${Number(wallet.balance.return_percentage) >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
@@ -314,22 +319,51 @@ export function WalletsPage() {
         }
 
         if (wallet.wallet_type === "savings") {
-          summary.savings += balance;
+          if (wallet.goal_id) {
+            summary.goalPockets += balance;
+          } else {
+            summary.savingsPockets += balance;
+          }
         }
 
         return summary;
       },
-      { available: 0, investments: 0, liquid: 0, savings: 0, totalAssets: 0 },
+      { available: 0, investments: 0, liquid: 0, savingsPockets: 0, goalPockets: 0, totalAssets: 0 },
     );
   }, [wallets]);
 
   const groupedWallets = useMemo(() => {
-    return walletTypeOptions
-      .map((option) => {
-        const groupWallets = wallets.filter((wallet) => getWalletTypeOption(wallet.wallet_type).group === option.group);
-        return { group: option.group, wallets: groupWallets };
-      })
-      .filter((group, index, groups) => group.wallets.length > 0 && groups.findIndex((item) => item.group === group.group) === index);
+    const groups: { group: string; wallets: WalletWithBalance[] }[] = [];
+
+    // 1. Bank Accounts
+    const bankWallets = wallets.filter((w) => w.wallet_type === "bank" || w.wallet_type === "digital_bank");
+    if (bankWallets.length > 0) groups.push({ group: "Bank Accounts", wallets: bankWallets });
+
+    // 2. E-Wallets
+    const ewallets = wallets.filter((w) => w.wallet_type === "ewallet");
+    if (ewallets.length > 0) groups.push({ group: "E-Wallets", wallets: ewallets });
+
+    // 3. Cash
+    const cashWallets = wallets.filter((w) => w.wallet_type === "cash");
+    if (cashWallets.length > 0) groups.push({ group: "Cash", wallets: cashWallets });
+
+    // 4. Savings Pockets (pure savings wallets without linked goal)
+    const savingsPockets = wallets.filter((w) => w.wallet_type === "savings" && !w.goal_id);
+    if (savingsPockets.length > 0) groups.push({ group: "Savings Pockets (Kantong Tabungan)", wallets: savingsPockets });
+
+    // 5. Goal Pockets (savings wallets linked to a goal)
+    const goalPockets = wallets.filter((w) => Boolean(w.goal_id));
+    if (goalPockets.length > 0) groups.push({ group: "Goal Pockets (Kantong Target)", wallets: goalPockets });
+
+    // 6. Investments
+    const investmentWallets = wallets.filter((w) => w.wallet_type === "investment");
+    if (investmentWallets.length > 0) groups.push({ group: "Investments", wallets: investmentWallets });
+
+    // 7. Custom
+    const customWallets = wallets.filter((w) => w.wallet_type === "custom");
+    if (customWallets.length > 0) groups.push({ group: "Custom", wallets: customWallets });
+
+    return groups;
   }, [wallets]);
 
   return (
@@ -347,10 +381,11 @@ export function WalletsPage() {
         }
       />
 
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard label="Total Assets" value={formatCurrency(totals.totalAssets, profile?.default_currency ?? "IDR")} />
         <SummaryCard label="Available" value={formatCurrency(totals.available, profile?.default_currency ?? "IDR")} />
-        <SummaryCard label="Savings Pockets" labelClassName="text-kash-emerald" value={formatCurrency(totals.savings, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label="Savings Pockets" labelClassName="text-kash-emerald" value={formatCurrency(totals.savingsPockets, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label="Goal Pockets" labelClassName="text-amber-800" value={formatCurrency(totals.goalPockets, profile?.default_currency ?? "IDR")} />
         <SummaryCard label="Investments" value={formatCurrency(totals.investments, profile?.default_currency ?? "IDR")} />
       </section>
 
