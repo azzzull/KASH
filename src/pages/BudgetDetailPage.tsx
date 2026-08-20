@@ -161,6 +161,35 @@ export function BudgetDetailPage() {
     }
   };
 
+  const targetType = budget?.target_type ?? (budget?.type === "envelope" ? "envelope" : "category");
+
+  const envelopeCategoryBreakdown = useMemo(() => {
+    if (targetType !== "envelope" || transactions.length === 0) return [];
+    const map = new Map<string, { id: string; name: string; icon: string; color: string; total: number; count: number }>();
+    let total = 0;
+    for (const tx of transactions) {
+      const catId = (tx as any).category_id || "__uncategorized__";
+      const catName = (tx as any).category?.name || "Tanpa Kategori";
+      const catIcon = (tx as any).category?.icon || "tag";
+      const catColor = (tx as any).category?.color || "#91A3BB";
+      const amount = Number(tx.amount);
+      total += amount;
+      const existing = map.get(catId);
+      if (existing) {
+        existing.total += amount;
+        existing.count += 1;
+      } else {
+        map.set(catId, { id: catId, name: catName, icon: catIcon, color: catColor, total: amount, count: 1 });
+      }
+    }
+    return Array.from(map.values())
+      .map((item) => ({
+        ...item,
+        percentage: total > 0 ? (item.total / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [targetType, transactions]);
+
   if (loading && !budget) {
     return (
       <div className="mx-auto max-w-4xl p-6">
@@ -186,7 +215,6 @@ export function BudgetDetailPage() {
     );
   }
 
-  const targetType = budget.target_type ?? (budget.type === "envelope" ? "envelope" : "category");
   const isOverBudget = budget.status === "over_budget";
   const isNearLimit = budget.status === "near_limit";
   const progressPercent = Math.min(Math.max(budget.usage_percentage, 0), 100);
@@ -223,33 +251,6 @@ export function BudgetDetailPage() {
       : targetType === "goal"
       ? budget.wallet_id ? "Kantong Tabungan" : "Target Tabungan / Goal"
       : "Budget Kategori";
-
-  const envelopeCategoryBreakdown = useMemo(() => {
-    if (targetType !== "envelope" || transactions.length === 0) return [];
-    const map = new Map<string, { id: string; name: string; icon: string; color: string; total: number; count: number }>();
-    let total = 0;
-    for (const tx of transactions) {
-      const catId = (tx as any).category_id || "__uncategorized__";
-      const catName = (tx as any).category?.name || "Tanpa Kategori";
-      const catIcon = (tx as any).category?.icon || "tag";
-      const catColor = (tx as any).category?.color || "#91A3BB";
-      const amount = Number(tx.amount);
-      total += amount;
-      const existing = map.get(catId);
-      if (existing) {
-        existing.total += amount;
-        existing.count += 1;
-      } else {
-        map.set(catId, { id: catId, name: catName, icon: catIcon, color: catColor, total: amount, count: 1 });
-      }
-    }
-    return Array.from(map.values())
-      .map((item) => ({
-        ...item,
-        percentage: total > 0 ? (item.total / total) * 100 : 0,
-      }))
-      .sort((a, b) => b.total - a.total);
-  }, [targetType, transactions]);
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-5 p-4 md:p-6">
