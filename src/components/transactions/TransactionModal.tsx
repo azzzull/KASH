@@ -1,6 +1,8 @@
 import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2, Plus, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
+import { QuickCreateEnvelopeModal } from "../envelopes/QuickCreateEnvelopeModal";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
@@ -58,6 +60,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const [categoryId, setCategoryId] = useState("");
   const [envelopeId, setEnvelopeId] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
+  const [showQuickEnvelopeModal, setShowQuickEnvelopeModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [transferFee, setTransferFee] = useState("0");
   const [transactionDate, setTransactionDate] = useState(getCurrentLocalDatetimeString());
@@ -283,11 +286,27 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </SelectField>
             ) : null}
 
-            {mode === "expense" && envelopes.length > 0 ? (
+            {mode === "expense" ? (
               <SelectField
                 id="expense-envelope"
                 label="Amplop / Purpose Group (Opsional)"
-                onChange={(event) => setEnvelopeId(event.target.value)}
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickEnvelopeModal(true)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                  >
+                    <Plus size={13} strokeWidth={2.5} />
+                    Tambah Amplop
+                  </button>
+                }
+                onChange={(event) => {
+                  if (event.target.value === "__create_new__") {
+                    setShowQuickEnvelopeModal(true);
+                  } else {
+                    setEnvelopeId(event.target.value);
+                  }
+                }}
                 value={envelopeId}
               >
                 <option value="">-- Tanpa Amplop --</option>
@@ -296,6 +315,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                     {env.name}
                   </option>
                 ))}
+                <option value="__create_new__">+ Buat Amplop Baru...</option>
               </SelectField>
             ) : null}
 
@@ -319,7 +339,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                 <FormField
                   id="transfer-fee"
                   inputMode="numeric"
-                  label="Transfer Fee"
+                  label="Biaya Transfer (Opsional)"
                   onChange={(event) => setTransferFee(formatMoneyDigits(event.target.value))}
                   placeholder="0"
                   value={transferFee}
@@ -329,7 +349,16 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
             <DatePickerField id={`${mode}-date`} label="Date and Time" enableTime onChange={(value) => setTransactionDate(value)} value={transactionDate} />
 
-            <FormField id={`${mode}-note`} label="Note" onChange={(event) => setNote(event.target.value)} placeholder="Add transaction note (optional)" value={note} />
+            <FormField
+              disabled={saving}
+              hasError={!isAmountError(error) ? Boolean(error) : false}
+              hint={!isAmountError(error) ? error ?? undefined : undefined}
+              id="transaction-note"
+              label="Note (Optional)"
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="e.g. Lunch with team, monthly wifi"
+              value={note}
+            />
 
             {mode === "transfer" && selectedWallet && destinationWallet ? (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
@@ -379,6 +408,19 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             });
             setCategoryId(newCat.id);
             setShowQuickCategoryModal(false);
+          }}
+        />
+
+        <QuickCreateEnvelopeModal
+          isOpen={showQuickEnvelopeModal}
+          onClose={() => setShowQuickEnvelopeModal(false)}
+          onCreated={(newEnv) => {
+            setEnvelopes((prev) => {
+              const exists = prev.some((e) => e.id === newEnv.id);
+              return exists ? prev.map((e) => (e.id === newEnv.id ? newEnv : e)) : [newEnv, ...prev];
+            });
+            setEnvelopeId(newEnv.id);
+            setShowQuickEnvelopeModal(false);
           }}
         />
       </section>

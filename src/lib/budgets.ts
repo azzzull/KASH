@@ -109,14 +109,14 @@ export async function getMonthlyBudgetOverview(periodStart?: string): Promise<Mo
 
   if (error) throw error;
 
-  const rows = (data as any[]) ?? [];
-  const row = (rows[0] as any) || {};
+  const raw = data as any;
+  const row = Array.isArray(raw) ? (raw[0] || {}) : (raw || {});
 
   const totalAllocated = toNumber(row.total_allocated ?? row.total_budget ?? 0);
   const actualExpenses = toNumber(row.actual_expenses ?? row.total_spent ?? 0);
   const actualDebtPayments = toNumber(row.actual_debt_payments ?? 0);
   const actualGoalContributions = toNumber(row.actual_goal_contributions ?? 0);
-  const totalActualCashOutflow = toNumber(row.total_actual_cash_outflow ?? actualExpenses + actualDebtPayments + actualGoalContributions);
+  const totalActualCashOutflow = toNumber(row.total_actual_cash_outflow ?? (actualExpenses + actualDebtPayments + actualGoalContributions));
   const remainingAllocation = toNumber(row.remaining_allocation ?? Math.max(totalAllocated - totalActualCashOutflow, 0));
 
   return {

@@ -9,6 +9,7 @@ import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } fr
 import { createBudgetTarget } from "../../lib/budgets";
 import type { BudgetTargetType, Category, DebtProgress, Envelope } from "../../types/domain";
 import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
+import { QuickCreateEnvelopeModal } from "../envelopes/QuickCreateEnvelopeModal";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
@@ -32,6 +33,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   const [debtId, setDebtId] = useState("");
   const [goalId, setGoalId] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
+  const [showQuickEnvelopeModal, setShowQuickEnvelopeModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [startPeriod, setStartPeriod] = useState(() => {
     if (initialMonth) return `${initialMonth.substring(0, 7)}-01`;
@@ -289,9 +291,25 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             <SelectField
               id="budget-envelope"
               label="Pilih Amplop Pengeluaran *"
+              action={
+                <button
+                  type="button"
+                  onClick={() => setShowQuickEnvelopeModal(true)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
+                >
+                  <Plus size={13} strokeWidth={2.5} />
+                  Tambah Amplop
+                </button>
+              }
               required
               value={envelopeId}
-              onChange={(e) => setEnvelopeId(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value === "__create_new__") {
+                  setShowQuickEnvelopeModal(true);
+                } else {
+                  setEnvelopeId(e.target.value);
+                }
+              }}
             >
               <option value="">-- Pilih Amplop --</option>
               {envelopes.map((env) => (
@@ -299,6 +317,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                   {env.name}
                 </option>
               ))}
+              <option value="__create_new__">+ Buat Amplop Baru...</option>
             </SelectField>
           )}
 
@@ -465,6 +484,19 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             });
             setCategoryId(newCat.id);
             setShowQuickCategoryModal(false);
+          }}
+        />
+
+        <QuickCreateEnvelopeModal
+          isOpen={showQuickEnvelopeModal}
+          onClose={() => setShowQuickEnvelopeModal(false)}
+          onCreated={(newEnv) => {
+            setEnvelopes((prev) => {
+              const exists = prev.some((e) => e.id === newEnv.id);
+              return exists ? prev.map((e) => (e.id === newEnv.id ? newEnv : e)) : [newEnv, ...prev];
+            });
+            setEnvelopeId(newEnv.id);
+            setShowQuickEnvelopeModal(false);
           }}
         />
       </div>
