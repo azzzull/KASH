@@ -493,7 +493,7 @@ export async function getBudgetMatchingTransactions(
   const effectiveTargetType = budget.target_type ?? (budget.type === "envelope" ? "envelope" : "category");
 
   if (effectiveTargetType === "category" && budget.category_id) {
-    txQuery = txQuery.eq("category_id", budget.category_id);
+    txQuery = txQuery.eq("category_id", budget.category_id).is("envelope_id", null);
   } else if (effectiveTargetType === "envelope" && budget.envelope_id) {
     txQuery = txQuery.eq("envelope_id", budget.envelope_id);
   }
