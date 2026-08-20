@@ -43,7 +43,7 @@ const actions = [
   },
   {
     label: "Reimbursable Expense",
-    helper: "Catat pengeluaran yang akan diganti (talangan)",
+    helper: "Catat pengeluaran yang akan direimburse",
     icon: ReceiptText,
     mode: "reimbursable_expense",
     tone: "text-teal-600",

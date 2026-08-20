@@ -316,7 +316,7 @@ export function ReimbursableExpenseModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-slate-900/60" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
