@@ -483,7 +483,7 @@ export async function getBudgetMatchingTransactions(
   // 3. Category or Envelope Target
   let txQuery = supabase
     .from("transactions")
-    .select("*, category:categories(*), envelope:envelopes(*), wallet:wallets(*)")
+    .select("*, category:categories(*), envelope:envelopes(*), wallet:wallets!wallet_id(*)")
     .eq("type", "expense")
     .eq("status", "completed")
     .gte("transaction_date", `${normPeriod}T00:00:00`)

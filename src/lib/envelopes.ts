@@ -162,7 +162,7 @@ export async function getEnvelopeMonthlyAnalytics(
   // 2. Fetch all completed expense transactions tagged with this envelope in the month
   const { data: txs, error: txError } = await supabase
     .from("transactions")
-    .select("*, category:categories(*), wallet:wallets(*)")
+    .select("*, category:categories(*), wallet:wallets!wallet_id(*)")
     .eq("envelope_id", envelopeId)
     .eq("type", "expense")
     .eq("status", "completed")
