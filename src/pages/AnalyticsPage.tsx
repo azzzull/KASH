@@ -758,7 +758,7 @@ function WalletDistribution({ currency, summary }: { currency: string; summary: 
           </div>
         ))}
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-slate-200 pt-3 text-sm">
-          <p className="font-extrabold text-slate-900">Total Assets</p>
+          <p className="font-extrabold text-slate-900">Net Worth</p>
           <p className="text-right font-extrabold text-slate-900">{formatAmount(summary.walletNetWorth, currency)}</p>
         </div>
       </div>

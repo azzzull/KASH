@@ -17,7 +17,7 @@ import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
 import type { Category, Envelope } from "../../types/domain";
 
-export type QuickTransactionMode = "expense" | "income" | "transfer";
+export type QuickTransactionMode = "expense" | "income" | "transfer" | "reimbursable_expense";
 
 type TransactionModalProps = {
   mode: QuickTransactionMode;

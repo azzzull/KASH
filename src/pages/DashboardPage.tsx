@@ -305,6 +305,11 @@ function TopFinancialOverview({
                 Investasi: {formatPrivateAmount(summary.netWorthBreakdown.investments, currency, balancesVisible)}
               </span>
             ) : null}
+            {summary.netWorthBreakdown.receivables > 0 ? (
+              <span className="rounded-md bg-teal-50 px-2 py-0.5 text-teal-800">
+                Piutang: {formatPrivateAmount(summary.netWorthBreakdown.receivables, currency, balancesVisible)}
+              </span>
+            ) : null}
             {summary.netWorthBreakdown.debt > 0 ? (
               <span className="rounded-md bg-orange-50 px-2 py-0.5 text-orange-800">
                 Utang: -{formatPrivateAmount(summary.netWorthBreakdown.debt, currency, balancesVisible)}

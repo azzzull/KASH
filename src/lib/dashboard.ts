@@ -120,6 +120,7 @@ export type DashboardNetWorthBreakdown = {
   savings: number;
   investments: number;
   debt: number;
+  receivables: number;
   other: number;
 };
 
@@ -597,7 +598,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     .filter((wallet) => wallet.includeInNetWorth && !isLiquidWallet(wallet.walletType) && wallet.walletType !== "savings" && wallet.walletType !== "investment")
     .reduce((sum, wallet) => sum + wallet.balance, 0);
 
-  const netWorth = availableCash + savingsTotal + investmentsTotal + otherWalletsTotal - totalDebt;
+  const netWorth = availableCash + savingsTotal + investmentsTotal + otherWalletsTotal + totalReceivable - totalDebt;
 
   return {
     period: {
@@ -612,6 +613,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       savings: savingsTotal,
       investments: investmentsTotal,
       debt: totalDebt,
+      receivables: totalReceivable,
       other: otherWalletsTotal,
     },
     availableBalance: { amount: availableCash },

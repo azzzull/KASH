@@ -9,6 +9,7 @@ import { MobileBottomNav } from "../components/layout/MobileBottomNav";
 import { MobileMoreSheet } from "../components/layout/MobileMoreSheet";
 import { QuickAddMenu } from "../components/layout/QuickAddMenu";
 import { TransactionModal, type QuickTransactionMode } from "../components/transactions/TransactionModal";
+import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpenseModal";
 
 export function AppShell() {
   const location = useLocation();
@@ -146,7 +147,9 @@ export function AppShell() {
         <MobileBottomNav onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
-        {transactionMode ? (
+        {transactionMode === "reimbursable_expense" ? (
+          <ReimbursableExpenseModal isOpen={true} onClose={() => setTransactionMode(null)} />
+        ) : transactionMode ? (
           <TransactionModal mode={transactionMode} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
         ) : null}
         {successMessage ? (

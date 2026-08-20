@@ -231,6 +231,7 @@ export type Database = {
           due_date?: string | null;
           note?: string | null;
           status?: DebtStatus;
+          category_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -388,8 +388,17 @@ function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: 
 
   if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;
   if (transaction.type === "expense") return sourceIncluded ? -moneyValue(transaction.amount) : 0;
-  if (transaction.type === "adjustment") return sourceIncluded ? moneyValue(transaction.amount) : 0;
-
+  if (transaction.type === "adjustment") {
+    if (
+      transaction.related_entity_type === "debt_creation" ||
+      transaction.related_entity_type === "receivable_creation" ||
+      transaction.related_entity_type === "debt_payment" ||
+      transaction.related_entity_type === "receivable_payment"
+    ) {
+      return 0; // Asset/Liability 1:1 exchange doesn't affect Net Worth
+    }
+    return sourceIncluded ? moneyValue(transaction.amount) : 0;
+  }
   if (transaction.type === "transfer") {
     const outgoing = sourceIncluded ? -(moneyValue(transaction.amount) + moneyValue(transaction.transfer_fee)) : 0;
     const incoming = destinationIncluded ? moneyValue(transaction.amount) : 0;
@@ -483,9 +492,8 @@ export async function getAnalyticsSummary(options: AnalyticsSummaryOptions): Pro
   const historicalTransactions = historicalTransactionResult.data ?? [];
   const currentMetrics = calculateCashFlowMetrics(currentTransactions);
   const previousMetrics = calculateCashFlowMetrics(previousTransactions);
-  const walletNetWorth = wallets
-    .filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived)
-    .reduce((sum, wallet) => sum + walletCurrentBalance(wallet), 0);
+  const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions);
+  const walletNetWorth = netWorthTrend.length > 0 ? netWorthTrend[netWorthTrend.length - 1].amount : 0;
 
   return {
     categorySpending: buildSpendingByCategory(currentTransactions, categories),
@@ -498,7 +506,7 @@ export async function getAnalyticsSummary(options: AnalyticsSummaryOptions): Pro
       amount: currentMetrics.netCashFlow,
       change: calculateMetricChange(currentMetrics.netCashFlow, previousMetrics.netCashFlow),
     },
-    netWorthTrend: buildNetWorthTrend(period, wallets, historicalTransactions),
+    netWorthTrend,
     period,
     transferFees: currentMetrics.transferFees,
     walletDistribution: buildWalletDistribution(wallets),

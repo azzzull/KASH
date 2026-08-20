@@ -55,6 +55,7 @@ export type CreateDebtInput = {
   originalAmount: string;
   dueDate?: string | null;
   note?: string | null;
+  categoryId?: string | null;
 };
 
 export type UpdateDebtInput = {
@@ -414,6 +415,7 @@ export async function createMultipleDebts(
       original_amount: rawDigits,
       due_date: input.dueDate?.trim() || null,
       note: input.note?.trim() || null,
+      category_id: input.categoryId || null,
       status: "active",
     });
   }

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRightLeft, ArrowUp, X } from "lucide-react";
+import { ArrowDown, ArrowRightLeft, ArrowUp, ReceiptText, X } from "lucide-react";
 import type { QuickTransactionMode } from "../transactions/TransactionModal";
 import { IconButton } from "../ui/IconButton";
 
@@ -12,9 +12,10 @@ const actions = [
   { label: "Expense", helper: "Catat pengeluaran", icon: ArrowDown, mode: "expense", tone: "text-kash-expense" },
   { label: "Income", helper: "Catat pemasukan", icon: ArrowUp, mode: "income", tone: "text-kash-income" },
   { label: "Transfer", helper: "Pindahkan uang antar wallet", icon: ArrowRightLeft, mode: "transfer", tone: "text-kash-transfer" },
+  { label: "Reimbursable Expense", helper: "Catat pengeluaran yang akan diganti (talangan)", icon: ReceiptText, mode: "reimbursable_expense", tone: "text-teal-600" },
 ] satisfies Array<{
   helper: string;
-  icon: typeof ArrowDown;
+  icon: typeof ArrowDown | typeof ReceiptText;
   label: string;
   mode: QuickTransactionMode;
   tone: string;
