@@ -71,7 +71,9 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
     targetType === "envelope"
       ? budget.envelope_name || "Amplop Pengeluaran"
       : targetType === "debt"
-      ? budget.debt_title || "Target Pelunasan Utang"
+      ? budget.counterparty_name
+        ? `Utang ke ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}`
+        : budget.debt_title || "Target Pelunasan Utang"
       : targetType === "goal"
       ? budget.goal_name || "Target Alokasi Tabungan"
       : budget.category_name || "Kategori Pengeluaran";

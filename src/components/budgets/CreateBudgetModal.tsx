@@ -1,9 +1,9 @@
-import { Check, CreditCard, FolderPlus, HandCoins, Layers, PiggyBank, Plus, Tag, X } from "lucide-react";
+import { Check, CreditCard, FolderPlus, HandCoins, Layers, PiggyBank, Plus, Tag, UserCheck, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
-import { getActiveDebts } from "../../lib/debts";
+import { getActiveDebts, getCounterparties, type CounterpartyWithSummary } from "../../lib/debts";
 import { getGoals, type GoalWithProgress } from "../../lib/goals";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { createBudgetTarget } from "../../lib/budgets";
@@ -27,6 +27,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [envelopeId, setEnvelopeId] = useState("");
+  const [counterpartyId, setCounterpartyId] = useState("");
+  const [isSpecificItemTarget, setIsSpecificItemTarget] = useState(false);
   const [debtId, setDebtId] = useState("");
   const [goalId, setGoalId] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
@@ -42,6 +44,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
+  const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [debts, setDebts] = useState<DebtProgress[]>([]);
   const [goals, setGoals] = useState<GoalWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,9 +55,10 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
     Promise.all([
       getActiveCategories(),
       getEnvelopes(),
+      getCounterparties({ type: "debt", status: "active" }).catch(() => ({ counterparties: [] })),
       getActiveDebts().catch(() => []),
       getGoals().catch(() => ({ data: [] })),
-    ]).then(([catRes, envRes, debtRes, goalRes]) => {
+    ]).then(([catRes, envRes, cpRes, debtRes, goalRes]) => {
       setLoading(false);
       if (catRes.data) {
         const expenseOnly = (catRes.data as Category[]).filter((c) => c.category_type === "expense");
@@ -62,6 +66,9 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       }
       if (envRes.data) {
         setEnvelopes(envRes.data);
+      }
+      if (cpRes && (cpRes as any).counterparties) {
+        setCounterparties((cpRes as any).counterparties);
       }
       if (debtRes) {
         setDebts(debtRes);
@@ -94,9 +101,15 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       return;
     }
 
-    if (targetType === "debt" && !debtId) {
-      setError("Pilih pos utang yang ingin dilunasi.");
-      return;
+    if (targetType === "debt") {
+      if (isSpecificItemTarget && !debtId) {
+        setError("Pilih item utang spesifik yang ingin ditargetkan.");
+        return;
+      }
+      if (!isSpecificItemTarget && !counterpartyId) {
+        setError("Pilih orang / kontak yang ingin dicicil utangnya.");
+        return;
+      }
     }
 
     if (targetType === "goal" && !goalId) {
@@ -110,7 +123,13 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
     } else if (targetType === "envelope") {
       defaultName = envelopes.find((env) => env.id === envelopeId)?.name ? `Amplop ${envelopes.find((env) => env.id === envelopeId)?.name}` : "Budget Amplop";
     } else if (targetType === "debt") {
-      defaultName = debts.find((d) => d.debt_id === debtId)?.title ? `Pelunasan: ${debts.find((d) => d.debt_id === debtId)?.title}` : "Pelunasan Utang";
+      if (isSpecificItemTarget && debtId) {
+        const debtItem = debts.find((d) => d.debt_id === debtId);
+        defaultName = debtItem?.title ? `Pelunasan: ${debtItem.title}` : "Pelunasan Utang";
+      } else {
+        const cpItem = counterparties.find((c) => c.id === counterpartyId);
+        defaultName = cpItem?.name ? `Cicil Utang: ${cpItem.name}` : "Cicilan Utang";
+      }
     } else if (targetType === "goal") {
       defaultName = goals.find((g) => g.id === goalId)?.name ? `Tabungan: ${goals.find((g) => g.id === goalId)?.name}` : "Tabungan Bulanan";
     }
@@ -126,7 +145,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
         rolloverEnabled,
         categoryId: targetType === "category" ? categoryId : null,
         envelopeId: targetType === "envelope" ? envelopeId : null,
-        debtId: targetType === "debt" ? debtId : null,
+        counterpartyId: targetType === "debt" ? counterpartyId || null : null,
+        debtId: targetType === "debt" && isSpecificItemTarget ? debtId || null : null,
         goalId: targetType === "goal" ? goalId : null,
         note: note.trim() || null,
       });
@@ -283,20 +303,66 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           )}
 
           {targetType === "debt" && (
-            <SelectField
-              id="budget-debt"
-              label="Pilih Pos Utang *"
-              required
-              value={debtId}
-              onChange={(e) => setDebtId(e.target.value)}
-            >
-              <option value="">-- Pilih Utang yang Ingin Dicicil --</option>
-              {debts.map((d) => (
-                <option key={d.debt_id} value={d.debt_id}>
-                  {d.title} (Sisa: {formatCurrency(d.remaining_amount, "IDR")})
-                </option>
-              ))}
-            </SelectField>
+            <div className="space-y-3">
+              <SelectField
+                id="budget-debt-counterparty"
+                label="Pilih Orang / Kontak yang Diutangi *"
+                required={!isSpecificItemTarget}
+                value={counterpartyId}
+                onChange={(e) => {
+                  setCounterpartyId(e.target.value);
+                  if (debtId) {
+                    const match = debts.find((d) => d.debt_id === debtId);
+                    if (match && match.counterparty_id !== e.target.value) {
+                      setDebtId("");
+                    }
+                  }
+                }}
+              >
+                <option value="">-- Pilih Kontak / Orang --</option>
+                {counterparties.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — Total Utang: {formatCurrency(c.debtTotal, "IDR")}{c.activeDebtCount > 1 ? ` (${c.activeDebtCount} item)` : ""}
+                  </option>
+                ))}
+              </SelectField>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                <ToggleField
+                  label="Target item utang tertentu (Opsional)"
+                  description="Aktifkan jika budget ini khusus untuk melunasi 1 item utang spesifik"
+                  checked={isSpecificItemTarget}
+                  onChange={(e) => setIsSpecificItemTarget(e.target.checked)}
+                />
+
+                {isSpecificItemTarget && (
+                  <div className="mt-3 pt-3 border-t border-slate-200/60">
+                    <SelectField
+                      id="budget-specific-debt"
+                      label="Pilih Item Utang Spesifik *"
+                      required
+                      value={debtId}
+                      onChange={(e) => {
+                        setDebtId(e.target.value);
+                        const selectedDebt = debts.find((d) => d.debt_id === e.target.value);
+                        if (selectedDebt && selectedDebt.counterparty_id && !counterpartyId) {
+                          setCounterpartyId(selectedDebt.counterparty_id);
+                        }
+                      }}
+                    >
+                      <option value="">-- Pilih Item Utang --</option>
+                      {debts
+                        .filter((d) => !counterpartyId || d.counterparty_id === counterpartyId)
+                        .map((d) => (
+                          <option key={d.debt_id} value={d.debt_id}>
+                            {d.title} (Sisa: {formatCurrency(d.remaining_amount, "IDR")})
+                          </option>
+                        ))}
+                    </SelectField>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {targetType === "goal" && (

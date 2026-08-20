@@ -385,18 +385,24 @@ export async function getBudgetMatchingTransactions(
       }));
     }
 
-    const { data: payments, error } = await supabase
+    let paymentQuery = supabase
       .from("debt_payments")
-      .select("*, wallet:wallets(*)")
+      .select("*, counterparty:counterparties(*), wallet:wallets(*)")
+      .eq("debt_type", "debt")
       .gte("payment_date", `${normPeriod}T00:00:00`)
       .lt("payment_date", `${endDate}T00:00:00`)
       .order("payment_date", { ascending: false });
 
+    if (budget.counterparty_id) {
+      paymentQuery = paymentQuery.eq("counterparty_id", budget.counterparty_id);
+    }
+
+    const { data: payments, error } = await paymentQuery;
     if (error) throw error;
 
     return (payments ?? []).map((p: any) => ({
       id: p.id,
-      title: "Pelunasan Utang",
+      title: p.counterparty?.name ? `Cicil Utang: ${p.counterparty.name}` : "Pelunasan Utang",
       amount: p.total_amount,
       type: "debt_payment",
       transaction_date: p.payment_date,

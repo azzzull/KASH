@@ -310,7 +310,7 @@ export function BudgetDetailPage() {
               </div>
 
               <p className="mt-1 text-xs font-semibold text-slate-600">
-                {budget.note || (targetType === "debt" ? budget.debt_title : targetType === "goal" ? budget.goal_name : targetType === "envelope" ? budget.envelope_name : budget.category_name) || "Tidak ada catatan."}
+                {budget.note || (targetType === "debt" ? (budget.counterparty_name ? `Utang ke ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}` : budget.debt_title) : targetType === "goal" ? budget.goal_name : targetType === "envelope" ? budget.envelope_name : budget.category_name) || "Tidak ada catatan."}
               </p>
             </div>
           </div>
