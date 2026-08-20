@@ -173,6 +173,7 @@ export function TransactionDetailPanel({
         <DetailLine label={transaction.type === "transfer" ? "From" : "Wallet"} value={transaction.wallet?.name ?? "Wallet"} />
         {transaction.type === "transfer" ? <DetailLine label="To" value={transaction.destinationWallet?.name ?? "Wallet"} /> : null}
         {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label="Category" value={transactionCategoryLabel(transaction)} /> : null}
+        {transaction.envelope ? <DetailLine label="Envelope" value={transaction.envelope.name} /> : null}
         {transaction.type === "transfer" ? <DetailLine label="Transfer Fee" value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
         {transaction.type === "transfer" ? <DetailLine label="Total Deducted" value={formatCurrency(amount + fee, currency)} /> : null}
         {transaction.type === "transfer" ? <DetailLine label="Destination Received" value={formatCurrency(amount, currency)} /> : null}

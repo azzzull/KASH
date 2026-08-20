@@ -29,6 +29,9 @@ export type Wallet = {
   color: string | null;
   include_in_net_worth: boolean;
   is_archived: boolean;
+  cost_basis?: MoneyAmount | null;
+  current_market_value?: MoneyAmount | null;
+  last_valuation_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +51,31 @@ export type Category = {
   updated_at: string;
 };
 
+export type Envelope = {
+  id: string;
+  user_id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  target_amount: MoneyAmount | null;
+  is_archived: boolean;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InvestmentValuation = {
+  id: string;
+  user_id: string;
+  wallet_id: string;
+  market_value: MoneyAmount;
+  cost_basis_at_valuation: MoneyAmount;
+  unrealized_gain_loss?: MoneyAmount;
+  valuation_date: string;
+  note: string | null;
+  created_at: string;
+};
+
 export type TransactionType = "income" | "expense" | "transfer" | "adjustment";
 export type TransactionStatus = "completed" | "void";
 
@@ -58,6 +86,7 @@ export type Transaction = {
   amount: MoneyAmount;
   wallet_id: string;
   category_id: string | null;
+  envelope_id: string | null;
   destination_wallet_id: string | null;
   transfer_fee: MoneyAmount;
   transaction_date: string;
@@ -79,6 +108,10 @@ export type WalletBalance = {
   current_balance: MoneyAmount;
   allocated_to_goals: MoneyAmount;
   available_balance: MoneyAmount;
+  cost_basis?: MoneyAmount;
+  unrealized_gain_loss?: MoneyAmount;
+  return_percentage?: number;
+  last_valuation_at?: string | null;
 };
 
 export type GoalStatus = "active" | "completed" | "cancelled";
@@ -305,6 +338,7 @@ export type PushSubscriptionRecord = {
 };
 
 export type BudgetType = "category" | "envelope";
+export type BudgetTargetType = "category" | "envelope" | "debt" | "goal";
 export type BudgetStatus = "healthy" | "near_limit" | "over_budget";
 
 export type Budget = {
@@ -312,7 +346,12 @@ export type Budget = {
   user_id: string;
   name: string;
   type: BudgetType;
+  target_type: BudgetTargetType;
   category_id: string | null;
+  envelope_id: string | null;
+  counterparty_id: string | null;
+  debt_id: string | null;
+  goal_id: string | null;
   start_period: string; // YYYY-MM-DD (1st of month)
   end_period: string | null;
   repeat_monthly: boolean;
@@ -344,10 +383,19 @@ export type BudgetWithProgress = {
   budget_id: string;
   name: string;
   type: BudgetType;
+  target_type: BudgetTargetType;
   category_id: string | null;
   category_name: string | null;
   category_icon: string | null;
   category_color: string | null;
+  envelope_id: string | null;
+  envelope_name: string | null;
+  counterparty_id: string | null;
+  counterparty_name: string | null;
+  debt_id: string | null;
+  debt_title: string | null;
+  goal_id: string | null;
+  goal_name: string | null;
   note: string | null;
   repeat_monthly: boolean;
   start_period: string;
@@ -366,14 +414,26 @@ export type BudgetWithProgress = {
 
 export type MonthlyBudgetOverview = {
   period_start: string;
-  total_budget: MoneyAmount;
-  total_spent: MoneyAmount;
-  total_remaining: MoneyAmount;
+  total_allocated: MoneyAmount;
+  total_category_budget: MoneyAmount;
+  total_envelope_budget: MoneyAmount;
+  total_debt_budget: MoneyAmount;
+  total_goal_budget: MoneyAmount;
+  actual_expenses: MoneyAmount;
+  actual_debt_payments: MoneyAmount;
+  actual_goal_contributions: MoneyAmount;
+  total_actual_cash_outflow: MoneyAmount;
+  remaining_allocation: MoneyAmount;
   overall_usage_percentage: number;
-  total_budgets_count: number;
+  budget_count: number;
   healthy_count: number;
   near_limit_count: number;
   over_budget_count: number;
+  // Compatibility aliases
+  total_budget?: MoneyAmount;
+  total_spent?: MoneyAmount;
+  total_remaining?: MoneyAmount;
+  total_budgets_count?: number;
 };
 
 // ============================================================

@@ -1,10 +1,13 @@
-import { Check, FolderPlus, Layers, Plus, Tag, X } from "lucide-react";
+import { Check, CreditCard, FolderPlus, HandCoins, Layers, PiggyBank, Plus, Tag, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getActiveCategories } from "../../lib/categories";
-import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
-import { createCategoryBudget, createEnvelopeBudget } from "../../lib/budgets";
-import type { Category, BudgetType } from "../../types/domain";
+import { getEnvelopes } from "../../lib/envelopes";
+import { getActiveDebts } from "../../lib/debts";
+import { getGoals, type GoalWithProgress } from "../../lib/goals";
+import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
+import { createBudgetTarget } from "../../lib/budgets";
+import type { BudgetTargetType, Category, DebtProgress, Envelope } from "../../types/domain";
 import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
@@ -20,10 +23,12 @@ type CreateBudgetModalProps = {
 };
 
 export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudgetModalProps) {
-  const [type, setType] = useState<BudgetType>("category");
+  const [targetType, setTargetType] = useState<BudgetTargetType>("category");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [envelopeId, setEnvelopeId] = useState("");
+  const [debtId, setDebtId] = useState("");
+  const [goalId, setGoalId] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [startPeriod, setStartPeriod] = useState(() => {
@@ -36,29 +41,36 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   const [note, setNote] = useState("");
 
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
+  const [debts, setDebts] = useState<DebtProgress[]>([]);
+  const [goals, setGoals] = useState<GoalWithProgress[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getActiveCategories().then((res) => {
-      setLoadingCategories(false);
-      if (res.data) {
-        const expenseOnly = (res.data as Category[]).filter((c) => c.category_type === "expense");
+    Promise.all([
+      getActiveCategories(),
+      getEnvelopes(),
+      getActiveDebts().catch(() => []),
+      getGoals().catch(() => ({ data: [] })),
+    ]).then(([catRes, envRes, debtRes, goalRes]) => {
+      setLoading(false);
+      if (catRes.data) {
+        const expenseOnly = (catRes.data as Category[]).filter((c) => c.category_type === "expense");
         setCategories(expenseOnly);
+      }
+      if (envRes.data) {
+        setEnvelopes(envRes.data);
+      }
+      if (debtRes) {
+        setDebts(debtRes);
+      }
+      if (goalRes.data) {
+        setGoals(goalRes.data);
       }
     });
   }, []);
-
-  const handleCategoryChange = (newCatId: string) => {
-    setCategoryId(newCatId);
-  };
-
-  const handleToggleEnvelopeCategory = (catId: string) => {
-    setSelectedCategoryIds((prev) =>
-      prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
-    );
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -68,43 +80,57 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
     const numAmount = toNumber(rawAmount);
 
     if (numAmount <= 0) {
-      setError("Masukkan nominal budget yang valid.");
+      setError("Masukkan nominal budget yang valid (lebih dari 0).");
       return;
     }
 
-    if (type === "category" && !categoryId) {
+    if (targetType === "category" && !categoryId) {
       setError("Pilih kategori pengeluaran.");
       return;
     }
 
-    if (type === "envelope" && selectedCategoryIds.length === 0) {
-      setError("Pilih minimal satu kategori pengeluaran untuk amplop.");
+    if (targetType === "envelope" && !envelopeId) {
+      setError("Pilih amplop pengeluaran.");
       return;
+    }
+
+    if (targetType === "debt" && !debtId) {
+      setError("Pilih pos utang yang ingin dilunasi.");
+      return;
+    }
+
+    if (targetType === "goal" && !goalId) {
+      setError("Pilih pos tabungan / goal.");
+      return;
+    }
+
+    let defaultName = "Budget";
+    if (targetType === "category") {
+      defaultName = categories.find((c) => c.id === categoryId)?.name ? `Budget ${categories.find((c) => c.id === categoryId)?.name}` : "Budget Kategori";
+    } else if (targetType === "envelope") {
+      defaultName = envelopes.find((env) => env.id === envelopeId)?.name ? `Amplop ${envelopes.find((env) => env.id === envelopeId)?.name}` : "Budget Amplop";
+    } else if (targetType === "debt") {
+      defaultName = debts.find((d) => d.debt_id === debtId)?.title ? `Pelunasan: ${debts.find((d) => d.debt_id === debtId)?.title}` : "Pelunasan Utang";
+    } else if (targetType === "goal") {
+      defaultName = goals.find((g) => g.id === goalId)?.name ? `Tabungan: ${goals.find((g) => g.id === goalId)?.name}` : "Tabungan Bulanan";
     }
 
     setSaving(true);
     try {
-      if (type === "category") {
-        await createCategoryBudget({
-          name: name.trim() || (categories.find((c) => c.id === categoryId)?.name ?? "Budget"),
-          categoryId,
-          amount: rawAmount,
-          startPeriod,
-          repeatMonthly,
-          rolloverEnabled,
-          note: note.trim() || null,
-        });
-      } else {
-        await createEnvelopeBudget({
-          name: name.trim() || "Amplop Belanja",
-          categoryIds: selectedCategoryIds,
-          amount: rawAmount,
-          startPeriod,
-          repeatMonthly,
-          rolloverEnabled,
-          note: note.trim() || null,
-        });
-      }
+      await createBudgetTarget({
+        name: name.trim() || defaultName,
+        targetType,
+        amount: rawAmount,
+        startPeriod,
+        repeatMonthly,
+        rolloverEnabled,
+        categoryId: targetType === "category" ? categoryId : null,
+        envelopeId: targetType === "envelope" ? envelopeId : null,
+        debtId: targetType === "debt" ? debtId : null,
+        goalId: targetType === "goal" ? goalId : null,
+        note: note.trim() || null,
+      });
+
       onSaved();
       onClose();
     } catch (err: any) {
@@ -116,13 +142,13 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
-            <h2 className="text-lg font-extrabold text-slate-900">Buat Budget Baru</h2>
+            <h2 className="text-lg font-extrabold text-slate-900">Buat Target Budget Baru</h2>
             <p className="text-xs font-semibold text-slate-600">
-              Rencanakan batas belanja bulanan berdasarkan kategori atau amplop
+              Rencanakan alokasi keuangan bulanan Anda secara terarah
             </p>
           </div>
           <IconButton icon={X} label="Tutup" onClick={onClose} />
@@ -136,65 +162,76 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             </div>
           )}
 
-          {/* Budget Type Tabs */}
+          {/* Budget Target Type Selector Tabs */}
           <div>
-            <label className="block text-xs font-extrabold uppercase text-slate-600 mb-1.5">
-              Tipe Perencanaan
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-2">
+              Jenis Target Perencanaan
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <button
                 type="button"
-                onClick={() => {
-                  setType("category");
-                  if (categories.length > 0 && !name) setName(categories[0].name);
-                }}
-                className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-extrabold transition ${
-                  type === "category"
-                    ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-                    : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+                onClick={() => setTargetType("category")}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition ${
+                  targetType === "category"
+                    ? "bg-kash-emerald text-white shadow-sm font-extrabold"
+                    : "border border-slate-200 bg-white text-slate-600 font-bold hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
                 }`}
               >
-                <Tag size={15} />
-                Budget Kategori
+                <Tag size={18} />
+                <span className="text-xs">Kategori</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => {
-                  setType("envelope");
-                  if (name === categories.find((c) => c.id === categoryId)?.name) {
-                    setName("");
-                  }
-                }}
-                className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-extrabold transition ${
-                  type === "envelope"
-                    ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-                    : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+                onClick={() => setTargetType("envelope")}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition ${
+                  targetType === "envelope"
+                    ? "bg-kash-emerald text-white shadow-sm font-extrabold"
+                    : "border border-slate-200 bg-white text-slate-600 font-bold hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
                 }`}
               >
-                <Layers size={15} />
-                Amplop (Multi-Kategori)
+                <Layers size={18} />
+                <span className="text-xs">Amplop</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTargetType("debt")}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition ${
+                  targetType === "debt"
+                    ? "bg-kash-emerald text-white shadow-sm font-extrabold"
+                    : "border border-slate-200 bg-white text-slate-600 font-bold hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+                }`}
+              >
+                <HandCoins size={18} />
+                <span className="text-xs">Cicil Utang</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTargetType("goal")}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl p-2.5 text-center transition ${
+                  targetType === "goal"
+                    ? "bg-kash-emerald text-white shadow-sm font-extrabold"
+                    : "border border-slate-200 bg-white text-slate-600 font-bold hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+                }`}
+              >
+                <PiggyBank size={18} />
+                <span className="text-xs">Tabungan</span>
               </button>
             </div>
           </div>
 
-          {/* Name Field */}
-          <FormField
-            id="budget-name"
-            label={type === "category" ? "Nama Budget" : "Nama Amplop"}
-            placeholder={
-              type === "category"
-                ? categories.find((c) => c.id === categoryId)?.name
-                  ? `misal: Budget ${categories.find((c) => c.id === categoryId)?.name}`
-                  : "misal: Budget Makanan & Minuman"
-                : "misal: Kebutuhan Hidup (Living)"
-            }
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          {/* Context Info Banner */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700">
+            {targetType === "category" && "Target belanja pada kategori pengeluaran tertentu."}
+            {targetType === "envelope" && "Target belanja pada amplop tujuan spesifik."}
+            {targetType === "debt" && "Target pembayaran cicilan utang bulanan. Mengurangi kewajiban utang, bukan pengeluaran konsumtif."}
+            {targetType === "goal" && "Target menabung bulanan. Mengakumulasi aset masa depan, bukan pengeluaran konsumtif."}
+          </div>
 
-          {/* Category Selection based on Type */}
-          {type === "category" ? (
+          {/* Target Specific Selectors */}
+          {targetType === "category" && (
             <SelectField
               id="budget-category"
               label="Pilih Kategori Pengeluaran *"
@@ -214,7 +251,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 if (e.target.value === "__create_new__") {
                   setShowQuickCategoryModal(true);
                 } else {
-                  handleCategoryChange(e.target.value);
+                  setCategoryId(e.target.value);
                 }
               }}
             >
@@ -226,76 +263,75 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
               ))}
               <option value="__create_new__">+ Tambah Kategori Baru...</option>
             </SelectField>
-          ) : (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-bold text-slate-900">
-                  Kategori Pengeluaran Tergabung ({selectedCategoryIds.length} dipilih)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickCategoryModal(true)}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
-                >
-                  <Plus size={13} strokeWidth={2.5} />
-                  Tambah Kategori
-                </button>
-              </div>
-              <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2.5 space-y-1.5 bg-slate-50/50">
-                {categories.length === 0 ? (
-                  <p className="p-2 text-xs text-slate-600">Tidak ada kategori pengeluaran tersedia.</p>
-                ) : (
-                  categories.map((c) => {
-                    const isChecked = selectedCategoryIds.includes(c.id);
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => handleToggleEnvelopeCategory(c.id)}
-                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-bold transition ${
-                          isChecked
-                            ? "border border-kash-emerald/40 bg-kash-selected text-kash-emeraldDark"
-                            : "border border-transparent bg-white text-slate-700 hover:bg-slate-100"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: c.color || "#10B981" }}
-                          />
-                          {c.name}
-                        </span>
-                        <div
-                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-                            isChecked
-                              ? "border-kash-emerald bg-kash-emerald"
-                              : "border-slate-300 bg-white"
-                          }`}
-                        >
-                          {isChecked && (
-                            <Check
-                              size={11}
-                              strokeWidth={3.5}
-                              className="text-white"
-                              style={{ color: "#ffffff", stroke: "#ffffff" }}
-                            />
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
           )}
 
-          {/* Budget Amount & Starting Month */}
+          {targetType === "envelope" && (
+            <SelectField
+              id="budget-envelope"
+              label="Pilih Amplop Pengeluaran *"
+              required
+              value={envelopeId}
+              onChange={(e) => setEnvelopeId(e.target.value)}
+            >
+              <option value="">-- Pilih Amplop --</option>
+              {envelopes.map((env) => (
+                <option key={env.id} value={env.id}>
+                  {env.name}
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {targetType === "debt" && (
+            <SelectField
+              id="budget-debt"
+              label="Pilih Pos Utang *"
+              required
+              value={debtId}
+              onChange={(e) => setDebtId(e.target.value)}
+            >
+              <option value="">-- Pilih Utang yang Ingin Dicicil --</option>
+              {debts.map((d) => (
+                <option key={d.debt_id} value={d.debt_id}>
+                  {d.title} (Sisa: {formatCurrency(d.remaining_amount, "IDR")})
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {targetType === "goal" && (
+            <SelectField
+              id="budget-goal"
+              label="Pilih Target Tabungan *"
+              required
+              value={goalId}
+              onChange={(e) => setGoalId(e.target.value)}
+            >
+              <option value="">-- Pilih Tabungan / Goal --</option>
+              {goals.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} (Target: {formatCurrency(g.target_amount, "IDR")})
+                </option>
+              ))}
+            </SelectField>
+          )}
+
+          {/* Budget Name */}
+          <FormField
+            id="budget-name"
+            label="Nama Target Budget (Opsional)"
+            placeholder="Biarkan kosong untuk menggunakan nama otomatis"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+
+          {/* Amount & Month */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               id="budget-amount"
               inputMode="numeric"
               required
-              label="Nominal Budget Bulanan"
+              label="Nominal Target Bulanan"
               placeholder="1.500.000"
               value={amount}
               onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
@@ -309,32 +345,34 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             />
           </div>
 
-          {/* Recurrence & Rollover Options */}
+          {/* Recurrence Options */}
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
             <ToggleField
               id="budget-repeat-monthly"
               label="Ulangi Otomatis Setiap Bulan"
-              description="Anggaran akan otomatis dilanjutkan ke bulan-bulan berikutnya tanpa perlu input ulang."
+              description="Target anggaran akan otomatis dilanjutkan ke bulan-bulan berikutnya."
               checked={repeatMonthly}
               onChange={(e) => setRepeatMonthly(e.target.checked)}
             />
 
-            <div className="border-t border-slate-200/60 pt-3">
-              <ToggleField
-                id="budget-rollover"
-                label="Aktifkan Rollover Positif"
-                description="Sisa budget yang belum terpakai di akhir bulan akan otomatis ditambahkan ke budget bulan berikutnya."
-                checked={rolloverEnabled}
-                onChange={(e) => setRolloverEnabled(e.target.checked)}
-              />
-            </div>
+            {targetType === "category" || targetType === "envelope" ? (
+              <div className="border-t border-slate-200/60 pt-3">
+                <ToggleField
+                  id="budget-rollover"
+                  label="Aktifkan Rollover Positif"
+                  description="Sisa budget yang tidak terpakai di akhir bulan akan ditambahkan ke bulan berikutnya."
+                  checked={rolloverEnabled}
+                  onChange={(e) => setRolloverEnabled(e.target.checked)}
+                />
+              </div>
+            ) : null}
           </div>
 
           {/* Note Field */}
           <FormField
             id="budget-note"
             label="Catatan (Opsional)"
-            placeholder="e.g. Termasuk anggaran makan siang kantor"
+            placeholder="e.g. Alokasi wajib awal bulan setelah gajian"
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -345,7 +383,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
               Batal
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Menyimpan..." : "Simpan Budget"}
+              {saving ? "Menyimpan..." : "Simpan Target Budget"}
             </Button>
           </div>
         </form>
@@ -359,12 +397,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
               const exists = prev.some((c) => c.id === newCat.id);
               return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
             });
-            if (type === "category") {
-              setCategoryId(newCat.id);
-              setName(newCat.name);
-            } else {
-              setSelectedCategoryIds((prev) => (prev.includes(newCat.id) ? prev : [...prev, newCat.id]));
-            }
+            setCategoryId(newCat.id);
             setShowQuickCategoryModal(false);
           }}
         />

@@ -1,4 +1,4 @@
-import { ArrowLeft, Archive, Edit3, Loader2, SlidersHorizontal, Trash2, WalletCards, X } from "lucide-react";
+import { ArrowLeft, Archive, Edit3, History, LineChart, Loader2, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
@@ -13,6 +13,7 @@ import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { createAdjustment } from "../lib/transactions";
+import { getCurrentLocalDatetimeString } from "../lib/datetime";
 import {
   getWalletIcon,
   getWalletTypeOption,
@@ -23,13 +24,15 @@ import {
 import {
   archiveWallet,
   deleteWallet,
+  getInvestmentValuationHistory,
   getWalletById,
   getWalletLinkedGoalCount,
   getWalletTransactionCount,
+  recordInvestmentValuation,
   updateWallet,
   type WalletWithBalance,
 } from "../lib/wallets";
-import type { WalletType } from "../types/domain";
+import type { InvestmentValuation, WalletType } from "../types/domain";
 
 type WalletEditState = {
   name: string;
@@ -358,10 +361,154 @@ function AdjustmentModal({
   );
 }
 
+function UpdateValuationModal({
+  costBasis,
+  currentMarketValue,
+  onClose,
+  onSaved,
+  wallet,
+}: {
+  costBasis: string | number;
+  currentMarketValue: string | number;
+  onClose: () => void;
+  onSaved: () => void;
+  wallet: WalletWithBalance;
+}) {
+  const [marketValueInput, setMarketValueInput] = useState(formatDatabaseMoneyDigits(currentMarketValue));
+  const [valuationDate, setValuationDate] = useState(getCurrentLocalDatetimeString());
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const marketValueDigits = parseMoneyInputDigits(marketValueInput);
+  const nextMarketValue = toNumber(marketValueDigits);
+  const costBasisAmount = toNumber(costBasis);
+  const unrealizedGain = marketValueDigits ? nextMarketValue - costBasisAmount : 0;
+  const returnPct = costBasisAmount > 0 ? (unrealizedGain / costBasisAmount) * 100 : 0;
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving) return;
+
+    if (!marketValueDigits || nextMarketValue < 0) {
+      setError("Masukkan nilai pasar investasi yang valid (>= 0).");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { error: valError } = await recordInvestmentValuation({
+        walletId: wallet.id,
+        marketValue: nextMarketValue,
+        valuationDate,
+        note: note.trim() || null,
+      });
+
+      if (valError) {
+        setError("Gagal memperbarui nilai pasar investasi.");
+        setSaving(false);
+        return;
+      }
+
+      emitTransactionSaved();
+      onSaved();
+    } catch (err: any) {
+      setError(err?.message || "Gagal memperbarui nilai pasar investasi.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
+      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close valuation form" onClick={onClose} />
+      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-kash-emerald">
+              <LineChart aria-hidden="true" size={20} />
+            </span>
+            <div>
+              <h2 className="text-xl font-extrabold text-slate-900">Update Nilai Investasi</h2>
+              <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                Pembaruan nilai pasar tidak mengubah arus kas riil (income/expense).
+              </p>
+            </div>
+          </div>
+          <IconButton icon={X} label="Close" onClick={onClose} />
+        </div>
+
+        {error ? (
+          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+
+        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Modal Masuk (Cost Basis)</p>
+              <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(costBasisAmount, wallet.currency)}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nilai Pasar Sebelumnya</p>
+              <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(currentMarketValue, wallet.currency)}</p>
+            </div>
+          </div>
+
+          <FormField
+            id="investment-market-value"
+            inputMode="numeric"
+            label="Nilai Pasar Saat Ini (Current Market Value)"
+            onChange={(event) => setMarketValueInput(formatMoneyDigits(event.target.value))}
+            placeholder="Contoh: 10.500.000"
+            value={marketValueInput}
+          />
+
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Keuntungan / Kerugian (Unrealized)</span>
+              <span className={`text-xs font-extrabold ${unrealizedGain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(2)}%
+              </span>
+            </div>
+            <p className={`mt-2 text-xl font-extrabold ${unrealizedGain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+              {unrealizedGain === 0 ? formatCurrency(0, wallet.currency) : `${unrealizedGain > 0 ? "+" : "-"}${formatCurrency(Math.abs(unrealizedGain), wallet.currency)}`}
+            </p>
+          </div>
+
+          <DatePickerField
+            id="valuation-date"
+            label="Tanggal Valuasi"
+            enableTime
+            onChange={(val) => setValuationDate(val)}
+            value={valuationDate}
+          />
+
+          <FormField
+            id="valuation-note"
+            label="Catatan Valuasi (Opsional)"
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Contoh: Update portofolio akhir bulan / dividen reinvest"
+            value={note}
+          />
+
+          <Button disabled={saving} type="submit">
+            {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
+            Simpan Nilai Valuasi
+          </Button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 export function WalletDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
+  const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
   const [linkedGoalCount, setLinkedGoalCount] = useState(0);
   const [transactionCount, setTransactionCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -369,6 +516,7 @@ export function WalletDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
+  const [showValuation, setShowValuation] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadWallet = async () => {
@@ -391,6 +539,16 @@ export function WalletDetailPage() {
     setWallet(data);
     setTransactionCount(count);
     setLinkedGoalCount(goalCount);
+
+    if (data.wallet_type === "investment") {
+      try {
+        const valHistory = await getInvestmentValuationHistory(id);
+        setValuations((valHistory.data as any) ?? []);
+      } catch (err) {
+        console.warn("Failed to load valuation history", err);
+      }
+    }
+
     setLoading(false);
   };
 
@@ -447,10 +605,15 @@ export function WalletDetailPage() {
     );
   }
 
+  const isInvestment = wallet.wallet_type === "investment";
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
   const currentBalance = wallet.balance?.current_balance ?? wallet.initial_balance;
   const availableBalance = wallet.balance?.available_balance ?? currentBalance;
+  const costBasis = wallet.balance?.cost_basis ?? wallet.initial_balance;
+  const unrealizedGainLoss = toNumber(wallet.balance?.unrealized_gain_loss ?? 0);
+  const returnPercentage = Number(wallet.balance?.return_percentage ?? 0);
+  const lastValuationAt = wallet.balance?.last_valuation_at;
   const canEditInitialBalance = transactionCount === 0;
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
 
@@ -468,14 +631,22 @@ export function WalletDetailPage() {
         description={wallet.institution_name ?? "Wallet details and balance controls."}
         actions={
           <div className="flex flex-wrap gap-2">
+            {isInvestment ? (
+              <Button onClick={() => setShowValuation(true)}>
+                <LineChart aria-hidden="true" size={17} />
+                Update Nilai Investasi
+              </Button>
+            ) : null}
             <Button onClick={() => setShowEdit(true)} variant="secondary">
               <Edit3 aria-hidden="true" size={17} />
               Edit
             </Button>
-            <Button onClick={() => setShowAdjustment(true)} variant="secondary">
-              <SlidersHorizontal aria-hidden="true" size={17} />
-              Adjust Balance
-            </Button>
+            {!isInvestment ? (
+              <Button onClick={() => setShowAdjustment(true)} variant="secondary">
+                <SlidersHorizontal aria-hidden="true" size={17} />
+                Adjust Balance
+              </Button>
+            ) : null}
             <Button disabled={deleting} onClick={() => setShowDelete(true)} variant="secondary">
               <Trash2 aria-hidden="true" size={17} />
               Delete
@@ -484,19 +655,117 @@ export function WalletDetailPage() {
         }
       />
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-4">
-          <DetailMetric label="Current Balance" value={formatCurrency(currentBalance, wallet.currency)} />
-          <DetailMetric label="Available Balance" value={formatCurrency(availableBalance, wallet.currency)} />
-          <DetailMetric label="Initial Balance" value={formatCurrency(wallet.initial_balance, wallet.currency)} />
-          <DetailMetric label="Wallet Type" value={typeOption.label} />
-        </div>
-      </section>
+      {isInvestment ? (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <LineChart className="text-kash-emerald" size={18} />
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">Performa Investasi</h3>
+            </div>
+            {lastValuationAt ? (
+              <span className="text-xs font-semibold text-slate-500">
+                Valuasi Terakhir: {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(lastValuationAt))}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Nilai Pasar Saat Ini</p>
+              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(currentBalance, wallet.currency)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Modal Masuk (Cost Basis)</p>
+              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(costBasis, wallet.currency)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Keuntungan / Kerugian</p>
+              <div className="mt-2 flex items-center gap-2">
+                <p className={`text-xl font-extrabold ${unrealizedGainLoss >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                  {unrealizedGainLoss === 0 ? formatCurrency(0, wallet.currency) : `${unrealizedGainLoss > 0 ? "+" : "-"}${formatCurrency(Math.abs(unrealizedGainLoss), wallet.currency)}`}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Total Return</p>
+              <div className="mt-2 flex items-center gap-1.5">
+                {returnPercentage >= 0 ? (
+                  <TrendingUp className="text-kash-emerald" size={18} />
+                ) : (
+                  <TrendingDown className="text-kash-expense" size={18} />
+                )}
+                <p className={`text-xl font-extrabold ${returnPercentage >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                  {returnPercentage >= 0 ? "+" : ""}{returnPercentage.toFixed(2)}%
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 text-xs font-semibold text-emerald-950">
+            Pembaruan valuasi pasar tercatat sebagai keuntungan/kerugian modal (unrealized gain/loss), tanpa menghasilkan transaksi pengeluaran/pemasukan palsu.
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="grid gap-3 md:grid-cols-4">
+            <DetailMetric label="Current Balance" value={formatCurrency(currentBalance, wallet.currency)} />
+            <DetailMetric label="Available Balance" value={formatCurrency(availableBalance, wallet.currency)} />
+            <DetailMetric label="Initial Balance" value={formatCurrency(wallet.initial_balance, wallet.currency)} />
+            <DetailMetric label="Wallet Type" value={typeOption.label} />
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-3 md:grid-cols-2">
         <DetailMetric label="Currency" value={wallet.currency} />
         <DetailMetric label="Include in Net Worth" value={wallet.include_in_net_worth ? "Yes" : "No"} />
       </section>
+
+      {isInvestment && valuations.length > 0 ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <History aria-hidden="true" className="text-slate-600" size={18} />
+            <h3 className="text-base font-extrabold text-slate-900">Riwayat Valuasi Nilai Pasar</h3>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
+                <tr>
+                  <th className="pb-3">Tanggal Valuasi</th>
+                  <th className="pb-3 text-right">Nilai Pasar</th>
+                  <th className="pb-3 text-right">Cost Basis</th>
+                  <th className="pb-3 text-right">Gain / Loss</th>
+                  <th className="pb-3 pl-4">Catatan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
+                {valuations.map((v) => {
+                  const gain = toNumber(v.unrealized_gain_loss ?? (toNumber(v.market_value) - toNumber(v.cost_basis_at_valuation)));
+                  return (
+                    <tr key={v.id} className="hover:bg-slate-50/80">
+                      <td className="py-3">
+                        {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(v.valuation_date))}
+                      </td>
+                      <td className="py-3 text-right font-extrabold text-slate-900">
+                        {formatCurrency(v.market_value, wallet.currency)}
+                      </td>
+                      <td className="py-3 text-right text-slate-600">
+                        {formatCurrency(v.cost_basis_at_valuation, wallet.currency)}
+                      </td>
+                      <td className={`py-3 text-right font-extrabold ${gain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                        {gain >= 0 ? "+" : ""}{formatCurrency(gain, wallet.currency)}
+                      </td>
+                      <td className="py-3 pl-4 text-xs text-slate-600">
+                        {v.note || "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2">
@@ -528,6 +797,18 @@ export function WalletDetailPage() {
           onClose={() => setShowAdjustment(false)}
           onSaved={() => {
             setShowAdjustment(false);
+            void loadWallet();
+          }}
+          wallet={wallet}
+        />
+      ) : null}
+      {showValuation ? (
+        <UpdateValuationModal
+          costBasis={costBasis}
+          currentMarketValue={currentBalance}
+          onClose={() => setShowValuation(false)}
+          onSaved={() => {
+            setShowValuation(false);
             void loadWallet();
           }}
           wallet={wallet}

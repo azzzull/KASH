@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, ChevronRight, Layers, Tag, TrendingUp } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, HandCoins, Layers, PiggyBank, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatCurrency } from "../../lib/money";
 import type { BudgetWithProgress } from "../../types/domain";
@@ -9,7 +9,7 @@ type BudgetCardProps = {
 };
 
 export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
-  const isEnvelope = budget.type === "envelope";
+  const targetType = budget.target_type ?? (budget.type === "envelope" ? "envelope" : "category");
   const isOverBudget = budget.status === "over_budget";
   const isNearLimit = budget.status === "near_limit";
 
@@ -38,6 +38,44 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
     </span>
   );
 
+  const targetIcon =
+    targetType === "envelope" ? (
+      <Layers size={18} />
+    ) : targetType === "debt" ? (
+      <HandCoins size={18} />
+    ) : targetType === "goal" ? (
+      <PiggyBank size={18} />
+    ) : (
+      <Tag size={18} />
+    );
+
+  const targetColor =
+    targetType === "envelope"
+      ? "#4F7DF3"
+      : targetType === "debt"
+      ? "#F28C45"
+      : targetType === "goal"
+      ? "#F5B82E"
+      : budget.category_color || "#10B981";
+
+  const targetLabel =
+    targetType === "envelope"
+      ? "Amplop"
+      : targetType === "debt"
+      ? "Cicil Utang"
+      : targetType === "goal"
+      ? "Tabungan"
+      : "Kategori";
+
+  const subtitle =
+    targetType === "envelope"
+      ? budget.envelope_name || "Amplop Pengeluaran"
+      : targetType === "debt"
+      ? budget.debt_title || "Target Pelunasan Utang"
+      : targetType === "goal"
+      ? budget.goal_name || "Target Alokasi Tabungan"
+      : budget.category_name || "Kategori Pengeluaran";
+
   return (
     <Link
       to={`/budgets/${budget.budget_id}?month=${periodStart}`}
@@ -48,13 +86,9 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
         <div className="flex items-start gap-3">
           <span
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs font-black text-sm"
-            style={{
-              backgroundColor: isEnvelope
-                ? "#047857"
-                : budget.category_color || "#10B981",
-            }}
+            style={{ backgroundColor: targetColor }}
           >
-            {isEnvelope ? <Layers size={18} /> : <Tag size={18} />}
+            {targetIcon}
           </span>
 
           <div>
@@ -63,14 +97,12 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
                 {budget.name}
               </h3>
               <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
-                {isEnvelope ? "Amplop" : "Kategori"}
+                {targetLabel}
               </span>
             </div>
 
             <p className="mt-0.5 text-xs font-semibold text-slate-600">
-              {isEnvelope
-                ? `${budget.included_category_names?.length || 0} kategori digabung`
-                : budget.category_name || "Kategori"}
+              {subtitle}
             </p>
           </div>
         </div>

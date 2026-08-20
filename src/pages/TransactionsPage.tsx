@@ -38,10 +38,12 @@ import {
   updateTransaction,
   voidTransaction,
 } from "../lib/transactions";
+import { getCurrentLocalDatetimeString, toLocalDatetimeInputValue } from "../lib/datetime";
+import { getEnvelopes } from "../lib/envelopes";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
-import type { Category, TransactionStatus, TransactionType, Wallet } from "../types/domain";
+import type { Category, Envelope, TransactionStatus, TransactionType, Wallet } from "../types/domain";
 
 type EditMode = "duplicate" | "edit";
 
@@ -331,8 +333,10 @@ function TransactionFormModal({
   const [walletId, setWalletId] = useState(mode === "duplicate" ? duplicateSourceWalletId : transaction.wallet_id);
   const [destinationWalletId, setDestinationWalletId] = useState(mode === "duplicate" ? duplicateDestinationWalletId : transaction.destination_wallet_id ?? "");
   const [categoryId, setCategoryId] = useState(mode === "duplicate" ? duplicateCategoryId : transaction.category_id ?? "");
+  const [envelopeId, setEnvelopeId] = useState(transaction.envelope_id ?? "");
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const [transferFee, setTransferFee] = useState(formatDatabaseMoneyDigits(transaction.transfer_fee));
-  const [transactionDate, setTransactionDate] = useState(mode === "duplicate" ? currentLocalDateTimeValue() : toLocalDateTimeValue(transaction.transaction_date));
+  const [transactionDate, setTransactionDate] = useState(mode === "duplicate" ? getCurrentLocalDatetimeString() : toLocalDatetimeInputValue(transaction.transaction_date));
   const [note, setNote] = useState(transaction.note ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -345,6 +349,12 @@ function TransactionFormModal({
   const amountValue = transaction.type === "adjustment" ? parseSignedMoneyDigits(amount) : parseMoneyInputDigits(amount);
   const feeValue = parseMoneyInputDigits(transferFee) || "0";
   const amountHasError = isAmountError(error);
+
+  useEffect(() => {
+    getEnvelopes().then((res) => {
+      if (res.data) setEnvelopes(res.data);
+    });
+  }, []);
 
   useEffect(() => {
     if (!error) return;
@@ -398,6 +408,7 @@ function TransactionFormModal({
               ? await createExpense({
                   amount: amountValue,
                   categoryId,
+                  envelopeId: envelopeId || null,
                   note: noteValue,
                   title: noteValue ?? categoryName,
                   transactionDate,
@@ -421,6 +432,7 @@ function TransactionFormModal({
           : await updateTransaction(transaction, {
               amount: amountValue,
               categoryId: transaction.type === "income" || transaction.type === "expense" ? categoryId : null,
+              envelopeId: transaction.type === "expense" ? (envelopeId || null) : null,
               destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
               note: noteValue,
               title: transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
@@ -497,6 +509,22 @@ function TransactionFormModal({
                 </option>
               ))}
               <option value="__create_new__">+ Tambah Kategori Baru...</option>
+            </SelectField>
+          ) : null}
+
+          {transaction.type === "expense" && envelopes.length > 0 ? (
+            <SelectField
+              id="transaction-edit-envelope"
+              label="Amplop / Purpose Group (Opsional)"
+              value={envelopeId}
+              onChange={(event) => setEnvelopeId(event.target.value)}
+            >
+              <option value="">-- Tanpa Amplop --</option>
+              {envelopes.map((env) => (
+                <option key={env.id} value={env.id}>
+                  {env.name}
+                </option>
+              ))}
             </SelectField>
           ) : null}
 

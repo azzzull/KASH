@@ -56,7 +56,15 @@ export function BudgetsPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   });
 
-  const [filterType, setFilterType] = useState<"all" | "category" | "envelope">("all");
+  useEffect(() => {
+    const paramMonth = searchParams.get("month");
+    if (paramMonth) {
+      const normalized = `${paramMonth.substring(0, 7)}-01`;
+      setCurrentMonth((prev) => (prev !== normalized ? normalized : prev));
+    }
+  }, [searchParams]);
+
+  const [filterType, setFilterType] = useState<"all" | "category" | "envelope" | "debt" | "goal">("all");
   const [overview, setOverview] = useState<MonthlyBudgetOverview | null>(null);
   const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,11 +124,13 @@ export function BudgetsPage() {
 
   const filteredBudgets = useMemo(() => {
     if (filterType === "all") return budgets;
-    return budgets.filter((b) => b.type === filterType);
+    return budgets.filter((b) => (b.target_type ?? b.type) === filterType);
   }, [budgets, filterType]);
 
-  const categoryBudgets = useMemo(() => budgets.filter((b) => b.type === "category"), [budgets]);
-  const envelopeBudgets = useMemo(() => budgets.filter((b) => b.type === "envelope"), [budgets]);
+  const categoryBudgets = useMemo(() => budgets.filter((b) => (b.target_type ?? b.type) === "category"), [budgets]);
+  const envelopeBudgets = useMemo(() => budgets.filter((b) => (b.target_type ?? b.type) === "envelope"), [budgets]);
+  const debtBudgets = useMemo(() => budgets.filter((b) => (b.target_type ?? b.type) === "debt"), [budgets]);
+  const goalBudgets = useMemo(() => budgets.filter((b) => (b.target_type ?? b.type) === "goal"), [budgets]);
 
   const overallProgressPercent = Math.min(
     Math.max(overview?.overall_usage_percentage ?? 0, 0),
@@ -135,13 +145,13 @@ export function BudgetsPage() {
           eyebrow="Planning"
           icon={Scale}
           title="Budget"
-          description="Kendalikan pengeluaran bulanan dengan batas anggaran kategori dan amplop belanja."
+          description="Kendalikan rencana keuangan bulanan: belanja, amplop, cicilan utang, dan tabungan."
         />
 
         <div className="flex items-center gap-2">
           <Button onClick={() => setShowCreateModal(true)} className="gap-2">
             <Plus size={16} />
-            Buat Budget
+            Buat Target Budget
           </Button>
         </div>
       </div>
@@ -196,12 +206,12 @@ export function BudgetsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
             <div>
               <span className="text-xs font-extrabold uppercase text-slate-600">
-                Ringkasan Anggaran ({formatMonthYearLabel(currentMonth)})
+                Unified Financial Plan ({formatMonthYearLabel(currentMonth)})
               </span>
               <h2 className="mt-0.5 text-xl font-black text-slate-900">
-                {formatCurrency(overview.total_spent)}{" "}
+                {formatCurrency(overview.total_actual_cash_outflow)}{" "}
                 <span className="text-sm font-semibold text-slate-600">
-                  / {formatCurrency(overview.total_budget)}
+                  / {formatCurrency(overview.total_allocated)}
                 </span>
               </h2>
             </div>
@@ -230,33 +240,41 @@ export function BudgetsPage() {
           </div>
 
           {/* Numbers Grid */}
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 text-xs">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
             <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">Total Budget</span>
-              <p className="mt-0.5 text-sm font-black text-slate-900">
-                {formatCurrency(overview.total_budget)}
+              <span className="font-bold text-slate-600">Total Alokasi Rencana</span>
+              <p className="mt-0.5 text-base font-black text-slate-900">
+                {formatCurrency(overview.total_allocated)}
               </p>
             </div>
 
             <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">Total Terpakai</span>
-              <p className="mt-0.5 text-sm font-black text-slate-900">
-                {formatCurrency(overview.total_spent)}
+              <span className="font-bold text-slate-600">Arus Kas Keluar Riil</span>
+              <p className="mt-0.5 text-base font-black text-slate-900">
+                {formatCurrency(overview.total_actual_cash_outflow)}
               </p>
             </div>
 
-            <div className="col-span-2 sm:col-span-1 rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">
-                {Number(overview.total_remaining) < 0 ? "Total Kelebihan" : "Total Sisa Budget"}
-              </span>
-              <p
-                className={`mt-0.5 text-sm font-black ${
-                  Number(overview.total_remaining) < 0 ? "text-kash-expense" : "text-kash-emeraldDark"
-                }`}
-              >
-                {formatCurrency(Math.abs(Number(overview.total_remaining)))}
+            <div className="rounded-xl bg-slate-50 p-3">
+              <span className="font-bold text-slate-600">Sisa Alokasi Bersih</span>
+              <p className="mt-0.5 text-base font-black text-kash-emeraldDark">
+                {formatCurrency(overview.remaining_allocation)}
               </p>
             </div>
+          </div>
+
+          {/* Cashflow Breakdown Pill Chips */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-[11px] font-bold">
+            <span className="text-slate-500">Breakdown Kas Riil:</span>
+            <span className="rounded-lg bg-red-50 text-red-700 px-2 py-0.5">
+              Belanja: {formatCurrency(overview.actual_expenses)}
+            </span>
+            <span className="rounded-lg bg-orange-50 text-orange-700 px-2 py-0.5">
+              Cicil Utang: {formatCurrency(overview.actual_debt_payments)}
+            </span>
+            <span className="rounded-lg bg-amber-50 text-amber-800 px-2 py-0.5">
+              Tabungan/Goal: {formatCurrency(overview.actual_goal_contributions)}
+            </span>
           </div>
 
           {/* Progress Bar */}
@@ -282,7 +300,7 @@ export function BudgetsPage() {
       )}
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setFilterType("all")}
@@ -304,7 +322,7 @@ export function BudgetsPage() {
               : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
           }`}
         >
-          Budget Kategori ({categoryBudgets.length})
+          Kategori ({categoryBudgets.length})
         </button>
 
         <button
@@ -317,6 +335,30 @@ export function BudgetsPage() {
           }`}
         >
           Amplop ({envelopeBudgets.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterType("debt")}
+          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
+            filterType === "debt"
+              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
+              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          }`}
+        >
+          Cicil Utang ({debtBudgets.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFilterType("goal")}
+          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
+            filterType === "goal"
+              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
+              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          }`}
+        >
+          Tabungan ({goalBudgets.length})
         </button>
       </div>
 

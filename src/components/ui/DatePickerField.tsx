@@ -53,6 +53,21 @@ function parseDateTime(dateStr: string) {
     };
   }
 
+  // If dateStr contains timezone info (Z or +/- offset), convert to local Date first
+  if (dateStr.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(dateStr)) {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return {
+        dateStr: `${d.getFullYear()}-${padZero(d.getMonth() + 1)}-${padZero(d.getDate())}`,
+        hours: padZero(d.getHours()),
+        minutes: padZero(d.getMinutes()),
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        day: d.getDate(),
+      };
+    }
+  }
+
   const [datePart, timePart] = dateStr.split("T");
   const [y, m, d] = (datePart || "").split("-").map(Number);
   const [hh, mm] = (timePart || "").split(":").map(Number);

@@ -2,6 +2,7 @@ import type {
   Budget,
   BudgetEnvelopeCategory,
   BudgetStatus,
+  BudgetTargetType,
   BudgetType,
   BudgetVersion,
   BudgetWithProgress,
@@ -16,10 +17,12 @@ import type {
   DebtProgress,
   DebtStatus,
   DebtType,
+  Envelope,
   Goal,
   GoalContribution,
   GoalProgress,
   GoalStatus,
+  InvestmentValuation,
   MonthlyBudgetOverview,
   Notification,
   PaymentMode,
@@ -86,6 +89,9 @@ export type Database = {
           color?: string | null;
           include_in_net_worth?: boolean;
           is_archived?: boolean;
+          cost_basis?: string | null;
+          current_market_value?: string | null;
+          last_valuation_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -109,6 +115,38 @@ export type Database = {
         Update: Partial<Omit<Category, "id" | "created_at" | "updated_at">>;
         Relationships: [];
       };
+      envelopes: {
+        Row: Envelope;
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          icon?: string | null;
+          color?: string | null;
+          target_amount?: string | null;
+          is_archived?: boolean;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Envelope, "id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      investment_valuations: {
+        Row: InvestmentValuation;
+        Insert: {
+          id?: string;
+          user_id: string;
+          wallet_id: string;
+          market_value: string;
+          cost_basis_at_valuation: string;
+          valuation_date?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Omit<InvestmentValuation, "id" | "user_id" | "wallet_id" | "created_at">>;
+        Relationships: [];
+      };
       transactions: {
         Row: Transaction;
         Insert: {
@@ -118,6 +156,7 @@ export type Database = {
           amount: string;
           wallet_id: string;
           category_id?: string | null;
+          envelope_id?: string | null;
           destination_wallet_id?: string | null;
           transfer_fee?: string;
           transaction_date?: string;
@@ -479,6 +518,31 @@ export type Database = {
       };
     };
     Functions: {
+      update_investment_valuation: {
+        Args: {
+          p_wallet_id: string;
+          p_market_value: number;
+          p_valuation_date?: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
+      create_budget_target: {
+        Args: {
+          p_name: string;
+          p_target_type: BudgetTargetType;
+          p_amount: number;
+          p_start_period?: string;
+          p_repeat_monthly?: boolean;
+          p_rollover_enabled?: boolean;
+          p_category_id?: string | null;
+          p_envelope_id?: string | null;
+          p_debt_id?: string | null;
+          p_goal_id?: string | null;
+          p_note?: string | null;
+        };
+        Returns: string;
+      };
       get_monthly_budget_progress: {
         Args: {
           p_period_start?: string | null;
@@ -487,10 +551,19 @@ export type Database = {
           budget_id: string;
           name: string;
           type: BudgetType;
+          target_type?: BudgetTargetType;
           category_id: string | null;
           category_name: string | null;
           category_icon: string | null;
           category_color: string | null;
+          envelope_id: string | null;
+          envelope_name: string | null;
+          counterparty_id: string | null;
+          counterparty_name: string | null;
+          debt_id: string | null;
+          debt_title: string | null;
+          goal_id: string | null;
+          goal_name: string | null;
           note: string | null;
           repeat_monthly: boolean;
           start_period: string;
@@ -513,9 +586,15 @@ export type Database = {
         };
         Returns: {
           period_start: string;
+          total_allocated: number;
+          total_actual_cash_outflow: number;
           total_budget: number;
           total_spent: number;
           total_remaining: number;
+          actual_expenses: number;
+          actual_debt_payments: number;
+          actual_goal_contributions: number;
+          remaining_allocation: number;
           overall_usage_percentage: number;
           total_budgets_count: number;
           healthy_count: number;

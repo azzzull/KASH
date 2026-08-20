@@ -174,3 +174,32 @@ export async function archiveWallet(id: string) {
 export async function deleteWallet(id: string) {
   return supabase.from("wallets").delete().eq("id", id).select("*").single();
 }
+
+export async function recordInvestmentValuation(input: {
+  walletId: string;
+  marketValue: number | string;
+  valuationDate?: string;
+  note?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("update_investment_valuation", {
+    p_wallet_id: input.walletId,
+    p_market_value: typeof input.marketValue === "string" ? Number(input.marketValue) : input.marketValue,
+    p_valuation_date: input.valuationDate || new Date().toISOString(),
+    p_note: input.note?.trim() || null,
+  });
+
+  if (error) throw error;
+  return { data, error: null };
+}
+
+export async function getInvestmentValuationHistory(walletId: string) {
+  const { data, error } = await supabase
+    .from("investment_valuations")
+    .select("*")
+    .eq("wallet_id", walletId)
+    .order("valuation_date", { ascending: false });
+
+  if (error) throw error;
+  return { data: data ?? [], error: null };
+}
+

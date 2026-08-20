@@ -291,7 +291,27 @@ function TopFinancialOverview({
             {balancesVisible ? <EyeOff aria-hidden="true" size={18} strokeWidth={2.3} /> : <Eye aria-hidden="true" size={18} strokeWidth={2.3} />}
           </button>
         </div>
-        <p className="mt-4 break-words text-2xl font-extrabold text-slate-900 md:text-3xl">{formatPrivateAmount(summary.netWorth.amount, currency, balancesVisible)}</p>
+        <p className="mt-3 break-words text-2xl font-extrabold text-slate-900 md:text-3xl">{formatPrivateAmount(summary.netWorth.amount, currency, balancesVisible)}</p>
+        {summary.netWorthBreakdown ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-600">
+            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-emerald-800">
+              Kas: {formatPrivateAmount(summary.netWorthBreakdown.availableCash, currency, balancesVisible)}
+            </span>
+            <span className="rounded-md bg-amber-50 px-2 py-0.5 text-amber-800">
+              Tabungan: {formatPrivateAmount(summary.netWorthBreakdown.savings, currency, balancesVisible)}
+            </span>
+            {summary.netWorthBreakdown.investments > 0 ? (
+              <span className="rounded-md bg-purple-50 px-2 py-0.5 text-purple-800">
+                Investasi: {formatPrivateAmount(summary.netWorthBreakdown.investments, currency, balancesVisible)}
+              </span>
+            ) : null}
+            {summary.netWorthBreakdown.debt > 0 ? (
+              <span className="rounded-md bg-orange-50 px-2 py-0.5 text-orange-800">
+                Utang: -{formatPrivateAmount(summary.netWorthBreakdown.debt, currency, balancesVisible)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </DashboardCard>
 
       <DashboardCard className="p-5 lg:col-span-3">

@@ -1,6 +1,7 @@
-import type { Category, CategoryType, Transaction, TransactionStatus, TransactionType, Wallet } from "../types/domain";
+import type { Category, CategoryType, Envelope, Transaction, TransactionStatus, TransactionType, Wallet } from "../types/domain";
 import type { Database } from "../types/database";
 import { addMoneyValues, isMoneyGreaterThan } from "./money";
+import { toUtcIsoString } from "./datetime";
 import { supabase } from "./supabase";
 
 type BaseTransactionInput = {
@@ -8,6 +9,7 @@ type BaseTransactionInput = {
   walletId: string;
   transactionDate: string;
   note: string | null;
+  envelopeId?: string | null;
 };
 
 type CategoryTransactionInput = BaseTransactionInput & {
@@ -32,6 +34,7 @@ export type TransactionPeriodFilter = "all" | "this_month" | "last_month" | "thi
 
 export type TransactionFilters = {
   categoryId?: string;
+  envelopeId?: string;
   dateKey?: string;
   page?: number;
   pageSize?: number;
@@ -45,6 +48,7 @@ export type TransactionFilters = {
 
 export type TransactionWithMeta = Transaction & {
   category: Category | null;
+  envelope?: Envelope | null;
   destinationWallet: Wallet | null;
   wallet: Wallet | null;
 };
@@ -52,6 +56,7 @@ export type TransactionWithMeta = Transaction & {
 export type UpdateTransactionInput = {
   amount: string;
   categoryId?: string | null;
+  envelopeId?: string | null;
   destinationWalletId?: string | null;
   note: string | null;
   title: string | null;
@@ -126,13 +131,20 @@ function searchMatches(transaction: TransactionWithMeta, query: string) {
   return haystack.includes(normalizedQuery);
 }
 
-function attachTransactionMeta(transactions: Transaction[], wallets: Wallet[], categories: Category[]): TransactionWithMeta[] {
+function attachTransactionMeta(
+  transactions: Transaction[],
+  wallets: Wallet[],
+  categories: Category[],
+  envelopes: Envelope[] = []
+): TransactionWithMeta[] {
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const envelopesById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
 
   return transactions.map((transaction) => ({
     ...transaction,
     category: transaction.category_id ? categoriesById.get(transaction.category_id) ?? null : null,
+    envelope: transaction.envelope_id ? envelopesById.get(transaction.envelope_id) ?? null : null,
     destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
     wallet: walletsById.get(transaction.wallet_id) ?? null,
   }));
@@ -168,6 +180,7 @@ async function assertWalletCanCover(userId: string, walletId: string, outgoingAm
 async function createTransaction(payload: {
   amount: string;
   category_id?: string | null;
+  envelope_id?: string | null;
   destination_wallet_id?: string | null;
   note?: string | null;
   title?: string | null;
@@ -191,9 +204,10 @@ async function createTransaction(payload: {
       amount: payload.amount,
       wallet_id: payload.wallet_id,
       category_id: payload.category_id ?? null,
+      envelope_id: payload.envelope_id ?? null,
       destination_wallet_id: payload.destination_wallet_id ?? null,
       transfer_fee: payload.transfer_fee ?? "0",
-      transaction_date: toTransactionDate(payload.transaction_date),
+      transaction_date: toUtcIsoString(payload.transaction_date),
       title: payload.title ?? null,
       note: payload.note ?? null,
       status: "completed",
@@ -218,6 +232,7 @@ export async function createExpense(input: CategoryTransactionInput) {
   return createTransaction({
     amount: input.amount,
     category_id: input.categoryId,
+    envelope_id: input.envelopeId,
     note: input.note,
     title: input.title,
     transaction_date: input.transactionDate,
@@ -251,7 +266,7 @@ export async function createAdjustment(input: AdjustmentInput) {
 
 export async function getTransactionSupportData() {
   const userId = await getAuthenticatedUserId();
-  const [walletResult, categoryResult] = await Promise.all([
+  const [walletResult, categoryResult, envelopeResult] = await Promise.all([
     supabase.from("wallets").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
     supabase
       .from("categories")
@@ -259,6 +274,7 @@ export async function getTransactionSupportData() {
       .or(`user_id.is.null,user_id.eq.${userId}`)
       .order("category_type", { ascending: true })
       .order("name", { ascending: true }),
+    supabase.from("envelopes").select("*").eq("user_id", userId).eq("is_archived", false).order("name", { ascending: true }),
   ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -266,6 +282,7 @@ export async function getTransactionSupportData() {
 
   return {
     categories: categoryResult.data ?? [],
+    envelopes: envelopeResult.data ?? [],
     wallets: walletResult.data ?? [],
   };
 }
@@ -284,6 +301,7 @@ export async function getTransactions(filters: TransactionFilters = {}) {
   if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
   if (filters.status && filters.status !== "all") query = query.eq("status", filters.status);
   if (filters.categoryId) query = query.eq("category_id", filters.categoryId);
+  if (filters.envelopeId) query = query.eq("envelope_id", filters.envelopeId);
   if (filters.walletId) query = query.or(`wallet_id.eq.${filters.walletId},destination_wallet_id.eq.${filters.walletId}`);
   if (range) query = query.gte("transaction_date", range.start).lt("transaction_date", range.end);
 
@@ -300,11 +318,12 @@ export async function getTransactions(filters: TransactionFilters = {}) {
 
   if (error) throw error;
 
-  const rows = attachTransactionMeta(data ?? [], supportData.wallets, supportData.categories);
+  const rows = attachTransactionMeta(data ?? [], supportData.wallets, supportData.categories, supportData.envelopes);
   const filteredRows = filters.query ? rows.filter((transaction) => searchMatches(transaction, filters.query ?? "")) : rows;
 
   return {
     categories: supportData.categories,
+    envelopes: supportData.envelopes,
     count: filters.query ? filteredRows.length : count ?? filteredRows.length,
     hasMore: filters.query ? false : (count ?? 0) > (page + 1) * pageSize,
     transactions: filteredRows,
@@ -321,7 +340,7 @@ export async function getTransactionById(id: string) {
 
   if (transactionResult.error) throw transactionResult.error;
 
-  return attachTransactionMeta([transactionResult.data], supportData.wallets, supportData.categories)[0];
+  return attachTransactionMeta([transactionResult.data], supportData.wallets, supportData.categories, supportData.envelopes)[0];
 }
 
 export async function updateTransaction(transaction: Transaction, input: UpdateTransactionInput) {
@@ -365,10 +384,11 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
   const updatePayload: Database["public"]["Tables"]["transactions"]["Update"] = {
     amount: input.amount,
     category_id: input.categoryId ?? null,
+    envelope_id: input.envelopeId !== undefined ? input.envelopeId : transaction.envelope_id,
     destination_wallet_id: input.destinationWalletId ?? null,
     note: input.note?.trim() || null,
     title: (input.title ?? transaction.title ?? "").trim(),
-    transaction_date: input.transactionDate ?? transaction.transaction_date,
+    transaction_date: toUtcIsoString(input.transactionDate ?? transaction.transaction_date),
     transfer_fee: input.transferFee ?? "0",
     wallet_id: input.walletId,
   };

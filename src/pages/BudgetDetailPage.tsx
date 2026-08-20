@@ -88,7 +88,6 @@ export function BudgetDetailPage() {
         const txList = await getBudgetMatchingTransactions(
           budgetId,
           currentMonth,
-          bData.included_category_ids,
         );
         setTransactions(txList);
       } else {
@@ -185,7 +184,7 @@ export function BudgetDetailPage() {
     );
   }
 
-  const isEnvelope = budget.type === "envelope";
+  const targetType = budget.target_type ?? (budget.type === "envelope" ? "envelope" : "category");
   const isOverBudget = budget.status === "over_budget";
   const isNearLimit = budget.status === "near_limit";
   const progressPercent = Math.min(Math.max(budget.usage_percentage, 0), 100);
@@ -195,6 +194,35 @@ export function BudgetDetailPage() {
     : isNearLimit
     ? "bg-amber-500"
     : "bg-kash-emerald";
+
+  const targetIcon =
+    targetType === "envelope" ? (
+      <Layers size={22} />
+    ) : targetType === "debt" ? (
+      <ReceiptText size={22} />
+    ) : targetType === "goal" ? (
+      <Tag size={22} />
+    ) : (
+      <Tag size={22} />
+    );
+
+  const targetColor =
+    targetType === "envelope"
+      ? "#4F7DF3"
+      : targetType === "debt"
+      ? "#F28C45"
+      : targetType === "goal"
+      ? "#F5B82E"
+      : budget.category_color || "#10B981";
+
+  const targetLabel =
+    targetType === "envelope"
+      ? "Amplop Belanja"
+      : targetType === "debt"
+      ? "Target Cicilan Utang"
+      : targetType === "goal"
+      ? "Target Tabungan / Goal"
+      : "Budget Kategori";
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-5 p-4 md:p-6">
@@ -268,25 +296,21 @@ export function BudgetDetailPage() {
           <div className="flex items-start gap-3.5">
             <span
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-xs font-black text-base"
-              style={{
-                backgroundColor: isEnvelope
-                  ? "#047857"
-                  : budget.category_color || "#10B981",
-              }}
+              style={{ backgroundColor: targetColor }}
             >
-              {isEnvelope ? <Layers size={22} /> : <Tag size={22} />}
+              {targetIcon}
             </span>
 
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-black text-slate-900">{budget.name}</h1>
                 <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-extrabold text-slate-600">
-                  {isEnvelope ? "Amplop Belanja" : "Budget Kategori"}
+                  {targetLabel}
                 </span>
               </div>
 
               <p className="mt-1 text-xs font-semibold text-slate-600">
-                {budget.note || "Tidak ada catatan."}
+                {budget.note || (targetType === "debt" ? budget.debt_title : targetType === "goal" ? budget.goal_name : targetType === "envelope" ? budget.envelope_name : budget.category_name) || "Tidak ada catatan."}
               </p>
             </div>
           </div>
@@ -337,7 +361,7 @@ export function BudgetDetailPage() {
 
           <div className="rounded-xl bg-slate-50 p-3">
             <span className="font-bold text-slate-600">
-              {Number(budget.remaining) < 0 ? "Kelebihan" : "Sisa Budget"}
+              {Number(budget.remaining) < 0 ? "Kelebihan" : "Sisa Alokasi"}
             </span>
             <p
               className={`mt-0.5 text-sm font-black ${
@@ -358,28 +382,30 @@ export function BudgetDetailPage() {
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs font-bold text-slate-600">
-            <span>Terpakai: {formatCurrency(budget.spent)}</span>
+            <span>Terpenuhi: {formatCurrency(budget.spent)}</span>
             <span>{budget.usage_percentage.toFixed(1)}%</span>
           </div>
         </div>
 
-        {/* Included Categories Pill List */}
-        <div className="mt-5 border-t border-slate-100 pt-4">
-          <span className="text-xs font-extrabold uppercase text-slate-600">
-            Kategori Terkait dalam Periode Ini
-          </span>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {budget.included_category_names?.map((name, i) => (
-              <span
-                key={i}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700"
-              >
-                <Tag size={12} className="text-kash-emerald" />
-                {name}
-              </span>
-            ))}
+        {/* Target Meta Pill List */}
+        {targetType === "category" && budget.included_category_names && budget.included_category_names.length > 0 ? (
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <span className="text-xs font-extrabold uppercase text-slate-600">
+              Kategori Terkait dalam Periode Ini
+            </span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {budget.included_category_names.map((name, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700"
+                >
+                  <Tag size={12} className="text-kash-emerald" />
+                  {name}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       {/* Matching Transactions Section */}
@@ -388,7 +414,11 @@ export function BudgetDetailPage() {
           <div className="flex items-center gap-2">
             <ReceiptText size={18} className="text-kash-emerald" />
             <h2 className="text-base font-extrabold text-slate-900">
-              Transaksi Pengeluaran Bulan Ini ({transactions.length})
+              {targetType === "debt"
+                ? `Riwayat Pembayaran Cicilan (${transactions.length})`
+                : targetType === "goal"
+                ? `Riwayat Alokasi Menabung (${transactions.length})`
+                : `Transaksi Pengeluaran Bulan Ini (${transactions.length})`}
             </h2>
           </div>
           <span className="text-xs font-bold text-slate-600">
@@ -398,20 +428,20 @@ export function BudgetDetailPage() {
 
         {transactions.length === 0 ? (
           <div className="py-10 text-center text-xs font-semibold text-slate-600">
-            Belum ada transaksi pengeluaran pada kategori ini untuk bulan terpilih.
+            Belum ada aktivitas finansial yang tercatat untuk target ini pada bulan terpilih.
           </div>
         ) : (
           <div className="mt-3 divide-y divide-slate-100">
-            {transactions.map((tx) => (
+            {transactions.map((tx: any) => (
               <div key={tx.id} className="flex items-center justify-between py-3">
                 <div className="min-w-0 pr-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-bold text-slate-900 truncate">
-                      {tx.title || (tx as any).category?.name || "Pengeluaran"}
+                      {tx.title || tx.category?.name || "Aktivitas"}
                     </p>
-                    {(tx as any).category?.name && (
+                    {tx.category?.name && (
                       <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
-                        {(tx as any).category.name}
+                        {tx.category.name}
                       </span>
                     )}
                   </div>
@@ -421,11 +451,11 @@ export function BudgetDetailPage() {
                       month: "short",
                       year: "numeric",
                     })}{" "}
-                    &bull; {(tx as any).wallet?.name || "Dompet"}
+                    &bull; {tx.wallet?.name || "Dompet"}
                   </p>
                 </div>
 
-                <span className="text-sm font-black text-kash-expense whitespace-nowrap">
+                <span className={`text-sm font-black whitespace-nowrap ${targetType === "debt" ? "text-orange-600" : targetType === "goal" ? "text-amber-600" : "text-kash-expense"}`}>
                   -{formatCurrency(tx.amount)}
                 </span>
               </div>

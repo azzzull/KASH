@@ -7,11 +7,13 @@ import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { SelectField } from "../ui/SelectField";
 import { getActiveCategories } from "../../lib/categories";
+import { getEnvelopes } from "../../lib/envelopes";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../../lib/transactions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
-import type { Category } from "../../types/domain";
+import { getCurrentLocalDatetimeString } from "../../lib/datetime";
+import type { Category, Envelope } from "../../types/domain";
 
 export type QuickTransactionMode = "expense" | "income" | "transfer";
 
@@ -35,12 +37,6 @@ const modeCopy: Record<
   transfer: { accent: "text-kash-transfer", icon: ArrowRightLeft, submitLabel: "Transfer", title: "Transfer" },
 };
 
-function currentLocalDateTimeValue() {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
-
 function firstValue<T extends { id: string }>(items: T[]) {
   return items[0]?.id ?? "";
 }
@@ -56,13 +52,15 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const Icon = copy.icon;
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const [walletId, setWalletId] = useState("");
   const [destinationWalletId, setDestinationWalletId] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [envelopeId, setEnvelopeId] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [transferFee, setTransferFee] = useState("0");
-  const [transactionDate, setTransactionDate] = useState(currentLocalDateTimeValue());
+  const [transactionDate, setTransactionDate] = useState(getCurrentLocalDatetimeString());
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,7 +71,11 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setLoading(true);
     setError(null);
 
-    const [walletResult, categoryResult] = await Promise.all([getWallets(), getActiveCategories()]);
+    const [walletResult, categoryResult, envelopeResult] = await Promise.all([
+      getWallets(),
+      getActiveCategories(),
+      getEnvelopes(),
+    ]);
 
     if (walletResult.error || categoryResult.error || !walletResult.data || !categoryResult.data) {
       setError("Couldn't load wallets and categories. Please try again.");
@@ -83,6 +85,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
     setWallets(walletResult.data);
     setCategories(categoryResult.data);
+    setEnvelopes(envelopeResult.data ?? []);
     setWalletId((current) => current || firstValue(walletResult.data));
     setDestinationWalletId((current) => current || walletResult.data.find((wallet) => wallet.id !== walletResult.data?.[0]?.id)?.id || "");
 
@@ -173,6 +176,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             ? await createExpense({
                 amount: amountDigits,
                 categoryId,
+                envelopeId: envelopeId || null,
                 note: noteValue,
                 title: noteValue ?? categoryName,
                 transactionDate,
@@ -276,6 +280,22 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                   </option>
                 ))}
                 <option value="__create_new__">+ Tambah Kategori Baru...</option>
+              </SelectField>
+            ) : null}
+
+            {mode === "expense" && envelopes.length > 0 ? (
+              <SelectField
+                id="expense-envelope"
+                label="Amplop / Purpose Group (Opsional)"
+                onChange={(event) => setEnvelopeId(event.target.value)}
+                value={envelopeId}
+              >
+                <option value="">-- Tanpa Amplop --</option>
+                {envelopes.map((env) => (
+                  <option key={env.id} value={env.id}>
+                    {env.name}
+                  </option>
+                ))}
               </SelectField>
             ) : null}
 

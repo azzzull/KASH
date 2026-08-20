@@ -1,10 +1,27 @@
 import type {
+  BudgetTargetType,
+  BudgetType,
   BudgetWithProgress,
   MonthlyBudgetOverview,
   Transaction,
 } from "../types/domain";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "./money";
 import { supabase } from "./supabase";
+
+export type CreateBudgetTargetInput = {
+  name: string;
+  targetType: BudgetTargetType;
+  amount: string;
+  startPeriod: string; // YYYY-MM-DD
+  repeatMonthly?: boolean;
+  rolloverEnabled?: boolean;
+  categoryId?: string | null;
+  envelopeId?: string | null;
+  counterpartyId?: string | null;
+  debtId?: string | null;
+  goalId?: string | null;
+  note?: string | null;
+};
 
 export type CreateCategoryBudgetInput = {
   name: string;
@@ -18,7 +35,8 @@ export type CreateCategoryBudgetInput = {
 
 export type CreateEnvelopeBudgetInput = {
   name: string;
-  categoryIds: string[];
+  envelopeId?: string;
+  categoryIds?: string[];
   amount: string;
   startPeriod: string; // YYYY-MM-DD
   repeatMonthly?: boolean;
@@ -51,10 +69,19 @@ export async function getMonthlyBudgets(periodStart?: string): Promise<BudgetWit
     budget_id: row.budget_id,
     name: row.name,
     type: row.type,
+    target_type: row.target_type ?? (row.type === "envelope" ? "envelope" : "category"),
     category_id: row.category_id,
     category_name: row.category_name,
     category_icon: row.category_icon,
     category_color: row.category_color,
+    envelope_id: row.envelope_id,
+    envelope_name: row.envelope_name,
+    counterparty_id: row.counterparty_id,
+    counterparty_name: row.counterparty_name,
+    debt_id: row.debt_id,
+    debt_title: row.debt_title,
+    goal_id: row.goal_id,
+    goal_name: row.goal_name,
     note: row.note,
     repeat_monthly: row.repeat_monthly,
     start_period: row.start_period,
@@ -73,7 +100,7 @@ export async function getMonthlyBudgets(periodStart?: string): Promise<BudgetWit
 }
 
 /**
- * Fetch monthly overview aggregate totals (Total Budget, Spent, Remaining, Usage %).
+ * Fetch monthly overview aggregate totals (Unified Monthly Financial Plan with Zero Cross-Budget Double-Counting).
  */
 export async function getMonthlyBudgetOverview(periodStart?: string): Promise<MonthlyBudgetOverview> {
   const { data, error } = await supabase.rpc("get_monthly_budget_overview" as any, {
@@ -83,23 +110,42 @@ export async function getMonthlyBudgetOverview(periodStart?: string): Promise<Mo
   if (error) throw error;
 
   const rows = (data as any[]) ?? [];
-  const row = rows[0] || {};
+  const row = (rows[0] as any) || {};
+
+  const totalAllocated = toNumber(row.total_allocated ?? row.total_budget ?? 0);
+  const actualExpenses = toNumber(row.actual_expenses ?? row.total_spent ?? 0);
+  const actualDebtPayments = toNumber(row.actual_debt_payments ?? 0);
+  const actualGoalContributions = toNumber(row.actual_goal_contributions ?? 0);
+  const totalActualCashOutflow = toNumber(row.total_actual_cash_outflow ?? actualExpenses + actualDebtPayments + actualGoalContributions);
+  const remainingAllocation = toNumber(row.remaining_allocation ?? Math.max(totalAllocated - totalActualCashOutflow, 0));
 
   return {
     period_start: row.period_start ?? (periodStart || ""),
-    total_budget: toNumber(row.total_budget ?? 0),
-    total_spent: toNumber(row.total_spent ?? 0),
-    total_remaining: toNumber(row.total_remaining ?? 0),
+    total_allocated: totalAllocated,
+    total_category_budget: toNumber(row.total_category_budget ?? 0),
+    total_envelope_budget: toNumber(row.total_envelope_budget ?? 0),
+    total_debt_budget: toNumber(row.total_debt_budget ?? 0),
+    total_goal_budget: toNumber(row.total_goal_budget ?? 0),
+    actual_expenses: actualExpenses,
+    actual_debt_payments: actualDebtPayments,
+    actual_goal_contributions: actualGoalContributions,
+    total_actual_cash_outflow: totalActualCashOutflow,
+    remaining_allocation: remainingAllocation,
     overall_usage_percentage: Number(row.overall_usage_percentage) || 0,
-    total_budgets_count: Number(row.total_budgets_count) || 0,
+    budget_count: Number(row.budget_count ?? row.total_budgets_count) || 0,
     healthy_count: Number(row.healthy_count) || 0,
     near_limit_count: Number(row.near_limit_count) || 0,
     over_budget_count: Number(row.over_budget_count) || 0,
+    // Aliases for backwards compatibility
+    total_budget: totalAllocated,
+    total_spent: totalActualCashOutflow,
+    total_remaining: remainingAllocation,
+    total_budgets_count: Number(row.budget_count ?? row.total_budgets_count) || 0,
   };
 }
 
 /**
- * Fetch single budget detail by ID for a specific month with multi-tier fallback.
+ * Fetch single budget detail by ID for a specific month.
  */
 export async function getBudgetDetail(
   budgetId: string,
@@ -109,7 +155,6 @@ export async function getBudgetDetail(
     ? `${periodStart.substring(0, 7)}-01`
     : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
 
-  // 1. Try finding in the specified month's progress RPC
   try {
     const list = await getMonthlyBudgets(normPeriod);
     const found = list.find((b) => b.budget_id === budgetId);
@@ -118,173 +163,113 @@ export async function getBudgetDetail(
     console.warn("getMonthlyBudgets RPC error in getBudgetDetail:", err);
   }
 
-  // 2. Fallback: Query budget record directly from database
+  // Fallback direct fetch
   const { data: budgetRow, error: budgetError } = await supabase
     .from("budgets")
-    .select("*, category:categories(*)")
+    .select("*, category:categories(*), envelope:envelopes(*), counterparty:counterparties(*), debt:debts(*), goal:goals(*)")
     .eq("id", budgetId)
     .maybeSingle();
 
-  if (budgetError || !budgetRow) {
-    return null;
-  }
-
-  // If budget start_period is different from requested month, try fetching with its start_period
-  if (budgetRow.start_period && budgetRow.start_period !== normPeriod) {
-    try {
-      const fallbackList = await getMonthlyBudgets(budgetRow.start_period);
-      const foundInStart = fallbackList.find((b) => b.budget_id === budgetId);
-      if (foundInStart) return foundInStart;
-    } catch {
-      // Continue to direct build
-    }
-  }
-
-  // 3. Direct Construction Fallback: Fetch latest version & category mappings
-  const [{ data: versionRows }, { data: envelopeCategories }] = await Promise.all([
-    supabase
-      .from("budget_versions")
-      .select("*")
-      .eq("budget_id", budgetId)
-      .order("effective_from_period", { ascending: false })
-      .limit(1),
-    budgetRow.type === "envelope"
-      ? supabase
-          .from("budget_envelope_categories")
-          .select("category_id, category:categories(id, name)")
-          .eq("envelope_id", budgetId)
-      : Promise.resolve({ data: [] }),
-  ]);
-
-  const latestVersion = versionRows?.[0];
-  const baseAmount = latestVersion ? toNumber(latestVersion.amount) : 0;
-  const rolloverEnabled = Boolean(latestVersion?.rollover_enabled);
-
-  const includedCategoryIds: string[] =
-    budgetRow.type === "category"
-      ? budgetRow.category_id
-        ? [budgetRow.category_id]
-        : []
-      : ((envelopeCategories as any[]) ?? []).map((ec) => ec.category_id);
-
-  const includedCategoryNames: string[] =
-    budgetRow.type === "category"
-      ? (budgetRow as any).category?.name
-        ? [(budgetRow as any).category.name]
-        : []
-      : ((envelopeCategories as any[]) ?? []).map((ec) => ec.category?.name).filter(Boolean);
-
-  // Compute spending for this month
-  const startDate = `${normPeriod.substring(0, 7)}-01`;
-  const [year, month] = startDate.split("-").map(Number);
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-  const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
-
-  let spent = 0;
-  if (includedCategoryIds.length > 0) {
-    const { data: txRows } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("type", "expense")
-      .eq("status", "completed")
-      .in("category_id", includedCategoryIds)
-      .gte("transaction_date", `${startDate}T00:00:00`)
-      .lt("transaction_date", `${endDate}T00:00:00`);
-
-    spent = (txRows ?? []).reduce((acc, row) => acc + toNumber(row.amount), 0);
-  }
-
-  const effectiveBudget = baseAmount;
-  const remaining = effectiveBudget - spent;
-  const usagePercentage = effectiveBudget > 0 ? (spent / effectiveBudget) * 100 : 0;
-  const status =
-    spent >= effectiveBudget && effectiveBudget > 0
-      ? "over_budget"
-      : effectiveBudget > 0 && spent / effectiveBudget >= 0.8
-      ? "near_limit"
-      : "healthy";
+  if (budgetError || !budgetRow) return null;
 
   return {
     budget_id: budgetRow.id,
     name: budgetRow.name,
     type: budgetRow.type,
+    target_type: budgetRow.target_type ?? "category",
     category_id: budgetRow.category_id,
     category_name: (budgetRow as any).category?.name ?? null,
     category_icon: (budgetRow as any).category?.icon ?? null,
     category_color: (budgetRow as any).category?.color ?? null,
+    envelope_id: budgetRow.envelope_id,
+    envelope_name: (budgetRow as any).envelope?.name ?? null,
+    counterparty_id: budgetRow.counterparty_id,
+    counterparty_name: (budgetRow as any).counterparty?.name ?? null,
+    debt_id: budgetRow.debt_id,
+    debt_title: (budgetRow as any).debt?.title ?? null,
+    goal_id: budgetRow.goal_id,
+    goal_name: (budgetRow as any).goal?.name ?? null,
     note: budgetRow.note,
     repeat_monthly: budgetRow.repeat_monthly,
     start_period: budgetRow.start_period,
     end_period: budgetRow.end_period,
-    base_amount: baseAmount,
-    rollover_enabled: rolloverEnabled,
+    base_amount: 0,
+    rollover_enabled: false,
     rollover_amount: 0,
-    effective_budget: effectiveBudget,
-    spent,
-    remaining,
-    usage_percentage: usagePercentage,
-    status,
-    included_category_ids: includedCategoryIds,
-    included_category_names: includedCategoryNames,
+    effective_budget: 0,
+    spent: 0,
+    remaining: 0,
+    usage_percentage: 0,
+    status: "healthy",
+    included_category_ids: budgetRow.category_id ? [budgetRow.category_id] : [],
+    included_category_names: (budgetRow as any).category?.name ? [(budgetRow as any).category.name] : [],
   };
+}
+
+/**
+ * Universal Atomic Budget Creator (supports Category, Envelope, Debt, and Goal targets).
+ */
+export async function createBudgetTarget(input: CreateBudgetTargetInput): Promise<string> {
+  const rawAmount = parseMoneyInputDigits(input.amount);
+  const amountNumber = toNumber(rawAmount);
+
+  if (amountNumber <= 0) {
+    throw new Error("Nominal target budget harus lebih dari 0.");
+  }
+
+  const { data, error } = await supabase.rpc("create_budget_target" as any, {
+    p_name: input.name.trim(),
+    p_target_type: input.targetType,
+    p_amount: amountNumber,
+    p_start_period: input.startPeriod,
+    p_repeat_monthly: input.repeatMonthly ?? true,
+    p_rollover_enabled: input.rolloverEnabled ?? false,
+    p_category_id: input.categoryId || null,
+    p_envelope_id: input.envelopeId || null,
+    p_counterparty_id: input.counterpartyId || null,
+    p_debt_id: input.debtId || null,
+    p_goal_id: input.goalId || null,
+    p_note: input.note?.trim() || null,
+  });
+
+  if (error) throw error;
+  return data as string;
 }
 
 /**
  * Create a new Category Budget.
  */
 export async function createCategoryBudget(input: CreateCategoryBudgetInput): Promise<string> {
-  const rawAmount = parseMoneyInputDigits(input.amount);
-  const amountNumber = toNumber(rawAmount);
-
-  if (amountNumber <= 0) {
-    throw new Error("Nominal anggaran harus lebih dari 0.");
-  }
-
-  const { data, error } = await supabase.rpc("create_category_budget" as any, {
-    p_name: input.name.trim(),
-    p_category_id: input.categoryId,
-    p_amount: amountNumber,
-    p_start_period: input.startPeriod,
-    p_repeat_monthly: input.repeatMonthly ?? true,
-    p_rollover_enabled: input.rolloverEnabled ?? false,
-    p_note: input.note?.trim() || null,
+  return createBudgetTarget({
+    name: input.name,
+    targetType: "category",
+    categoryId: input.categoryId,
+    amount: input.amount,
+    startPeriod: input.startPeriod,
+    repeatMonthly: input.repeatMonthly,
+    rolloverEnabled: input.rolloverEnabled,
+    note: input.note,
   });
-
-  if (error) throw error;
-  return data as string;
 }
 
 /**
- * Create a new Envelope Budget with multiple expense categories.
+ * Create a new Envelope Budget.
  */
 export async function createEnvelopeBudget(input: CreateEnvelopeBudgetInput): Promise<string> {
-  const rawAmount = parseMoneyInputDigits(input.amount);
-  const amountNumber = toNumber(rawAmount);
-
-  if (amountNumber <= 0) {
-    throw new Error("Nominal anggaran amplop harus lebih dari 0.");
-  }
-  if (!input.categoryIds || input.categoryIds.length === 0) {
-    throw new Error("Pilih minimal satu kategori pengeluaran untuk amplop.");
-  }
-
-  const { data, error } = await supabase.rpc("create_envelope_budget" as any, {
-    p_name: input.name.trim(),
-    p_category_ids: input.categoryIds,
-    p_amount: amountNumber,
-    p_start_period: input.startPeriod,
-    p_repeat_monthly: input.repeatMonthly ?? true,
-    p_rollover_enabled: input.rolloverEnabled ?? false,
-    p_note: input.note?.trim() || null,
+  return createBudgetTarget({
+    name: input.name,
+    targetType: "envelope",
+    envelopeId: input.envelopeId,
+    amount: input.amount,
+    startPeriod: input.startPeriod,
+    repeatMonthly: input.repeatMonthly,
+    rolloverEnabled: input.rolloverEnabled,
+    note: input.note,
   });
-
-  if (error) throw error;
-  return data as string;
 }
 
 /**
- * Update budget metadata, amount version, or envelope categories.
+ * Update budget metadata and amount version.
  */
 export async function updateBudget(budgetId: string, input: UpdateBudgetInput): Promise<boolean> {
   let parsedAmount: number | null = null;
@@ -293,61 +278,79 @@ export async function updateBudget(budgetId: string, input: UpdateBudgetInput): 
     parsedAmount = toNumber(raw);
   }
 
-  const { data, error } = await supabase.rpc("update_budget" as any, {
-    p_budget_id: budgetId,
-    p_name: input.name.trim(),
-    p_note: input.note?.trim() || null,
-    p_effective_period: input.effectivePeriod,
-    p_amount: parsedAmount,
-    p_rollover_enabled: input.rolloverEnabled ?? null,
-    p_category_ids: input.categoryIds ?? null,
-  });
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Unauthorized");
 
-  if (error) throw error;
-  return Boolean(data);
+  // 1. Update basic budget metadata
+  const { error: budgetUpdateError } = await supabase
+    .from("budgets")
+    .update({
+      name: input.name.trim(),
+      note: input.note?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", budgetId);
+
+  if (budgetUpdateError) throw budgetUpdateError;
+
+  // 2. If amount or rollover changed, upsert budget version for the effective month
+  if (parsedAmount !== null && parsedAmount > 0) {
+    const normPeriod = `${input.effectivePeriod.substring(0, 7)}-01`;
+    const { error: versionError } = await supabase
+      .from("budget_versions")
+      .upsert(
+        {
+          budget_id: budgetId,
+          user_id: user.id,
+          effective_from_period: normPeriod,
+          amount: parsedAmount,
+          rollover_enabled: input.rolloverEnabled ?? false,
+        },
+        { onConflict: "budget_id,effective_from_period" }
+      );
+
+    if (versionError) throw versionError;
+  }
+
+  return true;
 }
 
 /**
  * Archive / End a budget period.
  */
 export async function archiveBudget(budgetId: string, endPeriod: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc("archive_budget" as any, {
-    p_budget_id: budgetId,
-    p_end_period: endPeriod,
-  });
+  const normEnd = `${endPeriod.substring(0, 7)}-01`;
+  const { error } = await supabase
+    .from("budgets")
+    .update({
+      end_period: normEnd,
+      repeat_monthly: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", budgetId);
 
   if (error) throw error;
-  return Boolean(data);
+  return true;
 }
 
 /**
  * Permanently delete a budget definition.
  */
 export async function deleteBudget(budgetId: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc("delete_budget" as any, {
-    p_budget_id: budgetId,
-  });
-
+  const { error } = await supabase.from("budgets").delete().eq("id", budgetId);
   if (error) throw error;
-  return Boolean(data);
+  return true;
 }
 
 /**
- * Fetch matching expense transactions for a budget in a specific month.
+ * Fetch matching financial events for a budget in a specific month (transactions, debt payments, or goal contributions).
  */
 export async function getBudgetMatchingTransactions(
   budgetId: string,
   periodStart: string,
-  targetCategoryIds?: string[],
 ): Promise<any[]> {
-  let categoryIds = targetCategoryIds;
-  if (!categoryIds || categoryIds.length === 0) {
-    const budget = await getBudgetDetail(budgetId, periodStart);
-    if (!budget || !budget.included_category_ids || budget.included_category_ids.length === 0) {
-      return [];
-    }
-    categoryIds = budget.included_category_ids;
-  }
+  const budget = await getBudgetDetail(budgetId, periodStart);
+  if (!budget) return [];
 
   const normPeriod = periodStart
     ? `${periodStart.substring(0, 7)}-01`
@@ -358,29 +361,93 @@ export async function getBudgetMatchingTransactions(
   const nextYear = month === 12 ? year + 1 : year;
   const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
 
-  const [{ data: txRows, error: txError }, { data: catRows }, { data: walRows }] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("*")
-      .eq("type", "expense")
-      .eq("status", "completed")
-      .in("category_id", categoryIds)
-      .gte("transaction_date", `${normPeriod}T00:00:00`)
-      .lt("transaction_date", `${endDate}T00:00:00`)
-      .order("transaction_date", { ascending: false }),
-    supabase.from("categories").select("*"),
-    supabase.from("wallets").select("*"),
-  ]);
+  // 1. Debt Target
+  if (budget.target_type === "debt") {
+    if (budget.debt_id) {
+      const { data: allocations, error: allocErr } = await supabase
+        .from("debt_payment_allocations")
+        .select("allocated_amount, payment:debt_payments(*, wallet:wallets(*))")
+        .eq("debt_id", budget.debt_id)
+        .gte("created_at", `${normPeriod}T00:00:00`)
+        .lt("created_at", `${endDate}T00:00:00`);
 
+      if (allocErr) throw allocErr;
+
+      return (allocations ?? []).map((a: any) => ({
+        id: a.payment?.id || Math.random().toString(),
+        title: `Pelunasan: ${budget.debt_title || "Utang"}`,
+        amount: a.allocated_amount,
+        type: "debt_payment",
+        transaction_date: a.payment?.payment_date || a.payment?.created_at,
+        note: a.payment?.note,
+        wallet: a.payment?.wallet,
+        category: { name: "Pelunasan Utang", color: "#F28C45", icon: "hand-coins" },
+      }));
+    }
+
+    const { data: payments, error } = await supabase
+      .from("debt_payments")
+      .select("*, wallet:wallets(*)")
+      .gte("payment_date", `${normPeriod}T00:00:00`)
+      .lt("payment_date", `${endDate}T00:00:00`)
+      .order("payment_date", { ascending: false });
+
+    if (error) throw error;
+
+    return (payments ?? []).map((p: any) => ({
+      id: p.id,
+      title: "Pelunasan Utang",
+      amount: p.total_amount,
+      type: "debt_payment",
+      transaction_date: p.payment_date,
+      note: p.note,
+      wallet: p.wallet,
+      category: { name: "Pelunasan Utang", color: "#F28C45", icon: "hand-coins" },
+    }));
+  }
+
+  // 2. Goal Target
+  if (budget.target_type === "goal" && budget.goal_id) {
+    const { data: contributions, error } = await supabase
+      .from("goal_contributions")
+      .select("*, goal:goals(*), wallet:wallets(*)")
+      .eq("goal_id", budget.goal_id)
+      .gte("contribution_date", `${normPeriod}T00:00:00`)
+      .lt("contribution_date", `${endDate}T00:00:00`)
+      .order("contribution_date", { ascending: false });
+
+    if (error) throw error;
+
+    return (contributions ?? []).map((gc) => ({
+      id: gc.id,
+      title: `Alokasi: ${(gc as any).goal?.name || "Tabungan"}`,
+      amount: gc.amount,
+      type: "goal_contribution",
+      transaction_date: gc.contribution_date,
+      note: gc.note,
+      wallet: (gc as any).wallet,
+      category: { name: "Tabungan / Goal", color: "#F5B82E", icon: "piggy-bank" },
+    }));
+  }
+
+  // 3. Category or Envelope Target
+  let txQuery = supabase
+    .from("transactions")
+    .select("*, category:categories(*), envelope:envelopes(*), wallet:wallets(*)")
+    .eq("type", "expense")
+    .eq("status", "completed")
+    .gte("transaction_date", `${normPeriod}T00:00:00`)
+    .lt("transaction_date", `${endDate}T00:00:00`)
+    .order("transaction_date", { ascending: false });
+
+  if (budget.target_type === "category" && budget.category_id) {
+    txQuery = txQuery.eq("category_id", budget.category_id);
+  } else if (budget.target_type === "envelope" && budget.envelope_id) {
+    txQuery = txQuery.eq("envelope_id", budget.envelope_id);
+  }
+
+  const { data: txRows, error: txError } = await txQuery;
   if (txError) throw txError;
 
-  const categoriesById = new Map(((catRows as any[]) ?? []).map((c) => [c.id, c]));
-  const walletsById = new Map(((walRows as any[]) ?? []).map((w) => [w.id, w]));
-
-  return ((txRows as any[]) ?? []).map((tx) => ({
-    ...tx,
-    category: tx.category_id ? categoriesById.get(tx.category_id) ?? null : null,
-    wallet: tx.wallet_id ? walletsById.get(tx.wallet_id) ?? null : null,
-    destinationWallet: tx.destination_wallet_id ? walletsById.get(tx.destination_wallet_id) ?? null : null,
-  }));
+  return txRows ?? [];
 }

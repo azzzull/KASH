@@ -81,6 +81,10 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
           <span className="mt-1 block text-xs font-bold text-kash-emerald">
             Savings pocket
           </span>
+        ) : wallet.wallet_type === "investment" && wallet.balance?.return_percentage !== undefined ? (
+          <span className={`mt-1 block text-xs font-bold ${Number(wallet.balance.return_percentage) >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+            {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}{Number(wallet.balance.return_percentage).toFixed(2)}% return
+          </span>
         ) : null}
       </span>
     </Link>

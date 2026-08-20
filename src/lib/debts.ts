@@ -191,6 +191,21 @@ export async function getCounterparties(filters?: {
   };
 }
 
+export async function getActiveDebts(): Promise<DebtProgress[]> {
+  const userId = await getAuthenticatedUserId();
+  const { data, error } = await supabase
+    .from("debt_progress_view")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("type", "debt")
+    .neq("status", "settled")
+    .neq("status", "cancelled")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data as DebtProgress[]) ?? [];
+}
+
 export async function getCounterpartyDetail(counterpartyId: string): Promise<CounterpartyDetail> {
   const userId = await getAuthenticatedUserId();
 

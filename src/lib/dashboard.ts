@@ -56,6 +56,10 @@ export type DashboardWalletItem = {
   balance: number;
   availableBalance: number;
   includeInNetWorth: boolean;
+  costBasis?: number;
+  unrealizedGainLoss?: number;
+  returnPercentage?: number;
+  lastValuationAt?: string | null;
 };
 
 export type DashboardWalletDistribution = {
@@ -111,6 +115,14 @@ export type DashboardSharedSavingsSummary = {
   spaceCount: number;
 };
 
+export type DashboardNetWorthBreakdown = {
+  availableCash: number;
+  savings: number;
+  investments: number;
+  debt: number;
+  other: number;
+};
+
 export type DashboardSummary = {
   period: {
     label: string;
@@ -119,6 +131,7 @@ export type DashboardSummary = {
     daysInMonth: number;
   };
   netWorth: DashboardMetric;
+  netWorthBreakdown: DashboardNetWorthBreakdown;
   availableBalance: DashboardMetric;
   monthlyIncome: DashboardMetric;
   monthlyExpense: DashboardMetric;
@@ -551,6 +564,10 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       balance: walletCurrentBalance(wallet),
       availableBalance: walletAvailableBalance(wallet),
       includeInNetWorth: wallet.include_in_net_worth,
+      costBasis: wallet.balance?.cost_basis !== undefined ? moneyValue(wallet.balance.cost_basis) : undefined,
+      unrealizedGainLoss: wallet.balance?.unrealized_gain_loss !== undefined ? moneyValue(wallet.balance.unrealized_gain_loss) : undefined,
+      returnPercentage: wallet.balance?.return_percentage !== undefined ? Number(wallet.balance.return_percentage) : undefined,
+      lastValuationAt: wallet.balance?.last_valuation_at ?? null,
     }))
     .sort((a, b) => b.balance - a.balance);
 
@@ -562,13 +579,25 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
 
   const currentMonthMetrics = calculateMonthlyMetrics(monthTransactions);
   const previousMonthMetrics = calculateMonthlyMetrics(previousMonthTransactions);
-  const netWorth =
-    dashboardWallets
-      .filter((wallet) => wallet.includeInNetWorth)
-      .reduce((sum, wallet) => sum + wallet.balance, 0) + sharedSavingsShares;
-  const availableBalance = dashboardWallets
+
+  const availableCash = dashboardWallets
     .filter((wallet) => wallet.includeInNetWorth && isLiquidWallet(wallet.walletType))
     .reduce((sum, wallet) => sum + wallet.availableBalance, 0);
+
+  const savingsTotal =
+    dashboardWallets
+      .filter((wallet) => wallet.includeInNetWorth && wallet.walletType === "savings")
+      .reduce((sum, wallet) => sum + wallet.balance, 0) + sharedSavingsShares;
+
+  const investmentsTotal = dashboardWallets
+    .filter((wallet) => wallet.includeInNetWorth && wallet.walletType === "investment")
+    .reduce((sum, wallet) => sum + wallet.balance, 0);
+
+  const otherWalletsTotal = dashboardWallets
+    .filter((wallet) => wallet.includeInNetWorth && !isLiquidWallet(wallet.walletType) && wallet.walletType !== "savings" && wallet.walletType !== "investment")
+    .reduce((sum, wallet) => sum + wallet.balance, 0);
+
+  const netWorth = availableCash + savingsTotal + investmentsTotal + otherWalletsTotal - totalDebt;
 
   return {
     period: {
@@ -578,7 +607,14 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       daysInMonth: month.daysInMonth,
     },
     netWorth: { amount: netWorth },
-    availableBalance: { amount: availableBalance },
+    netWorthBreakdown: {
+      availableCash,
+      savings: savingsTotal,
+      investments: investmentsTotal,
+      debt: totalDebt,
+      other: otherWalletsTotal,
+    },
+    availableBalance: { amount: availableCash },
     monthlyIncome: { amount: currentMonthMetrics.income },
     monthlyExpense: { amount: currentMonthMetrics.expense },
     netCashFlow: { amount: currentMonthMetrics.netCashFlow },
