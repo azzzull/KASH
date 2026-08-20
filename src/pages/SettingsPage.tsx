@@ -220,7 +220,7 @@ export function SettingsPage() {
           </div>
         </div>
 
-        {/* Categories Link */}
+        {/* Categories & Envelopes Link */}
         <Link
           className="grid grid-cols-[auto_1fr_auto] items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
           to="/settings/categories"
@@ -229,9 +229,9 @@ export function SettingsPage() {
             <Tags aria-hidden="true" size={19} />
           </span>
           <span>
-            <span className="block text-sm font-extrabold text-slate-900">Categories</span>
+            <span className="block text-sm font-extrabold text-slate-900">Kategori & Amplop</span>
             <span className="mt-0.5 block text-xs font-semibold text-slate-700">
-              Manage custom income and expense categories.
+              Kelola kategori pemasukan/pengeluaran dan amplop pengeluaran anggaran.
             </span>
           </span>
           <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />

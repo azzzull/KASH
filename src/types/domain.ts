@@ -390,12 +390,15 @@ export type BudgetWithProgress = {
   category_color: string | null;
   envelope_id: string | null;
   envelope_name: string | null;
+  envelope_icon: string | null;
+  envelope_color: string | null;
   counterparty_id: string | null;
   counterparty_name: string | null;
   debt_id: string | null;
   debt_title: string | null;
   goal_id: string | null;
   goal_name: string | null;
+  goal_icon: string | null;
   note: string | null;
   repeat_monthly: boolean;
   start_period: string;

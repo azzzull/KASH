@@ -1,5 +1,6 @@
-import { AlertCircle, CheckCircle2, ChevronRight, HandCoins, Layers, PiggyBank, Tag } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, HandCoins } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getCategoryIcon } from "../../lib/categoryMeta";
 import { formatCurrency } from "../../lib/money";
 import type { BudgetWithProgress } from "../../types/domain";
 
@@ -38,20 +39,18 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
     </span>
   );
 
-  const targetIcon =
-    targetType === "envelope" ? (
-      <Layers size={18} />
-    ) : targetType === "debt" ? (
-      <HandCoins size={18} />
-    ) : targetType === "goal" ? (
-      <PiggyBank size={18} />
-    ) : (
-      <Tag size={18} />
-    );
+  const IconComp =
+    targetType === "envelope"
+      ? getCategoryIcon(budget.envelope_icon || "layers")
+      : targetType === "debt"
+      ? HandCoins
+      : targetType === "goal"
+      ? getCategoryIcon(budget.goal_icon || "piggy-bank")
+      : getCategoryIcon(budget.category_icon || "tag");
 
   const targetColor =
     targetType === "envelope"
-      ? "#4F7DF3"
+      ? budget.envelope_color || "#4F7DF3"
       : targetType === "debt"
       ? "#F28C45"
       : targetType === "goal"
@@ -90,7 +89,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs font-black text-sm"
             style={{ backgroundColor: targetColor }}
           >
-            {targetIcon}
+            <IconComp size={18} />
           </span>
 
           <div>

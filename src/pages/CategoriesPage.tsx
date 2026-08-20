@@ -1,16 +1,42 @@
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
-import { Archive, Edit3, Loader2, MoreVertical, Plus, Tags, Trash2, X } from "lucide-react";
+import {
+  Archive,
+  Edit3,
+  Layers,
+  MoreVertical,
+  Plus,
+  Tags,
+  Trash2,
+  X,
+} from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/Button";
 import { CategoryIconPicker } from "../components/categories/CategoryIconPicker";
+import { QuickCreateEnvelopeModal } from "../components/envelopes/QuickCreateEnvelopeModal";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
-import { archiveCategory, createCategory, deleteCategory, getSystemCategories, getUserCategories, updateCategory } from "../lib/categories";
-import { categoryColors, categoryIconOptions, getCategoryIcon, isAllowedCategoryColor } from "../lib/categoryMeta";
-import type { Category, CategoryType } from "../types/domain";
+import {
+  archiveCategory,
+  createCategory,
+  deleteCategory,
+  getSystemCategories,
+  getUserCategories,
+  updateCategory,
+} from "../lib/categories";
+import {
+  deleteEnvelope,
+  getEnvelopes,
+  updateEnvelope,
+} from "../lib/envelopes";
+import {
+  categoryColors,
+  getCategoryIcon,
+  isAllowedCategoryColor,
+} from "../lib/categoryMeta";
+import type { Category, CategoryType, Envelope } from "../types/domain";
 
 type CategoryFormState = {
   name: string;
@@ -72,7 +98,7 @@ function CategoryPill({
             </Button>
             <Button onClick={onArchive} variant="secondary" className="min-h-8 px-2.5 py-1 text-xs text-slate-600">
               <Archive aria-hidden="true" size={13} />
-              Archive
+              Arsip
             </Button>
             <IconButton
               icon={Trash2}
@@ -102,7 +128,7 @@ function CategoryPill({
                       type="button"
                       onClick={onEdit}
                       className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                        focus ? "bg-kash-selected text-kash-emeraldDark" : "text-slate-700"
+                        focus ? "bg-slate-50 text-slate-900" : "text-slate-700"
                       }`}
                     >
                       <Edit3 size={14} />
@@ -116,7 +142,7 @@ function CategoryPill({
                       type="button"
                       onClick={onArchive}
                       className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                        focus ? "bg-slate-100 text-slate-900" : "text-slate-700"
+                        focus ? "bg-slate-50 text-slate-900" : "text-slate-700"
                       }`}
                     >
                       <Archive size={14} />
@@ -144,6 +170,122 @@ function CategoryPill({
           </div>
         </div>
       )}
+    </article>
+  );
+}
+
+function EnvelopePill({
+  envelope,
+  onArchive,
+  onDelete,
+  onEdit,
+}: {
+  envelope: Envelope;
+  onArchive?: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
+}) {
+  const Icon = getCategoryIcon(envelope.icon || "layers");
+
+  return (
+    <article className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-slate-300">
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <span
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
+          style={{ backgroundColor: envelope.color ?? "#4F7DF3" }}
+        >
+          <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-black text-slate-900" title={envelope.name}>
+            {envelope.name}
+          </span>
+          <span className="mt-0.5 block truncate text-xs font-medium text-slate-600">
+            {envelope.note || "Amplop Pengeluaran Khusus"}
+          </span>
+        </div>
+      </div>
+
+      <div className="shrink-0">
+        {/* Desktop buttons */}
+        <div className="hidden md:flex items-center gap-1.5">
+          <Button onClick={onEdit} variant="secondary" className="min-h-8 px-2.5 py-1 text-xs font-bold">
+            <Edit3 aria-hidden="true" size={13} />
+            Edit
+          </Button>
+          <Button onClick={onArchive} variant="secondary" className="min-h-8 px-2.5 py-1 text-xs text-slate-600 font-bold">
+            <Archive aria-hidden="true" size={13} />
+            Arsip
+          </Button>
+          <IconButton
+            icon={Trash2}
+            label="Hapus Amplop"
+            onClick={onDelete}
+            className="h-8 w-8 text-slate-500 hover:text-kash-expense hover:bg-red-50"
+          />
+        </div>
+
+        {/* Mobile 3-dot More Menu */}
+        <div className="md:hidden">
+          <Menu as="div" className="relative inline-block text-left">
+            <MenuButton
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-kash-emerald/50 hover:bg-kash-selected/40 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+              aria-label={`Menu aksi ${envelope.name}`}
+            >
+              <MoreVertical size={16} />
+            </MenuButton>
+
+            <MenuItems
+              transition
+              className="absolute right-0 z-30 mt-1 w-44 origin-top-right rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75"
+            >
+              <MenuItem>
+                {({ focus }) => (
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                      focus ? "bg-slate-50 text-slate-900" : "text-slate-700"
+                    }`}
+                  >
+                    <Edit3 size={14} />
+                    Edit Amplop
+                  </button>
+                )}
+              </MenuItem>
+              <MenuItem>
+                {({ focus }) => (
+                  <button
+                    type="button"
+                    onClick={onArchive}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                      focus ? "bg-slate-50 text-slate-900" : "text-slate-700"
+                    }`}
+                  >
+                    <Archive size={14} />
+                    Arsipkan
+                  </button>
+                )}
+              </MenuItem>
+              <div className="my-1 border-t border-slate-100" />
+              <MenuItem>
+                {({ focus }) => (
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                      focus ? "bg-red-50 text-kash-expense" : "text-kash-expense"
+                    }`}
+                  >
+                    <Trash2 size={14} />
+                    Hapus Permanen
+                  </button>
+                )}
+              </MenuItem>
+            </MenuItems>
+          </Menu>
+        </div>
+      </div>
     </article>
   );
 }
@@ -176,115 +318,151 @@ function CategoryFormModal({
     const name = form.name.trim();
 
     if (!name) {
-      setError("Category name is required.");
-      return;
-    }
-
-    if (!isAllowedCategoryColor(form.color)) {
-      setError("Choose a supported category color.");
+      setError("Nama kategori wajib diisi.");
       return;
     }
 
     setSaving(true);
     setError(null);
 
-    try {
-      const { error: saveError } = category
-        ? await updateCategory(category, {
-            name,
-            icon: form.icon,
-            color: form.color,
-          })
-        : await createCategory({
-            name,
-            categoryType: form.categoryType,
-            icon: form.icon,
-            color: form.color,
-          });
+    const color = isAllowedCategoryColor(form.color) ? form.color : categoryColors[0];
 
-      if (saveError) {
-        setError("Couldn't save this category. Please check the details and try again.");
-        setSaving(false);
-        return;
-      }
+    const result = isEditing && category
+      ? await updateCategory(category, {
+          color,
+          icon: form.icon,
+          name,
+        })
+      : await createCategory({
+          categoryType: form.categoryType,
+          color,
+          icon: form.icon,
+          name,
+        });
 
-      onSaved();
-    } catch {
-      setError(category?.is_system ? "System categories cannot be changed." : "Couldn't save this category. Please try again.");
-      setSaving(false);
+    setSaving(false);
+
+    if (result.error) {
+      setError(result.error.message);
+      return;
     }
+
+    onSaved();
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close category form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
+    <div
+      aria-labelledby="category-form-title"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
+      role="dialog"
+    >
+      <section className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">{isEditing ? "Edit Category" : "New Category"}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">
-              {isEditing ? "Category type is locked to protect future transaction meaning." : "Create a custom income or expense category."}
+            <h3 className="text-base font-extrabold text-slate-900" id="category-form-title">
+              {isEditing ? "Edit Kategori" : "Kategori Baru"}
+            </h3>
+            <p className="text-xs font-semibold text-slate-600">
+              Atur nama, jenis, warna, dan ikon kategori
             </p>
           </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
+          <IconButton icon={X} label="Tutup" onClick={onClose} />
+        </header>
 
-        {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
-            {error}
-          </div>
-        ) : null}
+        <form className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4" onSubmit={submit}>
+          {error ? (
+            <p className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
+              {error}
+            </p>
+          ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
-          <FormField id="category-name" label="Name" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Coffee" value={form.name} />
+          <FormField
+            disabled={saving}
+            id="category-name"
+            label="Nama Kategori *"
+            onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+            placeholder="e.g. Kopi & Nongkrong, Langganan Musik"
+            required
+            value={form.name}
+            autoFocus
+          />
+
           <SelectField
-            disabled={isEditing}
+            disabled={saving || isEditing}
             id="category-type"
-            label="Type"
-            onChange={(event) => setForm((current) => ({ ...current, categoryType: event.target.value as CategoryType }))}
+            label="Tipe Transaksi"
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                categoryType: event.target.value as CategoryType,
+              }))
+            }
             value={form.categoryType}
           >
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
+            <option value="expense">Pengeluaran (Expense)</option>
+            <option value="income">Pemasukan (Income)</option>
           </SelectField>
+
+          {/* Icon Picker Component */}
           <CategoryIconPicker
-            label="Icon"
             value={form.icon}
+            onChange={(iconKey) => setForm((prev) => ({ ...prev, icon: iconKey }))}
             accentColor={form.color}
-            onChange={(selectedIcon) => setForm((current) => ({ ...current, icon: selectedIcon }))}
+            label="Pilih Ikon Kategori"
           />
-          <fieldset className="relative z-10">
-            <legend className="text-sm font-bold text-slate-900">Color Accent</legend>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {categoryColors.map((color) => (
-                <button
-                  aria-label={`Use ${color}`}
-                  className={`h-9 w-9 rounded-full border-2 ${form.color === color ? "border-slate-900" : "border-white"} shadow-sm ring-1 ring-slate-200`}
-                  key={color}
-                  onClick={() => setForm((current) => ({ ...current, color }))}
-                  style={{ backgroundColor: color }}
-                  type="button"
-                />
-              ))}
+
+          {/* Color Picker */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-2">Pilih Warna Kategori</label>
+            <div className="flex flex-wrap gap-2.5">
+              {categoryColors.map((color) => {
+                const isSelected = form.color.toLowerCase() === color.toLowerCase();
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, color }))}
+                    className="flex h-8 w-8 items-center justify-center rounded-full transition hover:scale-110 focus:outline-none ring-offset-2 focus:ring-2 focus:ring-kash-emerald"
+                    style={{ backgroundColor: color }}
+                    aria-label={`Pilih warna ${color}`}
+                  >
+                    {isSelected && (
+                      <span className="block h-2.5 w-2.5 rounded-full bg-white shadow-xs" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          </fieldset>
-          <Button disabled={saving} type="submit">
-            {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            {isEditing ? "Save Changes" : "Create Category"}
-          </Button>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
+              Batal
+            </Button>
+            <Button disabled={saving || !form.name.trim()} type="submit">
+              {saving ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Buat Kategori"}
+            </Button>
+          </div>
         </form>
       </section>
     </div>
   );
 }
 
-function CategoryGroup({ categories, title }: { categories: Category[]; title: string }) {
+function CategoryGroup({
+  categories,
+  title,
+}: {
+  categories: Category[];
+  title: string;
+}) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
       <h3 className="text-base font-extrabold text-slate-900">{title}</h3>
-      <div className="mt-4 grid gap-2">
+      <div className="mt-3 grid gap-2">
         {categories.map((category) => (
-          <CategoryPill key={category.id} category={category} />
+          <CategoryPill category={category} key={category.id} />
         ))}
       </div>
     </section>
@@ -293,10 +471,10 @@ function CategoryGroup({ categories, title }: { categories: Category[]; title: s
 
 function CategorySkeleton() {
   return (
-    <div className="grid gap-3">
-      {[0, 1, 2].map((item) => (
-        <div className="h-16 rounded-lg border border-slate-200 bg-white p-3" key={item}>
-          <div className="h-3 w-1/3 rounded-full bg-slate-100" />
+    <div className="grid gap-4 md:grid-cols-2">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="h-24 animate-pulse rounded-xl border border-slate-200 bg-white p-4">
+          <div className="h-4 w-1/3 rounded-full bg-slate-100" />
           <div className="mt-3 h-3 w-2/3 rounded-full bg-slate-100" />
         </div>
       ))}
@@ -305,39 +483,57 @@ function CategorySkeleton() {
 }
 
 export function CategoriesPage() {
+  const [activeTab, setActiveTab] = useState<"categories" | "envelopes">("categories");
+
+  // Category state
   const [systemCategories, setSystemCategories] = useState<Category[]>([]);
   const [customCategories, setCustomCategories] = useState<Category[]>([]);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Category | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [archiving, setArchiving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [archivingCategory, setArchivingCategory] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState(false);
+
+  // Envelope state
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
+  const [editingEnvelope, setEditingEnvelope] = useState<Envelope | null>(null);
+  const [showEnvelopeModal, setShowEnvelopeModal] = useState(false);
+  const [archiveEnvelopeTarget, setArchiveEnvelopeTarget] = useState<Envelope | null>(null);
+  const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<Envelope | null>(null);
+  const [archivingEnvelope, setArchivingEnvelope] = useState(false);
+  const [deletingEnvelope, setDeletingEnvelope] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadCategories = async () => {
+  const loadData = async () => {
     setLoading(true);
     setError(null);
 
-    const [systemResult, userResult] = await Promise.all([getSystemCategories(), getUserCategories()]);
+    const [systemResult, userResult, envResult] = await Promise.all([
+      getSystemCategories(),
+      getUserCategories(),
+      getEnvelopes(false),
+    ]);
 
     if (systemResult.error || userResult.error || !systemResult.data || !userResult.data) {
-      setError("Couldn't load categories. Please try again.");
+      setError("Gagal memuat kategori. Silakan coba lagi.");
       setLoading(false);
       return;
     }
 
     setSystemCategories(systemResult.data);
     setCustomCategories(userResult.data.filter((category) => !category.is_archived));
+    setEnvelopes((envResult.data ?? []).filter((e) => !e.is_archived));
     setLoading(false);
   };
 
   useEffect(() => {
-    void loadCategories();
+    void loadData();
   }, []);
 
-  const grouped = useMemo(() => {
+  const groupedCategories = useMemo(() => {
     const activeSystem = systemCategories.filter((category) => !category.is_archived);
     return {
       customExpense: customCategories.filter((category) => category.category_type === "expense"),
@@ -347,82 +543,173 @@ export function CategoriesPage() {
     };
   }, [customCategories, systemCategories]);
 
-  const handleArchive = async (category: Category) => {
-    setArchiving(true);
+  // Handle Category Archive & Delete
+  const handleArchiveCategory = async (category: Category) => {
+    setArchivingCategory(true);
     try {
       const { error: archiveError } = await archiveCategory(category);
-
       if (archiveError) {
-        setError("Couldn't archive this category. Please try again.");
-        setArchiving(false);
+        setError("Gagal mengarsipkan kategori.");
+        setArchivingCategory(false);
         setArchiveTarget(null);
         return;
       }
-
       setArchiveTarget(null);
-      await loadCategories();
+      await loadData();
     } catch {
-      setError("System categories cannot be archived.");
+      setError("Kategori sistem tidak dapat diarsipkan.");
     } finally {
-      setArchiving(false);
+      setArchivingCategory(false);
     }
   };
 
-  const handleDelete = async (category: Category) => {
-    setDeleting(true);
+  const handleDeleteCategory = async (category: Category) => {
+    setDeletingCategory(true);
     setError(null);
     try {
       await deleteCategory(category);
       setDeleteTarget(null);
-      await loadCategories();
+      await loadData();
     } catch (err: any) {
       setError(err.message || "Gagal menghapus kategori.");
       setDeleteTarget(null);
     } finally {
-      setDeleting(false);
+      setDeletingCategory(false);
+    }
+  };
+
+  // Handle Envelope Archive & Delete
+  const handleArchiveEnvelope = async (envelope: Envelope) => {
+    setArchivingEnvelope(true);
+    try {
+      const { error: envError } = await updateEnvelope(envelope.id, {
+        name: envelope.name,
+        color: envelope.color,
+        icon: envelope.icon,
+        note: envelope.note,
+        isArchived: true,
+      });
+      if (envError) {
+        setError("Gagal mengarsipkan amplop.");
+        setArchivingEnvelope(false);
+        setArchiveEnvelopeTarget(null);
+        return;
+      }
+      setArchiveEnvelopeTarget(null);
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || "Gagal mengarsipkan amplop.");
+    } finally {
+      setArchivingEnvelope(false);
+    }
+  };
+
+  const handleDeleteEnvelope = async (envelope: Envelope) => {
+    setDeletingEnvelope(true);
+    setError(null);
+    try {
+      const { success, error: delError } = await deleteEnvelope(envelope.id);
+      if (delError || !success) {
+        setError(delError?.message || "Gagal menghapus amplop.");
+        setDeleteEnvelopeTarget(null);
+        return;
+      }
+      setDeleteEnvelopeTarget(null);
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || "Gagal menghapus amplop.");
+      setDeleteEnvelopeTarget(null);
+    } finally {
+      setDeletingEnvelope(false);
     }
   };
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-4 md:px-6 md:py-6 pb-28 md:pb-8">
       <PageHeader
-        eyebrow="Settings"
-        icon={Tags}
-        title="Categories"
-        description="Manage income and expense labels."
+        eyebrow="Kelola Anggaran"
+        icon={activeTab === "categories" ? Tags : Layers}
+        title={activeTab === "categories" ? "Kategori Transaksi" : "Amplop Pengeluaran"}
+        description={
+          activeTab === "categories"
+            ? "Kelola kategori pengeluaran dan pemasukan dengan ikon dan warna kustom."
+            : "Kelola amplop alokasi tujuan khusus (seperti Date, Liburan, Proyek Rumah)."
+        }
         actions={
-          <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
-            <Plus aria-hidden="true" size={18} />
-            New Category
-          </Button>
+          activeTab === "categories" ? (
+            <Button onClick={() => setShowCategoryForm(true)} className="w-full sm:w-auto">
+              <Plus aria-hidden="true" size={18} />
+              Kategori Baru
+            </Button>
+          ) : (
+            <Button
+              onClick={() => {
+                setEditingEnvelope(null);
+                setShowEnvelopeModal(true);
+              }}
+              className="w-full sm:w-auto"
+            >
+              <Plus aria-hidden="true" size={18} />
+              Amplop Baru
+            </Button>
+          )
         }
       />
 
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("categories")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
+            activeTab === "categories"
+              ? "bg-kash-emerald text-white shadow-xs"
+              : "bg-white text-slate-600 border border-slate-200 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          }`}
+        >
+          <Tags size={15} />
+          Kategori Transaksi
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("envelopes")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
+            activeTab === "envelopes"
+              ? "bg-kash-emerald text-white shadow-xs"
+              : "bg-white text-slate-600 border border-slate-200 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          }`}
+        >
+          <Layers size={15} />
+          Amplop Pengeluaran ({envelopes.length})
+        </button>
+      </div>
+
       {error ? (
         <section className="rounded-xl border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h3 className="text-base font-extrabold text-slate-900">Something went wrong.</h3>
+          <h3 className="text-base font-extrabold text-slate-900">Terjadi kesalahan</h3>
           <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
-          <Button className="mt-4" onClick={() => void loadCategories()}>
-            Retry
+          <Button className="mt-4" onClick={() => void loadData()}>
+            Coba Lagi
           </Button>
         </section>
       ) : null}
 
       {loading ? <CategorySkeleton /> : null}
 
-      {!loading ? (
+      {!loading && activeTab === "categories" ? (
         <div className="grid gap-5 lg:grid-cols-2">
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
             <div className="flex items-center gap-2">
               <Tags aria-hidden="true" className="text-slate-600" size={18} />
-              <h3 className="text-base font-extrabold text-slate-900">Custom Categories</h3>
+              <h3 className="text-base font-extrabold text-slate-900">Kategori Kustom Saya</h3>
             </div>
             <div className="mt-4 grid gap-5">
               <div>
-                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">Expense</h4>
-                {grouped.customExpense.length > 0 ? (
+                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">Pengeluaran</h4>
+                {groupedCategories.customExpense.length > 0 ? (
                   <div className="grid gap-2">
-                    {grouped.customExpense.map((category) => (
+                    {groupedCategories.customExpense.map((category) => (
                       <CategoryPill
                         category={category}
                         key={category.id}
@@ -430,22 +717,22 @@ export function CategoriesPage() {
                         onDelete={() => setDeleteTarget(category)}
                         onEdit={() => {
                           setEditingCategory(category);
-                          setShowForm(true);
+                          setShowCategoryForm(true);
                         }}
                       />
                     ))}
                   </div>
                 ) : (
                   <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-                    No custom expense categories yet.
+                    Belum ada kategori pengeluaran kustom.
                   </p>
                 )}
               </div>
               <div>
-                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">Income</h4>
-                {grouped.customIncome.length > 0 ? (
+                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">Pemasukan</h4>
+                {groupedCategories.customIncome.length > 0 ? (
                   <div className="grid gap-2">
-                    {grouped.customIncome.map((category) => (
+                    {groupedCategories.customIncome.map((category) => (
                       <CategoryPill
                         category={category}
                         key={category.id}
@@ -453,14 +740,14 @@ export function CategoriesPage() {
                         onDelete={() => setDeleteTarget(category)}
                         onEdit={() => {
                           setEditingCategory(category);
-                          setShowForm(true);
+                          setShowCategoryForm(true);
                         }}
                       />
                     ))}
                   </div>
                 ) : (
                   <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-                    No custom income categories yet.
+                    Belum ada kategori pemasukan kustom.
                   </p>
                 )}
               </div>
@@ -468,51 +755,159 @@ export function CategoriesPage() {
           </section>
 
           <div className="grid gap-5">
-            <CategoryGroup categories={grouped.systemExpense} title="System Expense Categories" />
-            <CategoryGroup categories={grouped.systemIncome} title="System Income Categories" />
+            <CategoryGroup categories={groupedCategories.systemExpense} title="Kategori Pengeluaran Standar (Sistem)" />
+            <CategoryGroup categories={groupedCategories.systemIncome} title="Kategori Pemasukan Standar (Sistem)" />
           </div>
         </div>
       ) : null}
 
-      {showForm ? (
+      {!loading && activeTab === "envelopes" ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            <div>
+              <h3 className="text-base font-black text-slate-900">Daftar Amplop Saya</h3>
+              <p className="text-xs font-semibold text-slate-600">
+                Amplop digunakan untuk menandai transaksi dan membuat target budget tujuan spesifik
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                setEditingEnvelope(null);
+                setShowEnvelopeModal(true);
+              }}
+              className="gap-1.5 min-h-9 px-3 text-xs"
+            >
+              <Plus size={15} />
+              Tambah Amplop
+            </Button>
+          </div>
+
+          {envelopes.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {envelopes.map((env) => (
+                <EnvelopePill
+                  key={env.id}
+                  envelope={env}
+                  onEdit={() => {
+                    setEditingEnvelope(env);
+                    setShowEnvelopeModal(true);
+                  }}
+                  onArchive={() => setArchiveEnvelopeTarget(env)}
+                  onDelete={() => setDeleteEnvelopeTarget(env)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
+              <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark mb-3">
+                <Layers size={24} />
+              </span>
+              <h4 className="text-sm font-black text-slate-900">Belum Ada Amplop</h4>
+              <p className="mt-1 text-xs font-semibold text-slate-600 max-w-sm mx-auto">
+                Buat amplop seperti "Date", "Liburan Akhir Tahun", atau "Servis Motor" untuk mengelompokkan anggaran dan pengeluaran Anda.
+              </p>
+              <Button
+                onClick={() => {
+                  setEditingEnvelope(null);
+                  setShowEnvelopeModal(true);
+                }}
+                className="mt-4 gap-1.5"
+              >
+                <Plus size={16} />
+                Buat Amplop Pertama
+              </Button>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {/* Category Form Modal */}
+      {showCategoryForm ? (
         <CategoryFormModal
           category={editingCategory}
           onClose={() => {
-            setShowForm(false);
+            setShowCategoryForm(false);
             setEditingCategory(null);
           }}
           onSaved={() => {
-            setShowForm(false);
+            setShowCategoryForm(false);
             setEditingCategory(null);
-            void loadCategories();
+            void loadData();
           }}
         />
       ) : null}
 
+      {/* Envelope Form Modal */}
+      <QuickCreateEnvelopeModal
+        isOpen={showEnvelopeModal}
+        envelopeToEdit={editingEnvelope}
+        onClose={() => {
+          setShowEnvelopeModal(false);
+          setEditingEnvelope(null);
+        }}
+        onCreated={() => {
+          setShowEnvelopeModal(false);
+          setEditingEnvelope(null);
+          void loadData();
+        }}
+      />
+
+      {/* Category Archive Dialog */}
       {archiveTarget ? (
         <ConfirmationDialog
-          confirmLabel="Archive Category"
-          description="This category will disappear from active selectors while preserving future history."
+          confirmLabel="Arsipkan Kategori"
+          description="Kategori ini akan disembunyikan dari pilihan transaksi aktif tetapi riwayat transaksi masa lalu tetap tersimpan."
           icon={Archive}
-          isLoading={archiving}
+          isLoading={archivingCategory}
           itemLabel={archiveTarget.name}
           onCancel={() => setArchiveTarget(null)}
-          onConfirm={() => void handleArchive(archiveTarget)}
-          title="Archive this category?"
+          onConfirm={() => void handleArchiveCategory(archiveTarget)}
+          title="Arsipkan kategori ini?"
           tone="warning"
         />
       ) : null}
 
+      {/* Category Delete Dialog */}
       {deleteTarget ? (
         <ConfirmationDialog
-          confirmLabel={deleting ? "Menghapus..." : "Hapus Permanen"}
+          confirmLabel={deletingCategory ? "Menghapus..." : "Hapus Permanen"}
           description="Apakah Anda yakin ingin menghapus kategori ini secara permanen? Kategori yang sudah memiliki riwayat transaksi tidak dapat dihapus dan disarankan untuk diarsipkan."
           icon={Trash2}
-          isLoading={deleting}
+          isLoading={deletingCategory}
           itemLabel={deleteTarget.name}
           onCancel={() => setDeleteTarget(null)}
-          onConfirm={() => void handleDelete(deleteTarget)}
+          onConfirm={() => void handleDeleteCategory(deleteTarget)}
           title="Hapus Kategori Permanen?"
+          tone="danger"
+        />
+      ) : null}
+
+      {/* Envelope Archive Dialog */}
+      {archiveEnvelopeTarget ? (
+        <ConfirmationDialog
+          confirmLabel="Arsipkan Amplop"
+          description="Amplop ini akan disembunyikan dari formulir aktif tetapi riwayat transaksi tetap terjaga."
+          icon={Archive}
+          isLoading={archivingEnvelope}
+          itemLabel={archiveEnvelopeTarget.name}
+          onCancel={() => setArchiveEnvelopeTarget(null)}
+          onConfirm={() => void handleArchiveEnvelope(archiveEnvelopeTarget)}
+          title="Arsipkan amplop ini?"
+          tone="warning"
+        />
+      ) : null}
+
+      {/* Envelope Delete Dialog */}
+      {deleteEnvelopeTarget ? (
+        <ConfirmationDialog
+          confirmLabel={deletingEnvelope ? "Menghapus..." : "Hapus Amplop"}
+          description="Apakah Anda yakin ingin menghapus amplop ini secara permanen?"
+          icon={Trash2}
+          isLoading={deletingEnvelope}
+          itemLabel={deleteEnvelopeTarget.name}
+          onCancel={() => setDeleteEnvelopeTarget(null)}
+          onConfirm={() => void handleDeleteEnvelope(deleteEnvelopeTarget)}
+          title="Hapus Amplop Permanen?"
           tone="danger"
         />
       ) : null}

@@ -1,51 +1,55 @@
-import { Check, Layers, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { createEnvelope } from "../../lib/envelopes";
+import { createEnvelope, updateEnvelope } from "../../lib/envelopes";
+import { categoryColors, getCategoryIcon } from "../../lib/categoryMeta";
 import type { Envelope } from "../../types/domain";
+import { CategoryIconPicker } from "../categories/CategoryIconPicker";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 
 type QuickCreateEnvelopeModalProps = {
   isOpen: boolean;
+  envelopeToEdit?: Envelope | null;
   initialName?: string;
   onClose: () => void;
   onCreated: (envelope: Envelope) => void;
 };
 
-const ENVELOPE_COLOR_OPTIONS = [
-  "#4F7DF3", // Primary Envelope Blue
-  "#10B981", // Emerald
-  "#8B5CF6", // Purple
-  "#F5B82E", // Gold/Amber
-  "#EC4899", // Pink
-  "#06B6D4", // Cyan
-  "#F28C45", // Orange
-  "#64748B", // Slate
-];
-
 export function QuickCreateEnvelopeModal({
   isOpen,
+  envelopeToEdit,
   initialName = "",
   onClose,
   onCreated,
 }: QuickCreateEnvelopeModalProps) {
-  const [name, setName] = useState(initialName);
-  const [color, setColor] = useState("#4F7DF3");
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState("layers");
+  const [color, setColor] = useState<string>("#4F7DF3");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isEditing = Boolean(envelopeToEdit);
+
   useEffect(() => {
     if (isOpen) {
-      setName(initialName);
-      setColor("#4F7DF3");
-      setNote("");
+      if (envelopeToEdit) {
+        setName(envelopeToEdit.name);
+        setIcon(envelopeToEdit.icon || "layers");
+        setColor(envelopeToEdit.color || "#4F7DF3");
+        setNote(envelopeToEdit.note || "");
+      } else {
+        setName(initialName);
+        setIcon("layers");
+        setColor("#4F7DF3");
+        setNote("");
+      }
       setError(null);
     }
-  }, [isOpen, initialName]);
+  }, [isOpen, envelopeToEdit, initialName]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -77,23 +81,41 @@ export function QuickCreateEnvelopeModal({
     setSaving(true);
     setError(null);
 
-    const { data: newEnvelope, error: createError } = await createEnvelope({
-      name: trimmed,
-      color,
-      icon: "layers",
-      note: note.trim() || null,
-    });
+    let resultEnvelope: Envelope | null = null;
+    let err: Error | null = null;
+
+    if (isEditing && envelopeToEdit) {
+      const res = await updateEnvelope(envelopeToEdit.id, {
+        name: trimmed,
+        color,
+        icon,
+        note: note.trim() || null,
+      });
+      resultEnvelope = res.data;
+      err = res.error;
+    } else {
+      const res = await createEnvelope({
+        name: trimmed,
+        color,
+        icon,
+        note: note.trim() || null,
+      });
+      resultEnvelope = res.data;
+      err = res.error;
+    }
 
     setSaving(false);
 
-    if (createError || !newEnvelope) {
-      setError(createError?.message || "Gagal membuat amplop baru.");
+    if (err || !resultEnvelope) {
+      setError(err?.message || `Gagal ${isEditing ? "memperbarui" : "membuat"} amplop.`);
       return;
     }
 
-    onCreated(newEnvelope);
+    onCreated(resultEnvelope);
     onClose();
   };
+
+  const IconComp = getCategoryIcon(icon);
 
   const modalContent = (
     <div
@@ -103,22 +125,24 @@ export function QuickCreateEnvelopeModal({
       }}
     >
       <div
-        className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+        className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-white shadow-xs"
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-xs"
               style={{ backgroundColor: color }}
             >
-              <Layers size={16} />
+              <IconComp size={20} />
             </span>
             <div>
-              <h2 className="text-base font-extrabold text-slate-900">Tambah Amplop Baru</h2>
+              <h2 className="text-base font-extrabold text-slate-900">
+                {isEditing ? "Edit Amplop Pengeluaran" : "Tambah Amplop Baru"}
+              </h2>
               <p className="text-[11px] font-semibold text-slate-600">
-                Buat amplop tujuan belanja khusus
+                {isEditing ? "Ubah nama, ikon, atau warna amplop" : "Buat amplop tujuan belanja khusus"}
               </p>
             </div>
           </div>
@@ -126,7 +150,7 @@ export function QuickCreateEnvelopeModal({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="flex flex-col p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4">
           {error && (
             <div className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-2.5 text-xs font-bold text-kash-expense">
               {error}
@@ -143,20 +167,28 @@ export function QuickCreateEnvelopeModal({
             placeholder="Contoh: Dana Liburan, Belanja Mingguan..."
           />
 
-          {/* Color Picker */}
+          {/* Icon Picker Component */}
+          <CategoryIconPicker
+            value={icon}
+            onChange={setIcon}
+            accentColor={color}
+            label="Pilih Ikon Amplop"
+          />
+
+          {/* Color Palette Picker */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-2">Pilih Warna Amplop</label>
-            <div className="flex flex-wrap gap-2">
-              {ENVELOPE_COLOR_OPTIONS.map((c) => (
+            <div className="flex flex-wrap gap-2.5">
+              {categoryColors.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full transition hover:scale-110 focus:outline-none"
+                  className="flex h-8 w-8 items-center justify-center rounded-full transition hover:scale-110 focus:outline-none ring-offset-2 focus:ring-2 focus:ring-kash-emerald"
                   style={{ backgroundColor: c }}
                   aria-label={`Pilih warna ${c}`}
                 >
-                  {color === c && <Check size={14} className="text-white drop-shadow-xs" />}
+                  {color === c && <Check size={16} className="text-white drop-shadow-xs" strokeWidth={3} />}
                 </button>
               ))}
             </div>
@@ -171,12 +203,12 @@ export function QuickCreateEnvelopeModal({
           />
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <Button variant="secondary" type="button" onClick={onClose} disabled={saving}>
               Batal
             </Button>
             <Button type="submit" disabled={saving || !name.trim()}>
-              {saving ? "Menyimpan..." : "Simpan Amplop"}
+              {saving ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Simpan Amplop"}
             </Button>
           </div>
         </form>

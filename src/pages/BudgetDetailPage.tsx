@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit2,
-  Layers,
   ReceiptText,
   Scale,
   Tag,
@@ -24,6 +23,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents } from "../lib/appEvents";
 import { archiveBudget, deleteBudget, getBudgetDetail, getBudgetMatchingTransactions } from "../lib/budgets";
+import { getCategoryIcon } from "../lib/categoryMeta";
 import { formatCurrency } from "../lib/money";
 import type { BudgetWithProgress, Transaction } from "../types/domain";
 
@@ -195,20 +195,18 @@ export function BudgetDetailPage() {
     ? "bg-amber-500"
     : "bg-kash-emerald";
 
-  const targetIcon =
-    targetType === "envelope" ? (
-      <Layers size={22} />
-    ) : targetType === "debt" ? (
-      <ReceiptText size={22} />
-    ) : targetType === "goal" ? (
-      <Tag size={22} />
-    ) : (
-      <Tag size={22} />
-    );
+  const IconComp =
+    targetType === "envelope"
+      ? getCategoryIcon(budget.envelope_icon || "layers")
+      : targetType === "debt"
+      ? ReceiptText
+      : targetType === "goal"
+      ? getCategoryIcon(budget.goal_icon || "piggy-bank")
+      : getCategoryIcon(budget.category_icon || "tag");
 
   const targetColor =
     targetType === "envelope"
-      ? "#4F7DF3"
+      ? budget.envelope_color || "#4F7DF3"
       : targetType === "debt"
       ? "#F28C45"
       : targetType === "goal"
@@ -298,7 +296,7 @@ export function BudgetDetailPage() {
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-xs font-black text-base"
               style={{ backgroundColor: targetColor }}
             >
-              {targetIcon}
+              <IconComp size={22} />
             </span>
 
             <div>
