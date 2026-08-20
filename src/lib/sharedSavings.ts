@@ -275,8 +275,7 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
     .from("shared_savings_invites")
     .select(`
       *,
-      shared_savings:shared_savings(id, name, icon, color, target_amount, deadline, owner_user_id),
-      inviter:profiles!inviter_user_id(full_name, email)
+      shared_savings:shared_savings(id, name, icon, color, target_amount, deadline, owner_user_id)
     `)
     .eq("status", "pending")
     .gt("expires_at", new Date().toISOString())
@@ -286,25 +285,63 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
-  const ownerUserIds = Array.from(
-    new Set(data.map((inv: any) => inv.shared_savings?.owner_user_id).filter(Boolean))
+  // Collect all distinct user IDs that need profile enrichment (inviters and space owners)
+  const userIdsToFetch = Array.from(
+    new Set(
+      data
+        .flatMap((inv: any) => [
+          inv.inviter_user_id,
+          inv.shared_savings?.owner_user_id,
+        ])
+        .filter(Boolean)
+    )
   );
 
-  let ownerMap = new Map<string, string>();
-  if (ownerUserIds.length > 0) {
-    const { data: ownerProfiles } = await supabase
+  let profileMap = new Map<
+    string,
+    { full_name: string | null; email: string | null; avatar_url: string | null }
+  >();
+
+  if (userIdsToFetch.length > 0) {
+    const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, full_name, email")
-      .in("id", ownerUserIds);
-    ownerMap = new Map((ownerProfiles ?? []).map((p) => [p.id, p.full_name || p.email]));
+      .select("id, full_name, email, avatar_url")
+      .in("id", userIdsToFetch);
+
+    profileMap = new Map(
+      (profiles ?? []).map((p) => [
+        p.id,
+        {
+          full_name: p.full_name,
+          email: p.email,
+          avatar_url: p.avatar_url,
+        },
+      ])
+    );
   }
 
-  return (data ?? []).map((inv: any) => ({
-    ...inv,
-    inviter_name: inv.inviter?.full_name || inv.inviter?.email || "User",
-    inviter_email: inv.inviter?.email || null,
-    owner_name: ownerMap.get(inv.shared_savings?.owner_user_id) || "User",
-  }));
+  return (data ?? []).map((inv: any) => {
+    const inviterProfile = profileMap.get(inv.inviter_user_id);
+    const ownerProfile = profileMap.get(inv.shared_savings?.owner_user_id);
+
+    const inviterName =
+      inviterProfile?.full_name?.trim() ||
+      inviterProfile?.email ||
+      "User";
+
+    const ownerName =
+      ownerProfile?.full_name?.trim() ||
+      ownerProfile?.email ||
+      "User";
+
+    return {
+      ...inv,
+      inviter_name: inviterName,
+      inviter_email: inviterProfile?.email || null,
+      inviter_avatar_url: inviterProfile?.avatar_url || null,
+      owner_name: ownerName,
+    };
+  });
 }
 
 /**

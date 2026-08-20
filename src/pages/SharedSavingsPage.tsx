@@ -33,9 +33,11 @@ import {
 import { formatCurrency, toNumber } from "../lib/money";
 import type { SharedSavingsInvite, SharedSavingsSpaceSummary } from "../types/domain";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 
 export function SharedSavingsPage() {
   const { profile } = useAuth();
+  const { t, formatDate, formatCurrency: formatMoney } = useI18n();
   const navigate = useNavigate();
 
   const [spaces, setSpaces] = useState<SharedSavingsSpaceSummary[]>([]);
@@ -96,9 +98,9 @@ export function SharedSavingsPage() {
   }, [spaces]);
 
   const tabOptions = useMemo(() => [
-    { label: "Tabungan Bersama", value: "spaces", count: spaces.length },
-    { label: "Undangan Masuk", value: "invites", count: invites.length },
-  ], [spaces.length, invites.length]);
+    { label: t("shared.poolBalance"), value: "spaces", count: spaces.length },
+    { label: t("shared.invitations"), value: "invites", count: invites.length },
+  ], [spaces.length, invites.length, t]);
 
   return (
     <div className="w-full min-w-0 space-y-5">
@@ -145,110 +147,155 @@ export function SharedSavingsPage() {
       {/* Tab 1: Spaces List */}
       {!loading && activeTab === "spaces" && (
         <>
+          {/* Summary Cards */}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4.5 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Total Saldo Gabungan
+              </span>
+              <p className="mt-1.5 text-xl font-extrabold text-slate-900">
+                {formatMoney(totals.totalPool, currency)}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                Dari {spaces.length} ruang tabungan bersama
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4.5 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Hak Milik Saya (Net Share)
+              </span>
+              <p className="mt-1.5 text-xl font-extrabold text-kash-emeraldDark">
+                {formatMoney(totals.totalMyShare, currency)}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                Akumulasi bagian dana milik Anda
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4.5 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Menunggu Persetujuan
+              </span>
+              <p className="mt-1.5 text-xl font-extrabold text-slate-900">
+                {totals.totalPendingRequests} Permintaan
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                Setoran atau penarikan yang butuh respon
+              </p>
+            </div>
+          </div>
+
+          {/* Spaces Grid */}
           {spaces.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-xs">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark">
-                <UsersRound size={28} />
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-xs">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-kash-emeraldDark">
+                <UsersRound size={32} />
               </div>
-              <h3 className="mt-4 text-base font-extrabold text-slate-900">Belum Ada Tabungan Bersama</h3>
-              <p className="mx-auto mt-1 max-w-md text-xs font-semibold text-slate-600">
-                Buat ruang tabungan bersama pertama Anda untuk mulai menabung bersama pasangan, keluarga, atau rekan
-                secara transparan.
+              <h3 className="mt-4 text-lg font-extrabold text-slate-900">
+                {t("shared.emptyTitle")}
+              </h3>
+              <p className="mx-auto mt-1.5 max-w-sm text-xs font-semibold text-slate-600">
+                {t("shared.emptyDesc")}
               </p>
               <Button onClick={() => setShowCreateModal(true)} className="mt-5">
-                <Plus size={16} />
-                Buat Tabungan Baru
+                <Plus aria-hidden="true" size={16} />
+                Buat Tabungan Pertama
               </Button>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {spaces.map((s) => {
-                const space = s.space;
+              {spaces.map((item) => {
+                const { space, myShare, isOwner, isAccountHolder, isApprover, pendingRequestsCount, accountHolderName } = item;
                 const target = space.target_amount ? toNumber(space.target_amount) : null;
-                const balance = toNumber(space.current_balance);
-                const myShare = toNumber(s.myShare);
-                const progressPct = target && target > 0 ? Math.min(100, Math.round((balance / target) * 100)) : null;
+                const current = toNumber(space.current_balance);
+                const progressPct = target && target > 0 ? Math.min(100, Math.round((current / target) * 100)) : null;
 
                 return (
                   <Link
                     key={space.shared_savings_id}
                     to={`/shared-savings/${space.shared_savings_id}`}
-                    className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                    className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-kash-emerald/40 hover:shadow-md"
                   >
-                    <div>
-                      {/* Top Badges & Header */}
+                    <div className="space-y-4">
+                      {/* Card Header */}
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="flex items-center gap-3.5 min-w-0">
                           <span
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
+                            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
                             style={{ backgroundColor: space.color || "#10B981" }}
                           >
-                            <Users size={20} strokeWidth={2.2} />
+                            <Users size={22} strokeWidth={2.2} />
                           </span>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-base font-extrabold text-slate-900 group-hover:text-kash-emeraldDark truncate">
+                          <div className="min-w-0">
+                            <h4 className="text-base font-extrabold text-slate-900 group-hover:text-kash-emeraldDark transition truncate">
                               {space.name}
-                            </h3>
-                            <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mt-0.5">
-                              <Landmark size={13} className="text-slate-400" />
-                              Holder: <span className="font-bold text-slate-700">{s.accountHolderName}</span>
-                            </p>
+                            </h4>
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
+                              <span>{space.active_members_count} Anggota</span>
+                              <span>•</span>
+                              <span>Holder: {accountHolderName}</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Role Badge */}
+                        {/* Badges */}
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          {s.isOwner ? (
-                            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-800">
+                          {isOwner && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
                               <Crown size={11} /> Owner
                             </span>
-                          ) : s.isApprover ? (
-                            <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2.5 py-0.5 text-[11px] font-black text-kash-emeraldDark">
+                          )}
+                          {!isOwner && isAccountHolder && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                              <Landmark size={11} /> Pemegang Rekening
+                            </span>
+                          )}
+                          {!isOwner && !isAccountHolder && isApprover && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-kash-emeraldDark">
                               <ShieldCheck size={11} /> Approver
                             </span>
-                          ) : (
-                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
-                              Member
-                            </span>
                           )}
-
-                          {s.pendingRequestsCount > 0 && (
-                            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black text-white">
-                              {s.pendingRequestsCount} pending
+                          {pendingRequestsCount > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-kash-expense animate-pulse">
+                              <Clock size={11} /> {pendingRequestsCount} Butuh Respon
                             </span>
                           )}
                         </div>
                       </div>
 
-                      {/* Balances Breakdown */}
-                      <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3">
+                      {/* Balances */}
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
                         <div>
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Porsi Saya</p>
-                          <p className="text-sm font-black text-kash-emeraldDark">
-                            {formatCurrency(myShare, currency)}
+                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Total Saldo
+                          </span>
+                          <p className="text-base font-extrabold text-slate-900">
+                            {formatMoney(current, currency)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Saldo</p>
-                          <p className="text-sm font-black text-slate-900">
-                            {formatCurrency(balance, currency)}
+                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Porsi Hak Anda
+                          </span>
+                          <p className="text-base font-extrabold text-kash-emeraldDark">
+                            {formatMoney(myShare, currency)}
                           </p>
                         </div>
                       </div>
 
-                      {/* Optional Target Progress */}
+                      {/* Progress Bar (if target exists) */}
                       {target !== null && (
-                        <div className="mt-3.5 space-y-1.5">
-                          <div className="flex items-center justify-between text-xs font-bold text-slate-600">
-                            <span className="flex items-center gap-1 text-[11px]">
-                              <Target size={13} className="text-slate-400" />
-                              Target: {formatCurrency(target, currency)}
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="text-slate-600">
+                              Target: {formatMoney(target, currency)}
                             </span>
-                            <span className="font-extrabold text-slate-900">{progressPct}%</span>
+                            <span className="text-kash-emeraldDark">{progressPct}%</span>
                           </div>
                           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                             <div
-                              className="h-full rounded-full transition-all duration-300"
+                              className="h-full rounded-full transition-all duration-500"
                               style={{
                                 width: `${progressPct}%`,
                                 backgroundColor: space.color || "#10B981",
@@ -259,23 +306,8 @@ export function SharedSavingsPage() {
                       )}
                     </div>
 
-                    {/* Bottom Metadata & Arrow */}
-                    <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-semibold text-slate-600">
-                      <span className="flex items-center gap-1.5">
-                        <Users size={13} className="text-slate-400" />
-                        {space.active_members_count} Anggota
-                      </span>
-
-                      {space.deadline && (
-                        <span className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-                          <Calendar size={13} />
-                          {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(space.deadline))}
-                        </span>
-                      )}
-
-                      <span className="flex items-center text-xs font-bold text-kash-emerald group-hover:translate-x-1 transition">
-                        Detail <ChevronRight size={15} />
-                      </span>
+                    <div className="mt-4 flex items-center justify-end text-xs font-bold text-kash-emerald group-hover:translate-x-0.5 transition">
+                      Detail Tabungan <ChevronRight size={15} />
                     </div>
                   </Link>
                 );
@@ -293,10 +325,9 @@ export function SharedSavingsPage() {
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                 <Inbox size={28} />
               </div>
-              <h3 className="mt-4 text-base font-extrabold text-slate-900">Tidak Ada Undangan Tertunda</h3>
+              <h3 className="mt-4 text-base font-extrabold text-slate-900">{t("shared.noPendingInvites")}</h3>
               <p className="mx-auto mt-1 max-w-md text-xs font-semibold text-slate-600">
-                Saat seseorang mengundang Anda ke tabungan bersama melalui email akun KASH Anda, undangan akan muncul di
-                sini.
+                {t("shared.noPendingInvitesDesc")}
               </p>
             </div>
           ) : (
@@ -304,6 +335,7 @@ export function SharedSavingsPage() {
               {invites.map((inv) => {
                 const isResponding = respondingInviteId === inv.id;
                 const target = inv.shared_savings?.target_amount ? toNumber(inv.shared_savings.target_amount) : null;
+                const inviterDisplayName = inv.inviter_name || "User";
 
                 return (
                   <div
@@ -324,13 +356,13 @@ export function SharedSavingsPage() {
 
                         <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-600">
                           <p>
-                            Pemilik (Owner):{" "}
-                            <span className="font-extrabold text-slate-900">{inv.owner_name}</span>
+                            <span className="font-bold text-slate-700">
+                              {t("shared.invitedBy", { name: inviterDisplayName })}
+                            </span>
                           </p>
-                          {inv.inviter_name !== inv.owner_name && (
-                            <p>
-                              Diundang oleh:{" "}
-                              <span className="font-bold text-slate-800">{inv.inviter_name}</span>
+                          {inv.owner_name && inv.inviter_name !== inv.owner_name && (
+                            <p className="text-slate-500">
+                              ({t("shared.owner")}: <span className="font-semibold text-slate-700">{inv.owner_name}</span>)
                             </p>
                           )}
                         </div>
@@ -338,22 +370,16 @@ export function SharedSavingsPage() {
                         <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-[11px] text-slate-500">
                           {target !== null && (
                             <span className="font-semibold text-kash-emeraldDark">
-                              Target: {formatCurrency(target, currency)}
+                              Target: {formatMoney(target, currency)}
                             </span>
                           )}
                           {inv.shared_savings?.deadline && (
                             <span>
-                              Deadline:{" "}
-                              {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
-                                new Date(inv.shared_savings.deadline)
-                              )}
+                              Deadline: {formatDate(inv.shared_savings.deadline)}
                             </span>
                           )}
                           <span>
-                            Undangan berlaku s/d:{" "}
-                            {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
-                              new Date(inv.expires_at)
-                            )}
+                            {t("shared.validUntil")}: {formatDate(inv.expires_at)}
                           </span>
                         </div>
                       </div>
@@ -368,7 +394,7 @@ export function SharedSavingsPage() {
                         className="min-h-9 px-3.5 text-xs text-slate-600 hover:text-kash-expense hover:bg-red-50"
                       >
                         <X size={14} />
-                        Tolak
+                        {t("shared.rejectInvite")}
                       </Button>
                       <Button
                         type="button"
@@ -381,7 +407,7 @@ export function SharedSavingsPage() {
                         ) : (
                           <Check size={14} />
                         )}
-                        Gabung Tabungan
+                        {t("shared.acceptInvite")}
                       </Button>
                     </div>
                   </div>

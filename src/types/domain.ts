@@ -504,6 +504,7 @@ export type SharedSavingsInvite = {
   shared_savings?: SharedSavings | null;
   inviter_name?: string | null;
   inviter_email?: string | null;
+  inviter_avatar_url?: string | null;
   owner_name?: string | null;
 };
 

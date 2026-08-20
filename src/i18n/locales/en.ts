@@ -249,6 +249,14 @@ export const en = {
   "shared.emptyDesc": "Create a shared space with a partner, family, or friends.",
   "shared.verifiedContributions": "Verified Contributions",
   "shared.pendingContributions": "Pending Verification",
+  "shared.invitedBy": "Invited by {name}",
+  "shared.invitedByLabel": "Invited by",
+  "shared.owner": "Owner",
+  "shared.acceptInvite": "Join Savings",
+  "shared.rejectInvite": "Reject",
+  "shared.noPendingInvites": "No Pending Invitations",
+  "shared.noPendingInvitesDesc": "When someone invites you to a shared savings space using your KASH email, invitations will appear here.",
+  "shared.validUntil": "Valid until",
 
   // Calendar
   "calendar.title": "Transaction Calendar",

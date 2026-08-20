@@ -249,6 +249,14 @@ export const id = {
   "shared.emptyDesc": "Buat ruang tabungan bersama pasangan, keluarga, atau teman.",
   "shared.verifiedContributions": "Setoran Terverifikasi",
   "shared.pendingContributions": "Setoran Menunggu Persetujuan",
+  "shared.invitedBy": "Diundang oleh {name}",
+  "shared.invitedByLabel": "Diundang oleh",
+  "shared.owner": "Pemilik",
+  "shared.acceptInvite": "Gabung Tabungan",
+  "shared.rejectInvite": "Tolak",
+  "shared.noPendingInvites": "Tidak Ada Undangan Tertunda",
+  "shared.noPendingInvitesDesc": "Saat seseorang mengundang Anda ke tabungan bersama melalui email akun KASH Anda, undangan akan muncul di sini.",
+  "shared.validUntil": "Undangan berlaku s/d",
 
   // Calendar
   "calendar.title": "Kalender Transaksi",
