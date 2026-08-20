@@ -430,28 +430,54 @@ export async function getBudgetMatchingTransactions(
     }));
   }
 
-  // 2. Goal Target
-  if (budget.target_type === "goal" && budget.goal_id) {
-    const { data: contributions, error } = await supabase
-      .from("goal_contributions")
-      .select("*, goal:goals(*), wallet:wallets(*)")
-      .eq("goal_id", budget.goal_id)
-      .gte("contribution_date", `${normPeriod}T00:00:00`)
-      .lt("contribution_date", `${endDate}T00:00:00`)
-      .order("contribution_date", { ascending: false });
+  // 2. Goal or Savings Pocket Target
+  if (budget.target_type === "goal") {
+    if (budget.goal_id) {
+      const { data: contributions, error } = await supabase
+        .from("goal_contributions")
+        .select("*, goal:goals(*), wallet:wallets(*)")
+        .eq("goal_id", budget.goal_id)
+        .gte("contribution_date", `${normPeriod}T00:00:00`)
+        .lt("contribution_date", `${endDate}T00:00:00`)
+        .order("contribution_date", { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    return (contributions ?? []).map((gc) => ({
-      id: gc.id,
-      title: `Alokasi: ${(gc as any).goal?.name || "Tabungan"}`,
-      amount: gc.amount,
-      type: "goal_contribution",
-      transaction_date: gc.contribution_date,
-      note: gc.note,
-      wallet: (gc as any).wallet,
-      category: { name: "Tabungan / Goal", color: "#F5B82E", icon: "piggy-bank" },
-    }));
+      return (contributions ?? []).map((gc) => ({
+        id: gc.id,
+        title: `Alokasi: ${(gc as any).goal?.name || "Tabungan"}`,
+        amount: gc.amount,
+        type: "goal_contribution",
+        transaction_date: gc.contribution_date,
+        note: gc.note,
+        wallet: (gc as any).wallet,
+        category: { name: "Tabungan / Goal", color: "#F5B82E", icon: "piggy-bank" },
+      }));
+    }
+
+    if (budget.wallet_id) {
+      const { data: txs, error } = await supabase
+        .from("transactions")
+        .select("*, wallet:wallets!wallet_id(*), destination_wallet:wallets!destination_wallet_id(*)")
+        .eq("status", "completed")
+        .or(`and(type.eq.transfer,destination_wallet_id.eq.${budget.wallet_id}),and(type.eq.income,wallet_id.eq.${budget.wallet_id})`)
+        .gte("transaction_date", `${normPeriod}T00:00:00`)
+        .lt("transaction_date", `${endDate}T00:00:00`)
+        .order("transaction_date", { ascending: false });
+
+      if (error) throw error;
+
+      return (txs ?? []).map((t) => ({
+        id: t.id,
+        title: t.type === "transfer" ? `Transfer ke ${(t as any).destination_wallet?.name || "Kantong"}` : t.title || "Pemasukan Tabungan",
+        amount: t.amount,
+        type: t.type,
+        transaction_date: t.transaction_date,
+        note: t.note,
+        wallet: (t as any).destination_wallet || (t as any).wallet,
+        category: { name: "Alokasi Kantong Tabungan", color: budget.wallet_color || "#10B981", icon: budget.wallet_icon || "landmark" },
+      }));
+    }
   }
 
   // 3. Category or Envelope Target
