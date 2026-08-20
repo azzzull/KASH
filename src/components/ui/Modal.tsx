@@ -29,6 +29,84 @@ const maxWidthClasses = {
   full: "md:max-w-4xl",
 };
 
+// Module-level manager for scroll locking across single, nested, or sequential modals
+let openModalsCount = 0;
+let previousBodyStyles = {
+  overflow: "",
+  position: "",
+  top: "",
+  width: "",
+  touchAction: "",
+};
+let savedScrollY = 0;
+
+function lockBodyScroll() {
+  if (typeof document === "undefined") return;
+
+  if (openModalsCount === 0) {
+    savedScrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+
+    previousBodyStyles = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+      touchAction: document.body.style.touchAction,
+    };
+
+    // On iOS Safari / mobile browsers, position: fixed with negative top is the standard reliable scroll lock.
+    // Setting width: 100% and overflow: hidden prevents layout shifts.
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+  }
+
+  openModalsCount += 1;
+}
+
+function unlockBodyScroll() {
+  if (typeof document === "undefined") return;
+
+  openModalsCount = Math.max(0, openModalsCount - 1);
+
+  if (openModalsCount === 0) {
+    // Restore previous inline styles or cleanly remove property if it was empty
+    if (previousBodyStyles.position) {
+      document.body.style.position = previousBodyStyles.position;
+    } else {
+      document.body.style.removeProperty("position");
+    }
+
+    if (previousBodyStyles.top) {
+      document.body.style.top = previousBodyStyles.top;
+    } else {
+      document.body.style.removeProperty("top");
+    }
+
+    if (previousBodyStyles.width) {
+      document.body.style.width = previousBodyStyles.width;
+    } else {
+      document.body.style.removeProperty("width");
+    }
+
+    if (previousBodyStyles.overflow) {
+      document.body.style.overflow = previousBodyStyles.overflow;
+    } else {
+      document.body.style.removeProperty("overflow");
+    }
+
+    if (previousBodyStyles.touchAction) {
+      document.body.style.touchAction = previousBodyStyles.touchAction;
+    } else {
+      document.body.style.removeProperty("touch-action");
+    }
+
+    // Restore scroll position
+    window.scrollTo(0, savedScrollY);
+  }
+}
+
 export function Modal({
   isOpen,
   onClose,
@@ -54,6 +132,16 @@ export function Modal({
   const startTimeRef = useRef<number>(0);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<number | null>(null);
+
+  // Clean up pending close timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        window.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Synchronize open/mount lifecycle
   useEffect(() => {
@@ -63,14 +151,16 @@ export function Modal({
       setDragY(0);
       setIsDragging(false);
 
-      // Double rAF to ensure starting translate-y-full state is painted first
+      let frame2: number;
       const frame1 = requestAnimationFrame(() => {
-        const frame2 = requestAnimationFrame(() => {
+        frame2 = requestAnimationFrame(() => {
           setEntered(true);
         });
-        return () => cancelAnimationFrame(frame2);
       });
-      return () => cancelAnimationFrame(frame1);
+      return () => {
+        cancelAnimationFrame(frame1);
+        if (frame2) cancelAnimationFrame(frame2);
+      };
     } else {
       setEntered(false);
       setIsClosing(false);
@@ -85,8 +175,12 @@ export function Modal({
     if (!dismissible || isClosing) return;
     setIsClosing(true);
     setEntered(false);
+    if (closeTimeoutRef.current !== null) {
+      window.clearTimeout(closeTimeoutRef.current);
+    }
     // Trigger parent onClose after slide-down transition completes
-    setTimeout(() => {
+    closeTimeoutRef.current = window.setTimeout(() => {
+      closeTimeoutRef.current = null;
       onClose();
       setIsClosing(false);
       setMounted(false);
@@ -165,13 +259,12 @@ export function Modal({
     };
   }, [mounted]);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll reliably when modal is open, and release when all modals are closed
   useEffect(() => {
     if (!mounted) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
     return () => {
-      document.body.style.overflow = prevOverflow;
+      unlockBodyScroll();
     };
   }, [mounted]);
 
