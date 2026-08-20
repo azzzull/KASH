@@ -8,6 +8,7 @@ import { Modal } from "../ui/Modal";
 import { updateSharedSavingsSettings } from "../../lib/sharedSavings";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import type { SharedSavingsBalance } from "../../types/domain";
+import { useI18n } from "../../i18n";
 
 const spaceColors = [
   "#10B981", // Emerald (Brand)
@@ -29,6 +30,7 @@ type EditSharedSavingsModalProps = {
 };
 
 export function EditSharedSavingsModal({ isOpen, space, onClose, onSaved }: EditSharedSavingsModalProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(space.name);
   const [targetDigits, setTargetDigits] = useState(
     space.target_amount ? String(toNumber(space.target_amount)) : ""
@@ -42,13 +44,13 @@ export function EditSharedSavingsModal({ isOpen, space, onClose, onSaved }: Edit
     e.preventDefault();
     const cleanName = name.trim();
     if (!cleanName) {
-      setError("Nama tabungan bersama tidak boleh kosong.");
+      setError(t("common.required"));
       return;
     }
 
     const targetNum = targetDigits ? Number(targetDigits) : null;
     if (targetNum !== null && (isNaN(targetNum) || targetNum <= 0)) {
-      setError("Nominal target harus lebih dari 0.");
+      setError(t("common.invalidAmount"));
       return;
     }
 
@@ -67,7 +69,7 @@ export function EditSharedSavingsModal({ isOpen, space, onClose, onSaved }: Edit
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Gagal memperbarui pengaturan ruang.");
+      setError(err.message || t("common.error"));
     } finally {
       setSaving(false);
     }
@@ -87,7 +89,7 @@ export function EditSharedSavingsModal({ isOpen, space, onClose, onSaved }: Edit
             <Settings size={20} strokeWidth={2.2} />
           </span>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Edit Pengaturan Tabungan</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("shared.editTitle")}</h2>
             <p className="text-xs font-semibold text-slate-600">{space.name}</p>
           </div>
         </div>
@@ -103,7 +105,7 @@ export function EditSharedSavingsModal({ isOpen, space, onClose, onSaved }: Edit
 
           <FormField
             id="edit-space-name"
-            label="Nama Tabungan Bersama"
+            label={t("shared.spaceName")}
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -111,22 +113,21 @@ export function EditSharedSavingsModal({ isOpen, space, onClose, onSaved }: Edit
 
           <FormField
             id="edit-space-target"
-            label="Target Nominal Bersama (Opsional)"
+            label={t("shared.targetAmountOptional")}
             placeholder="0"
             value={targetDigits ? formatMoneyDigits(targetDigits) : ""}
             onChange={(e) => setTargetDigits(parseMoneyInputDigits(e.target.value))}
-            hint="Kosongkan jika tidak ada target nominal spesifik"
           />
 
           <DatePickerField
             id="edit-space-deadline"
-            label="Tenggat Waktu / Target Selesai (Opsional)"
+            label={t("shared.deadlineOptional")}
             value={deadline || ""}
             onChange={setDeadline}
           />
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">Warna Identitas Tabungan</label>
+            <label className="block text-xs font-bold text-slate-700 mb-2">{t("shared.spaceColor")}</label>
             <div className="flex flex-wrap gap-2.5">
               {spaceColors.map((c) => {
                 const isSelected = color.toLowerCase() === c.toLowerCase();
@@ -149,10 +150,10 @@ export function EditSharedSavingsModal({ isOpen, space, onClose, onSaved }: Edit
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Menyimpan..." : "Simpan Perubahan"}
+              {saving ? t("shared.saving") : t("shared.saveChanges")}
             </Button>
           </div>
         </form>

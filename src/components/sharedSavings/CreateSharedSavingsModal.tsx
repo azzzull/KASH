@@ -8,6 +8,7 @@ import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { createSharedSavingsSpace } from "../../lib/sharedSavings";
 import { formatMoneyDigits, parseMoneyInputDigits } from "../../lib/money";
+import { useI18n } from "../../i18n";
 
 const spaceColors = [
   "#10B981", // Emerald (Brand)
@@ -28,6 +29,7 @@ type CreateSharedSavingsModalProps = {
 };
 
 export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateSharedSavingsModalProps) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [targetDigits, setTargetDigits] = useState("");
   const [deadline, setDeadline] = useState<string | null>(null);
@@ -41,13 +43,13 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
     e.preventDefault();
     const cleanName = name.trim();
     if (!cleanName) {
-      setError("Nama tabungan bersama wajib diisi.");
+      setError(t("common.required"));
       return;
     }
 
     const targetNum = targetDigits ? Number(targetDigits) : null;
     if (targetNum !== null && (isNaN(targetNum) || targetNum <= 0)) {
-      setError("Nominal target harus lebih dari 0.");
+      setError(t("common.invalidAmount"));
       return;
     }
 
@@ -66,7 +68,7 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
       onCreated(spaceId);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Gagal membuat tabungan bersama.");
+      setError(err.message || t("common.error"));
     } finally {
       setSaving(false);
     }
@@ -86,9 +88,9 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
             <Users size={20} strokeWidth={2.2} />
           </span>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Buat Tabungan Bersama</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("shared.createTitle")}</h2>
             <p className="text-xs font-semibold text-slate-600">
-              Kelola dana tabungan bersama anggota keluarga atau teman
+              {t("shared.createDesc")}
             </p>
           </div>
         </div>
@@ -105,10 +107,10 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
           {/* Name Field */}
           <FormField
             id="shared-space-name"
-            label="Nama Tabungan Bersama"
+            label={t("shared.spaceName")}
             required
             autoFocus
-            placeholder="e.g. Trip Jepang 2027, Tabungan Nikah, Kas Rumah"
+            placeholder={t("shared.spaceNamePlaceholder")}
             value={name}
             onChange={(e) => {
               setName(e.target.value);
@@ -119,9 +121,8 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
           {/* Optional Target Amount */}
           <FormField
             id="shared-target-amount"
-            label="Target Nominal (Opsional)"
+            label={t("shared.targetAmountOptional")}
             placeholder="0"
-            hint="Kosongkan jika tabungan ini tidak memiliki target nominal tetap."
             value={formatMoneyDigits(targetDigits)}
             onChange={(e) => {
               setTargetDigits(parseMoneyInputDigits(e.target.value));
@@ -133,18 +134,15 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
           <div>
             <DatePickerField
               id="shared-deadline"
-              label="Tenggat Waktu / Deadline (Opsional)"
+              label={t("shared.deadlineOptional")}
               value={deadline || ""}
               onChange={(val) => setDeadline(val || null)}
             />
-            <p className="mt-1 text-[11px] font-semibold text-slate-500">
-              Kosongkan jika tabungan berjalan tanpa batas waktu tertentu.
-            </p>
           </div>
 
           {/* Color Palette */}
           <div>
-            <label className="block text-sm font-bold text-slate-900 mb-2">Warna Identitas</label>
+            <label className="block text-sm font-bold text-slate-900 mb-2">{t("shared.spaceColor")}</label>
             <div className="flex flex-wrap gap-2.5">
               {spaceColors.map((c) => {
                 const isSelected = color.toLowerCase() === c.toLowerCase();
@@ -165,22 +163,13 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
             </div>
           </div>
 
-          {/* Info Banner */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-            <span className="font-extrabold text-slate-900">Catatan Peran:</span> Anda otomatis menjadi{" "}
-            <span className="font-bold text-kash-emeraldDark">Owner</span>,{" "}
-            <span className="font-bold text-kash-emeraldDark">Account Holder</span>, dan{" "}
-            <span className="font-bold text-kash-emeraldDark">Approver</span> awal. Anda dapat mengundang anggota lain
-            setelah ruang tabungan dibuat.
-          </div>
-
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Membuat..." : "Buat Tabungan"}
+              {saving ? t("shared.creating") : t("shared.createSpace")}
             </Button>
           </div>
         </form>

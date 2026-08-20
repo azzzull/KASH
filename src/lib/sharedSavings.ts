@@ -285,9 +285,26 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
+  const inviteIds = data.map((inv: any) => inv.id);
   const spaceIds = Array.from(
     new Set(data.map((inv: any) => inv.shared_savings_id).filter(Boolean))
   );
+
+  // 1. Fetch notification metadata for these invites (which securely contains inviter_name from invite creation)
+  const notifMap = new Map<string, { inviter_name?: string }>();
+  if (inviteIds.length > 0) {
+    const { data: notifs } = await supabase
+      .from("notifications")
+      .select("entity_id, metadata")
+      .eq("type", "shared_invitation")
+      .in("entity_id", inviteIds);
+
+    (notifs ?? []).forEach((n: any) => {
+      if (n.entity_id && n.metadata?.inviter_name) {
+        notifMap.set(n.entity_id, { inviter_name: n.metadata.inviter_name });
+      }
+    });
+  }
 
   // Collect all distinct user IDs that need profile enrichment (inviters and space owners)
   const userIdsToFetch = Array.from(
@@ -301,12 +318,12 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
     )
   );
 
-  let profileMap = new Map<
+  const profileMap = new Map<
     string,
     { full_name: string | null; email: string | null; avatar_url: string | null }
   >();
 
-  // 1. Fetch from profiles table
+  // 2. Fetch from profiles table
   if (userIdsToFetch.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
@@ -322,7 +339,7 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
     });
   }
 
-  // 2. Supplement from shared_savings_member_shares_view (which has member names/emails accessible to space members/invitees)
+  // 3. Supplement from shared_savings_member_shares_view (which has member names/emails accessible to space members/invitees)
   if (spaceIds.length > 0) {
     const { data: memberShares } = await supabase
       .from("shared_savings_member_shares_view")
@@ -342,10 +359,12 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
   }
 
   return (data ?? []).map((inv: any) => {
+    const notifInfo = notifMap.get(inv.id);
     const inviterProfile = profileMap.get(inv.inviter_user_id);
     const ownerProfile = profileMap.get(inv.shared_savings?.owner_user_id);
 
     const inviterName =
+      notifInfo?.inviter_name?.trim() ||
       inviterProfile?.full_name?.trim() ||
       inviterProfile?.email?.trim() ||
       null;
@@ -355,7 +374,8 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
     const ownerName =
       ownerProfile?.full_name?.trim() ||
       ownerProfile?.email?.trim() ||
-      "User";
+      (inv.inviter_user_id === inv.shared_savings?.owner_user_id ? inviterName : null) ||
+      null;
 
     return {
       ...inv,

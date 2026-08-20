@@ -5,7 +5,8 @@ import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { Modal } from "../ui/Modal";
 import { submitSharedSpendingRequest } from "../../lib/sharedSavings";
-import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits } from "../../lib/money";
+import { formatMoneyDigits, parseMoneyInputDigits } from "../../lib/money";
+import { useI18n } from "../../i18n";
 
 type SharedSpendingModalProps = {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function SharedSpendingModal({
   onClose,
   onSubmitted,
 }: SharedSpendingModalProps) {
+  const { t, formatCurrency } = useI18n();
   const [title, setTitle] = useState("");
   const [amountDigits, setAmountDigits] = useState("");
   const [note, setNote] = useState("");
@@ -40,12 +42,12 @@ export function SharedSpendingModal({
     e.preventDefault();
     const cleanTitle = title.trim();
     if (!cleanTitle) {
-      setError("Judul pengeluaran bersama wajib diisi.");
+      setError(t("common.required"));
       return;
     }
 
     if (!amountDigits || amountNum <= 0) {
-      setError("Nominal pengeluaran bersama harus lebih dari 0.");
+      setError(t("common.invalidAmount"));
       return;
     }
 
@@ -63,7 +65,7 @@ export function SharedSpendingModal({
       onSubmitted();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Gagal mengajukan pengeluaran bersama.");
+      setError(err.message || t("common.error"));
     } finally {
       setSubmitting(false);
     }
@@ -83,7 +85,7 @@ export function SharedSpendingModal({
             <Receipt size={20} strokeWidth={2.2} />
           </span>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Catat Pengeluaran Bersama</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("shared.spendingTitle")}</h2>
             <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
           </div>
         </div>
@@ -99,17 +101,17 @@ export function SharedSpendingModal({
 
           <FormField
             id="spending-title"
-            label="Keperluan Pengeluaran"
+            label={t("shared.spendingTitleLabel")}
             required
             autoFocus
-            placeholder="contoh: Beli Tiket Pesawat, Booking Hotel, dll."
+            placeholder={t("shared.spendingTitlePlaceholder")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
 
           <FormField
             id="spending-amount"
-            label="Total Nominal Pengeluaran (Rp)"
+            label={t("shared.amount")}
             required
             placeholder="0"
             value={amountDigits ? formatMoneyDigits(amountDigits) : ""}
@@ -120,32 +122,28 @@ export function SharedSpendingModal({
             <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
               <span className="flex items-center gap-2 font-medium">
                 <Users size={15} className="text-slate-500" />
-                Estimasi Beban ({count} Anggota):
+                {t("shared.membersCount", { count })}:
               </span>
               <span className="font-extrabold text-slate-900">
-                {formatCurrency(estimatedPerMember)} / orang
+                {formatCurrency(estimatedPerMember)} / person
               </span>
             </div>
           )}
 
           <FormField
             id="spending-note"
-            label="Catatan Tambahan (Opsional)"
-            placeholder="Keterangan tambahan atau nomor referensi..."
+            label={t("shared.noteOptional")}
+            placeholder={t("shared.notePlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
 
-          <div className="rounded-xl bg-amber-50/80 border border-amber-200/80 p-3.5 text-xs text-amber-900">
-            <span className="font-bold">Info:</span> Pengeluaran bersama akan memotong saldo kas pool bersama dan mengurangi porsi kepemilikan seluruh anggota secara proporsional setelah diverifikasi oleh <span className="font-bold">Approver</span>.
-          </div>
-
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={submitting || amountNum <= 0}>
-              {submitting ? "Mengajukan..." : "Ajukan Pengeluaran"}
+              {submitting ? t("shared.saving") : t("shared.submitSpending")}
             </Button>
           </div>
         </form>

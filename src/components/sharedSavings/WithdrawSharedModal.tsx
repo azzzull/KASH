@@ -8,7 +8,8 @@ import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { submitWithdrawalRequest } from "../../lib/sharedSavings";
-import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
+import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
+import { useI18n } from "../../i18n";
 
 type WithdrawSharedModalProps = {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export function WithdrawSharedModal({
   onClose,
   onSubmitted,
 }: WithdrawSharedModalProps) {
+  const { t, formatCurrency } = useI18n();
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [amountDigits, setAmountDigits] = useState("");
@@ -44,7 +46,7 @@ export function WithdrawSharedModal({
     getWallets()
       .then((res) => {
         if (res.error) {
-          setError(res.error.message || "Gagal memuat daftar dompet.");
+          setError(res.error.message || t("common.error"));
           return;
         }
         const activeWallets = (res.data ?? []).filter((w) => !w.is_archived);
@@ -53,7 +55,7 @@ export function WithdrawSharedModal({
           setSelectedWalletId(activeWallets[0].id);
         }
       })
-      .catch((err) => setError(err.message || "Gagal memuat daftar dompet."))
+      .catch((err) => setError(err.message || t("common.error")))
       .finally(() => setLoading(false));
   }, [isOpen]);
 
@@ -62,18 +64,18 @@ export function WithdrawSharedModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedWalletId) {
-      setError("Pilih dompet tujuan penarikan.");
+      setError(t("common.required"));
       return;
     }
 
     const amountNum = Number(amountDigits);
     if (!amountDigits || isNaN(amountNum) || amountNum <= 0) {
-      setError("Nominal penarikan harus lebih dari 0.");
+      setError(t("common.invalidAmount"));
       return;
     }
 
     if (amountNum > myAvailableShare) {
-      setError(`Nominal penarikan melebihi porsi Anda (${formatCurrency(myAvailableShare, "IDR")}).`);
+      setError(t("shared.withdrawAmountMax", { amount: formatCurrency(myAvailableShare, "IDR") }));
       return;
     }
 
@@ -91,7 +93,7 @@ export function WithdrawSharedModal({
       onSubmitted();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Gagal mengajukan penarikan.");
+      setError(err.message || t("common.error"));
     } finally {
       setSubmitting(false);
     }
@@ -111,7 +113,7 @@ export function WithdrawSharedModal({
             <ArrowUpLeft size={20} strokeWidth={2.2} />
           </span>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Tarik Porsi Pribadi</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("shared.withdrawTitle")}</h2>
             <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
           </div>
         </div>
@@ -128,18 +130,15 @@ export function WithdrawSharedModal({
           {/* Available Share Banner */}
           <div className="rounded-xl border border-kash-emerald/30 bg-kash-selected/70 p-3.5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-600">Porsi Tersedia Anda</p>
+              <p className="text-xs font-bold text-slate-600">{t("shared.myShare")}</p>
               <p className="text-lg font-black text-kash-emeraldDark">{formatCurrency(myAvailableShare, "IDR")}</p>
             </div>
-            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-extrabold text-kash-emeraldDark shadow-xs border border-kash-emerald/20">
-              Hak Kepemilikan Anda
-            </span>
           </div>
 
           {/* Destination Wallet */}
           <SelectField
             id="dest-wallet"
-            label="Dompet Tujuan Pencairan"
+            label={t("shared.destinationWallet")}
             value={selectedWalletId}
             onChange={(e) => {
               setSelectedWalletId(e.target.value);
@@ -159,11 +158,11 @@ export function WithdrawSharedModal({
           {/* Amount Field */}
           <FormField
             id="withdrawal-amount"
-            label="Nominal Penarikan (Rp)"
+            label={t("shared.amount")}
             required
             autoFocus
             placeholder="0"
-            hint={`Maksimal dapat ditarik: ${formatCurrency(myAvailableShare, "IDR")}`}
+            hint={t("shared.withdrawAmountMax", { amount: formatCurrency(myAvailableShare, "IDR") })}
             value={formatMoneyDigits(amountDigits)}
             onChange={(e) => {
               setAmountDigits(parseMoneyInputDigits(e.target.value));
@@ -174,26 +173,19 @@ export function WithdrawSharedModal({
           {/* Optional Note */}
           <FormField
             id="withdrawal-note"
-            label="Alasan / Catatan Penarikan (Opsional)"
-            placeholder="e.g. Kebutuhan mendesak, transfer balik ke rekening"
+            label={t("shared.noteOptional")}
+            placeholder={t("shared.notePlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
 
-          {/* Notice */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-            <span className="font-extrabold text-slate-900">Perhatian:</span> Anda hanya dapat menarik uang dari porsi
-            kepemilikan Anda sendiri. Dana akan ditransfer ke dompet tujuan setelah diverifikasi oleh{" "}
-            <span className="font-bold text-slate-900">Approver</span>.
-          </div>
-
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={submitting || loading || myAvailableShare <= 0}>
-              {submitting ? "Mengajukan..." : "Ajukan Penarikan"}
+              {submitting ? t("shared.saving") : t("shared.submitWithdrawal")}
             </Button>
           </div>
         </form>

@@ -6,6 +6,7 @@ import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { setSharedSavingsAccountHolder } from "../../lib/sharedSavings";
 import type { SharedSavingsMemberShare } from "../../types/domain";
+import { useI18n } from "../../i18n";
 
 type SetAccountHolderModalProps = {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function SetAccountHolderModal({
   onClose,
   onUpdated,
 }: SetAccountHolderModalProps) {
+  const { t } = useI18n();
   const activeMembers = members.filter((m) => m.member_status === "active");
   const [selectedUserId, setSelectedUserId] = useState(currentAccountHolderId || activeMembers[0]?.user_id || "");
   const [saving, setSaving] = useState(false);
@@ -34,7 +36,7 @@ export function SetAccountHolderModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
-      setError("Pilih anggota yang ditunjuk sebagai Account Holder.");
+      setError(t("common.required"));
       return;
     }
 
@@ -46,7 +48,7 @@ export function SetAccountHolderModal({
       onUpdated();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Gagal mengubah Account Holder.");
+      setError(err.message || t("common.error"));
     } finally {
       setSaving(false);
     }
@@ -63,7 +65,7 @@ export function SetAccountHolderModal({
             <Landmark size={20} strokeWidth={2.2} />
           </span>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Tunjuk Account Holder</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("shared.setAccountHolderTitle")}</h2>
             <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
           </div>
         </div>
@@ -79,7 +81,7 @@ export function SetAccountHolderModal({
 
           <SelectField
             id="account-holder"
-            label="Pilih Account Holder (Pemegang Rekening Fisik)"
+            label={t("shared.selectMember")}
             value={selectedUserId}
             onChange={(e) => {
               setSelectedUserId(e.target.value);
@@ -93,21 +95,12 @@ export function SetAccountHolderModal({
             ))}
           </SelectField>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-            <span className="font-extrabold text-slate-900">Prinsip KASH:</span> Account Holder adalah anggota yang
-            memegang rekening bank/e-wallet fisik tempat dana bersama disimpan.{" "}
-            <span className="font-bold text-slate-900">
-              Account Holder TIDAK otomatis memiliki semua saldo tabungan
-            </span>
-            , melainkan hanya porsi pribadi mereka.
-          </div>
-
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Menyimpan..." : "Simpan Account Holder"}
+              {saving ? t("shared.saving") : t("shared.saveChanges")}
             </Button>
           </div>
         </form>

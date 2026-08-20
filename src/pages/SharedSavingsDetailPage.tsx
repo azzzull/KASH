@@ -54,7 +54,7 @@ import {
   rejectSharedRequest,
   removeSharedSavingsMember,
 } from "../lib/sharedSavings";
-import { formatCurrency, toNumber } from "../lib/money";
+import { toNumber } from "../lib/money";
 import type {
   SharedSavingsBalance,
   SharedSavingsInvite,
@@ -63,8 +63,10 @@ import type {
   SharedSavingsRequest,
 } from "../types/domain";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 
 export function SharedSavingsDetailPage() {
+  const { t, formatCurrency, formatDate } = useI18n();
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -119,7 +121,7 @@ export function SharedSavingsDetailPage() {
       setIsApprover(detail.isApprover);
       setOtherApproversCount(detail.otherApproversCount);
     } catch (err: any) {
-      setError(err.message || "Gagal memuat detail tabungan bersama.");
+      setError(err.message || t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -240,13 +242,13 @@ export function SharedSavingsDetailPage() {
           to="/shared-savings"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900"
         >
-          <ArrowLeft size={14} /> Kembali ke Tabungan Bersama
+          <ArrowLeft size={14} /> {t("shared.backToSpaces")}
         </Link>
         <section className="rounded-2xl border border-kash-expense/30 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-extrabold text-slate-900">Ruang Tabungan Tidak Ditemukan</h3>
-          <p className="mt-2 text-xs font-semibold text-slate-600">{error || "Data ruang tidak tersedia atau Anda tidak memiliki akses."}</p>
+          <h3 className="text-base font-extrabold text-slate-900">{t("shared.spaceNotFound")}</h3>
+          <p className="mt-2 text-xs font-semibold text-slate-600">{error || t("shared.spaceNotFoundDesc")}</p>
           <Button className="mt-4" onClick={() => navigate("/shared-savings")}>
-            Kembali
+            {t("common.back")}
           </Button>
         </section>
       </div>
@@ -272,7 +274,7 @@ export function SharedSavingsDetailPage() {
           to="/shared-savings"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-kash-emeraldDark transition"
         >
-          <ArrowLeft size={14} /> Kembali ke Tabungan Bersama
+          <ArrowLeft size={14} /> {t("shared.backToSpaces")}
         </Link>
       </div>
 
@@ -291,17 +293,17 @@ export function SharedSavingsDetailPage() {
                 <h1 className="text-xl font-extrabold text-slate-900">{space.name}</h1>
                 {isOwner && (
                   <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-800">
-                    <Crown size={11} /> Anda Owner
+                    <Crown size={11} /> {t("shared.youOwner")}
                   </span>
                 )}
                 {isAccountHolder && (
                   <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-black text-blue-800">
-                    <Landmark size={11} /> Account Holder
+                    <Landmark size={11} /> {t("shared.accountHolder")}
                   </span>
                 )}
                 {isApprover && !isOwner && (
                   <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2.5 py-0.5 text-[11px] font-black text-kash-emeraldDark">
-                    <ShieldCheck size={11} /> Approver
+                    <ShieldCheck size={11} /> {t("shared.approver")}
                   </span>
                 )}
               </div>
@@ -309,12 +311,12 @@ export function SharedSavingsDetailPage() {
               <div className="mt-1.5 flex flex-wrap items-center gap-y-1 gap-x-4 text-xs font-semibold text-slate-500">
                 <span className="flex items-center gap-1">
                   <Users size={13} className="text-slate-400" />
-                  {activeMembersCount} Anggota Aktif
+                  {t("shared.activeMembers", { count: activeMembersCount })}
                 </span>
                 {space.deadline && (
                   <span className="flex items-center gap-1 text-slate-600">
                     <Calendar size={13} className="text-slate-400" />
-                    Deadline: {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(space.deadline))}
+                    {t("shared.deadline")}: {formatDate(space.deadline)}
                   </span>
                 )}
               </div>
@@ -329,7 +331,7 @@ export function SharedSavingsDetailPage() {
               className="min-h-9 px-3.5 text-xs"
             >
               <ArrowDownRight size={15} />
-              Setor
+              {t("shared.contribute")}
             </Button>
             <Button
               type="button"
@@ -339,7 +341,7 @@ export function SharedSavingsDetailPage() {
               className="min-h-9 px-3.5 text-xs text-slate-700 hover:text-kash-emeraldDark"
             >
               <ArrowUpLeft size={15} />
-              Tarik Porsi
+              {t("shared.withdraw")}
             </Button>
             <Button
               type="button"
@@ -348,7 +350,7 @@ export function SharedSavingsDetailPage() {
               className="min-h-9 px-3.5 text-xs text-slate-700 hover:text-kash-emeraldDark"
             >
               <Receipt size={15} />
-              Pengeluaran
+              {t("shared.spend")}
             </Button>
           </div>
         </div>
@@ -356,28 +358,28 @@ export function SharedSavingsDetailPage() {
         {/* Financial Highlights */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 rounded-xl bg-slate-50 p-4">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Porsi Milik Saya</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.myShareHighlight")}</p>
             <p className="mt-0.5 text-lg font-black text-kash-emeraldDark">{formatCurrency(myShare, currency)}</p>
-            <p className="text-[10px] text-slate-500 font-semibold">Tercatat di Net Worth Anda</p>
+            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.myShareNetWorth")}</p>
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Saldo Pool</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.totalPoolBalance")}</p>
             <p className="mt-0.5 text-lg font-black text-slate-900">{formatCurrency(balance, currency)}</p>
-            <p className="text-[10px] text-slate-500 font-semibold">Total dana bersama</p>
+            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.totalPoolDesc")}</p>
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Pengeluaran</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.totalSpending")}</p>
             <p className="mt-0.5 text-lg font-black text-slate-900">
               {formatCurrency(toNumber(space.total_spending), currency)}
             </p>
-            <p className="text-[10px] text-slate-500 font-semibold">Telah dibagi rata</p>
+            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.spendingSplitDesc")}</p>
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Setoran Masuk</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.totalContributions")}</p>
             <p className="mt-0.5 text-lg font-black text-slate-900">
               {formatCurrency(toNumber(space.total_contributions), currency)}
             </p>
-            <p className="text-[10px] text-slate-500 font-semibold">Historis akumulasi</p>
+            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.contributionsHistoryDesc")}</p>
           </div>
         </div>
 
@@ -387,7 +389,7 @@ export function SharedSavingsDetailPage() {
             <div className="flex items-center justify-between text-xs font-bold text-slate-700">
               <span className="flex items-center gap-1.5 font-extrabold text-slate-900">
                 <Target size={15} className="text-kash-emerald" />
-                Target Tabungan: {formatCurrency(target, currency)}
+                {t("shared.targetGoal")}: {formatCurrency(target, currency)}
               </span>
               <span className="text-sm font-black text-slate-900">{progressPct}%</span>
             </div>
@@ -416,7 +418,7 @@ export function SharedSavingsDetailPage() {
           }`}
         >
           <Users size={14} />
-          Porsi Anggota ({activeMembersCount})
+          {t("shared.membersTab")} ({activeMembersCount})
         </button>
 
         <button
@@ -429,7 +431,7 @@ export function SharedSavingsDetailPage() {
           }`}
         >
           <HandCoins size={14} />
-          Permintaan & Persetujuan
+          {t("shared.requestsTab")}
           {pendingRequestsCount > 0 && (
             <span className="rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-black text-white">
               {pendingRequestsCount}
@@ -447,7 +449,7 @@ export function SharedSavingsDetailPage() {
           }`}
         >
           <History size={14} />
-          Buku Kas & Riwayat ({ledger.length})
+          {t("shared.ledgerTab")} ({ledger.length})
         </button>
 
         <button
@@ -460,7 +462,7 @@ export function SharedSavingsDetailPage() {
           }`}
         >
           <Settings size={14} />
-          Kelola & Pengaturan
+          {t("shared.settingsTab")}
         </button>
       </div>
 
@@ -468,14 +470,14 @@ export function SharedSavingsDetailPage() {
       {activeTab === "members" && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900">Rincian Kepemilikan Anggota</h3>
+            <h3 className="text-sm font-extrabold text-slate-900">{t("shared.membersTab")}</h3>
             <Button
               type="button"
               variant="secondary"
               onClick={() => setShowInviteModal(true)}
               className="min-h-8 px-3 text-xs"
             >
-              <UserPlus size={14} /> Undang Anggota
+              <UserPlus size={14} /> {t("shared.invite")}
             </Button>
           </div>
 
@@ -500,22 +502,22 @@ export function SharedSavingsDetailPage() {
                         </p>
                         {isCurrentUser && (
                           <span className="rounded-full bg-kash-emerald px-2 py-0.2 text-[10px] font-black text-white">
-                            Anda
+                            {t("shared.you")}
                           </span>
                         )}
                         {m.is_owner && (
                           <span className="flex items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.2 text-[10px] font-black text-amber-800">
-                            <Crown size={10} /> Owner
+                            <Crown size={10} /> {t("shared.owner")}
                           </span>
                         )}
                         {m.is_account_holder && (
                           <span className="flex items-center gap-0.5 rounded-full bg-blue-100 px-2 py-0.2 text-[10px] font-black text-blue-800">
-                            <Landmark size={10} /> Account Holder
+                            <Landmark size={10} /> {t("shared.accountHolder")}
                           </span>
                         )}
                         {m.is_approver && !m.is_owner && (
                           <span className="flex items-center gap-0.5 rounded-full bg-kash-selected px-2 py-0.2 text-[10px] font-black text-kash-emeraldDark">
-                            <ShieldCheck size={10} /> Approver
+                            <ShieldCheck size={10} /> {t("shared.approver")}
                           </span>
                         )}
                       </div>
@@ -526,26 +528,26 @@ export function SharedSavingsDetailPage() {
                       <p className="text-base font-black text-kash-emeraldDark">
                         {formatCurrency(currentShare, currency)}
                       </p>
-                      <p className="text-[11px] font-extrabold text-slate-500">{sharePct}% dari total</p>
+                      <p className="text-[11px] font-extrabold text-slate-500">{sharePct}% {t("shared.ofTotal")}</p>
                     </div>
                   </div>
 
                   {/* Member Stats */}
                   <div className="mt-3.5 grid grid-cols-3 gap-2 border-t border-slate-100 pt-2.5 text-center text-xs">
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500">Disetor</p>
+                      <p className="text-[10px] font-bold text-slate-500">{t("shared.contributed")}</p>
                       <p className="font-extrabold text-slate-800">
                         {formatCurrency(toNumber(m.total_contributed), currency)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500">Ditarik</p>
+                      <p className="text-[10px] font-bold text-slate-500">{t("shared.withdrawn")}</p>
                       <p className="font-extrabold text-slate-800">
                         {formatCurrency(toNumber(m.total_withdrawn), currency)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-500">Beban Pengeluaran</p>
+                      <p className="text-[10px] font-bold text-slate-500">{t("shared.spendingShare")}</p>
                       <p className="font-extrabold text-slate-800">
                         {formatCurrency(toNumber(m.total_spent_allocated), currency)}
                       </p>
@@ -560,7 +562,7 @@ export function SharedSavingsDetailPage() {
                         onClick={() => void handleRemoveMember(m.user_id, m.member_name || m.member_email)}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-kash-expense hover:underline"
                       >
-                        <UserMinus size={12} /> Hapus Anggota (Porsi 0)
+                        <UserMinus size={12} /> {t("common.delete")} (0)
                       </button>
                     </div>
                   )}
@@ -573,7 +575,7 @@ export function SharedSavingsDetailPage() {
           {invites.length > 0 && (
             <div className="space-y-3 pt-3">
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                Undangan Terkirim ({invites.length})
+                {t("shared.sentInvites", { count: invites.length })}
               </h4>
               <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                 {invites.map((inv) => (
@@ -585,15 +587,12 @@ export function SharedSavingsDetailPage() {
                       <div className="min-w-0">
                         <p className="text-xs font-extrabold text-slate-900 truncate">{inv.invited_email}</p>
                         <p className="text-[11px] text-slate-500">
-                          Berlaku hingga:{" "}
-                          {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
-                            new Date(inv.expires_at)
-                          )}
+                          {t("shared.validUntil", { date: formatDate(inv.expires_at) })}
                         </p>
                       </div>
                     </div>
                     <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-black text-amber-800 shrink-0">
-                      Menunggu Konfirmasi
+                      {t("shared.waitingConfirmation")}
                     </span>
                   </div>
                 ))}
@@ -606,13 +605,6 @@ export function SharedSavingsDetailPage() {
       {/* Tab 2: Requests & Approvals */}
       {activeTab === "requests" && (
         <section className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-            <span className="font-extrabold text-slate-900">Permintaan Transaksi:</span> Tab ini memproses transaksi
-            keuangan (<span className="font-bold text-kash-emeraldDark">Setoran</span>,{" "}
-            <span className="font-bold text-blue-700">Penarikan Porsi</span>, atau{" "}
-            <span className="font-bold text-amber-700">Pengeluaran Bersama</span>) yang diajukan oleh anggota.
-          </div>
-
           {/* Sub-filter tabs */}
           <div className="flex items-center gap-2">
             {(["pending", "approved", "rejected", "all"] as const).map((filter) => (
@@ -627,19 +619,19 @@ export function SharedSavingsDetailPage() {
                 }`}
               >
                 {filter === "pending"
-                  ? `Pending (${pendingRequestsCount})`
+                  ? `${t("shared.pending")} (${pendingRequestsCount})`
                   : filter === "approved"
-                  ? "Disetujui"
+                  ? t("shared.approved")
                   : filter === "rejected"
-                  ? "Ditolak / Batal"
-                  : "Semua"}
+                  ? t("shared.rejected")
+                  : t("shared.all")}
               </button>
             ))}
           </div>
 
           {filteredRequests.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-xs">
-              <p className="text-xs font-semibold text-slate-600">Tidak ada data permintaan pada filter ini.</p>
+              <p className="text-xs font-semibold text-slate-600">{t("shared.noRequests")}</p>
             </div>
           ) : (
             <div className="grid gap-3">
@@ -649,8 +641,6 @@ export function SharedSavingsDetailPage() {
                 const amount = toNumber(r.amount);
 
                 // Self-approval logic:
-                // If requester == current user AND other approvers exist, hide Approve/Reject
-                // If requester != current user OR requester is sole approver, allow Approve/Reject
                 const canApprove =
                   isApprover &&
                   r.status === "pending" &&
@@ -687,10 +677,10 @@ export function SharedSavingsDetailPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="text-sm font-extrabold text-slate-900">
                             {r.request_type === "contribution"
-                              ? "Setoran Tabungan"
+                              ? t("shared.contributionRequest")
                               : r.request_type === "withdrawal"
-                              ? "Penarikan Porsi"
-                              : r.title || "Pengeluaran Bersama"}
+                              ? t("shared.withdrawalRequest")
+                              : r.title || t("shared.spendingRequest")}
                           </h4>
                           <span
                             className={`rounded-full px-2 py-0.2 text-[10px] font-black capitalize ${
@@ -706,8 +696,8 @@ export function SharedSavingsDetailPage() {
                         </div>
 
                         <p className="mt-0.5 text-xs text-slate-600">
-                          Diajukan oleh: <span className="font-bold text-slate-800">{r.requester_name || r.requester_email}</span>
-                          {isRequester && " (Anda)"}
+                          {t("shared.requestedBy")}: <span className="font-bold text-slate-800">{r.requester_name || r.requester_email}</span>
+                          {isRequester && ` (${t("shared.you")})`}
                         </p>
 
                         {r.note && (
@@ -717,9 +707,7 @@ export function SharedSavingsDetailPage() {
                         )}
 
                         <p className="mt-1 text-[11px] text-slate-500">
-                          {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(
-                            new Date(r.created_at)
-                          )}
+                          {formatDate(r.created_at)}
                         </p>
                       </div>
                     </div>
@@ -732,7 +720,7 @@ export function SharedSavingsDetailPage() {
                         <div className="flex items-center gap-2">
                           {waitingForOtherApprover && (
                             <span className="rounded-md bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 border border-amber-200">
-                              Menunggu persetujuan Approver lain
+                              {t("shared.waitingOtherApprover")}
                             </span>
                           )}
 
@@ -746,7 +734,7 @@ export function SharedSavingsDetailPage() {
                                 className="min-h-8 px-2.5 text-xs text-kash-expense hover:bg-red-50"
                               >
                                 <X size={14} />
-                                Tolak
+                                {t("shared.rejectInvite")}
                               </Button>
                               <Button
                                 type="button"
@@ -755,7 +743,7 @@ export function SharedSavingsDetailPage() {
                                 className="min-h-8 px-3 text-xs"
                               >
                                 {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                                Setujui
+                                {t("shared.confirmApprove")}
                               </Button>
                             </>
                           )}
@@ -768,7 +756,7 @@ export function SharedSavingsDetailPage() {
                               onClick={() => void handleCancel(r.id)}
                               className="min-h-8 px-2.5 text-xs text-slate-600 hover:text-kash-expense"
                             >
-                              Batalkan
+                              {t("shared.confirmCancel")}
                             </Button>
                           )}
                         </div>
@@ -785,15 +773,9 @@ export function SharedSavingsDetailPage() {
       {/* Tab 3: Ledger & Activity History */}
       {activeTab === "ledger" && (
         <section className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs font-semibold text-slate-700">
-            <span className="font-extrabold text-slate-900">Buku Kas (Shared Ledger):</span> Mencatat setiap mutasi
-            keuangan yang telah diverifikasi dan disetujui. Total saldo pool selalu sama dengan jumlah seluruh porsi
-            anggota.
-          </div>
-
           {ledger.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-xs">
-              <p className="text-xs font-semibold text-slate-600">Belum ada mutasi keuangan yang diverifikasi.</p>
+              <p className="text-xs font-semibold text-slate-600">{t("shared.noLedger")}</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -824,21 +806,19 @@ export function SharedSavingsDetailPage() {
                       <div className="min-w-0">
                         <p className="text-xs font-extrabold text-slate-900 truncate">
                           {l.event_type === "contribution"
-                            ? "Setoran"
+                            ? t("shared.contribute")
                             : l.event_type === "personal_withdrawal"
-                            ? "Penarikan Porsi"
-                            : (l.title || "Pengeluaran Bersama")}
+                            ? t("shared.withdrawalRequest")
+                            : (l.title || t("shared.spendingRequest"))}
                         </p>
                         <p className="text-[11px] font-bold text-slate-700 truncate">
                           {l.event_type === "shared_spending"
-                            ? `Diajukan oleh: ${l.requester_name || "Anggota"}`
-                            : (l.requester_name || "Anggota")}
+                            ? `${t("shared.requestedBy")}: ${l.requester_name || t("shared.members")}`
+                            : (l.requester_name || t("shared.members"))}
                         </p>
                         {l.note && <p className="text-[11px] text-slate-500 truncate">{l.note}</p>}
                         <p className="text-[10px] text-slate-400">
-                          {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(
-                            new Date(l.created_at)
-                          )}
+                          {formatDate(l.created_at)}
                         </p>
                       </div>
                     </div>
@@ -856,13 +836,6 @@ export function SharedSavingsDetailPage() {
                         {l.event_type === "contribution" ? "+" : "-"}
                         {formatCurrency(amount, currency)}
                       </p>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.2 text-[9px] font-bold uppercase tracking-wider text-slate-600">
-                        {l.event_type === "contribution"
-                          ? "Setoran"
-                          : l.event_type === "personal_withdrawal"
-                          ? "Penarikan"
-                          : "Pengeluaran"}
-                      </span>
                     </div>
                   </div>
                 );
@@ -876,7 +849,7 @@ export function SharedSavingsDetailPage() {
       {activeTab === "settings" && (
         <section className="space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-            <h3 className="text-sm font-extrabold text-slate-900">Kontrol Ruang Tabungan</h3>
+            <h3 className="text-sm font-extrabold text-slate-900">{t("shared.settingsTab")}</h3>
 
             <div className="grid gap-3 sm:grid-cols-2">
               {/* Edit Details (Owner only) */}
@@ -889,9 +862,9 @@ export function SharedSavingsDetailPage() {
                 <div>
                   <p className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <Edit size={14} className="text-kash-emerald" />
-                    Edit Info Tabungan
+                    {t("shared.editInfo")}
                   </p>
-                  <p className="text-[11px] text-slate-500">Nama, Target Nominal, Deadline, Warna</p>
+                  <p className="text-[11px] text-slate-500">{t("shared.editInfoDesc")}</p>
                 </div>
               </button>
 
@@ -905,9 +878,9 @@ export function SharedSavingsDetailPage() {
                 <div>
                   <p className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <ShieldCheck size={14} className="text-amber-500" />
-                    Kelola Hak Approver
+                    {t("shared.manageApproversControl")}
                   </p>
-                  <p className="text-[11px] text-slate-500">Atur siapa saja yang dapat memverifikasi permintaan</p>
+                  <p className="text-[11px] text-slate-500">{t("shared.manageApproversControlDesc")}</p>
                 </div>
               </button>
 
@@ -921,9 +894,9 @@ export function SharedSavingsDetailPage() {
                 <div>
                   <p className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <Landmark size={14} className="text-blue-500" />
-                    Tunjuk Account Holder
+                    {t("shared.setAccountHolderControl")}
                   </p>
-                  <p className="text-[11px] text-slate-500">Pilih pemegang rekening fisik dana bersama</p>
+                  <p className="text-[11px] text-slate-500">{t("shared.setAccountHolderControlDesc")}</p>
                 </div>
               </button>
 
@@ -937,9 +910,9 @@ export function SharedSavingsDetailPage() {
                 <div>
                   <p className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <Crown size={14} className="text-amber-500" />
-                    Alihkan Kepemilikan (Owner)
+                    {t("shared.transferOwnershipControl")}
                   </p>
-                  <p className="text-[11px] text-slate-500">Serahkan kontrol kepemilikan ruang ke anggota lain</p>
+                  <p className="text-[11px] text-slate-500">{t("shared.transferOwnershipControlDesc")}</p>
                 </div>
               </button>
             </div>
@@ -947,9 +920,9 @@ export function SharedSavingsDetailPage() {
 
           {/* Leave Space Card */}
           <div className="rounded-2xl border border-red-200 bg-red-50/50 p-5 space-y-3">
-            <h4 className="text-xs font-extrabold text-red-900">Keluar dari Tabungan Bersama</h4>
+            <h4 className="text-xs font-extrabold text-red-900">{t("shared.leaveSpaceTitle")}</h4>
             <p className="text-xs text-red-700">
-              Sebelum keluar, porsi kepemilikan Anda harus bernilai Rp0 (sudah ditarik) dan tidak ada pengajuan tertunda.
+              {t("shared.leaveSpaceDesc")}
             </p>
             <Button
               type="button"
@@ -957,7 +930,7 @@ export function SharedSavingsDetailPage() {
               onClick={() => void handleLeaveSpace()}
               className="min-h-9 px-3.5 text-xs text-kash-expense hover:bg-red-100"
             >
-              <LogOut size={14} /> Keluar dari Ruang Ini
+              <LogOut size={14} /> {t("shared.leaveSpaceBtn")}
             </Button>
           </div>
         </section>
@@ -1049,34 +1022,25 @@ export function SharedSavingsDetailPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-extrabold text-slate-900">Tolak Permintaan</h3>
+              <h3 className="text-base font-extrabold text-slate-900">{t("shared.rejectRequestTitle")}</h3>
               <IconButton icon={X} label="Tutup" onClick={() => setRejectingRequest(null)} />
             </div>
 
             <p className="text-xs text-slate-600">
-              Anda akan menolak pengajuan{" "}
-              <span className="font-bold text-slate-900">
-                {rejectingRequest.request_type === "contribution"
-                  ? "Setoran"
-                  : rejectingRequest.request_type === "withdrawal"
-                  ? "Penarikan"
-                  : "Pengeluaran"}
-              </span>{" "}
-              sebesar{" "}
+              {t("shared.rejectRequestTitle")}:{" "}
               <span className="font-bold text-slate-900">
                 {formatCurrency(toNumber(rejectingRequest.amount), currency)}
               </span>
-              .
             </p>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Alasan Penolakan (Opsional)
+                {t("shared.rejectReasonLabel")}
               </label>
               <textarea
                 className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-semibold focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
                 rows={3}
-                placeholder="e.g. Bukti transfer belum masuk, nominal tidak sesuai"
+                placeholder={t("shared.rejectReasonPlaceholder")}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
               />
@@ -1089,7 +1053,7 @@ export function SharedSavingsDetailPage() {
                 onClick={() => setRejectingRequest(null)}
                 disabled={Boolean(processingRequestId)}
               >
-                Batal
+                {t("common.cancel")}
               </Button>
               <Button
                 type="button"
@@ -1098,7 +1062,7 @@ export function SharedSavingsDetailPage() {
                 className="bg-kash-expense hover:bg-red-700"
               >
                 {processingRequestId ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
-                Konfirmasi Tolak
+                {t("shared.confirmRejectBtn")}
               </Button>
             </div>
           </div>

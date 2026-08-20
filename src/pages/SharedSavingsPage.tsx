@@ -98,8 +98,8 @@ export function SharedSavingsPage() {
   }, [spaces]);
 
   const tabOptions = useMemo(() => [
-    { label: t("shared.poolBalance"), value: "spaces", count: spaces.length },
-    { label: t("shared.invitations"), value: "invites", count: invites.length },
+    { label: t("shared.spacesTab"), value: "spaces", count: spaces.length },
+    { label: t("shared.invitationsTab"), value: "invites", count: invites.length },
   ], [spaces.length, invites.length, t]);
 
   return (
@@ -107,16 +107,16 @@ export function SharedSavingsPage() {
       <PageHeader
         eyebrow="Finance"
         icon={UsersRound}
-        title="Tabungan Bersama"
-        description="Kelola dana tabungan bersama anggota keluarga atau teman secara transparan & aman."
+        title={t("shared.title")}
+        description={t("shared.subtitle")}
       />
 
       {error && (
         <section className="rounded-xl border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h3 className="text-base font-extrabold text-slate-900">Terjadi Kesalahan</h3>
+          <h3 className="text-base font-extrabold text-slate-900">{t("common.error")}</h3>
           <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
           <Button className="mt-4" onClick={() => void loadData()}>
-            Coba Lagi
+            {t("common.retry")}
           </Button>
         </section>
       )}
@@ -131,7 +131,7 @@ export function SharedSavingsPage() {
 
         <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
           <Plus aria-hidden="true" size={18} />
-          Buat Tabungan Bersama
+          {t("shared.createSpace")}
         </Button>
       </div>
 
@@ -139,7 +139,7 @@ export function SharedSavingsPage() {
       {loading && (
         <div className="grid gap-4 md:grid-cols-2">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="h-44 animate-pulse rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" />
+            <div key={n} className="h-44 animate-pulse rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm" />
           ))}
         </div>
       )}
@@ -147,46 +147,6 @@ export function SharedSavingsPage() {
       {/* Tab 1: Spaces List */}
       {!loading && activeTab === "spaces" && (
         <>
-          {/* Summary Cards */}
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4.5 shadow-xs">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Total Saldo Gabungan
-              </span>
-              <p className="mt-1.5 text-xl font-extrabold text-slate-900">
-                {formatMoney(totals.totalPool, currency)}
-              </p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                Dari {spaces.length} ruang tabungan bersama
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-4.5 shadow-xs">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Hak Milik Saya (Net Share)
-              </span>
-              <p className="mt-1.5 text-xl font-extrabold text-kash-emeraldDark">
-                {formatMoney(totals.totalMyShare, currency)}
-              </p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                Akumulasi bagian dana milik Anda
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-4.5 shadow-xs">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Menunggu Persetujuan
-              </span>
-              <p className="mt-1.5 text-xl font-extrabold text-slate-900">
-                {totals.totalPendingRequests} Permintaan
-              </p>
-              <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                Setoran atau penarikan yang butuh respon
-              </p>
-            </div>
-          </div>
-
-          {/* Spaces Grid */}
           {spaces.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-xs">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-kash-emeraldDark">
@@ -200,7 +160,7 @@ export function SharedSavingsPage() {
               </p>
               <Button onClick={() => setShowCreateModal(true)} className="mt-5">
                 <Plus aria-hidden="true" size={16} />
-                Buat Tabungan Pertama
+                {t("shared.createFirst")}
               </Button>
             </div>
           ) : (
@@ -232,9 +192,9 @@ export function SharedSavingsPage() {
                               {space.name}
                             </h4>
                             <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
-                              <span>{space.active_members_count} Anggota</span>
+                              <span>{space.active_members_count} {t("shared.members")}</span>
                               <span>•</span>
-                              <span>Holder: {accountHolderName}</span>
+                              <span>{t("shared.accountHolder")}: {accountHolderName}</span>
                             </div>
                           </div>
                         </div>
@@ -243,22 +203,22 @@ export function SharedSavingsPage() {
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           {isOwner && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
-                              <Crown size={11} /> Owner
+                              <Crown size={11} /> {t("shared.owner")}
                             </span>
                           )}
                           {!isOwner && isAccountHolder && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
-                              <Landmark size={11} /> Pemegang Rekening
+                              <Landmark size={11} /> {t("shared.accountHolder")}
                             </span>
                           )}
                           {!isOwner && !isAccountHolder && isApprover && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-kash-emeraldDark">
-                              <ShieldCheck size={11} /> Approver
+                              <ShieldCheck size={11} /> {t("shared.approver")}
                             </span>
                           )}
                           {pendingRequestsCount > 0 && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-bold text-kash-expense animate-pulse">
-                              <Clock size={11} /> {pendingRequestsCount} Butuh Respon
+                              <Clock size={11} /> {t("shared.needsResponse", { count: pendingRequestsCount })}
                             </span>
                           )}
                         </div>
@@ -268,7 +228,7 @@ export function SharedSavingsPage() {
                       <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
                         <div>
                           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            Total Saldo
+                            {t("shared.totalBalance")}
                           </span>
                           <p className="text-base font-extrabold text-slate-900">
                             {formatMoney(current, currency)}
@@ -276,7 +236,7 @@ export function SharedSavingsPage() {
                         </div>
                         <div>
                           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            Porsi Hak Anda
+                            {t("shared.myShare")}
                           </span>
                           <p className="text-base font-extrabold text-kash-emeraldDark">
                             {formatMoney(myShare, currency)}
@@ -289,7 +249,7 @@ export function SharedSavingsPage() {
                         <div className="space-y-1.5 pt-1">
                           <div className="flex items-center justify-between text-xs font-bold">
                             <span className="text-slate-600">
-                              Target: {formatMoney(target, currency)}
+                              {t("shared.target")}: {formatMoney(target, currency)}
                             </span>
                             <span className="text-kash-emeraldDark">{progressPct}%</span>
                           </div>
@@ -307,7 +267,7 @@ export function SharedSavingsPage() {
                     </div>
 
                     <div className="mt-4 flex items-center justify-end text-xs font-bold text-kash-emerald group-hover:translate-x-0.5 transition">
-                      Detail Tabungan <ChevronRight size={15} />
+                      {t("shared.viewDetail")} <ChevronRight size={15} />
                     </div>
                   </Link>
                 );
@@ -341,6 +301,12 @@ export function SharedSavingsPage() {
                   inv.owner_name?.trim() ||
                   "User";
 
+                const showSeparateOwner =
+                  Boolean(inv.owner_name) &&
+                  Boolean(inv.shared_savings?.owner_user_id) &&
+                  inv.inviter_user_id !== inv.shared_savings?.owner_user_id &&
+                  inv.inviter_name !== inv.owner_name;
+
                 return (
                   <div
                     key={inv.id}
@@ -355,7 +321,7 @@ export function SharedSavingsPage() {
                       </span>
                       <div className="min-w-0 space-y-1">
                         <h4 className="text-base font-extrabold text-slate-900 truncate">
-                          {inv.shared_savings?.name || "Tabungan Bersama"}
+                          {inv.shared_savings?.name || t("shared.title")}
                         </h4>
 
                         <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-600">
@@ -364,7 +330,7 @@ export function SharedSavingsPage() {
                               {t("shared.invitedBy", { name: inviterDisplayName })}
                             </span>
                           </p>
-                          {inv.owner_name && inv.inviter_name !== inv.owner_name && (
+                          {showSeparateOwner && (
                             <p className="text-slate-500">
                               ({t("shared.owner")}: <span className="font-semibold text-slate-700">{inv.owner_name}</span>)
                             </p>
@@ -374,16 +340,16 @@ export function SharedSavingsPage() {
                         <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-[11px] text-slate-500">
                           {target !== null && (
                             <span className="font-semibold text-kash-emeraldDark">
-                              Target: {formatMoney(target, currency)}
+                              {t("shared.target")}: {formatMoney(target, currency)}
                             </span>
                           )}
                           {inv.shared_savings?.deadline && (
                             <span>
-                              Deadline: {formatDate(inv.shared_savings.deadline)}
+                              {t("shared.deadline")}: {formatDate(inv.shared_savings.deadline)}
                             </span>
                           )}
                           <span>
-                            {t("shared.validUntil")}: {formatDate(inv.expires_at)}
+                            {t("shared.validUntil", { date: formatDate(inv.expires_at) })}
                           </span>
                         </div>
                       </div>

@@ -4,6 +4,7 @@ import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { setSharedSavingsApprover } from "../../lib/sharedSavings";
 import type { SharedSavingsMemberShare } from "../../types/domain";
+import { useI18n } from "../../i18n";
 
 type ManageApproversModalProps = {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export function ManageApproversModal({
   onClose,
   onUpdated,
 }: ManageApproversModalProps) {
+  const { t } = useI18n();
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,7 @@ export function ManageApproversModal({
       await setSharedSavingsApprover(spaceId, userId, !currentIsApprover);
       onUpdated();
     } catch (err: any) {
-      setError(err.message || "Gagal mengubah hak akses Approver.");
+      setError(err.message || t("common.error"));
     } finally {
       setLoadingUserId(null);
     }
@@ -54,7 +56,7 @@ export function ManageApproversModal({
             <ShieldCheck size={20} strokeWidth={2.2} />
           </span>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Kelola Hak Akses Approver</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("shared.manageApproversTitle")}</h2>
             <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
           </div>
         </div>
@@ -66,12 +68,6 @@ export function ManageApproversModal({
             {error}
           </div>
         )}
-
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-          <span className="font-extrabold text-slate-900">Approver</span> berwenang memverifikasi & menyetujui setoran
-          dana, penarikan porsi, dan pengeluaran bersama. Ruang ini wajib memiliki{" "}
-          <span className="font-bold text-slate-900">minimal 1 Approver aktif</span>.
-        </div>
 
         <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white overflow-hidden">
           {activeMembers.map((m) => {
@@ -87,12 +83,12 @@ export function ManageApproversModal({
                     </p>
                     {m.is_owner && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
-                        Owner
+                        {t("shared.owner")}
                       </span>
                     )}
                     {m.is_account_holder && (
                       <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-black text-blue-800">
-                        Account Holder
+                        {t("shared.accountHolder")}
                       </span>
                     )}
                   </div>
@@ -112,10 +108,10 @@ export function ManageApproversModal({
                   {isApprover ? (
                     <>
                       <CheckCircle2 size={14} className="text-kash-emerald" />
-                      Approver Aktif
+                      {t("shared.approver")}
                     </>
                   ) : (
-                    "Jadikan Approver"
+                    `+ ${t("shared.approver")}`
                   )}
                 </button>
               </div>
@@ -125,7 +121,7 @@ export function ManageApproversModal({
 
         <div className="flex items-center justify-end pt-3 border-t border-slate-100">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Selesai
+            {t("common.save")}
           </Button>
         </div>
       </div>

@@ -8,7 +8,8 @@ import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { submitContributionRequest } from "../../lib/sharedSavings";
-import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
+import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
+import { useI18n } from "../../i18n";
 
 type ContributeSharedModalProps = {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function ContributeSharedModal({
   onClose,
   onSubmitted,
 }: ContributeSharedModalProps) {
+  const { t, formatCurrency } = useI18n();
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [amountDigits, setAmountDigits] = useState("");
@@ -42,7 +44,7 @@ export function ContributeSharedModal({
     getWallets()
       .then((res) => {
         if (res.error) {
-          setError(res.error.message || "Gagal memuat daftar dompet.");
+          setError(res.error.message || t("common.error"));
           return;
         }
         const activeWallets = (res.data ?? []).filter((w) => !w.is_archived);
@@ -51,7 +53,7 @@ export function ContributeSharedModal({
           setSelectedWalletId(activeWallets[0].id);
         }
       })
-      .catch((err) => setError(err.message || "Gagal memuat daftar dompet."))
+      .catch((err) => setError(err.message || t("common.error")))
       .finally(() => setLoading(false));
   }, [isOpen]);
 
@@ -60,13 +62,13 @@ export function ContributeSharedModal({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedWalletId) {
-      setError("Pilih dompet sumber setoran.");
+      setError(t("common.required"));
       return;
     }
 
     const amountNum = Number(amountDigits);
     if (!amountDigits || isNaN(amountNum) || amountNum <= 0) {
-      setError("Nominal setoran harus lebih dari 0.");
+      setError(t("common.invalidAmount"));
       return;
     }
 
@@ -84,7 +86,7 @@ export function ContributeSharedModal({
       onSubmitted();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Gagal mengajukan setoran.");
+      setError(err.message || t("common.error"));
     } finally {
       setSubmitting(false);
     }
@@ -109,7 +111,7 @@ export function ContributeSharedModal({
             <ArrowDownRight size={20} strokeWidth={2.2} />
           </span>
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Setor ke Tabungan Bersama</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("shared.contributeTitle")}</h2>
             <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
           </div>
         </div>
@@ -126,7 +128,7 @@ export function ContributeSharedModal({
           {/* Source Wallet Selector */}
           <SelectField
             id="source-wallet"
-            label="Dompet Sumber"
+            label={t("shared.sourceWallet")}
             value={selectedWalletId}
             onChange={(e) => {
               setSelectedWalletId(e.target.value);
@@ -146,11 +148,11 @@ export function ContributeSharedModal({
           {/* Amount Field */}
           <FormField
             id="contribution-amount"
-            label="Nominal Setoran (Rp)"
+            label={t("shared.amount")}
             required
             autoFocus
             placeholder="0"
-            hint={`Saldo dompet saat ini: ${formatCurrency(selectedBalance, "IDR")}`}
+            hint={`Saldo: ${formatCurrency(selectedBalance, "IDR")}`}
             value={formatMoneyDigits(amountDigits)}
             onChange={(e) => {
               setAmountDigits(parseMoneyInputDigits(e.target.value));
@@ -161,26 +163,19 @@ export function ContributeSharedModal({
           {/* Optional Note */}
           <FormField
             id="contribution-note"
-            label="Catatan / Keterangan (Opsional)"
-            placeholder="e.g. Setoran bulanan Agustus, bonus lembur"
+            label={t("shared.noteOptional")}
+            placeholder={t("shared.notePlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
 
-          {/* Verification Process Notice */}
-          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
-            <span className="font-extrabold">Alur Verifikasi:</span> Pengajuan setoran akan berstatus{" "}
-            <span className="font-bold text-amber-700">Pending</span> dan saldo dompet Anda baru terpotong setelah{" "}
-            <span className="font-bold">Approver</span> memverifikasi & menyetujui setoran.
-          </div>
-
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={submitting || loading}>
-              {submitting ? "Mengajukan..." : "Ajukan Setoran"}
+              {submitting ? t("shared.saving") : t("shared.submitContribution")}
             </Button>
           </div>
         </form>
