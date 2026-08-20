@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { navGroups } from "../../app/navigation";
 import { useAuth } from "../../context/AuthContext";
+import { useI18n } from "../../i18n";
 import { useNotifications } from "../../context/NotificationContext";
 import { KashLogo } from "../brand/KashLogo";
 import { IconButton } from "../ui/IconButton";
@@ -65,6 +66,34 @@ export function DesktopSidebar() {
     };
   }, [profileMenuOpen]);
 
+  const { t } = useI18n();
+
+  const getLocalizedNavLabel = (path: string, defaultLabel: string) => {
+    switch (path) {
+      case "/dashboard": return t("nav.dashboard");
+      case "/transactions": return t("nav.transactions");
+      case "/budgets": return t("nav.budgets");
+      case "/calendar": return t("nav.calendar");
+      case "/analytics": return t("nav.analytics");
+      case "/wallets": return t("nav.wallets");
+      case "/goals": return t("nav.goals");
+      case "/shared-savings": return t("nav.sharedSavings");
+      case "/debts": return t("nav.debts");
+      case "/subscriptions": return t("nav.subscriptions");
+      case "/settings": return t("nav.settings");
+      default: return defaultLabel;
+    }
+  };
+
+  const getLocalizedGroupLabel = (groupLabel: string) => {
+    switch (groupLabel.toLowerCase()) {
+      case "overview": return t("nav.overview");
+      case "finance": return t("nav.finance");
+      case "account": return t("nav.account");
+      default: return groupLabel;
+    }
+  };
+
   return (
     <aside className="hidden h-[100dvh] w-64 shrink-0 border-r border-kash-emerald/15 bg-white/95 px-5 py-6 shadow-[8px_0_32px_rgba(16,185,129,0.06)] lg:flex lg:flex-col">
       <div className="flex shrink-0 items-center justify-between gap-3">
@@ -99,7 +128,7 @@ export function DesktopSidebar() {
         <div className="flex flex-col gap-7">
           {navGroups.map((group) => (
             <section key={group.label}>
-              <h2 className="px-3 text-xs font-bold uppercase tracking-normal text-kash-emeraldDark">{group.label}</h2>
+              <h2 className="px-3 text-xs font-bold uppercase tracking-normal text-kash-emeraldDark">{getLocalizedGroupLabel(group.label)}</h2>
               <div className="mt-2 flex flex-col gap-1">
                 {group.items.map((item) => (
                   <NavLink
@@ -114,7 +143,7 @@ export function DesktopSidebar() {
                     }
                   >
                     <item.icon aria-hidden="true" className="shrink-0" size={19} strokeWidth={2} />
-                    <span>{item.label}</span>
+                    <span>{getLocalizedNavLabel(item.path, item.label)}</span>
                   </NavLink>
                 ))}
               </div>

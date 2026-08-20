@@ -265,7 +265,7 @@ export function SharedSavingsDetailPage() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-4 md:px-6 md:py-6 pb-28 md:pb-8">
+    <div className="w-full min-w-0 space-y-5">
       {/* Back Navigation */}
       <div>
         <Link

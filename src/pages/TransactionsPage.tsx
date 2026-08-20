@@ -22,6 +22,7 @@ import { TransactionDetailPanel } from "../components/transactions/TransactionDe
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -778,7 +779,7 @@ export function TransactionsPage() {
   };
 
   return (
-    <div className="relative mx-auto w-full max-w-[1180px] md:min-h-[calc(100dvh-3rem)]">
+    <div className="relative w-full min-w-0 space-y-5 md:min-h-[calc(100dvh-3rem)]">
       <div>
         <PageHeader
           eyebrow="Ledger"
@@ -812,20 +813,11 @@ export function TransactionsPage() {
 
         <section className="relative mt-5 pb-2">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-              {typeOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => updateFilter("type", option.value)}
-                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-extrabold transition ${
-                    filters.type === option.value ? "bg-kash-emerald text-white shadow-sm" : "bg-kash-selected/70 text-slate-700 hover:bg-kash-selected hover:text-kash-emeraldDark"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+            <FilterTabs
+              options={typeOptions}
+              value={filters.type ?? "all"}
+              onChange={(val) => updateFilter("type", val as TransactionTypeFilter)}
+            />
 
             <div className="flex items-center justify-between gap-3 md:justify-end">
               <div ref={filterMenuRef} className="relative">

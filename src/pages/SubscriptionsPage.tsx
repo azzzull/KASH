@@ -20,6 +20,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { CreateObligationModal } from "../components/subscriptions/CreateObligationModal";
 import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { Button } from "../components/ui/Button";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents } from "../lib/appEvents";
@@ -146,8 +147,15 @@ export function SubscriptionsPage() {
     });
   }, [obligations, activeTab, searchQuery]);
 
+  const tabOptions = useMemo(() => [
+    { label: "All", value: "all" },
+    { label: "Subscriptions & Bills", value: "subscriptions" },
+    { label: "PayLater & Installments", value: "installments" },
+    { label: "Due Soon / Overdue", value: "due_soon" },
+  ], []);
+
   return (
-    <div className="mx-auto max-w-[1180px] space-y-4">
+    <div className="w-full min-w-0 space-y-5">
       {/* Page Header */}
       <PageHeader
         eyebrow="Finance"
@@ -239,26 +247,11 @@ export function SubscriptionsPage() {
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: "all", label: "All" },
-            { id: "subscriptions", label: "Subscriptions & Bills" },
-            { id: "installments", label: "PayLater & Installments" },
-            { id: "due_soon", label: "Due Soon / Overdue" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabFilter)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
-                activeTab === tab.id
-                  ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/60 hover:text-kash-emeraldDark"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <FilterTabs
+          options={tabOptions}
+          value={activeTab}
+          onChange={(val) => setActiveTab(val as TabFilter)}
+        />
 
         <div className="relative w-full sm:w-64">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
@@ -267,7 +260,7 @@ export function SubscriptionsPage() {
             placeholder="Search obligations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
           />
         </div>
       </div>

@@ -88,7 +88,7 @@ export function DebtDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-5xl space-y-6 pb-20 pt-4 md:pb-8">
+      <div className="w-full min-w-0 space-y-6 pb-20 pt-4 md:pb-8">
         <div className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white p-6" />
         <div className="h-44 animate-pulse rounded-xl border border-slate-200 bg-white p-6" />
         <div className="h-64 animate-pulse rounded-xl border border-slate-200 bg-white p-6" />
@@ -98,7 +98,7 @@ export function DebtDetailPage() {
 
   if (!detail) {
     return (
-      <div className="mx-auto max-w-5xl space-y-6 pb-20 pt-4 text-center md:pb-8">
+      <div className="w-full min-w-0 space-y-6 pb-20 pt-4 text-center md:pb-8">
         <div className="rounded-xl border border-slate-200 bg-white py-16 p-6 shadow-sm">
           <h2 className="text-xl font-extrabold text-slate-900">Counterparty not found</h2>
           <p className="mt-2 text-sm text-slate-600">The requested person or counterparty does not exist.</p>
@@ -119,20 +119,24 @@ export function DebtDetailPage() {
   const activeItems = debts.filter((d) => d.status === "active" || d.status === "partially_paid");
   const settledItems = debts.filter((d) => d.status === "settled" || d.status === "cancelled");
 
-  // Summary object for SettlementModal
-  const counterpartySummaryObject: CounterpartyWithSummary = {
+  const counterpartySummary: CounterpartyWithSummary = {
     ...counterparty,
     debtTotal: summary.totalDebtRemaining,
+    debtOriginalTotal: summary.totalDebtOriginal,
+    debtPaidTotal: summary.totalDebtPaid,
     receivableTotal: summary.totalReceivableRemaining,
+    receivableOriginalTotal: summary.totalReceivableOriginal,
+    receivablePaidTotal: summary.totalReceivablePaid,
     activeDebtCount: summary.activeDebtCount,
     activeReceivableCount: summary.activeReceivableCount,
     settledDebtCount: summary.settledDebtCount,
     settledReceivableCount: summary.settledReceivableCount,
     totalItemCount: debts.length,
   };
+  const counterpartySummaryObject = counterpartySummary;
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] space-y-4">
+    <div className="w-full min-w-0 space-y-5">
       {/* Navigation & Header */}
       <div>
         <Link

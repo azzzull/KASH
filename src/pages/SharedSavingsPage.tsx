@@ -22,6 +22,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
 import { CreateSharedSavingsModal } from "../components/sharedSavings/CreateSharedSavingsModal";
 import {
@@ -94,8 +95,13 @@ export function SharedSavingsPage() {
     return { totalPool, totalMyShare, totalPendingRequests };
   }, [spaces]);
 
+  const tabOptions = useMemo(() => [
+    { label: "Tabungan Bersama", value: "spaces", count: spaces.length },
+    { label: "Undangan Masuk", value: "invites", count: invites.length },
+  ], [spaces.length, invites.length]);
+
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-4 md:px-6 md:py-6 pb-28 md:pb-8">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow="Finance"
         icon={UsersRound}
@@ -115,44 +121,11 @@ export function SharedSavingsPage() {
 
       {/* Header Toolbar: Left Tabs & Right Create Button */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("spaces")}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold transition ${
-              activeTab === "spaces"
-                ? "bg-kash-emerald text-white shadow-xs"
-                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
-            }`}
-          >
-            <Users size={15} />
-            Tabungan Bersama ({spaces.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("invites")}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-extrabold transition ${
-              activeTab === "invites"
-                ? "bg-kash-emerald text-white shadow-xs"
-                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
-            }`}
-          >
-            <Mail size={15} />
-            Undangan Masuk
-            {invites.length > 0 && (
-              <span
-                className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
-                  activeTab === "invites"
-                    ? "bg-white text-kash-emeraldDark"
-                    : "bg-kash-emerald text-white"
-                }`}
-              >
-                {invites.length}
-              </span>
-            )}
-          </button>
-        </div>
+        <FilterTabs
+          options={tabOptions}
+          value={activeTab}
+          onChange={(val) => setActiveTab(val as "spaces" | "invites")}
+        />
 
         <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
           <Plus aria-hidden="true" size={18} />

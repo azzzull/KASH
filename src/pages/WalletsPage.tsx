@@ -367,7 +367,7 @@ export function WalletsPage() {
   }, [wallets]);
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-5 p-4 md:p-6">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow="Wallet Summary"
         icon={WalletCards}

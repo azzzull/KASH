@@ -618,7 +618,7 @@ export function WalletDetailPage() {
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-4 p-4 md:p-6">
+    <div className="w-full min-w-0 space-y-5">
       <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/wallets">
         <ArrowLeft aria-hidden="true" size={17} />
         Wallets

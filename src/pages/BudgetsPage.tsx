@@ -18,8 +18,10 @@ import { BudgetCard } from "../components/budgets/BudgetCard";
 import { CreateBudgetModal } from "../components/budgets/CreateBudgetModal";
 import { Button } from "../components/ui/Button";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
+import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
 import { getMonthlyBudgetOverview, getMonthlyBudgets } from "../lib/budgets";
 import { formatCurrency } from "../lib/money";
@@ -137,8 +139,18 @@ export function BudgetsPage() {
     100
   );
 
+  const { t } = useI18n();
+
+  const filterTabOptions = useMemo(() => [
+    { label: t("common.all"), value: "all", count: budgets.length },
+    { label: t("budgets.categories"), value: "category", count: categoryBudgets.length },
+    { label: t("budgets.envelopes"), value: "envelope", count: envelopeBudgets.length },
+    { label: "Cicil Utang", value: "debt", count: debtBudgets.length },
+    { label: "Tabungan", value: "goal", count: goalBudgets.length },
+  ], [budgets.length, categoryBudgets.length, envelopeBudgets.length, debtBudgets.length, goalBudgets.length, t]);
+
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-5 p-4 md:p-6">
+    <div className="w-full min-w-0 space-y-5">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
@@ -300,67 +312,11 @@ export function BudgetsPage() {
       )}
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setFilterType("all")}
-          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
-            filterType === "all"
-              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-          }`}
-        >
-          Semua ({budgets.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setFilterType("category")}
-          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
-            filterType === "category"
-              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-          }`}
-        >
-          Kategori ({categoryBudgets.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setFilterType("envelope")}
-          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
-            filterType === "envelope"
-              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-          }`}
-        >
-          Amplop ({envelopeBudgets.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setFilterType("debt")}
-          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
-            filterType === "debt"
-              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-          }`}
-        >
-          Cicil Utang ({debtBudgets.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setFilterType("goal")}
-          className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition ${
-            filterType === "goal"
-              ? "bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-              : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-          }`}
-        >
-          Tabungan ({goalBudgets.length})
-        </button>
-      </div>
+      <FilterTabs
+        options={filterTabOptions}
+        value={filterType}
+        onChange={(val) => setFilterType(val as "all" | "category" | "envelope" | "debt" | "goal")}
+      />
 
       {/* Budgets List Grid */}
       {loading ? (

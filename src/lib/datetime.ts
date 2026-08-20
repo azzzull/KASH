@@ -93,3 +93,62 @@ export function getCurrentLocalDatetimeString(): string {
 export function getCurrentLocalDateString(): string {
   return toLocalDateInputValue(new Date());
 }
+
+/**
+ * Locale-aware date formatter
+ * Example: 20 Agustus 2026 (id) vs August 20, 2026 (en)
+ */
+export function formatDate(
+  dateInput: string | Date | null | undefined,
+  locale: "id" | "en" = "id",
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  if (!dateInput) return "";
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return "";
+
+  const intlLocale = locale === "id" ? "id-ID" : "en-US";
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  };
+
+  return new Intl.DateTimeFormat(intlLocale, options ?? defaultOptions).format(date);
+}
+
+/**
+ * Locale-aware month-year formatter
+ * Example: Agustus 2026 (id) vs August 2026 (en)
+ */
+export function formatMonthYear(
+  dateInput: string | Date | null | undefined,
+  locale: "id" | "en" = "id",
+): string {
+  return formatDate(dateInput, locale, { month: "long", year: "numeric" });
+}
+
+/**
+ * Locale-aware time formatter
+ * Example: 08.30 (id) vs 8:30 AM (en)
+ */
+export function formatTime(
+  dateInput: string | Date | null | undefined,
+  locale: "id" | "en" = "id",
+): string {
+  if (!dateInput) return "";
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return "";
+
+  if (locale === "id") {
+    const hh = padZero(date.getHours());
+    const mm = padZero(date.getMinutes());
+    return `${hh}.${mm}`;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}

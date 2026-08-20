@@ -6,10 +6,14 @@ import { router } from "./app/router";
 import { AuthProvider } from "./context/AuthContext";
 import "./styles/index.css";
 
+import { I18nProvider } from "./i18n";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <I18nProvider>
+        <RouterProvider router={router} />
+      </I18nProvider>
     </AuthProvider>
   </React.StrictMode>,
 );

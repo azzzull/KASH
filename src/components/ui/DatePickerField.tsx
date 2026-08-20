@@ -1,6 +1,7 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "@headlessui/react";
 import { Calendar as CalendarIcon, Check, ChevronDown, ChevronLeft, ChevronRight, Clock } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useI18n } from "../../i18n";
 
 type DatePickerFieldProps = {
   id?: string;
@@ -16,22 +17,18 @@ type DatePickerFieldProps = {
   placeholder?: string;
 };
 
-const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
+const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const MONTH_NAMES_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const DAY_NAMES_ID = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const DAY_NAMES_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => padZero(i));
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => padZero(i));
@@ -89,11 +86,14 @@ function parseDateTime(dateStr: string) {
   };
 }
 
-function formatDisplayString(valueStr: string, enableTime: boolean): string {
-  if (!valueStr) return enableTime ? "Pilih Tanggal & Jam" : "Pilih Tanggal";
+function formatDisplayString(valueStr: string, enableTime: boolean, locale: "id" | "en" = "id"): string {
+  if (!valueStr) return enableTime ? (locale === "id" ? "Pilih Tanggal & Jam" : "Select Date & Time") : (locale === "id" ? "Pilih Tanggal" : "Select Date");
   const parsed = parseDateTime(valueStr);
-  const monthName = MONTH_NAMES[parsed.month] || "";
-  const dateFormatted = `${parsed.day} ${monthName} ${parsed.year}`;
+  const monthNames = locale === "id" ? MONTH_NAMES_ID : MONTH_NAMES_EN;
+  const monthName = monthNames[parsed.month] || "";
+  const dateFormatted = locale === "id"
+    ? `${parsed.day} ${monthName} ${parsed.year}`
+    : `${monthName} ${parsed.day}, ${parsed.year}`;
   if (!enableTime) return dateFormatted;
   return `${dateFormatted}, ${parsed.hours}:${parsed.minutes}`;
 }
@@ -327,7 +327,15 @@ export function DatePickerField({
     return cells;
   }, [viewYear, viewMonth, parsedValue.dateStr, value, min, max]);
 
-  const defaultPlaceholder = enableTime ? "Pilih Tanggal & Jam" : "Pilih Tanggal";
+  let locale: "id" | "en" = "id";
+  try {
+    const i18n = useI18n();
+    locale = i18n.locale;
+  } catch {}
+
+  const monthNames = locale === "id" ? MONTH_NAMES_ID : MONTH_NAMES_EN;
+  const dayNames = locale === "id" ? DAY_NAMES_ID : DAY_NAMES_EN;
+  const defaultPlaceholder = enableTime ? (locale === "id" ? "Pilih Tanggal & Jam" : "Select Date & Time") : (locale === "id" ? "Pilih Tanggal" : "Select Date");
 
   return (
     <div ref={containerRef} className={`relative block w-full max-w-full min-w-0 ${className}`}>
@@ -344,7 +352,7 @@ export function DatePickerField({
         }`}
       >
         <span className={`truncate ${value ? "text-slate-900" : "text-slate-600"}`}>
-          {value ? formatDisplayString(value, enableTime) : (placeholder || defaultPlaceholder)}
+          {value ? formatDisplayString(value, enableTime, locale) : (placeholder || defaultPlaceholder)}
         </span>
         <div className="flex items-center gap-1.5 shrink-0 text-slate-600 group-hover:text-kash-emerald">
           {enableTime && <Clock size={16} className={isOpen ? "text-kash-emerald" : ""} />}
@@ -358,8 +366,8 @@ export function DatePickerField({
           ref={popoverRef}
           className="absolute z-50 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-100 sm:w-80"
         >
-          {/* Header Month / Year Navigation */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          {/* Month/Year Navigation Header */}
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={handlePrevMonth}
@@ -370,7 +378,7 @@ export function DatePickerField({
             </button>
 
             <span className="text-sm font-extrabold text-slate-900">
-              {MONTH_NAMES[viewMonth]} {viewYear}
+              {monthNames[viewMonth]} {viewYear}
             </span>
 
             <button
@@ -385,7 +393,7 @@ export function DatePickerField({
 
           {/* Day of Week Headers */}
           <div className="mt-2 grid grid-cols-7 gap-1 text-center">
-            {DAY_NAMES.map((name, i) => (
+            {dayNames.map((name, i) => (
               <span
                 key={name}
                 className={`text-[11px] font-bold ${i === 0 ? "text-kash-expense" : "text-slate-600"}`}
@@ -462,7 +470,7 @@ export function DatePickerField({
               onClick={handleSetNow}
               className="font-bold text-kash-emerald hover:text-kash-emeraldDark transition"
             >
-              {enableTime ? "Sekarang (Now)" : "Hari Ini (Today)"}
+              {enableTime ? (locale === "id" ? "Sekarang" : "Now") : (locale === "id" ? "Hari Ini" : "Today")}
             </button>
             <button
               type="button"
@@ -470,7 +478,7 @@ export function DatePickerField({
               className="flex items-center gap-1 rounded-md bg-kash-emerald px-2.5 py-1 font-bold text-white shadow-sm hover:bg-kash-emeraldDark transition"
             >
               <Check size={13} />
-              Selesai
+              {locale === "id" ? "Selesai" : "Done"}
             </button>
           </div>
         </div>

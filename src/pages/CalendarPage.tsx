@@ -359,7 +359,7 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="relative mx-auto w-full max-w-[1180px]">
+    <div className="relative w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow="Calendar"
         icon={CalendarDays}

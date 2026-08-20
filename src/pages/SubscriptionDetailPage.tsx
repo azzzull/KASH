@@ -130,7 +130,7 @@ export function SubscriptionDetailPage() {
   const canHardDelete = payments.length === 0;
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-4">
+    <div className="w-full min-w-0 space-y-5">
       {/* Back Button */}
       <Link
         to="/subscriptions"

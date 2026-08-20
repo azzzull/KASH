@@ -18,15 +18,18 @@ import {
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
 import { Button } from "../components/ui/Button";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
+import { ProgressBar } from "../components/ui/ProgressBar";
 import { SelectField } from "../components/ui/SelectField";
 import { useAppEvent } from "../hooks/useAppEvent";
+import { useI18n } from "../i18n";
 import { appEvents, emitDebtSaved, emitTransactionSaved } from "../lib/appEvents";
 import {
   createDebt,
@@ -46,6 +49,8 @@ type TypeFilter = "all" | "debt" | "receivable";
 type StatusFilter = "active" | "settled" | "all";
 
 export function DebtsPage() {
+  const navigate = useNavigate();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [allCounterparties, setAllCounterparties] = useState<Counterparty[]>([]);
@@ -87,26 +92,32 @@ export function DebtsPage() {
   useAppEvent(appEvents.debtSaved, loadData);
   useAppEvent(appEvents.transactionSaved, loadData);
 
+  const typeFilterOptions = useMemo(() => [
+    { label: t("debts.tabAll"), value: "all" },
+    { label: t("debts.tabDebts"), value: "debt" },
+    { label: t("debts.tabReceivables"), value: "receivable" },
+  ], [t]);
+
   return (
-    <div className="mx-auto w-full max-w-[1180px] space-y-4">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow="Finance"
         icon={HandCoins}
-        title="Debt & Receivable"
+        title={t("debts.title")}
         description="Track obligations and record settlements at the counterparty level."
         actions={
           <Button onClick={() => setCreateModalOpen(true)}>
             <Plus aria-hidden="true" size={18} />
-            New Obligation
+            {t("debts.createDebt")}
           </Button>
         }
       />
 
       {/* Overview Totals (Never Netted) */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <section className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">Total You Owe</span>
+            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("debts.totalDebt")}</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-expense/10 text-kash-expense">
               <ArrowUpRight aria-hidden="true" size={17} strokeWidth={2.4} />
             </span>
@@ -115,13 +126,13 @@ export function DebtsPage() {
             {formatCurrency(totalDebt, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Money you need to pay to others
+            {t("debts.remainingDebt")}
           </p>
         </section>
 
-        <section className="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">Total Owed to You</span>
+            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("debts.totalReceivable")}</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-emerald/10 text-kash-emerald">
               <ArrowDownLeft aria-hidden="true" size={17} strokeWidth={2.4} />
             </span>
@@ -130,7 +141,7 @@ export function DebtsPage() {
             {formatCurrency(totalReceivable, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Money others need to pay back to you
+            {t("debts.remainingReceivable")}
           </p>
         </section>
       </div>
@@ -138,93 +149,63 @@ export function DebtsPage() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Type Segments */}
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => setTypeFilter("all")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
-              typeFilter === "all"
-                ? "bg-kash-emerald text-white shadow-xs"
-                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
-            }`}
-          >
-            All
-          </button>
-          <button
-            type="button"
-            onClick={() => setTypeFilter("debt")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
-              typeFilter === "debt"
-                ? "bg-kash-emerald text-white shadow-xs"
-                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
-            }`}
-          >
-            Debt (You Owe)
-          </button>
-          <button
-            type="button"
-            onClick={() => setTypeFilter("receivable")}
-            className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition ${
-              typeFilter === "receivable"
-                ? "bg-kash-emerald text-white shadow-xs"
-                : "border border-slate-200 bg-white text-slate-600 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-slate-900"
-            }`}
-          >
-            Receivable (Owed to You)
-          </button>
-        </div>
+        <FilterTabs
+          options={typeFilterOptions}
+          value={typeFilter}
+          onChange={(val) => setTypeFilter(val as TypeFilter)}
+        />
 
         {/* Status & Search */}
         <div className="flex flex-wrap items-end gap-3 sm:flex-nowrap">
           <div className="min-w-[190px]">
             <SelectField
-              id="debt-status-filter"
               label="Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             >
-              <option value="active">Active Obligations</option>
-              <option value="settled">Settled Obligations</option>
-              <option value="all">All Statuses</option>
+              <option value="active">{t("common.active")}</option>
+              <option value="settled">{t("debts.settled")}</option>
+              <option value="all">{t("common.all")}</option>
             </SelectField>
           </div>
 
-          <div className="relative min-w-[180px] flex-1 sm:w-60">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={15} />
+          <div className="relative w-full sm:w-64">
             <input
               type="text"
-              placeholder="Search person..."
+              placeholder={t("common.search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
+              className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
             />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
           </div>
         </div>
       </div>
 
-      {/* Counterparty List */}
+      {/* Counterparty Cards List */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-44 animate-pulse rounded-xl border border-slate-200 bg-white p-5 shadow-sm" />
-          ))}
+        <div className="flex items-center justify-center gap-2 py-16 text-sm font-bold text-slate-600">
+          <Loader2 className="animate-spin" size={20} />
+          {t("common.loading")}
         </div>
       ) : counterparties.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center shadow-sm">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-600">
             <HandCoins size={28} />
           </div>
-          <h3 className="mt-4 text-base font-extrabold text-slate-900">No counterparties found</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-600">
+          <h3 className="mt-4 text-base font-extrabold text-slate-900">
+            {t("debts.emptyTitle")}
+          </h3>
+          <p className="mt-1 text-xs font-semibold text-slate-600">
             {searchQuery
               ? `No results matching "${searchQuery}".`
-              : "Track your first debt or receivable obligation."}
+              : t("debts.emptyDesc")}
           </p>
           {!searchQuery && (
             <div className="mt-5">
               <Button onClick={() => setCreateModalOpen(true)}>
                 <Plus aria-hidden="true" size={16} />
-                Add Obligation
+                {t("debts.createDebt")}
               </Button>
             </div>
           )}
@@ -236,15 +217,32 @@ export function DebtsPage() {
             const hasReceivable = cp.receivableTotal > 0 || cp.activeReceivableCount > 0;
             const isAllSettled = cp.activeDebtCount === 0 && cp.activeReceivableCount === 0 && (cp.settledDebtCount > 0 || cp.settledReceivableCount > 0);
 
+            const debtTotal = cp.debtOriginalTotal || (cp.debtTotal + cp.debtPaidTotal);
+            const debtPaid = cp.debtPaidTotal;
+            const debtProgress = debtTotal > 0 ? (debtPaid / debtTotal * 100) : (cp.debtTotal === 0 ? 100 : 0);
+
+            const recTotal = cp.receivableOriginalTotal || (cp.receivableTotal + cp.receivablePaidTotal);
+            const recPaid = cp.receivablePaidTotal;
+            const recProgress = recTotal > 0 ? (recPaid / recTotal * 100) : (cp.receivableTotal === 0 ? 100 : 0);
+
             return (
               <div
                 key={cp.id}
-                className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/debts/${cp.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/debts/${cp.id}`);
+                  }
+                }}
+                className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:border-kash-emerald/50 hover:shadow-md hover:bg-kash-selected/10 cursor-pointer focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 text-left"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="truncate text-lg font-black text-slate-900">
+                      <h3 className="truncate text-lg font-black text-slate-900 group-hover:text-kash-emeraldDark transition-colors">
                         {cp.name}
                       </h3>
                       <p className="mt-0.5 text-xs font-semibold text-slate-600">
@@ -254,70 +252,117 @@ export function DebtsPage() {
                     {isAllSettled && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700">
                         <CheckCircle2 size={12} />
-                        Settled
+                        {t("debts.settled")}
                       </span>
                     )}
                   </div>
 
                   <div className="mt-4 space-y-3">
-                    {/* Debt Row */}
+                    {/* Debt Row with Progress */}
                     {(hasDebt || cp.settledDebtCount > 0) && (
-                      <div className="rounded-lg border border-slate-100 bg-white p-3 shadow-none">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-slate-600">You Owe:</span>
+                          <span className="font-bold text-slate-600">{t("debts.totalDebt")}:</span>
                           <span className="font-black text-slate-900">
+                            {formatCurrency(debtTotal, "IDR")}
+                          </span>
+                        </div>
+                        {debtPaid > 0 ? (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-600">{t("debts.paidAmount")}:</span>
+                            <span className="font-black text-kash-emeraldDark">
+                              {formatCurrency(debtPaid, "IDR")}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="flex items-center justify-between text-xs border-t border-slate-200/50 pt-1.5">
+                          <span className="font-bold text-slate-700">{t("debts.remainingDebt")}:</span>
+                          <span className="font-black text-kash-expense">
                             {formatCurrency(cp.debtTotal, "IDR")}
                           </span>
                         </div>
-                        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-600">
-                          <span>{cp.activeDebtCount} active debt{cp.activeDebtCount !== 1 ? "s" : ""}</span>
-                          {cp.debtTotal > 0 && (
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between text-[11px] font-extrabold text-slate-600">
+                            <span>{t("debts.progress")}</span>
+                            <span>{debtProgress.toFixed(1)}%</span>
+                          </div>
+                          <ProgressBar percentage={debtProgress} tone="emerald" height="xs" />
+                        </div>
+
+                        {cp.debtTotal > 0 && (
+                          <div className="pt-1 flex justify-end">
                             <button
                               type="button"
-                              onClick={() => setSettlementTarget({ counterparty: cp, debtType: "debt" })}
-                              className="font-extrabold text-kash-emerald hover:text-kash-emeraldDark hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSettlementTarget({ counterparty: cp, debtType: "debt" });
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-kash-emerald px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition hover:bg-kash-emeraldDark focus:outline-none focus:ring-2 focus:ring-kash-emerald/30"
                             >
-                              Pay
+                              {t("debts.pay")}
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* Receivable Row */}
+                    {/* Receivable Row with Progress */}
                     {(hasReceivable || cp.settledReceivableCount > 0) && (
-                      <div className="rounded-lg border border-slate-100 bg-white p-3 shadow-none">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-slate-600">Owes You:</span>
+                          <span className="font-bold text-slate-600">{t("debts.totalReceivable")}:</span>
                           <span className="font-black text-slate-900">
+                            {formatCurrency(recTotal, "IDR")}
+                          </span>
+                        </div>
+                        {recPaid > 0 ? (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-600">{t("debts.collectedAmount")}:</span>
+                            <span className="font-black text-kash-emeraldDark">
+                              {formatCurrency(recPaid, "IDR")}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="flex items-center justify-between text-xs border-t border-slate-200/50 pt-1.5">
+                          <span className="font-bold text-slate-700">{t("debts.remainingReceivable")}:</span>
+                          <span className="font-black text-teal-600">
                             {formatCurrency(cp.receivableTotal, "IDR")}
                           </span>
                         </div>
-                        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-600">
-                          <span>{cp.activeReceivableCount} active receivable{cp.activeReceivableCount !== 1 ? "s" : ""}</span>
-                          {cp.receivableTotal > 0 && (
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between text-[11px] font-extrabold text-slate-600">
+                            <span>{t("debts.progress")}</span>
+                            <span>{recProgress.toFixed(1)}%</span>
+                          </div>
+                          <ProgressBar percentage={recProgress} tone="emerald" height="xs" />
+                        </div>
+
+                        {cp.receivableTotal > 0 && (
+                          <div className="pt-1 flex justify-end">
                             <button
                               type="button"
-                              onClick={() => setSettlementTarget({ counterparty: cp, debtType: "receivable" })}
-                              className="font-extrabold text-kash-emerald hover:text-kash-emeraldDark hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSettlementTarget({ counterparty: cp, debtType: "receivable" });
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3.5 py-1.5 text-xs font-black text-white shadow-xs transition hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-600/30"
                             >
-                              Collect
+                              {t("debts.collect")}
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="mt-5 border-t border-slate-100 pt-3">
-                  <Link
-                    to={`/debts/${cp.id}`}
-                    className="flex items-center justify-between text-xs font-extrabold text-kash-emerald hover:text-kash-emeraldDark hover:underline"
-                  >
-                    <span>View Details & History</span>
-                    <ChevronRight size={15} />
-                  </Link>
+                <div className="mt-5 border-t border-slate-100 pt-3 flex items-center justify-between text-xs font-extrabold text-kash-emerald group-hover:text-kash-emeraldDark">
+                  <span>{t("common.viewDetail")}</span>
+                  <ChevronRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>
             );

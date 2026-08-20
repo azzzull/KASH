@@ -15,7 +15,11 @@ import { supabase } from "./supabase";
 
 export type CounterpartyWithSummary = Counterparty & {
   debtTotal: number;
+  debtOriginalTotal: number;
+  debtPaidTotal: number;
   receivableTotal: number;
+  receivableOriginalTotal: number;
+  receivablePaidTotal: number;
   activeDebtCount: number;
   activeReceivableCount: number;
   settledDebtCount: number;
@@ -131,7 +135,11 @@ export async function getCounterparties(filters?: {
   const summaries: CounterpartyWithSummary[] = counterparties.map((c) => {
     const items = progressByCounterparty.get(c.id) ?? [];
     let debtTotal = 0;
+    let debtOriginalTotal = 0;
+    let debtPaidTotal = 0;
     let receivableTotal = 0;
+    let receivableOriginalTotal = 0;
+    let receivablePaidTotal = 0;
     let activeDebtCount = 0;
     let activeReceivableCount = 0;
     let settledDebtCount = 0;
@@ -139,14 +147,20 @@ export async function getCounterparties(filters?: {
 
     for (const item of items) {
       if (item.status === "cancelled") continue;
+      const original = toNumber(item.original_amount);
+      const paid = toNumber(item.total_paid);
       const remaining = toNumber(item.remaining_amount);
 
       if (item.type === "debt") {
         debtTotal += remaining;
+        debtOriginalTotal += original;
+        debtPaidTotal += paid;
         if (item.status === "settled") settledDebtCount++;
         else activeDebtCount++;
       } else {
         receivableTotal += remaining;
+        receivableOriginalTotal += original;
+        receivablePaidTotal += paid;
         if (item.status === "settled") settledReceivableCount++;
         else activeReceivableCount++;
       }
@@ -155,7 +169,11 @@ export async function getCounterparties(filters?: {
     return {
       ...c,
       debtTotal,
+      debtOriginalTotal,
+      debtPaidTotal,
       receivableTotal,
+      receivableOriginalTotal,
+      receivablePaidTotal,
       activeDebtCount,
       activeReceivableCount,
       settledDebtCount,

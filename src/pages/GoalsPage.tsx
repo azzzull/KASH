@@ -422,7 +422,7 @@ export function GoalsPage() {
     }, [goals]);
 
     return (
-        <div className="mx-auto grid w-full max-w-7xl gap-5 p-4 md:p-6">
+        <div className="w-full min-w-0 space-y-5">
             <PageHeader
                 eyebrow="Savings Goals"
                 icon={Crosshair}

@@ -11,7 +11,7 @@ type PagePlaceholderProps = {
 
 export function PagePlaceholder({ title, description, icon: Icon, sections = [] }: PagePlaceholderProps) {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeader eyebrow="Sprint 1 Foundation" icon={Icon} title={title} description={description} />
 
       <PageCard>

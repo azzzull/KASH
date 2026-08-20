@@ -1,6 +1,7 @@
 import { Menu, Plus } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { mobilePrimaryItems } from "../../app/navigation";
+import { useI18n } from "../../i18n";
 
 type MobileBottomNavProps = {
   onMore: () => void;
@@ -8,7 +9,17 @@ type MobileBottomNavProps = {
 };
 
 export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
+  const { t } = useI18n();
   const [home, transactions, analytics] = mobilePrimaryItems;
+
+  const getLocalizedNavLabel = (path: string, defaultLabel: string) => {
+    switch (path) {
+      case "/dashboard": return t("nav.dashboard");
+      case "/transactions": return t("nav.transactions");
+      case "/analytics": return t("nav.analytics");
+      default: return defaultLabel;
+    }
+  };
 
   return (
     <nav
@@ -27,7 +38,7 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
             }
           >
             <item.icon aria-hidden="true" size={19} strokeWidth={2} />
-            <span>{item.label}</span>
+            <span>{getLocalizedNavLabel(item.path, item.label)}</span>
           </NavLink>
         ))}
 
@@ -49,7 +60,7 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
           }
         >
           <analytics.icon aria-hidden="true" size={19} strokeWidth={2} />
-          <span>{analytics.label}</span>
+          <span>{getLocalizedNavLabel(analytics.path, analytics.label)}</span>
         </NavLink>
 
         <button
@@ -58,7 +69,7 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
           type="button"
         >
           <Menu aria-hidden="true" size={19} strokeWidth={2} />
-          <span>More</span>
+          <span>{t("nav.more")}</span>
         </button>
       </div>
     </nav>

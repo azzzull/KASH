@@ -253,7 +253,7 @@ export function BudgetDetailPage() {
       : "Budget Kategori";
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-5 p-4 md:p-6">
+    <div className="w-full min-w-0 space-y-5">
       {/* Top Breadcrumb, Month Selector & Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link

@@ -3,6 +3,7 @@ import {
   BellOff,
   Check,
   ChevronRight,
+  Globe,
   Info,
   Loader2,
   Lock,
@@ -17,9 +18,11 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 import { updateProfileFullName } from "../lib/auth";
 import {
   getCurrentPushSubscription,
@@ -33,6 +36,7 @@ import { supabase } from "../lib/supabase";
 
 export function SettingsPage() {
   const { profile, refreshProfile, user } = useAuth();
+  const { locale, setLocale, t } = useI18n();
 
   const [displayName, setDisplayName] = useState(profile?.full_name ?? "");
   const [savingName, setSavingName] = useState(false);
@@ -134,15 +138,50 @@ export function SettingsPage() {
   const isIosApp = isIosStandalone();
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-5 p-4 md:p-6">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow="Account"
         icon={Settings}
-        title="Settings"
+        title={t("settings.title")}
         description="Manage your profile, preferences, and finance setup."
       />
 
       <section className="grid gap-4">
+        {/* Language & Regional Preferences Card */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3.5 border-b border-slate-100 pb-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kash-selected text-kash-emeraldDark font-black text-base shadow-sm">
+              <Globe size={20} />
+            </span>
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t("settings.language")}</h2>
+              <p className="text-xs font-semibold text-slate-600">
+                {t("settings.languageDesc")}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-700">Display Language (Bahasa Tampilan)</p>
+              <p className="text-xs text-slate-600">
+                Pilih bahasa antarmuka aplikasi. Nilai mata uang tetap terjaga sesuai data aslinya.
+              </p>
+            </div>
+
+            <div className="shrink-0">
+              <FilterTabs
+                options={[
+                  { label: "🇮🇩 Bahasa Indonesia", value: "id" },
+                  { label: "🇬🇧 English", value: "en" },
+                ]}
+                value={locale}
+                onChange={(val) => setLocale(val as "id" | "en")}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Profile & Account Information Card */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3.5 border-b border-slate-100 pb-4">

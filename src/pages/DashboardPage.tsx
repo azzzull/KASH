@@ -1027,7 +1027,7 @@ export function DashboardPage() {
   if (!summary) return null;
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] space-y-4">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow="Dashboard"
         icon={Home}

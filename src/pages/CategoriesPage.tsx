@@ -15,6 +15,7 @@ import { Button } from "../components/ui/Button";
 import { CategoryIconPicker } from "../components/categories/CategoryIconPicker";
 import { QuickCreateEnvelopeModal } from "../components/envelopes/QuickCreateEnvelopeModal";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -625,8 +626,13 @@ export function CategoriesPage() {
     }
   };
 
+  const tabOptions = useMemo(() => [
+    { label: "Kategori Transaksi", value: "categories" },
+    { label: "Amplop Pengeluaran", value: "envelopes", count: envelopes.length },
+  ], [envelopes.length]);
+
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-4 md:px-6 md:py-6 pb-28 md:pb-8">
+    <div className="w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow="Kelola Anggaran"
         icon={activeTab === "categories" ? Tags : Layers}
@@ -658,33 +664,11 @@ export function CategoriesPage() {
       />
 
       {/* Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab("categories")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
-            activeTab === "categories"
-              ? "bg-kash-emerald text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-          }`}
-        >
-          <Tags size={15} />
-          Kategori Transaksi
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("envelopes")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
-            activeTab === "envelopes"
-              ? "bg-kash-emerald text-white shadow-xs"
-              : "bg-white text-slate-600 border border-slate-200 hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-          }`}
-        >
-          <Layers size={15} />
-          Amplop Pengeluaran ({envelopes.length})
-        </button>
-      </div>
+      <FilterTabs
+        options={tabOptions}
+        value={activeTab}
+        onChange={(val) => setActiveTab(val as "categories" | "envelopes")}
+      />
 
       {error ? (
         <section className="rounded-xl border border-kash-expense/30 bg-white p-5 shadow-sm">
