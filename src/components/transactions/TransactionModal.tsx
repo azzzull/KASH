@@ -17,7 +17,7 @@ import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
 import type { Category, Envelope } from "../../types/domain";
 
-export type QuickTransactionMode = "expense" | "income" | "transfer" | "reimbursable_expense";
+export type QuickTransactionMode = "expense" | "income" | "transfer";
 
 type TransactionModalProps = {
   mode: QuickTransactionMode;
@@ -168,31 +168,31 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       const result =
         mode === "income"
           ? await createIncome({
+            amount: amountDigits,
+            categoryId,
+            note: noteValue,
+            title: noteValue ?? categoryName,
+            transactionDate,
+            walletId,
+          })
+          : mode === "expense"
+            ? await createExpense({
               amount: amountDigits,
               categoryId,
+              envelopeId: envelopeId || null,
               note: noteValue,
               title: noteValue ?? categoryName,
               transactionDate,
               walletId,
             })
-          : mode === "expense"
-            ? await createExpense({
-                amount: amountDigits,
-                categoryId,
-                envelopeId: envelopeId || null,
-                note: noteValue,
-                title: noteValue ?? categoryName,
-                transactionDate,
-                walletId,
-              })
             : await createTransfer({
-                amount: amountDigits,
-                destinationWalletId,
-                note: noteValue,
-                transactionDate,
-                transferFee: feeDigits || "0",
-                walletId,
-              });
+              amount: amountDigits,
+              destinationWalletId,
+              note: noteValue,
+              transactionDate,
+              transferFee: feeDigits || "0",
+              walletId,
+            });
 
       if (result.error) {
         console.error("Failed to create transaction", result.error);

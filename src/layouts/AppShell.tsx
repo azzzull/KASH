@@ -7,8 +7,11 @@ import { AppHeader } from "../components/layout/AppHeader";
 import { DesktopSidebar } from "../components/layout/DesktopSidebar";
 import { MobileBottomNav } from "../components/layout/MobileBottomNav";
 import { MobileMoreSheet } from "../components/layout/MobileMoreSheet";
-import { QuickAddMenu } from "../components/layout/QuickAddMenu";
-import { TransactionModal, type QuickTransactionMode } from "../components/transactions/TransactionModal";
+import {
+  QuickAddMenu,
+  type QuickAddMode,
+} from "../components/layout/QuickAddMenu";
+import { TransactionModal } from "../components/transactions/TransactionModal";
 import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpenseModal";
 
 export function AppShell() {
@@ -16,7 +19,8 @@ export function AppShell() {
   const contentRef = useRef<HTMLElement | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [transactionMode, setTransactionMode] = useState<QuickTransactionMode | null>(null);
+  const [transactionMode, setTransactionMode] =
+    useState<QuickAddMode | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
@@ -106,7 +110,7 @@ export function AppShell() {
     return () => window.removeEventListener("kash:pwa-update-ready", handleUpdateReady);
   }, []);
 
-  const openTransaction = (mode: QuickTransactionMode) => {
+  const openTransaction = (mode: QuickAddMode) => {
     setQuickAddOpen(false);
     setTransactionMode(mode);
   };
