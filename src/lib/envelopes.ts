@@ -118,3 +118,129 @@ export async function deleteEnvelope(id: string): Promise<{ success: boolean; er
     return { success: false, error: err };
   }
 }
+
+export type EnvelopeCategoryBreakdownItem = {
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  totalSpent: number;
+  transactionCount: number;
+  percentage: number;
+};
+
+export type EnvelopeMonthlyAnalytics = {
+  envelope: Envelope;
+  periodStart: string; // YYYY-MM-DD
+  totalSpent: number;
+  transactionCount: number;
+  categoryBreakdown: EnvelopeCategoryBreakdownItem[];
+  transactions: any[];
+  activeBudget: any | null;
+};
+
+/**
+ * Fetch monthly analytics and dynamic category breakdown for an envelope.
+ */
+export async function getEnvelopeMonthlyAnalytics(
+  envelopeId: string,
+  periodStart?: string,
+): Promise<EnvelopeMonthlyAnalytics | null> {
+  const normPeriod = periodStart
+    ? `${periodStart.substring(0, 7)}-01`
+    : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
+
+  const [year, month] = normPeriod.split("-").map(Number);
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+
+  // 1. Fetch envelope definition
+  const { data: envelope, error: envError } = await getEnvelopeById(envelopeId);
+  if (envError || !envelope) return null;
+
+  // 2. Fetch all completed expense transactions tagged with this envelope in the month
+  const { data: txs, error: txError } = await supabase
+    .from("transactions")
+    .select("*, category:categories(*), wallet:wallets(*)")
+    .eq("envelope_id", envelopeId)
+    .eq("type", "expense")
+    .eq("status", "completed")
+    .gte("transaction_date", `${normPeriod}T00:00:00`)
+    .lt("transaction_date", `${endDate}T00:00:00`)
+    .order("transaction_date", { ascending: false });
+
+  if (txError) throw txError;
+
+  const transactionList = txs ?? [];
+  const totalSpent = transactionList.reduce((acc, t) => acc + toNumber(t.amount), 0);
+
+  // 3. Dynamically group and derive category breakdown
+  const categoryMap = new Map<
+    string,
+    {
+      categoryId: string;
+      categoryName: string;
+      categoryIcon: string | null;
+      categoryColor: string | null;
+      totalSpent: number;
+      transactionCount: number;
+    }
+  >();
+
+  for (const t of transactionList) {
+    const rawTx = t as any;
+    const catId = rawTx.category_id || "__uncategorized__";
+    const catName = rawTx.category?.name || "Tanpa Kategori";
+    const catIcon = rawTx.category?.icon || "tag";
+    const catColor = rawTx.category?.color || "#91A3BB";
+    const amount = toNumber(rawTx.amount);
+
+    const existing = categoryMap.get(catId);
+    if (existing) {
+      existing.totalSpent += amount;
+      existing.transactionCount += 1;
+    } else {
+      categoryMap.set(catId, {
+        categoryId: catId,
+        categoryName: catName,
+        categoryIcon: catIcon,
+        categoryColor: catColor,
+        totalSpent: amount,
+        transactionCount: 1,
+      });
+    }
+  }
+
+  const categoryBreakdown: EnvelopeCategoryBreakdownItem[] = Array.from(categoryMap.values())
+    .map((item) => ({
+      ...item,
+      percentage: totalSpent > 0 ? (item.totalSpent / totalSpent) * 100 : 0,
+    }))
+    .sort((a, b) => b.totalSpent - a.totalSpent);
+
+  // 4. Check if there is an active Envelope Budget for this period
+  let activeBudget: any | null = null;
+  try {
+    const { data: budgetData } = await supabase.rpc("get_monthly_budget_progress" as any, {
+      p_period_start: normPeriod,
+    });
+    if (budgetData && Array.isArray(budgetData)) {
+      activeBudget = budgetData.find(
+        (b: any) => b.target_type === "envelope" && b.envelope_id === envelopeId
+      ) || null;
+    }
+  } catch (err) {
+    console.warn("Could not check active budget for envelope:", err);
+  }
+
+  return {
+    envelope,
+    periodStart: normPeriod,
+    totalSpent,
+    transactionCount: transactionList.length,
+    categoryBreakdown,
+    transactions: transactionList,
+    activeBudget,
+  };
+}

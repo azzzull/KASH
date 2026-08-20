@@ -22,6 +22,7 @@ const CategoriesPage = lazyPage(() => import("../pages/CategoriesPage"), "Catego
 const DashboardPage = lazyPage(() => import("../pages/DashboardPage"), "DashboardPage");
 const DebtsPage = lazyPage(() => import("../pages/DebtsPage"), "DebtsPage");
 const DebtDetailPage = lazyPage(() => import("../pages/DebtDetailPage"), "DebtDetailPage");
+const EnvelopeDetailPage = lazyPage(() => import("../pages/EnvelopeDetailPage"), "EnvelopeDetailPage");
 const GoalsPage = lazyPage(() => import("../pages/GoalsPage"), "GoalsPage");
 const GoalDetailPage = lazyPage(() => import("../pages/GoalDetailPage"), "GoalDetailPage");
 const LoginPage = lazyPage(() => import("../pages/LoginPage"), "LoginPage");
@@ -99,6 +100,7 @@ export const router = createBrowserRouter([
           { path: "/notifications", element: routeElement(<NotificationsPage />) },
           { path: "/settings", element: routeElement(<SettingsPage />) },
           { path: "/settings/categories", element: routeElement(<CategoriesPage />) },
+          { path: "/envelopes/:id", element: routeElement(<EnvelopeDetailPage />) },
         ],
       },
     ],

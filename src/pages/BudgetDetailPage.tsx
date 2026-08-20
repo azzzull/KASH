@@ -7,12 +7,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit2,
+  Layers,
+  PieChart,
   ReceiptText,
   Scale,
   Tag,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { EditBudgetModal } from "../components/budgets/EditBudgetModal";
 import { Button } from "../components/ui/Button";
@@ -222,6 +224,33 @@ export function BudgetDetailPage() {
       ? budget.wallet_id ? "Kantong Tabungan" : "Target Tabungan / Goal"
       : "Budget Kategori";
 
+  const envelopeCategoryBreakdown = useMemo(() => {
+    if (targetType !== "envelope" || transactions.length === 0) return [];
+    const map = new Map<string, { id: string; name: string; icon: string; color: string; total: number; count: number }>();
+    let total = 0;
+    for (const tx of transactions) {
+      const catId = (tx as any).category_id || "__uncategorized__";
+      const catName = (tx as any).category?.name || "Tanpa Kategori";
+      const catIcon = (tx as any).category?.icon || "tag";
+      const catColor = (tx as any).category?.color || "#91A3BB";
+      const amount = Number(tx.amount);
+      total += amount;
+      const existing = map.get(catId);
+      if (existing) {
+        existing.total += amount;
+        existing.count += 1;
+      } else {
+        map.set(catId, { id: catId, name: catName, icon: catIcon, color: catColor, total: amount, count: 1 });
+      }
+    }
+    return Array.from(map.values())
+      .map((item) => ({
+        ...item,
+        percentage: total > 0 ? (item.total / total) * 100 : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [targetType, transactions]);
+
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-5 p-4 md:p-6">
       {/* Top Breadcrumb, Month Selector & Actions */}
@@ -401,6 +430,67 @@ export function BudgetDetailPage() {
                   {name}
                 </span>
               ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Category Breakdown for Envelope Budgets */}
+        {targetType === "envelope" && envelopeCategoryBreakdown.length > 0 ? (
+          <div className="mt-5 border-t border-slate-100 pt-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PieChart size={16} className="text-kash-emerald" />
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+                  Rincian Distribusi Kategori Amplop
+                </span>
+              </div>
+              {budget.envelope_id && (
+                <Link
+                  to={`/envelopes/${budget.envelope_id}?month=${currentMonth}`}
+                  className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark"
+                >
+                  Buka Halaman Amplop →
+                </Link>
+              )}
+            </div>
+
+            {/* Stacked Multi-color Bar */}
+            <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
+              {envelopeCategoryBreakdown.map((item) => (
+                <div
+                  key={item.id}
+                  style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
+                  className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                  title={`${item.name}: ${formatCurrency(item.total)} (${item.percentage.toFixed(1)}%)`}
+                />
+              ))}
+            </div>
+
+            {/* Breakdown List */}
+            <div className="grid gap-2 sm:grid-cols-2 pt-1">
+              {envelopeCategoryBreakdown.map((item) => {
+                const CatIcon = getCategoryIcon(item.icon);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white text-[11px]"
+                        style={{ backgroundColor: item.color }}
+                      >
+                        <CatIcon size={14} />
+                      </span>
+                      <span className="font-bold text-slate-800 truncate">{item.name}</span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-black text-slate-900">{formatCurrency(item.total)}</span>
+                      <span className="ml-1.5 font-bold text-slate-500">({item.percentage.toFixed(1)}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}

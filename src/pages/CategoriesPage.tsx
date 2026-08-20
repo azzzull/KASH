@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { CategoryIconPicker } from "../components/categories/CategoryIconPicker";
 import { QuickCreateEnvelopeModal } from "../components/envelopes/QuickCreateEnvelopeModal";
@@ -188,23 +189,23 @@ function EnvelopePill({
   const Icon = getCategoryIcon(envelope.icon || "layers");
 
   return (
-    <article className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-slate-300">
-      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+    <article className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-kash-emerald hover:bg-kash-selected/30">
+      <Link to={`/envelopes/${envelope.id}`} className="flex items-center gap-3.5 min-w-0 flex-1">
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs transition group-hover:scale-105"
           style={{ backgroundColor: envelope.color ?? "#4F7DF3" }}
         >
           <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-black text-slate-900" title={envelope.name}>
+          <span className="block truncate text-sm font-black text-slate-900 group-hover:text-kash-emeraldDark" title={envelope.name}>
             {envelope.name}
           </span>
           <span className="mt-0.5 block truncate text-xs font-medium text-slate-600">
             {envelope.note || "Amplop Pengeluaran Khusus"}
           </span>
         </div>
-      </div>
+      </Link>
 
       <div className="shrink-0">
         {/* Desktop buttons */}
