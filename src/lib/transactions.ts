@@ -375,7 +375,7 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
   if (nextOutgoingAmount) {
     const restoredOutgoingAmount =
       transaction.wallet_id === input.walletId
-        ? outgoingAmountFor(transaction.type, transaction.amount, transaction.transfer_fee) ?? "0"
+        ? outgoingAmountFor(transaction.type, transaction.amount, transaction.transfer_fee ?? "0") ?? "0"
         : "0";
 
     await assertWalletCanCover(userId, input.walletId, nextOutgoingAmount, restoredOutgoingAmount);

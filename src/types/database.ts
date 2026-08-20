@@ -22,6 +22,8 @@ import type {
   GoalContribution,
   GoalProgress,
   GoalStatus,
+  InvestmentActivity,
+  InvestmentActivityType,
   InvestmentValuation,
   MonthlyBudgetOverview,
   Notification,
@@ -145,6 +147,22 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Omit<InvestmentValuation, "id" | "user_id" | "wallet_id" | "created_at">>;
+        Relationships: [];
+      };
+      investment_activities: {
+        Row: InvestmentActivity;
+        Insert: {
+          id?: string;
+          user_id?: string;
+          wallet_id: string;
+          activity_type: InvestmentActivityType;
+          amount: number | string;
+          activity_date?: string;
+          note?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<InvestmentActivity, "id" | "user_id" | "created_at">>;
         Relationships: [];
       };
       transactions: {

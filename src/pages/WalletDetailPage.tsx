@@ -25,16 +25,19 @@ import {
 } from "../lib/walletMeta";
 import {
   archiveWallet,
+  deleteInvestmentActivity,
   deleteWallet,
+  getInvestmentActivities,
   getInvestmentValuationHistory,
   getWalletById,
   getWalletLinkedGoalCount,
   getWalletTransactionCount,
+  recordInvestmentActivity,
   recordInvestmentValuation,
   updateWallet,
   type WalletWithBalance,
 } from "../lib/wallets";
-import type { InvestmentValuation, WalletType } from "../types/domain";
+import type { InvestmentActivity, InvestmentActivityType, InvestmentValuation, WalletType } from "../types/domain";
 
 type WalletEditState = {
   name: string;
@@ -361,13 +364,13 @@ function AdjustmentModal({
 }
 
 function UpdateValuationModal({
-  costBasis,
+  netContributions,
   currentMarketValue,
   onClose,
   onSaved,
   wallet,
 }: {
-  costBasis: string | number;
+  netContributions: string | number;
   currentMarketValue: string | number;
   onClose: () => void;
   onSaved: () => void;
@@ -382,9 +385,9 @@ function UpdateValuationModal({
 
   const marketValueDigits = parseMoneyInputDigits(marketValueInput);
   const nextMarketValue = toNumber(marketValueDigits);
-  const costBasisAmount = toNumber(costBasis);
-  const unrealizedGain = marketValueDigits ? nextMarketValue - costBasisAmount : 0;
-  const returnPct = costBasisAmount > 0 ? (unrealizedGain / costBasisAmount) * 100 : 0;
+  const netContributionsAmount = toNumber(netContributions);
+  const totalGain = marketValueDigits ? nextMarketValue - netContributionsAmount : 0;
+  const returnPct = netContributionsAmount > 0 ? (totalGain / netContributionsAmount) * 100 : null;
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -449,11 +452,11 @@ function UpdateValuationModal({
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.costBasis") || "Modal Masuk (Cost Basis)"}</p>
-              <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(costBasisAmount, wallet.currency)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.netContributions") || "Modal Bersih"}</p>
+              <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(netContributionsAmount, wallet.currency)}</p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.previousMarketValue") || "Nilai Pasar Sebelumnya"}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.previousMarketValue") || "Nilai Investasi Sebelumnya"}</p>
               <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(currentMarketValue, wallet.currency)}</p>
             </div>
           </div>
@@ -461,7 +464,7 @@ function UpdateValuationModal({
           <FormField
             id="investment-market-value"
             inputMode="numeric"
-            label={t("wallets.currentMarketValueLabel") || "Nilai Pasar Saat Ini (Current Market Value)"}
+            label={t("wallets.currentMarketValueLabel") || "Nilai Investasi Saat Ini (Current Equity)"}
             onChange={(event) => setMarketValueInput(formatMoneyDigits(event.target.value))}
             placeholder={t("wallets.marketValuePlaceholder") || "Contoh: 10.500.000"}
             value={marketValueInput}
@@ -469,13 +472,13 @@ function UpdateValuationModal({
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">{t("wallets.unrealizedGainLoss") || "Keuntungan / Kerugian (Unrealized)"}</span>
-              <span className={`text-xs font-extrabold ${unrealizedGain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-                {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(2)}%
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">{t("wallets.totalPnL") || "Total Untung / Rugi"}</span>
+              <span className={`text-xs font-extrabold ${totalGain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                {returnPct !== null ? `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%` : "—"}
               </span>
             </div>
-            <p className={`mt-2 text-xl font-extrabold ${unrealizedGain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-              {unrealizedGain === 0 ? formatCurrency(0, wallet.currency) : `${unrealizedGain > 0 ? "+" : "-"}${formatCurrency(Math.abs(unrealizedGain), wallet.currency)}`}
+            <p className={`mt-2 text-xl font-extrabold ${totalGain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+              {totalGain === 0 ? formatCurrency(0, wallet.currency) : `${totalGain > 0 ? "+" : "-"}${formatCurrency(Math.abs(totalGain), wallet.currency)}`}
             </p>
           </div>
 
@@ -505,12 +508,162 @@ function UpdateValuationModal({
   );
 }
 
+function RecordInvestmentActivityModal({
+  onClose,
+  onSaved,
+  wallet,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+  wallet: WalletWithBalance;
+}) {
+  const { t } = useI18n();
+  const [activityType, setActivityType] = useState<InvestmentActivityType>("realized_gain");
+  const [amountInput, setAmountInput] = useState("");
+  const [activityDate, setActivityDate] = useState(getCurrentLocalDatetimeString());
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const amountDigits = parseMoneyInputDigits(amountInput);
+  const nextAmount = toNumber(amountDigits);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving) return;
+
+    if (!amountDigits || nextAmount <= 0) {
+      setError(t("wallets.validActivityAmountRequired") || "Masukkan nominal aktivitas yang valid (> 0).");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { error: actError } = await recordInvestmentActivity({
+        walletId: wallet.id,
+        activityType,
+        amount: nextAmount,
+        activityDate,
+        note: note.trim() || null,
+      });
+
+      if (actError) {
+        setError(t("wallets.recordActivityError") || "Gagal mencatat aktivitas investasi.");
+        setSaving(false);
+        return;
+      }
+
+      emitTransactionSaved();
+      onSaved();
+    } catch (err: any) {
+      setError(err?.message || (t("wallets.recordActivityError") || "Gagal mencatat aktivitas investasi."));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="md"
+      title={
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-kash-emerald">
+            <TrendingUp aria-hidden="true" size={20} />
+          </span>
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900">{t("wallets.recordInvestmentActivity") || "Catat Aktivitas Investasi"}</h2>
+            <p className="mt-0.5 text-xs font-semibold text-slate-600">
+              {t("wallets.recordActivityDesc") || "Catat hasil take profit atau cut loss. Aktivitas ini hanya membagi performa (realized vs unrealized) dan tidak mengubah saldo dompet secara ganda."}
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <div>
+        {error ? (
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
+              {t("wallets.activityType") || "Tipe Aktivitas"}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setActivityType("realized_gain")}
+                className={`flex items-center justify-center gap-2 rounded-lg p-3 text-sm font-extrabold transition border ${
+                  activityType === "realized_gain"
+                    ? "border-kash-emerald bg-emerald-50 text-kash-emerald"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <TrendingUp size={16} />
+                {t("wallets.realizedGain") || "Untung (Gain)"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivityType("realized_loss")}
+                className={`flex items-center justify-center gap-2 rounded-lg p-3 text-sm font-extrabold transition border ${
+                  activityType === "realized_loss"
+                    ? "border-kash-expense bg-red-50 text-kash-expense"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <TrendingDown size={16} />
+                {t("wallets.realizedLoss") || "Rugi (Loss)"}
+              </button>
+            </div>
+          </div>
+
+          <FormField
+            id="investment-activity-amount"
+            inputMode="numeric"
+            label={t("common.amount") || "Nominal"}
+            onChange={(event) => setAmountInput(formatMoneyDigits(event.target.value))}
+            placeholder={t("wallets.marketValuePlaceholder") || "Contoh: 200.000"}
+            value={amountInput}
+          />
+
+          <DatePickerField
+            id="activity-date"
+            label={t("wallets.activityDate") || "Tanggal Aktivitas"}
+            enableTime
+            onChange={(val) => setActivityDate(val)}
+            value={activityDate}
+          />
+
+          <FormField
+            id="activity-note"
+            label={t("wallets.activityNoteOptional") || "Catatan Aktivitas (Opsional)"}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder={t("wallets.activityNotePlaceholder") || "Contoh: Jual BREN / Take profit BBCA"}
+            value={note}
+          />
+
+          <Button disabled={saving} type="submit">
+            {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
+            {saving ? (t("common.saving") || "Menyimpan...") : (t("wallets.saveActivity") || "Simpan Aktivitas")}
+          </Button>
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
 export function WalletDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, formatDate, formatCurrency } = useI18n();
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
   const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
+  const [activities, setActivities] = useState<InvestmentActivity[]>([]);
   const [linkedGoalCount, setLinkedGoalCount] = useState(0);
   const [transactionCount, setTransactionCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -519,6 +672,9 @@ export function WalletDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
   const [showValuation, setShowValuation] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<InvestmentActivity | null>(null);
+  const [deletingActivity, setDeletingActivity] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadWallet = async () => {
@@ -544,10 +700,14 @@ export function WalletDetailPage() {
 
     if (data.wallet_type === "investment") {
       try {
-        const valHistory = await getInvestmentValuationHistory(id);
+        const [valHistory, actHistory] = await Promise.all([
+          getInvestmentValuationHistory(id),
+          getInvestmentActivities(id),
+        ]);
         setValuations((valHistory.data as any) ?? []);
+        setActivities(actHistory.data ?? []);
       } catch (err) {
-        console.warn("Failed to load valuation history", err);
+        console.warn("Failed to load investment history", err);
       }
     }
 
@@ -587,6 +747,26 @@ export function WalletDetailPage() {
     navigate("/wallets", { replace: true });
   };
 
+  const handleDeleteActivity = async () => {
+    if (!activityToDelete) return;
+    setDeletingActivity(true);
+
+    try {
+      const { error: delError } = await deleteInvestmentActivity(activityToDelete.id);
+      if (delError) {
+        setError(t("wallets.deleteActivityError") || "Gagal menghapus aktivitas investasi.");
+      } else {
+        emitTransactionSaved();
+        setActivityToDelete(null);
+        void loadWallet();
+      }
+    } catch (err: any) {
+      setError(err?.message || (t("wallets.deleteActivityError") || "Gagal menghapus aktivitas investasi."));
+    } finally {
+      setDeletingActivity(false);
+    }
+  };
+
   if (loading) return <DetailSkeleton />;
 
   if (error || !wallet) {
@@ -610,11 +790,17 @@ export function WalletDetailPage() {
   const isInvestment = wallet.wallet_type === "investment";
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
-  const currentBalance = wallet.balance?.current_balance ?? wallet.initial_balance;
+
+  // Investment Performance Metrics
+  const currentEquity = toNumber(wallet.balance?.current_balance ?? wallet.initial_balance);
+  const netContributions = toNumber(wallet.balance?.net_contributions ?? wallet.balance?.cost_basis ?? wallet.initial_balance);
+  const realizedPnL = toNumber(wallet.balance?.realized_pnl ?? 0);
+  const totalPnL = currentEquity - netContributions;
+  const unrealizedPnL = totalPnL - realizedPnL;
+  const totalReturnPct = netContributions > 0 ? (totalPnL / netContributions) * 100 : null;
+
+  const currentBalance = currentEquity;
   const availableBalance = wallet.balance?.available_balance ?? currentBalance;
-  const costBasis = wallet.balance?.cost_basis ?? wallet.initial_balance;
-  const unrealizedGainLoss = toNumber(wallet.balance?.unrealized_gain_loss ?? 0);
-  const returnPercentage = Number(wallet.balance?.return_percentage ?? 0);
   const lastValuationAt = wallet.balance?.last_valuation_at;
   const canEditInitialBalance = transactionCount === 0;
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
@@ -634,10 +820,16 @@ export function WalletDetailPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             {isInvestment ? (
-              <Button onClick={() => setShowValuation(true)}>
-                <LineChart aria-hidden="true" size={17} />
-                {t("wallets.updateInvestmentValuation") || "Update Nilai Investasi"}
-              </Button>
+              <>
+                <Button onClick={() => setShowValuation(true)}>
+                  <LineChart aria-hidden="true" size={17} />
+                  {t("wallets.updateInvestmentValuation") || "Update Nilai Investasi"}
+                </Button>
+                <Button onClick={() => setShowActivityModal(true)} variant="secondary">
+                  <TrendingUp aria-hidden="true" size={17} />
+                  {t("wallets.recordActivity") || "Catat Aktivitas"}
+                </Button>
+              </>
             ) : null}
             <Button onClick={() => setShowEdit(true)} variant="secondary">
               <Edit3 aria-hidden="true" size={17} />
@@ -649,9 +841,9 @@ export function WalletDetailPage() {
                 {t("wallets.adjustBalance") || "Sesuaikan Saldo"}
               </Button>
             ) : null}
-            <Button disabled={deleting} onClick={() => setShowDelete(true)} variant="secondary">
+            <Button onClick={() => setShowDelete(true)} variant="danger">
               <Trash2 aria-hidden="true" size={17} />
-              {t("common.delete") || "Hapus"}
+              {canHardDelete ? (t("common.delete") || "Hapus") : (t("common.archive") || "Arsipkan")}
             </Button>
           </div>
         }
@@ -692,40 +884,73 @@ export function WalletDetailPage() {
             ) : null}
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {/* 1. Current Equity */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.currentMarketValue") || "Nilai Pasar Saat Ini"}</p>
-              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(currentBalance, wallet.currency)}</p>
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.currentEquity") || "Nilai Investasi Saat Ini"}</p>
+              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(currentEquity, wallet.currency)}</p>
             </div>
+
+            {/* 2. Net Contributions */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.costBasis") || "Modal Masuk (Cost Basis)"}</p>
-              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(costBasis, wallet.currency)}</p>
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.netContributions") || "Modal Bersih"}</p>
+              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(netContributions, wallet.currency)}</p>
             </div>
+
+            {/* 3. Total P/L */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.gainLoss") || "Keuntungan / Kerugian"}</p>
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.totalPnL") || "Total Untung / Rugi"}</p>
               <div className="mt-2 flex items-center gap-2">
-                <p className={`text-xl font-extrabold ${unrealizedGainLoss >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-                  {unrealizedGainLoss === 0 ? formatCurrency(0, wallet.currency) : `${unrealizedGainLoss > 0 ? "+" : "-"}${formatCurrency(Math.abs(unrealizedGainLoss), wallet.currency)}`}
+                <p className={`text-xl font-extrabold ${totalPnL >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                  {totalPnL === 0 ? formatCurrency(0, wallet.currency) : `${totalPnL > 0 ? "+" : "-"}${formatCurrency(Math.abs(totalPnL), wallet.currency)}`}
                 </p>
               </div>
             </div>
+
+            {/* 4. Realized P/L */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.realizedPnL") || "Untung/Rugi Terealisasi"}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <p className={`text-xl font-extrabold ${realizedPnL >= 0 ? (realizedPnL === 0 ? "text-slate-900" : "text-kash-emerald") : "text-kash-expense"}`}>
+                  {realizedPnL === 0 ? formatCurrency(0, wallet.currency) : `${realizedPnL > 0 ? "+" : "-"}${formatCurrency(Math.abs(realizedPnL), wallet.currency)}`}
+                </p>
+              </div>
+            </div>
+
+            {/* 5. Unrealized P/L */}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.unrealizedPnL") || "Untung/Rugi Belum Terealisasi"}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <p className={`text-xl font-extrabold ${unrealizedPnL >= 0 ? (unrealizedPnL === 0 ? "text-slate-900" : "text-kash-emerald") : "text-kash-expense"}`}>
+                  {unrealizedPnL === 0 ? formatCurrency(0, wallet.currency) : `${unrealizedPnL > 0 ? "+" : "-"}${formatCurrency(Math.abs(unrealizedPnL), wallet.currency)}`}
+                </p>
+              </div>
+            </div>
+
+            {/* 6. Total Return */}
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
               <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.totalReturn") || "Total Return"}</p>
               <div className="mt-2 flex items-center gap-1.5">
-                {returnPercentage >= 0 ? (
-                  <TrendingUp className="text-kash-emerald" size={18} />
+                {totalReturnPct !== null ? (
+                  <>
+                    {totalReturnPct >= 0 ? (
+                      <TrendingUp className="text-kash-emerald" size={18} />
+                    ) : (
+                      <TrendingDown className="text-kash-expense" size={18} />
+                    )}
+                    <p className={`text-xl font-extrabold ${totalReturnPct >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                      {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(2)}%
+                    </p>
+                  </>
                 ) : (
-                  <TrendingDown className="text-kash-expense" size={18} />
+                  <p className="text-xl font-extrabold text-slate-400">—</p>
                 )}
-                <p className={`text-xl font-extrabold ${returnPercentage >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-                  {returnPercentage >= 0 ? "+" : ""}{returnPercentage.toFixed(2)}%
-                </p>
               </div>
             </div>
           </div>
 
           <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 text-xs font-semibold text-emerald-950">
-            {t("wallets.valuationHelpNote") || "Pembaruan valuasi pasar tercatat sebagai keuntungan/kerugian modal (unrealized gain/loss), tanpa menghasilkan transaksi pengeluaran/pemasukan palsu."}
+            {t("wallets.activityHelpNote") || "Aktivitas trading hanya mempengaruhi pembagian performa (realized vs unrealized) dan tidak mengubah saldo dompet maupun kekayaan bersih secara ganda."}
           </div>
         </section>
       ) : (
@@ -744,6 +969,84 @@ export function WalletDetailPage() {
         <DetailMetric label={t("wallets.includeInNetWorth") || "Sertakan dalam Kekayaan Bersih"} value={wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")} />
       </section>
 
+      {/* Investment Activity Ledger */}
+      {isInvestment ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp aria-hidden="true" className="text-slate-600" size={18} />
+              <h3 className="text-base font-extrabold text-slate-900">{t("wallets.activityHistory") || "Riwayat Aktivitas Investasi"}</h3>
+            </div>
+            <Button onClick={() => setShowActivityModal(true)} size="sm" variant="secondary">
+              <TrendingUp size={15} />
+              {t("wallets.recordActivity") || "Catat Aktivitas"}
+            </Button>
+          </div>
+
+          {activities.length > 0 ? (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
+                  <tr>
+                    <th className="pb-3">{t("common.date") || "Tanggal"}</th>
+                    <th className="pb-3">{t("common.type") || "Tipe"}</th>
+                    <th className="pb-3 text-right">{t("common.amount") || "Nominal"}</th>
+                    <th className="pb-3 pl-4">{t("common.note") || "Catatan"}</th>
+                    <th className="pb-3 text-right">{t("common.actions") || "Aksi"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
+                  {activities.map((act) => {
+                    const isGain = act.activity_type === "realized_gain";
+                    const amountNum = toNumber(act.amount);
+                    return (
+                      <tr key={act.id} className="hover:bg-slate-50/80">
+                        <td className="py-3">
+                          {formatDate(new Date(act.activity_date))}
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-extrabold ${
+                              isGain
+                                ? "bg-emerald-50 text-kash-emerald border border-emerald-200"
+                                : "bg-red-50 text-kash-expense border border-red-200"
+                            }`}
+                          >
+                            {isGain ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                            {isGain ? (t("wallets.realizedGain") || "Gain") : (t("wallets.realizedLoss") || "Loss")}
+                          </span>
+                        </td>
+                        <td className={`py-3 text-right font-extrabold ${isGain ? "text-kash-emerald" : "text-kash-expense"}`}>
+                          {isGain ? "+" : "-"}{formatCurrency(amountNum, wallet.currency)}
+                        </td>
+                        <td className="py-3 pl-4 text-xs text-slate-600">
+                          {act.note || "-"}
+                        </td>
+                        <td className="py-3 text-right">
+                          <IconButton
+                            icon={Trash2}
+                            label={t("common.delete") || "Hapus"}
+                            onClick={() => setActivityToDelete(act)}
+                            className="text-slate-400 hover:text-kash-expense"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+              <p className="text-sm font-semibold text-slate-600">
+                {t("wallets.noActivities") || "Belum ada aktivitas investasi yang dicatat."}
+              </p>
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {/* Valuation History */}
       {isInvestment && valuations.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2">
@@ -755,15 +1058,15 @@ export function WalletDetailPage() {
               <thead className="border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
                 <tr>
                   <th className="pb-3">{t("wallets.valuationDate") || "Tanggal Valuasi"}</th>
-                  <th className="pb-3 text-right">{t("wallets.marketValue") || "Nilai Pasar"}</th>
-                  <th className="pb-3 text-right">{t("wallets.costBasis") || "Cost Basis"}</th>
-                  <th className="pb-3 text-right">Gain / Loss</th>
+                  <th className="pb-3 text-right">{t("wallets.currentEquity") || "Nilai Investasi"}</th>
+                  <th className="pb-3 text-right">{t("wallets.netContributions") || "Modal Bersih"}</th>
+                  <th className="pb-3 text-right">{t("wallets.totalPnL") || "Total P/L"}</th>
                   <th className="pb-3 pl-4">{t("transactions.note") || "Catatan"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
                 {valuations.map((v) => {
-                  const gain = toNumber(v.unrealized_gain_loss ?? (toNumber(v.market_value) - toNumber(v.cost_basis_at_valuation)));
+                  const totalPnL = toNumber(v.market_value) - toNumber(v.cost_basis_at_valuation);
                   return (
                     <tr key={v.id} className="hover:bg-slate-50/80">
                       <td className="py-3">
@@ -775,8 +1078,8 @@ export function WalletDetailPage() {
                       <td className="py-3 text-right text-slate-600">
                         {formatCurrency(v.cost_basis_at_valuation, wallet.currency)}
                       </td>
-                      <td className={`py-3 text-right font-extrabold ${gain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-                        {gain >= 0 ? "+" : ""}{formatCurrency(gain, wallet.currency)}
+                      <td className={`py-3 text-right font-extrabold ${totalPnL >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                        {totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL, wallet.currency)}
                       </td>
                       <td className="py-3 pl-4 text-xs text-slate-600">
                         {v.note || "-"}
@@ -827,11 +1130,21 @@ export function WalletDetailPage() {
       ) : null}
       {showValuation ? (
         <UpdateValuationModal
-          costBasis={costBasis}
+          netContributions={netContributions}
           currentMarketValue={currentBalance}
           onClose={() => setShowValuation(false)}
           onSaved={() => {
             setShowValuation(false);
+            void loadWallet();
+          }}
+          wallet={wallet}
+        />
+      ) : null}
+      {showActivityModal ? (
+        <RecordInvestmentActivityModal
+          onClose={() => setShowActivityModal(false)}
+          onSaved={() => {
+            setShowActivityModal(false);
             void loadWallet();
           }}
           wallet={wallet}
@@ -855,6 +1168,19 @@ export function WalletDetailPage() {
           onConfirm={() => void handleDeleteWallet()}
           title={canHardDelete ? (t("wallets.deleteWalletConfirm") || "Hapus dompet ini?") : (t("wallets.archiveWalletConfirm") || "Arsipkan dompet ini?")}
           tone={canHardDelete ? "danger" : "warning"}
+        />
+      ) : null}
+      {activityToDelete ? (
+        <ConfirmationDialog
+          confirmLabel={t("wallets.deleteActivity") || "Hapus Aktivitas"}
+          description={t("wallets.deleteActivityConfirm") || "Apakah Anda yakin ingin menghapus catatan aktivitas ini? Hal ini hanya akan mengkalkulasi ulang pembagian performa investasi."}
+          icon={Trash2}
+          isLoading={deletingActivity}
+          itemLabel={`${activityToDelete.activity_type === "realized_gain" ? "+ " : "- "}${formatCurrency(activityToDelete.amount, wallet.currency)}${activityToDelete.note ? ` (${activityToDelete.note})` : ""}`}
+          onCancel={() => setActivityToDelete(null)}
+          onConfirm={() => void handleDeleteActivity()}
+          title={t("wallets.deleteActivity") || "Hapus Aktivitas"}
+          tone="danger"
         />
       ) : null}
     </div>

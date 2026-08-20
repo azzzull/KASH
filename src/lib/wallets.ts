@@ -1,4 +1,4 @@
-import type { CurrencyCode, Wallet, WalletBalance, WalletType } from "../types/domain";
+import type { CurrencyCode, InvestmentActivity, InvestmentActivityType, InvestmentValuation, Wallet, WalletBalance, WalletType } from "../types/domain";
 import type { Database } from "../types/database";
 import { supabase } from "./supabase";
 
@@ -228,6 +228,51 @@ export async function getInvestmentValuationHistory(walletId: string) {
     .order("valuation_date", { ascending: false });
 
   if (error) throw error;
-  return { data: data ?? [], error: null };
+  return { data: (data as InvestmentValuation[]) ?? [], error: null };
 }
+
+export async function getInvestmentActivities(walletId: string) {
+  const { data, error } = await supabase
+    .from("investment_activities")
+    .select("*")
+    .eq("wallet_id", walletId)
+    .order("activity_date", { ascending: false });
+
+  if (error) throw error;
+  return { data: (data as InvestmentActivity[]) ?? [], error: null };
+}
+
+export async function recordInvestmentActivity(input: {
+  walletId: string;
+  activityType: InvestmentActivityType;
+  amount: number | string;
+  activityDate?: string;
+  note?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("investment_activities")
+    .insert({
+      wallet_id: input.walletId,
+      activity_type: input.activityType,
+      amount: typeof input.amount === "string" ? Number(input.amount) : input.amount,
+      activity_date: input.activityDate || new Date().toISOString(),
+      note: input.note?.trim() || null,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return { data: data as InvestmentActivity, error: null };
+}
+
+export async function deleteInvestmentActivity(id: string) {
+  const { error } = await supabase
+    .from("investment_activities")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+  return { error: null };
+}
+
 

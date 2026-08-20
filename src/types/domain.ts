@@ -64,6 +64,20 @@ export type Envelope = {
   updated_at: string;
 };
 
+export type InvestmentActivityType = "realized_gain" | "realized_loss";
+
+export type InvestmentActivity = {
+  id: string;
+  user_id: string;
+  wallet_id: string;
+  activity_type: InvestmentActivityType;
+  amount: MoneyAmount;
+  activity_date: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type InvestmentValuation = {
   id: string;
   user_id: string;
@@ -88,7 +102,7 @@ export type Transaction = {
   category_id: string | null;
   envelope_id: string | null;
   destination_wallet_id: string | null;
-  transfer_fee: MoneyAmount;
+  transfer_fee?: MoneyAmount | null;
   transaction_date: string;
   title: string | null;
   note: string | null;
@@ -108,9 +122,13 @@ export type WalletBalance = {
   current_balance: MoneyAmount;
   allocated_to_goals: MoneyAmount;
   available_balance: MoneyAmount;
-  cost_basis?: MoneyAmount;
-  unrealized_gain_loss?: MoneyAmount;
-  return_percentage?: number;
+  net_contributions?: MoneyAmount | null;
+  cost_basis?: MoneyAmount | null;
+  realized_pnl?: MoneyAmount | null;
+  total_pnl?: MoneyAmount | null;
+  unrealized_pnl?: MoneyAmount | null;
+  unrealized_gain_loss?: MoneyAmount | null;
+  return_percentage?: number | null;
   last_valuation_at?: string | null;
 };
 
