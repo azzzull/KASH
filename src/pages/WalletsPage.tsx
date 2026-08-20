@@ -80,11 +80,11 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
         </span>
         {isGoalPocket ? (
           <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200/60">
-            🎯 Goal: {wallet.goal_name}
+            Goal: {wallet.goal_name}
           </span>
         ) : isSavingsPocket ? (
           <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-kash-emeraldDark bg-kash-selected border border-kash-emerald/20">
-            🏦 Savings pocket
+            Savings pocket
           </span>
         ) : wallet.wallet_type === "investment" && wallet.balance?.return_percentage !== undefined ? (
           <span className={`mt-1 block text-xs font-bold ${Number(wallet.balance.return_percentage) >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
@@ -420,15 +420,15 @@ export function WalletsPage() {
           ) : null}
           {!loading
             ? groupedWallets.map((group) => (
-                <div key={group.group}>
-                  <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">{group.group}</h4>
-                  <div className="grid gap-2">
-                    {group.wallets.map((wallet) => (
-                      <WalletRow key={wallet.id} wallet={wallet} />
-                    ))}
-                  </div>
+              <div key={group.group}>
+                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">{group.group}</h4>
+                <div className="grid gap-2">
+                  {group.wallets.map((wallet) => (
+                    <WalletRow key={wallet.id} wallet={wallet} />
+                  ))}
                 </div>
-              ))
+              </div>
+            ))
             : null}
         </div>
       </section>

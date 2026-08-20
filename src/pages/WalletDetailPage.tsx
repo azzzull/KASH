@@ -658,9 +658,6 @@ export function WalletDetailPage() {
       {wallet.goal_id ? (
         <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-black">
-              🎯
-            </div>
             <div>
               <p className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
                 Kantong Terhubung ke Target Tabungan (Goal)
