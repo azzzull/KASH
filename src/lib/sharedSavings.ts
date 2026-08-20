@@ -285,6 +285,10 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
+  const spaceIds = Array.from(
+    new Set(data.map((inv: any) => inv.shared_savings_id).filter(Boolean))
+  );
+
   // Collect all distinct user IDs that need profile enrichment (inviters and space owners)
   const userIdsToFetch = Array.from(
     new Set(
@@ -302,22 +306,39 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
     { full_name: string | null; email: string | null; avatar_url: string | null }
   >();
 
+  // 1. Fetch from profiles table
   if (userIdsToFetch.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, full_name, email, avatar_url")
       .in("id", userIdsToFetch);
 
-    profileMap = new Map(
-      (profiles ?? []).map((p) => [
-        p.id,
-        {
-          full_name: p.full_name,
-          email: p.email,
-          avatar_url: p.avatar_url,
-        },
-      ])
-    );
+    (profiles ?? []).forEach((p) => {
+      profileMap.set(p.id, {
+        full_name: p.full_name,
+        email: p.email,
+        avatar_url: p.avatar_url,
+      });
+    });
+  }
+
+  // 2. Supplement from shared_savings_member_shares_view (which has member names/emails accessible to space members/invitees)
+  if (spaceIds.length > 0) {
+    const { data: memberShares } = await supabase
+      .from("shared_savings_member_shares_view")
+      .select("shared_savings_id, user_id, member_name, member_email, member_avatar_url")
+      .in("shared_savings_id", spaceIds);
+
+    (memberShares ?? []).forEach((m: any) => {
+      const existing = profileMap.get(m.user_id);
+      if (!existing || !existing.full_name) {
+        profileMap.set(m.user_id, {
+          full_name: m.member_name || existing?.full_name || null,
+          email: m.member_email || existing?.email || null,
+          avatar_url: m.member_avatar_url || existing?.avatar_url || null,
+        });
+      }
+    });
   }
 
   return (data ?? []).map((inv: any) => {
@@ -326,18 +347,20 @@ export async function getPendingSharedSavingsInvites(): Promise<SharedSavingsInv
 
     const inviterName =
       inviterProfile?.full_name?.trim() ||
-      inviterProfile?.email ||
-      "User";
+      inviterProfile?.email?.trim() ||
+      null;
+
+    const inviterEmail = inviterProfile?.email?.trim() || null;
 
     const ownerName =
       ownerProfile?.full_name?.trim() ||
-      ownerProfile?.email ||
+      ownerProfile?.email?.trim() ||
       "User";
 
     return {
       ...inv,
       inviter_name: inviterName,
-      inviter_email: inviterProfile?.email || null,
+      inviter_email: inviterEmail,
       inviter_avatar_url: inviterProfile?.avatar_url || null,
       owner_name: ownerName,
     };

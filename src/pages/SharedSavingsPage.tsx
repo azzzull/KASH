@@ -215,7 +215,7 @@ export function SharedSavingsPage() {
                   <Link
                     key={space.shared_savings_id}
                     to={`/shared-savings/${space.shared_savings_id}`}
-                    className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-kash-emerald/40 hover:shadow-md"
+                    className="group block rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm transition hover:border-kash-emerald hover:shadow-md"
                   >
                     <div className="space-y-4">
                       {/* Card Header */}
@@ -242,22 +242,22 @@ export function SharedSavingsPage() {
                         {/* Badges */}
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           {isOwner && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
                               <Crown size={11} /> Owner
                             </span>
                           )}
                           {!isOwner && isAccountHolder && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
                               <Landmark size={11} /> Pemegang Rekening
                             </span>
                           )}
                           {!isOwner && !isAccountHolder && isApprover && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-kash-emeraldDark">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-kash-emeraldDark">
                               <ShieldCheck size={11} /> Approver
                             </span>
                           )}
                           {pendingRequestsCount > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-bold text-kash-expense animate-pulse">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-bold text-kash-expense animate-pulse">
                               <Clock size={11} /> {pendingRequestsCount} Butuh Respon
                             </span>
                           )}
@@ -265,7 +265,7 @@ export function SharedSavingsPage() {
                       </div>
 
                       {/* Balances */}
-                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
                         <div>
                           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                             Total Saldo
@@ -331,16 +331,20 @@ export function SharedSavingsPage() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {invites.map((inv) => {
                 const isResponding = respondingInviteId === inv.id;
                 const target = inv.shared_savings?.target_amount ? toNumber(inv.shared_savings.target_amount) : null;
-                const inviterDisplayName = inv.inviter_name || "User";
+                const inviterDisplayName =
+                  inv.inviter_name?.trim() ||
+                  inv.inviter_email?.trim() ||
+                  inv.owner_name?.trim() ||
+                  "User";
 
                 return (
                   <div
                     key={inv.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm transition hover:border-kash-emerald/40 hover:shadow-md"
                   >
                     <div className="flex items-start gap-3.5 min-w-0">
                       <span
