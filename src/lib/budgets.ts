@@ -490,9 +490,11 @@ export async function getBudgetMatchingTransactions(
     .lt("transaction_date", `${endDate}T00:00:00`)
     .order("transaction_date", { ascending: false });
 
-  if (budget.target_type === "category" && budget.category_id) {
+  const effectiveTargetType = budget.target_type ?? (budget.type === "envelope" ? "envelope" : "category");
+
+  if (effectiveTargetType === "category" && budget.category_id) {
     txQuery = txQuery.eq("category_id", budget.category_id);
-  } else if (budget.target_type === "envelope" && budget.envelope_id) {
+  } else if (effectiveTargetType === "envelope" && budget.envelope_id) {
     txQuery = txQuery.eq("envelope_id", budget.envelope_id);
   }
 

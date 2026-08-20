@@ -436,7 +436,7 @@ export function BudgetDetailPage() {
         ) : null}
 
         {/* Category Breakdown for Envelope Budgets */}
-        {targetType === "envelope" && envelopeCategoryBreakdown.length > 0 ? (
+        {targetType === "envelope" ? (
           <div className="mt-5 border-t border-slate-100 pt-5 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -455,44 +455,52 @@ export function BudgetDetailPage() {
               )}
             </div>
 
-            {/* Stacked Multi-color Bar */}
-            <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
-              {envelopeCategoryBreakdown.map((item) => (
-                <div
-                  key={item.id}
-                  style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
-                  className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
-                  title={`${item.name}: ${formatCurrency(item.total)} (${item.percentage.toFixed(1)}%)`}
-                />
-              ))}
-            </div>
+            {envelopeCategoryBreakdown.length > 0 ? (
+              <>
+                {/* Stacked Multi-color Bar */}
+                <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
+                  {envelopeCategoryBreakdown.map((item) => (
+                    <div
+                      key={item.id}
+                      style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
+                      className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                      title={`${item.name}: ${formatCurrency(item.total)} (${item.percentage.toFixed(1)}%)`}
+                    />
+                  ))}
+                </div>
 
-            {/* Breakdown List */}
-            <div className="grid gap-2 sm:grid-cols-2 pt-1">
-              {envelopeCategoryBreakdown.map((item) => {
-                const CatIcon = getCategoryIcon(item.icon);
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white text-[11px]"
-                        style={{ backgroundColor: item.color }}
+                {/* Breakdown List */}
+                <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                  {envelopeCategoryBreakdown.map((item) => {
+                    const CatIcon = getCategoryIcon(item.icon);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs"
                       >
-                        <CatIcon size={14} />
-                      </span>
-                      <span className="font-bold text-slate-800 truncate">{item.name}</span>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-black text-slate-900">{formatCurrency(item.total)}</span>
-                      <span className="ml-1.5 font-bold text-slate-500">({item.percentage.toFixed(1)}%)</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white text-[11px]"
+                            style={{ backgroundColor: item.color }}
+                          >
+                            <CatIcon size={14} />
+                          </span>
+                          <span className="font-bold text-slate-800 truncate">{item.name}</span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-black text-slate-900">{formatCurrency(item.total)}</span>
+                          <span className="ml-1.5 font-bold text-slate-500">({item.percentage.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs font-semibold text-slate-500 bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
+                Belum ada transaksi pengeluaran di amplop ini pada {formatMonthYearLabel(currentMonth)}.
+              </p>
+            )}
           </div>
         ) : null}
       </div>
