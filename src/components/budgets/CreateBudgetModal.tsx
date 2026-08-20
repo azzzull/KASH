@@ -5,6 +5,7 @@ import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
 import { getActiveDebts, getCounterparties, type CounterpartyWithSummary } from "../../lib/debts";
 import { getGoals, type GoalWithProgress } from "../../lib/goals";
+import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { createBudgetTarget } from "../../lib/budgets";
 import type { BudgetTargetType, Category, DebtProgress, Envelope } from "../../types/domain";
@@ -32,6 +33,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   const [isSpecificItemTarget, setIsSpecificItemTarget] = useState(false);
   const [debtId, setDebtId] = useState("");
   const [goalId, setGoalId] = useState("");
+  const [walletId, setWalletId] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [showQuickEnvelopeModal, setShowQuickEnvelopeModal] = useState(false);
   const [amount, setAmount] = useState("");
@@ -49,6 +51,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [debts, setDebts] = useState<DebtProgress[]>([]);
   const [goals, setGoals] = useState<GoalWithProgress[]>([]);
+  const [savingsWallets, setSavingsWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +63,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       getCounterparties({ type: "debt", status: "active" }).catch(() => ({ counterparties: [] })),
       getActiveDebts().catch(() => []),
       getGoals().catch(() => ({ data: [] })),
-    ]).then(([catRes, envRes, cpRes, debtRes, goalRes]) => {
+      getWallets().catch(() => ({ data: [] })),
+    ]).then(([catRes, envRes, cpRes, debtRes, goalRes, walletRes]) => {
       setLoading(false);
       if (catRes.data) {
         const expenseOnly = (catRes.data as Category[]).filter((c) => c.category_type === "expense");
@@ -77,6 +81,10 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       }
       if (goalRes.data) {
         setGoals(goalRes.data);
+      }
+      if (walletRes.data) {
+        const savingsOnly = (walletRes.data as WalletWithBalance[]).filter((w) => w.wallet_type === "savings");
+        setSavingsWallets(savingsOnly);
       }
     });
   }, []);
@@ -114,8 +122,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       }
     }
 
-    if (targetType === "goal" && !goalId) {
-      setError("Pilih pos tabungan / goal.");
+    if (targetType === "goal" && !goalId && !walletId) {
+      setError("Pilih pos tabungan atau kantong tabungan.");
       return;
     }
 
@@ -133,7 +141,13 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
         defaultName = cpItem?.name ? `Cicil Utang: ${cpItem.name}` : "Cicilan Utang";
       }
     } else if (targetType === "goal") {
-      defaultName = goals.find((g) => g.id === goalId)?.name ? `Tabungan: ${goals.find((g) => g.id === goalId)?.name}` : "Tabungan Bulanan";
+      if (goalId) {
+        const gItem = goals.find((g) => g.id === goalId);
+        defaultName = gItem?.name ? `Tabungan: ${gItem.name}` : "Tabungan Bulanan";
+      } else if (walletId) {
+        const wItem = savingsWallets.find((w) => w.id === walletId);
+        defaultName = wItem?.name ? `Nabung: ${wItem.name}` : "Kantong Tabungan";
+      }
     }
 
     setSaving(true);
@@ -149,7 +163,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
         envelopeId: targetType === "envelope" ? envelopeId : null,
         counterpartyId: targetType === "debt" ? counterpartyId || null : null,
         debtId: targetType === "debt" && isSpecificItemTarget ? debtId || null : null,
-        goalId: targetType === "goal" ? goalId : null,
+        goalId: targetType === "goal" ? goalId || null : null,
+        walletId: targetType === "goal" ? walletId || null : null,
         note: note.trim() || null,
       });
 
@@ -387,17 +402,42 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           {targetType === "goal" && (
             <SelectField
               id="budget-goal"
-              label="Pilih Target Tabungan *"
+              label="Pilih Target / Kantong Tabungan *"
               required
-              value={goalId}
-              onChange={(e) => setGoalId(e.target.value)}
+              value={goalId ? `goal:${goalId}` : walletId ? `wallet:${walletId}` : ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.startsWith("goal:")) {
+                  setGoalId(val.replace("goal:", ""));
+                  setWalletId("");
+                } else if (val.startsWith("wallet:")) {
+                  setWalletId(val.replace("wallet:", ""));
+                  setGoalId("");
+                } else {
+                  setGoalId("");
+                  setWalletId("");
+                }
+              }}
             >
-              <option value="">-- Pilih Tabungan / Goal --</option>
-              {goals.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name} (Target: {formatCurrency(g.target_amount, "IDR")})
-                </option>
-              ))}
+              <option value="">-- Pilih Pos Tabungan atau Kantong Tabungan --</option>
+              {savingsWallets.length > 0 && (
+                <optgroup label="🏦 Kantong Tabungan (Savings Pockets)">
+                  {savingsWallets.map((w) => (
+                    <option key={`wallet:${w.id}`} value={`wallet:${w.id}`}>
+                      {w.name} {w.institution_name ? `(${w.institution_name})` : ""} — Saldo: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {goals.length > 0 && (
+                <optgroup label="🎯 Target Tabungan (Goals)">
+                  {goals.map((g) => (
+                    <option key={`goal:${g.id}`} value={`goal:${g.id}`}>
+                      {g.name} — Target: {formatCurrency(g.target_amount, "IDR")}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </SelectField>
           )}
 

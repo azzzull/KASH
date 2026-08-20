@@ -45,7 +45,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
       : targetType === "debt"
       ? HandCoins
       : targetType === "goal"
-      ? getCategoryIcon(budget.goal_icon || "piggy-bank")
+      ? getCategoryIcon(budget.wallet_icon || budget.goal_icon || "piggy-bank")
       : getCategoryIcon(budget.category_icon || "tag");
 
   const targetColor =
@@ -54,7 +54,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
       : targetType === "debt"
       ? "#F28C45"
       : targetType === "goal"
-      ? "#F5B82E"
+      ? budget.wallet_color || "#F5B82E"
       : budget.category_color || "#10B981";
 
   const targetLabel =
@@ -63,7 +63,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
       : targetType === "debt"
       ? "Cicil Utang"
       : targetType === "goal"
-      ? "Tabungan"
+      ? budget.wallet_id ? "Kantong" : "Tabungan"
       : "Kategori";
 
   const subtitle =
@@ -74,7 +74,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
         ? `Utang ke ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}`
         : budget.debt_title || "Target Pelunasan Utang"
       : targetType === "goal"
-      ? budget.goal_name || "Target Alokasi Tabungan"
+      ? budget.wallet_name ? `Kantong Tabungan: ${budget.wallet_name}` : budget.goal_name || "Target Alokasi Tabungan"
       : budget.category_name || "Kategori Pengeluaran";
 
   return (

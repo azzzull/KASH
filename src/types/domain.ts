@@ -352,6 +352,7 @@ export type Budget = {
   counterparty_id: string | null;
   debt_id: string | null;
   goal_id: string | null;
+  wallet_id: string | null;
   start_period: string; // YYYY-MM-DD (1st of month)
   end_period: string | null;
   repeat_monthly: boolean;
@@ -399,6 +400,10 @@ export type BudgetWithProgress = {
   goal_id: string | null;
   goal_name: string | null;
   goal_icon: string | null;
+  wallet_id: string | null;
+  wallet_name: string | null;
+  wallet_icon: string | null;
+  wallet_color: string | null;
   note: string | null;
   repeat_monthly: boolean;
   start_period: string;

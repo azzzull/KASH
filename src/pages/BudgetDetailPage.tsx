@@ -201,7 +201,7 @@ export function BudgetDetailPage() {
       : targetType === "debt"
       ? ReceiptText
       : targetType === "goal"
-      ? getCategoryIcon(budget.goal_icon || "piggy-bank")
+      ? getCategoryIcon(budget.wallet_icon || budget.goal_icon || "piggy-bank")
       : getCategoryIcon(budget.category_icon || "tag");
 
   const targetColor =
@@ -210,7 +210,7 @@ export function BudgetDetailPage() {
       : targetType === "debt"
       ? "#F28C45"
       : targetType === "goal"
-      ? "#F5B82E"
+      ? budget.wallet_color || "#F5B82E"
       : budget.category_color || "#10B981";
 
   const targetLabel =
@@ -219,7 +219,7 @@ export function BudgetDetailPage() {
       : targetType === "debt"
       ? "Target Cicilan Utang"
       : targetType === "goal"
-      ? "Target Tabungan / Goal"
+      ? budget.wallet_id ? "Kantong Tabungan" : "Target Tabungan / Goal"
       : "Budget Kategori";
 
   return (

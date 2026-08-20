@@ -16,14 +16,14 @@ type EditBudgetModalProps = {
   onSaved: () => void;
 };
 
-function getTargetTypeLabel(type: string) {
+function getTargetTypeLabel(type: string, b?: BudgetWithProgress) {
   switch (type) {
     case "envelope":
       return "Amplop Pengeluaran";
     case "debt":
       return "Target Cicilan Utang";
     case "goal":
-      return "Target Tabungan / Goal";
+      return b?.wallet_id ? "Kantong Tabungan (Pocket)" : "Target Tabungan / Goal";
     case "category":
     default:
       return "Kategori Pengeluaran";
@@ -39,6 +39,7 @@ function getTargetDisplayName(b: BudgetWithProgress) {
       if (b.counterparty_name) return `Utang ke ${b.counterparty_name}`;
       return b.debt_title ?? b.name;
     case "goal":
+      if (b.wallet_name) return `Kantong: ${b.wallet_name}`;
       return b.goal_name ? `Tabungan ${b.goal_name}` : b.name;
     case "category":
     default:
@@ -126,7 +127,7 @@ export function EditBudgetModal({
           {/* Target Display (Read-only / Immutable) */}
           <label className="block w-full max-w-full min-w-0">
             <span className="block text-sm font-bold text-slate-900">
-              {getTargetTypeLabel(targetType)} Terkait (Imutabel)
+              {getTargetTypeLabel(targetType, budget)} Terkait (Imutabel)
             </span>
             <div className="relative mt-2">
               <input

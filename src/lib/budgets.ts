@@ -20,6 +20,7 @@ export type CreateBudgetTargetInput = {
   counterpartyId?: string | null;
   debtId?: string | null;
   goalId?: string | null;
+  walletId?: string | null;
   note?: string | null;
 };
 
@@ -50,18 +51,20 @@ export type UpdateBudgetInput = {
   effectivePeriod: string; // YYYY-MM-DD
   amount?: string;
   rolloverEnabled?: boolean;
-  categoryIds?: string[];
 };
 
 /**
- * Fetch all active budgets and envelope allocations with authoritative progress for the requested month.
+ * Fetch monthly budgets with enriched progress and spending breakdown.
  */
 export async function getMonthlyBudgets(periodStart?: string): Promise<BudgetWithProgress[]> {
-  const { data, error } = await supabase.rpc("get_monthly_budget_progress" as any, {
-    p_period_start: periodStart || null,
+  const { data, error } = await supabase.rpc("get_monthly_budget_progress", {
+    p_period_start: periodStart ?? null,
   });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Failed to fetch monthly budget progress:", error);
+    return [];
+  }
 
   const rows = (data as any[]) ?? [];
 
@@ -85,6 +88,10 @@ export async function getMonthlyBudgets(periodStart?: string): Promise<BudgetWit
     goal_id: row.goal_id,
     goal_name: row.goal_name,
     goal_icon: row.goal_icon ?? null,
+    wallet_id: row.wallet_id ?? null,
+    wallet_name: row.wallet_name ?? null,
+    wallet_icon: row.wallet_icon ?? null,
+    wallet_color: row.wallet_color ?? null,
     note: row.note,
     repeat_monthly: row.repeat_monthly,
     start_period: row.start_period,
@@ -169,7 +176,7 @@ export async function getBudgetDetail(
   // Fallback direct fetch
   const { data: budgetRow, error: budgetError } = await supabase
     .from("budgets")
-    .select("*, category:categories(*), envelope:envelopes(*), counterparty:counterparties(*), debt:debts(*), goal:goals(*)")
+    .select("*, category:categories(*), envelope:envelopes(*), counterparty:counterparties(*), debt:debts(*), goal:goals(*), wallet:wallets(*)")
     .eq("id", budgetId)
     .maybeSingle();
 
@@ -195,6 +202,10 @@ export async function getBudgetDetail(
     goal_id: budgetRow.goal_id,
     goal_name: (budgetRow as any).goal?.name ?? null,
     goal_icon: (budgetRow as any).goal?.icon ?? null,
+    wallet_id: (budgetRow as any).wallet_id ?? null,
+    wallet_name: (budgetRow as any).wallet?.name ?? null,
+    wallet_icon: (budgetRow as any).wallet?.icon ?? null,
+    wallet_color: (budgetRow as any).wallet?.color ?? null,
     note: budgetRow.note,
     repeat_monthly: budgetRow.repeat_monthly,
     start_period: budgetRow.start_period,
@@ -224,7 +235,7 @@ export async function createBudgetTarget(input: CreateBudgetTargetInput): Promis
   }
 
   const { data, error } = await supabase.rpc("create_budget_target" as any, {
-    p_name: input.name.trim(),
+    p_name: (input.name || "").trim(),
     p_target_type: input.targetType,
     p_amount: amountNumber,
     p_start_period: input.startPeriod,
@@ -235,6 +246,7 @@ export async function createBudgetTarget(input: CreateBudgetTargetInput): Promis
     p_counterparty_id: input.counterpartyId || null,
     p_debt_id: input.debtId || null,
     p_goal_id: input.goalId || null,
+    p_wallet_id: input.walletId || null,
     p_note: input.note?.trim() || null,
   });
 
