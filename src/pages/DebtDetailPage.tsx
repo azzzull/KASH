@@ -28,8 +28,10 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
+import { useI18n } from "../i18n";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitDebtSaved, emitTransactionSaved } from "../lib/appEvents";
 import {
@@ -728,24 +730,21 @@ function CreateItemModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Add Items for {counterparty.name}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">Record one or more obligation items under this person.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title={`Add Items for ${counterparty.name}`}
+      description="Record one or more obligation items under this person."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 bg-white p-1">
             <button
               type="button"
@@ -794,7 +793,7 @@ function CreateItemModal({
                     <button
                       type="button"
                       onClick={() => removeItemRow(item.id)}
-                      className="text-xs font-bold text-kash-expense hover:underline"
+                      className="text-xs font-bold text-kash-expense transition hover:underline"
                     >
                       Remove
                     </button>
@@ -811,14 +810,14 @@ function CreateItemModal({
                       placeholder="e.g. Tiket Konser, Beli Jaket"
                       value={item.title}
                       onChange={(e) => updateItemRow(item.id, "title", e.target.value)}
-                      className="mt-1.5 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+                      className="mt-1.5 block h-11 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
                       required
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-800">
-                      Amount *
+                      Amount (Rp) *
                     </label>
                     <input
                       inputMode="numeric"
@@ -826,7 +825,7 @@ function CreateItemModal({
                       placeholder="0"
                       value={item.originalAmount}
                       onChange={(e) => updateItemRow(item.id, "originalAmount", e.target.value)}
-                      className="mt-1.5 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+                      className="mt-1.5 block h-11 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
                       required
                     />
                   </div>
@@ -843,7 +842,7 @@ function CreateItemModal({
                         <button
                           type="button"
                           onClick={() => updateItemRow(item.id, "dueDate", "")}
-                          className="text-[11px] font-bold text-kash-emerald hover:underline"
+                          className="text-[11px] font-bold text-kash-emerald transition hover:text-kash-emeraldDark hover:underline"
                         >
                           Clear
                         </button>
@@ -865,7 +864,7 @@ function CreateItemModal({
                       placeholder="Optional details..."
                       value={item.note}
                       onChange={(e) => updateItemRow(item.id, "note", e.target.value)}
-                      className="mt-1.5 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+                      className="mt-1.5 block h-11 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
                     />
                   </div>
                 </div>
@@ -882,7 +881,7 @@ function CreateItemModal({
             </button>
           </div>
 
-          {/* Optional Wallet Movement (Pinjam masuk rekening / Nalangin potong rekening) */}
+          {/* Optional Wallet Movement */}
           <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3.5">
             <label className="flex cursor-pointer select-none items-start gap-3">
               <input
@@ -899,13 +898,13 @@ function CreateItemModal({
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-900">
                   {type === "debt"
-                    ? "Deposit money into my wallet (Uang pinjaman masuk ke rekening)"
-                    : "Pay from my wallet (Uang ditalangin / dipinjamkan keluar dari rekening)"}
+                    ? "Deposit money into my wallet"
+                    : "Pay from my wallet (Reimbursement / Loan)"}
                 </p>
                 <p className="text-[11px] font-medium text-slate-600">
                   {type === "debt"
-                    ? "Centang jika uang pinjaman ini Anda terima langsung ke rekening/dompet KASH saat ini."
-                    : "Centang jika Anda membayarkan/mentransfer uang ini dari rekening KASH sekarang (misal: ditalangin dulu untuk di-reimburse nanti)."}
+                    ? "Increases wallet balance. Uncheck if this was a non-cash liability."
+                    : "Deducts from wallet immediately and sets up receivable."}
                 </p>
               </div>
             </label>
@@ -958,8 +957,8 @@ function CreateItemModal({
             </Button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -1012,24 +1011,21 @@ function EditItemModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close edit form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Edit Obligation Item</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">Update metadata for this item.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Edit Obligation Item"
+      description="Update metadata for this item."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <FormField
             id="edit-item-title"
             label="Item Title *"
@@ -1097,8 +1093,8 @@ function EditItemModal({
             </Button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -1141,24 +1137,21 @@ function RenameCounterpartyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close rename form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Rename Person</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">Update display name for this counterparty.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="md"
+      title="Rename Person"
+      description="Update display name for this counterparty."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <FormField
             id="rename-counterparty-name"
             label="Name *"
@@ -1174,8 +1167,8 @@ function RenameCounterpartyModal({
             </Button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -1196,8 +1189,7 @@ function ItemSettlementModal({
   const [walletId, setWalletId] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => {
     const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   });
   const [note, setNote] = useState("");
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
@@ -1207,32 +1199,32 @@ function ItemSettlementModal({
   const isDebt = item.type === "debt";
 
   useEffect(() => {
-    getWallets().then((res) => {
-      if (res.data) {
-        setWallets(res.data);
-        const liquid = res.data.find((w) => !w.is_archived);
-        if (liquid) setWalletId(liquid.id);
+    const fetchWallets = async () => {
+      const { data } = await getWallets();
+      if (data && data.length > 0) {
+        setWallets(data);
+        setWalletId(data[0].id);
       }
-    });
+    };
+    void fetchWallets();
   }, []);
 
-  const parsedAmount = toNumber(parseMoneyInputDigits(amount) || "0");
-  const remainingAfterPayment = Math.max(remaining - parsedAmount, 0);
+  const parsedAmount = toNumber(parseMoneyInputDigits(amount));
+  const remainingAfterPayment = Math.max(0, remaining - parsedAmount);
   const selectedWallet = wallets.find((w) => w.id === walletId);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (parsedAmount <= 0) {
-      setError("Nominal pelunasan harus lebih besar dari nol.");
+      setError("Nominal pelunasan harus lebih besar dari 0.");
       return;
     }
     if (parsedAmount > remaining) {
-      setError(`Nominal pelunasan tidak boleh melebihi sisa tagihan item sebesar ${formatCurrency(remaining, "IDR")}.`);
+      setError(`Nominal tidak boleh melebihi sisa tagihan item (${formatCurrency(remaining, "IDR")}).`);
       return;
     }
-
     if (paymentMode === "wallet" && !walletId) {
-      setError("Silakan pilih dompet.");
+      setError("Pilih dompet untuk transaksi.");
       return;
     }
 
@@ -1247,12 +1239,12 @@ function ItemSettlementModal({
         amount: parseMoneyInputDigits(amount),
         walletId: paymentMode === "wallet" ? walletId : null,
         paymentDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
-        note: note.trim() || null,
+        note: note.trim() || undefined,
         debtId: item.debt_id,
       });
 
       if (settlementError) {
-        setError(settlementError.message ?? "Gagal memproses pelunasan item. Silakan coba lagi.");
+        setError(settlementError.message ?? "Gagal memproses pelunasan item.");
         setSaving(false);
         return;
       }
@@ -1265,34 +1257,35 @@ function ItemSettlementModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[11px] font-black uppercase text-kash-emeraldDark">
-                Pelunasan Per Item
-              </span>
-            </div>
-            <h2 className="mt-1 text-xl font-extrabold text-slate-900">
-              {isDebt ? `Bayar Utang: ${item.title}` : `Terima Piutang: ${item.title}`}
-            </h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">
-              Pihak: <span className="font-bold text-slate-900">{counterparty.name}</span> • Sisa Tagihan Item:{" "}
-              <span className="font-bold text-slate-900">{formatCurrency(remaining, "IDR")}</span>
-            </p>
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title={
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[11px] font-black uppercase text-kash-emeraldDark">
+              Pelunasan Per Item
+            </span>
           </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
+          <h2 className="mt-1 text-xl font-extrabold text-slate-900">
+            {isDebt ? `Bayar Utang: ${item.title}` : `Terima Piutang: ${item.title}`}
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-slate-700">
+            Pihak: <span className="font-bold text-slate-900">{counterparty.name}</span> • Sisa Tagihan Item:{" "}
+            <span className="font-bold text-slate-900">{formatCurrency(remaining, "IDR")}</span>
+          </p>
         </div>
-
+      }
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           {/* Payment Method Switcher */}
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
             <button
@@ -1420,7 +1413,7 @@ function ItemSettlementModal({
             </Button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }

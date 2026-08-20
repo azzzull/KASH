@@ -4,10 +4,12 @@ import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
@@ -160,24 +162,21 @@ function WalletFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close add wallet" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Add Wallet</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">Initial balance is stored on the wallet, not as a transaction.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Add Wallet"
+      description="Initial balance is stored on the wallet, not as a transaction."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <SelectField
             id="wallet-type"
             label="Wallet Type"
@@ -251,8 +250,8 @@ function WalletFormModal({
             Create Wallet
           </Button>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -271,6 +270,7 @@ function WalletSkeleton() {
 
 export function WalletsPage() {
   const { profile } = useAuth();
+  const { t } = useI18n();
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -337,19 +337,19 @@ export function WalletsPage() {
 
     // 1. Bank Accounts
     const bankWallets = wallets.filter((w) => w.wallet_type === "bank" || w.wallet_type === "digital_bank");
-    if (bankWallets.length > 0) groups.push({ group: "Bank Accounts", wallets: bankWallets });
+    if (bankWallets.length > 0) groups.push({ group: t("wallets.bank"), wallets: bankWallets });
 
     // 2. E-Wallets
     const ewallets = wallets.filter((w) => w.wallet_type === "ewallet");
-    if (ewallets.length > 0) groups.push({ group: "E-Wallets", wallets: ewallets });
+    if (ewallets.length > 0) groups.push({ group: t("wallets.eWallet"), wallets: ewallets });
 
     // 3. Cash
     const cashWallets = wallets.filter((w) => w.wallet_type === "cash");
-    if (cashWallets.length > 0) groups.push({ group: "Cash", wallets: cashWallets });
+    if (cashWallets.length > 0) groups.push({ group: t("wallets.cash"), wallets: cashWallets });
 
     // 4. Savings Pockets (pure savings wallets without linked goal)
     const savingsPockets = wallets.filter((w) => w.wallet_type === "savings" && !w.goal_id);
-    if (savingsPockets.length > 0) groups.push({ group: "Savings Pockets (Kantong Tabungan)", wallets: savingsPockets });
+    if (savingsPockets.length > 0) groups.push({ group: `${t("wallets.savings")} (Kantong Tabungan)`, wallets: savingsPockets });
 
     // 5. Goal Pockets (savings wallets linked to a goal)
     const goalPockets = wallets.filter((w) => Boolean(w.goal_id));
@@ -357,51 +357,51 @@ export function WalletsPage() {
 
     // 6. Investments
     const investmentWallets = wallets.filter((w) => w.wallet_type === "investment");
-    if (investmentWallets.length > 0) groups.push({ group: "Investments", wallets: investmentWallets });
+    if (investmentWallets.length > 0) groups.push({ group: t("wallets.investment"), wallets: investmentWallets });
 
     // 7. Custom
     const customWallets = wallets.filter((w) => w.wallet_type === "custom");
     if (customWallets.length > 0) groups.push({ group: "Custom", wallets: customWallets });
 
     return groups;
-  }, [wallets]);
+  }, [wallets, t]);
 
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
-        eyebrow="Wallet Summary"
+        eyebrow={t("wallets.title")}
         icon={WalletCards}
-        title="Wallets"
-        description="Track where your money is stored."
+        title={t("wallets.title")}
+        description={t("wallets.subtitle")}
         actions={
           <Button onClick={() => setShowAddWallet(true)}>
             <Plus aria-hidden="true" size={18} />
-            Add Wallet
+            {t("wallets.create")}
           </Button>
         }
       />
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <SummaryCard label="Total Assets" value={formatCurrency(totals.totalAssets, profile?.default_currency ?? "IDR")} />
-        <SummaryCard label="Available" value={formatCurrency(totals.available, profile?.default_currency ?? "IDR")} />
-        <SummaryCard label="Savings Pockets" labelClassName="text-kash-emerald" value={formatCurrency(totals.savingsPockets, profile?.default_currency ?? "IDR")} />
-        <SummaryCard label="Goal Pockets" labelClassName="text-amber-800" value={formatCurrency(totals.goalPockets, profile?.default_currency ?? "IDR")} />
-        <SummaryCard label="Investments" value={formatCurrency(totals.investments, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label={t("wallets.totalAssets")} value={formatCurrency(totals.totalAssets, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label={t("wallets.availableBalance")} value={formatCurrency(totals.available, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label={t("wallets.savings")} labelClassName="text-kash-emerald" value={formatCurrency(totals.savingsPockets, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label={t("wallets.allocatedToGoals")} labelClassName="text-amber-800" value={formatCurrency(totals.goalPockets, profile?.default_currency ?? "IDR")} />
+        <SummaryCard label={t("wallets.investment")} value={formatCurrency(totals.investments, profile?.default_currency ?? "IDR")} />
       </section>
 
       {error ? (
         <section className="rounded-lg border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h3 className="text-base font-extrabold text-slate-900">Something went wrong.</h3>
+          <h3 className="text-base font-extrabold text-slate-900">{t("common.error")}</h3>
           <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
           <Button className="mt-4" onClick={() => void loadWallets()}>
-            Retry
+            {t("common.retry")}
           </Button>
         </section>
       ) : null}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:p-5">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-extrabold text-slate-900">All Wallets</h3>
+          <h3 className="text-base font-extrabold text-slate-900">{t("wallets.title")}</h3>
           <WalletCards aria-hidden="true" className="text-slate-600" size={19} />
         </div>
 
@@ -409,12 +409,12 @@ export function WalletsPage() {
           {loading ? <WalletSkeleton /> : null}
           {!loading && wallets.length === 0 ? (
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-              <h4 className="text-base font-extrabold text-slate-900">No wallets yet.</h4>
+              <h4 className="text-base font-extrabold text-slate-900">{t("wallets.emptyTitle")}</h4>
               <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-700">
-                Add where you keep your money to start tracking your finances.
+                {t("wallets.emptyDesc")}
               </p>
               <Button className="mt-4" onClick={() => setShowAddWallet(true)}>
-                Add Wallet
+                {t("wallets.create")}
               </Button>
             </div>
           ) : null}

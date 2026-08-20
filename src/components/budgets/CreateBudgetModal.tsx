@@ -15,6 +15,7 @@ import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { ToggleField } from "../ui/ToggleField";
 
@@ -187,21 +188,16 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-900">Buat Target Budget Baru</h2>
-            <p className="text-xs font-semibold text-slate-600">
-              Rencanakan alokasi keuangan bulanan Anda secara terarah
-            </p>
-          </div>
-          <IconButton icon={X} label="Tutup" onClick={onClose} />
-        </div>
-
-        {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4">
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Buat Target Budget Baru"
+      description="Rencanakan alokasi keuangan bulanan Anda secara terarah"
+    >
+      <div>
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           {error && (
             <div className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
               {error}
@@ -584,6 +580,6 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           }}
         />
       </div>
-    </div>
+    </Modal>
   );
 }

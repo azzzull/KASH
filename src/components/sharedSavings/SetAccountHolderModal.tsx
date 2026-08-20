@@ -1,8 +1,8 @@
-import { Landmark, UserCheck, X } from "lucide-react";
+import { Landmark, UserCheck } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { Button } from "../ui/Button";
-import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { setSharedSavingsAccountHolder } from "../../lib/sharedSavings";
 import type { SharedSavingsMemberShare } from "../../types/domain";
@@ -31,8 +31,6 @@ export function SetAccountHolderModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) {
@@ -54,36 +52,25 @@ export function SetAccountHolderModal({
     }
   };
 
-  const memberOptions = activeMembers.map((m) => ({
-    value: m.user_id,
-    label: `${m.member_name || m.member_email} (${m.member_email})`,
-  }));
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-white shadow-xs">
-              <Landmark size={20} strokeWidth={2.2} />
-            </span>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">Tunjuk Account Holder</h2>
-              <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
-            </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      title={
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500 text-white shadow-xs">
+            <Landmark size={20} strokeWidth={2.2} />
+          </span>
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">Tunjuk Account Holder</h2>
+            <p className="text-xs font-semibold text-slate-600">{spaceName}</p>
           </div>
-          <IconButton icon={X} label="Tutup" onClick={onClose} />
         </div>
-
-        {/* Body */}
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4">
+      }
+    >
+      <div>
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           {error && (
             <div className="rounded-xl border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
               {error}
@@ -115,7 +102,6 @@ export function SetAccountHolderModal({
             , melainkan hanya porsi pribadi mereka.
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
               Batal
@@ -126,6 +112,6 @@ export function SetAccountHolderModal({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

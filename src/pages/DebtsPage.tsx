@@ -25,11 +25,12 @@ import { DatePickerField } from "../components/ui/DatePickerField";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { SelectField } from "../components/ui/SelectField";
-import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
+import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitDebtSaved, emitTransactionSaved } from "../lib/appEvents";
 import {
   createDebt,
@@ -539,26 +540,21 @@ function CreateObligationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">New Obligation</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">
-              Record one or more items you owe or someone owes to you.
-            </p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="New Obligation"
+      description="Record one or more items you owe or someone owes to you."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           {/* Type Toggle */}
           <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 bg-white p-1">
             <button
@@ -569,7 +565,7 @@ function CreateObligationModal({
                   : "text-slate-600 hover:text-slate-900"
                 }`}
             >
-              Debt (I Owe)
+              I Owe (Debt)
             </button>
             <button
               type="button"
@@ -579,45 +575,47 @@ function CreateObligationModal({
                   : "text-slate-600 hover:text-slate-900"
                 }`}
             >
-              Receivable (Owed to Me)
+              Owed to Me (Receivable)
             </button>
           </div>
 
-          {/* Counterparty Searchable Combobox */}
-          <CounterpartyCombobox
-            id="obligation-counterparty"
-            label="Person / Counterparty *"
-            counterparties={allCounterparties}
-            value={counterpartyName}
-            onChange={(name) => setCounterpartyName(name)}
-            placeholder="Select saved person or type a new name..."
-            required
-          />
+          <div className="w-full max-w-full min-w-0">
+            <label className="block text-sm font-bold text-slate-900" htmlFor="counterparty-name">
+              Person or Business *
+            </label>
+            <div className="mt-1">
+              <CounterpartyCombobox
+                id="obligation-counterparty"
+                counterparties={allCounterparties}
+                onChange={(selected) => setCounterpartyName(selected)}
+                placeholder="Search or add a person / business..."
+                value={counterpartyName}
+                required
+              />
+            </div>
+            <p className="mt-1.5 text-xs font-semibold text-slate-600">
+              Type a name to search existing people or add a new one.
+            </p>
+          </div>
 
-          {/* Items Section */}
+          {/* Dynamic Item Rows */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600">
-                Items to Track ({items.length})
-              </span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-900">Items / Obligations *</span>
               <button
                 type="button"
                 onClick={addItemRow}
-                className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-black text-kash-emerald hover:text-kash-emeraldDark"
               >
-                <Plus size={14} />
-                Add another item
+                <Plus size={14} /> Add Another Item
               </button>
             </div>
 
             {items.map((item, index) => (
-              <div
-                key={item.id}
-                className="relative space-y-3 rounded-xl border border-slate-200 bg-white p-4 transition"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-700">Item #{index + 1}</span>
-                  {items.length > 1 && (
+              <div key={item.id} className="relative rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                {items.length > 1 && (
+                  <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                    <span className="text-xs font-black text-slate-500">Item #{index + 1}</span>
                     <button
                       type="button"
                       onClick={() => removeItemRow(item.id)}
@@ -625,8 +623,8 @@ function CreateObligationModal({
                     >
                       Remove
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
@@ -785,8 +783,8 @@ function CreateObligationModal({
             </Button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -876,30 +874,25 @@ export function SettlementModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close settlement form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">
-              {isDebt ? `Record Payment to ${counterparty.name}` : `Record Collection from ${counterparty.name}`}
-            </h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">
-              {isDebt
-                ? `Total Outstanding Debt: ${formatCurrency(totalOutstanding, "IDR")}`
-                : `Total Outstanding Receivable: ${formatCurrency(totalOutstanding, "IDR")}`}
-            </p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title={isDebt ? `Record Payment to ${counterparty.name}` : `Record Collection from ${counterparty.name}`}
+      description={
+        isDebt
+          ? `Total Outstanding Debt: ${formatCurrency(totalOutstanding, "IDR")}`
+          : `Total Outstanding Receivable: ${formatCurrency(totalOutstanding, "IDR")}`
+      }
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           {/* Payment Method Switcher */}
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
             <button
@@ -955,37 +948,37 @@ export function SettlementModal({
             />
           </div>
 
-          {/* Wallet Selector (Wallet mode only) */}
+          {/* Wallet selector (if wallet mode) */}
           {paymentMode === "wallet" && (
             <SelectField
               id="settlement-wallet"
-              label={isDebt ? "Paid from Wallet *" : "Received into Wallet *"}
+              label={isDebt ? "From Wallet (Source) *" : "To Wallet (Destination) *"}
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
-              required
             >
+              {wallets.length === 0 ? <option value="">No wallets available</option> : null}
               {wallets.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})
+                  {w.name} - Balance: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")}
                 </option>
               ))}
             </SelectField>
           )}
 
-          {/* Payment Date */}
+          {/* Date Picker */}
           <DatePickerField
             id="settlement-date"
-            label="Payment Date & Time *"
+            label="Payment Date *"
             enableTime
             value={paymentDate}
             onChange={(val) => setPaymentDate(val)}
           />
 
-          {/* Note */}
+          {/* Notes */}
           <FormField
             id="settlement-note"
             label="Note (Optional)"
-            placeholder="e.g. Bank transfer reference, note"
+            placeholder="e.g. Paid via BCA Transfer"
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -1026,7 +1019,7 @@ export function SettlementModal({
             </Button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }

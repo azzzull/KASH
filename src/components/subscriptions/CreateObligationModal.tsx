@@ -11,6 +11,7 @@ import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 
 type CreateObligationModalProps = {
@@ -184,34 +185,14 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-obligation-title"
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Add Recurring Obligation"
+      description="Track subscriptions, bills, PayLater, or installments"
     >
-      {/* Backdrop click dismiss */}
-      <button
-        type="button"
-        className="absolute inset-0 h-full w-full cursor-default"
-        aria-label="Close modal backdrop"
-        onClick={onClose}
-      />
-
-      <div className="relative flex max-h-[92dvh] w-full max-w-xl flex-col rounded-t-2xl border border-slate-200 bg-white shadow-2xl transition-all sm:max-h-[88dvh] sm:rounded-2xl">
-        {/* Header (Fixed) */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
-          <div>
-            <h3 id="create-obligation-title" className="text-lg font-black text-slate-900 sm:text-xl">
-              Add Recurring Obligation
-            </h3>
-            <p className="mt-0.5 text-xs font-semibold text-slate-600">
-              Track subscriptions, bills, PayLater, or installments
-            </p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+      <div>
         {/* Scrollable Form Body */}
         <form onSubmit={submit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 sm:px-6">
@@ -483,6 +464,6 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
           }}
         />
       </div>
-    </div>
+    </Modal>
   );
 }

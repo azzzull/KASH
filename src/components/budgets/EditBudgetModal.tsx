@@ -1,4 +1,4 @@
-import { Lock, X } from "lucide-react";
+import { Lock } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
@@ -6,7 +6,7 @@ import { updateBudget } from "../../lib/budgets";
 import type { BudgetWithProgress } from "../../types/domain";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
-import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 import { ToggleField } from "../ui/ToggleField";
 
 type EditBudgetModalProps = {
@@ -94,21 +94,15 @@ export function EditBudgetModal({
   const targetType = budget.target_type ?? budget.type;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-900">Edit Target Budget</h2>
-            <p className="text-xs font-semibold text-slate-600">
-              Perubahan berlaku mulai periode ini ke depan tanpa mengubah histori masa lampau
-            </p>
-          </div>
-          <IconButton icon={X} label="Tutup" onClick={onClose} />
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4">
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Edit Target Budget"
+      description="Perubahan berlaku mulai periode ini ke depan tanpa mengubah histori masa lampau"
+    >
+      <div>
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           {error && (
             <div className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
               {error}
@@ -138,34 +132,31 @@ export function EditBudgetModal({
               />
               <Lock size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
             </div>
-            <span className="mt-1.5 block text-xs font-medium text-slate-500">
-              Sasaran target bersifat permanen. Untuk mengganti sasaran target, buat target budget baru.
-            </span>
+            <p className="mt-1 text-xs text-slate-600">
+              Entitas terhubung tidak dapat diubah setelah dibuat. Buat target budget baru jika ingin menargetkan entitas lain.
+            </p>
           </label>
 
           {/* Amount Field */}
           <FormField
             id="edit-budget-amount"
-            inputMode="numeric"
+            label="Nominal Target Bulanan (Rp) *"
             required
-            label="Nominal Target Budget Bulanan *"
-            placeholder="1.500.000"
+            placeholder="0"
             value={amount}
-            onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
+            onChange={(e) => setAmount(formatMoneyDigits(parseMoneyInputDigits(e.target.value)))}
           />
 
-          {/* Rollover Toggle (Only for Category and Envelope) */}
-          {targetType === "category" || targetType === "envelope" ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
-              <ToggleField
-                id="edit-budget-rollover"
-                label="Aktifkan Rollover Positif"
-                description="Sisa budget bulan ini akan diakumulasikan menambah plafon bulan berikutnya."
-                checked={rolloverEnabled}
-                onChange={(e) => setRolloverEnabled(e.target.checked)}
-              />
-            </div>
-          ) : null}
+          {/* Rollover Toggle */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <ToggleField
+              id="edit-budget-rollover"
+              checked={rolloverEnabled}
+              onChange={(e) => setRolloverEnabled(e.target.checked)}
+              label="Aktifkan Rollover Sisa Saldo"
+              description="Jika aktif, sisa saldo yang tidak terpakai (surplus) atau kelebihan pengeluaran (defisit) akan dialihkan ke bulan berikutnya."
+            />
+          </div>
 
           {/* Note Field */}
           <FormField
@@ -187,6 +178,6 @@ export function EditBudgetModal({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

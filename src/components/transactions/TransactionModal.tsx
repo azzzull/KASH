@@ -7,7 +7,9 @@ import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
+import { useI18n } from "../../i18n";
 import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
@@ -212,26 +214,25 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close transaction form" onClick={onClose} />
-      <section ref={modalRef} className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100">
-              <Icon aria-hidden="true" className={copy.accent} size={21} />
-            </span>
-            <div>
-              <h2 className="text-xl font-extrabold text-slate-900">{copy.title}</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-700">
-                {mode === "transfer" ? "Move money between your own wallets." : "Record one completed transaction."}
-              </p>
-            </div>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="md"
+      title={
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
+            <Icon aria-hidden="true" className={copy.accent} size={20} />
+          </span>
+          <span className="text-lg font-extrabold text-slate-900">{copy.title}</span>
         </div>
-
+      }
+      description={
+        mode === "transfer" ? "Pindahkan saldo antar dompet pribadi." : "Catat satu transaksi keuangan."
+      }
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
@@ -423,7 +424,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             setShowQuickEnvelopeModal(false);
           }}
         />
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }

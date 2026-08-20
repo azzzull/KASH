@@ -9,6 +9,7 @@ import { CategoryIconPicker } from "../categories/CategoryIconPicker";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 
 type QuickCreateEnvelopeModalProps = {
   isOpen: boolean;
@@ -117,86 +118,80 @@ export function QuickCreateEnvelopeModal({
 
   const IconComp = getCategoryIcon(icon);
 
-  const modalContent = (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-xs"
-              style={{ backgroundColor: color }}
-            >
-              <IconComp size={20} />
-            </span>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">
-                {isEditing ? "Edit Amplop Pengeluaran" : "Tambah Amplop Baru"}
-              </h2>
-              <p className="text-[11px] font-semibold text-slate-600">
-                {isEditing ? "Ubah nama, ikon, atau warna amplop" : "Buat amplop tujuan belanja khusus"}
-              </p>
-            </div>
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      title={
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
+            style={{ backgroundColor: color }}
+          >
+            <IconComp size={20} />
+          </span>
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">
+              {isEditing ? "Edit Amplop Pengeluaran" : "Tambah Amplop Baru"}
+            </h2>
+            <p className="text-xs font-semibold text-slate-600">
+              {isEditing ? "Ubah nama, ikon, atau warna amplop" : "Buat amplop tujuan belanja khusus"}
+            </p>
           </div>
-          <IconButton icon={X} label="Tutup" onClick={onClose} />
         </div>
-
-        {/* Body */}
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4">
+      }
+    >
+      <div>
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           {error && (
-            <div className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-2.5 text-xs font-bold text-kash-expense">
-              {error}
+            <div className="rounded-xl border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
+              <p>{error}</p>
             </div>
           )}
 
+          {/* Name */}
           <FormField
             id="envelope-name"
-            label="Nama Amplop *"
+            label="Nama Amplop"
             required
-            autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Contoh: Dana Liburan, Belanja Mingguan..."
+            placeholder="Contoh: Belanja Bulanan, Liburan, Kencan"
           />
 
-          {/* Icon Picker Component */}
-          <CategoryIconPicker
-            value={icon}
-            onChange={setIcon}
-            accentColor={color}
-            label="Pilih Ikon Amplop"
-          />
+          {/* Icon Picker */}
+          <CategoryIconPicker value={icon} onChange={setIcon} accentColor={color} label="Pilih Ikon Amplop" />
 
-          {/* Color Palette Picker */}
+          {/* Color Picker */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">Pilih Warna Amplop</label>
+            <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">
+              Warna Amplop
+            </label>
             <div className="flex flex-wrap gap-2.5">
-              {categoryColors.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full transition hover:scale-110 focus:outline-none ring-offset-2 focus:ring-2 focus:ring-kash-emerald"
-                  style={{ backgroundColor: c }}
-                  aria-label={`Pilih warna ${c}`}
-                >
-                  {color === c && <Check size={16} className="text-white drop-shadow-xs" strokeWidth={3} />}
-                </button>
-              ))}
+              {categoryColors.map((c) => {
+                const isSelected = color.toLowerCase() === c.toLowerCase();
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={`h-8 w-8 rounded-full transition transform flex items-center justify-center ${
+                      isSelected ? "ring-2 ring-offset-2 ring-slate-800 scale-110 shadow-sm" : "hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c }}
+                  >
+                    {isSelected && <Check size={14} strokeWidth={3} className="text-white" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
+          {/* Note / Description */}
           <FormField
             id="envelope-note"
-            label="Catatan (Opsional)"
+            label="Keterangan / Catatan (Opsional)"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Tujuan amplop atau keterangan tambahan..."
@@ -213,8 +208,6 @@ export function QuickCreateEnvelopeModal({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
-
-  return createPortal(modalContent, document.body);
 }

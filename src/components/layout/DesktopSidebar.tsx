@@ -5,6 +5,7 @@ import { navGroups } from "../../app/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useI18n } from "../../i18n";
 import { useNotifications } from "../../context/NotificationContext";
+import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { KashLogo } from "../brand/KashLogo";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
@@ -196,35 +197,13 @@ export function DesktopSidebar() {
       </div>
 
       {logoutOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 px-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-lg font-extrabold text-slate-900">Sign out?</p>
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-600">You will return to the login screen.</p>
-              </div>
-              <IconButton icon={X} label="Close logout dialog" onClick={() => setLogoutOpen(false)} />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setLogoutOpen(false)}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSignOut()}
-                className="inline-flex items-center gap-2 rounded-lg bg-kash-emerald px-4 py-2 text-sm font-bold text-white transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-              >
-                <LogOut aria-hidden="true" size={17} />
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmationDialog
+          confirmLabel="Sign out"
+          description="You will return to the login screen."
+          onCancel={() => setLogoutOpen(false)}
+          onConfirm={() => void handleSignOut()}
+          title="Sign out?"
+        />
       ) : null}
     </aside>
   );

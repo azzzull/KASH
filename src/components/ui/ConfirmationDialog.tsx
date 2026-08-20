@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { AlertTriangle, Loader2, X } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "./Button";
-import { IconButton } from "./IconButton";
+import { Modal } from "./Modal";
 
 type ConfirmationTone = "danger" | "warning" | "neutral";
 
@@ -23,7 +23,7 @@ type ConfirmationDialogProps = {
 
 const toneStyles: Record<ConfirmationTone, { icon: string; confirm: string }> = {
   danger: {
-    confirm: "border-kash-expense bg-kash-expense hover:border-kash-expense hover:bg-kash-expense",
+    confirm: "border-kash-expense bg-kash-expense hover:border-kash-expense hover:bg-kash-expense text-white",
     icon: "bg-kash-expense/10 text-kash-expense ring-kash-expense/20",
   },
   neutral: {
@@ -37,7 +37,7 @@ const toneStyles: Record<ConfirmationTone, { icon: string; confirm: string }> = 
 };
 
 export function ConfirmationDialog({
-  cancelLabel = "Cancel",
+  cancelLabel = "Batal",
   children,
   confirmLabel,
   description,
@@ -53,37 +53,44 @@ export function ConfirmationDialog({
   const styles = toneStyles[tone];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true" aria-labelledby="confirmation-dialog-title">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close confirmation" onClick={onCancel} type="button" />
-      <section className="absolute inset-x-0 bottom-0 w-full max-w-full min-w-0 box-border overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ring-1 ${styles.icon}`}>
-              <Icon aria-hidden="true" size={21} strokeWidth={2.4} />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-xl font-extrabold text-slate-900" id="confirmation-dialog-title">
-                {title}
-              </h2>
-              <div className="mt-2 text-sm font-semibold leading-6 text-slate-700">{description}</div>
-            </div>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onCancel} />
+    <Modal
+      isOpen
+      onClose={onCancel}
+      maxWidth="sm"
+      dismissible={!isLoading}
+      title={
+        <div className="flex items-center gap-3">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ${styles.icon}`}>
+            <Icon aria-hidden="true" size={20} strokeWidth={2.4} />
+          </span>
+          <span className="text-lg font-extrabold text-slate-900">{title}</span>
         </div>
+      }
+      description={description}
+    >
+      <div className="space-y-4 pt-1">
+        {itemLabel ? (
+          <div className="rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-900 border border-slate-200">
+            {itemLabel}
+          </div>
+        ) : null}
 
-        {itemLabel ? <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm font-bold text-slate-900">{itemLabel}</div> : null}
-        {children ? <div className="mt-4">{children}</div> : null}
+        {children ? <div>{children}</div> : null}
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end pt-2">
           <Button disabled={isLoading} onClick={onCancel} variant="secondary" className="justify-center">
             {cancelLabel}
           </Button>
-          <Button className={`${styles.confirm} justify-center`} disabled={disabled || isLoading} onClick={onConfirm}>
-            {isLoading ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
+          <Button
+            className={`${styles.confirm} justify-center`}
+            disabled={disabled || isLoading}
+            onClick={onConfirm}
+          >
+            {isLoading ? <Loader2 aria-hidden="true" className="animate-spin" size={16} /> : null}
             {confirmLabel}
           </Button>
         </div>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }

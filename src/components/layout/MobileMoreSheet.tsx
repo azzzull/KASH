@@ -1,7 +1,7 @@
-import { X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { mobileMoreItems } from "../../app/navigation";
-import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
+import { useI18n } from "../../i18n";
 
 type MobileMoreSheetProps = {
   open: boolean;
@@ -9,31 +9,46 @@ type MobileMoreSheetProps = {
 };
 
 export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
-  if (!open) return null;
+  const { t } = useI18n();
+
+  const getLocalizedLabel = (path: string, defaultLabel: string) => {
+    switch (path) {
+      case "/dashboard": return t("nav.dashboard");
+      case "/transactions": return t("nav.transactions");
+      case "/budgets": return t("nav.budgets");
+      case "/wallets": return t("nav.wallets");
+      case "/calendar": return t("nav.calendar");
+      case "/goals": return t("nav.goals");
+      case "/shared-savings": return t("nav.sharedSavings");
+      case "/debts": return t("nav.debts");
+      case "/subscriptions": return t("nav.subscriptions");
+      case "/settings": return t("nav.settings");
+      default: return defaultLabel;
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-40 bg-slate-900/25 lg:hidden" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close more menu" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-soft">
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300" />
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-          <h2 className="text-base font-bold text-slate-900">More</h2>
-          <IconButton icon={X} label="Close more menu" onClick={onClose} />
-        </div>
-        <div className="mt-3 grid gap-1">
-          {mobileMoreItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={onClose}
-              className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold text-slate-800 transition hover:bg-kash-selected hover:text-kash-emeraldDark"
-            >
-              <item.icon aria-hidden="true" size={19} strokeWidth={2} />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </div>
-      </section>
-    </div>
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      maxWidth="sm"
+      title={t("nav.more")}
+    >
+      <div className="grid gap-1.5 pt-1 pb-3">
+        {mobileMoreItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            onClick={onClose}
+            className="flex items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-bold text-slate-800 transition hover:bg-kash-selected/70 hover:text-kash-emeraldDark active:bg-kash-selected"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark">
+              <item.icon aria-hidden="true" size={19} strokeWidth={2.2} />
+            </span>
+            <span>{getLocalizedLabel(item.path, item.label)}</span>
+          </NavLink>
+        ))}
+      </div>
+    </Modal>
   );
 }

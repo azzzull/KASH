@@ -77,7 +77,7 @@ export function formatCompactCurrency(amount: MoneyInput, currency = "IDR", loca
     if (absNum >= 1_000_000_000) {
       const val = (absNum / 1_000_000_000).toFixed(1).replace(/\.0$/, "");
       const localizedVal = locale === "id" ? val.replace(".", ",") : val;
-      formatted = `Rp${localizedVal} ${locale === "id" ? "M" : "B"}`;
+      formatted = `Rp${localizedVal} ${locale === "id" ? "miliar" : "B"}`;
     } else if (absNum >= 1_000_000) {
       const val = (absNum / 1_000_000).toFixed(1).replace(/\.0$/, "");
       const localizedVal = locale === "id" ? val.replace(".", ",") : val;

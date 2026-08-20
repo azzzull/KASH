@@ -18,6 +18,7 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import {
@@ -353,26 +354,15 @@ function CategoryFormModal({
   };
 
   return (
-    <div
-      aria-labelledby="category-form-title"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs"
-      role="dialog"
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title={isEditing ? "Edit Kategori" : "Kategori Baru"}
+      description="Atur nama, jenis, warna, dan ikon kategori"
     >
-      <section className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-        <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900" id="category-form-title">
-              {isEditing ? "Edit Kategori" : "Kategori Baru"}
-            </h3>
-            <p className="text-xs font-semibold text-slate-600">
-              Atur nama, jenis, warna, dan ikon kategori
-            </p>
-          </div>
-          <IconButton icon={X} label="Tutup" onClick={onClose} />
-        </header>
-
-        <form className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4" onSubmit={submit}>
+      <div>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           {error ? (
             <p className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
               {error}
@@ -447,8 +437,8 @@ function CategoryFormModal({
             </Button>
           </div>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 

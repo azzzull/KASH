@@ -23,6 +23,7 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import {
@@ -167,24 +168,21 @@ function GoalEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close edit goal" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Edit Goal</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">This only edits the goal target and metadata.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Edit Goal"
+      description="This only edits the goal target and metadata."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <FormField id="edit-goal-name" label="Goal Name" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} />
           <FormField
             id="edit-goal-target"
@@ -235,8 +233,8 @@ function GoalEditModal({
             Save Changes
           </Button>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -274,12 +272,12 @@ function ContributionModal({
     }
 
     if (!amountDigits || toNumber(amountDigits) <= 0) {
-      setError("Contribution amount must be greater than zero.");
+      setError("Amount must be greater than zero.");
       return;
     }
 
     if (toNumber(amountDigits) > sourceBalance) {
-      setError("Contribution cannot exceed this source wallet's balance.");
+      setError("Source wallet does not have enough balance.");
       return;
     }
 
@@ -306,24 +304,21 @@ function ContributionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close contribution form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Add Contribution</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">This creates an internal transfer from the source wallet to the goal pocket.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Add Contribution"
+      description="This creates an internal transfer from the source wallet to the goal pocket."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <SelectField id="contribution-wallet" label="From Wallet" onChange={(event) => setForm((current) => ({ ...current, walletId: event.target.value }))} value={form.walletId}>
             {sourceWallets.length === 0 ? <option value="">No source wallets</option> : null}
             {sourceWallets.map((wallet) => (
@@ -362,8 +357,8 @@ function ContributionModal({
             Save Contribution
           </Button>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 

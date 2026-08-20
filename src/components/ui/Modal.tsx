@@ -1,6 +1,10 @@
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from "@headlessui/react";
 import { X } from "lucide-react";
-import React, { Fragment, useRef, useState, useEffect, type ReactNode } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { IconButton } from "./IconButton";
 
 export type ModalProps = {
@@ -37,156 +41,235 @@ export function Modal({
   className = "",
   bodyClassName = "",
 }: ModalProps) {
+  // Mounting & animation lifecycle
+  const [mounted, setMounted] = useState(isOpen);
+  const [entered, setEntered] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  // Gesture state
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startYRef = useRef<number>(0);
   const currentYRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
+  const dragHandleRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dismissible) return;
-    // Only allow drag starting from the header / grabber handle region
-    startYRef.current = e.clientY;
-    currentYRef.current = e.clientY;
-    startTimeRef.current = Date.now();
-    setIsDragging(true);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  // Synchronize open/mount lifecycle
+  useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+      setIsClosing(false);
+      setDragY(0);
+      setIsDragging(false);
+
+      // Double rAF to ensure starting translate-y-full state is painted first
+      const frame1 = requestAnimationFrame(() => {
+        const frame2 = requestAnimationFrame(() => {
+          setEntered(true);
+        });
+        return () => cancelAnimationFrame(frame2);
+      });
+      return () => cancelAnimationFrame(frame1);
+    } else {
+      setEntered(false);
+      setIsClosing(false);
+      setMounted(false);
+      setDragY(0);
+      setIsDragging(false);
+    }
+  }, [isOpen]);
+
+  // Animated Close Controller
+  const handleRequestClose = () => {
+    if (!dismissible || isClosing) return;
+    setIsClosing(true);
+    setEntered(false);
+    // Trigger parent onClose after slide-down transition completes
+    setTimeout(() => {
+      onClose();
+      setIsClosing(false);
+      setMounted(false);
+    }, 240);
   };
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging || !dismissible) return;
-    const deltaY = e.clientY - startYRef.current;
+  // Keyboard Escape Support
+  useEffect(() => {
+    if (!mounted) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && dismissible) {
+        handleRequestClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mounted, dismissible, isClosing]);
+
+  // Touch Gesture Handlers (iOS Safari & Standalone PWA)
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!dismissible || isClosing) return;
+    const touch = e.touches[0];
+    startYRef.current = touch.clientY;
+    currentYRef.current = touch.clientY;
+    startTimeRef.current = Date.now();
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging || !dismissible || isClosing) return;
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - startYRef.current;
+
     if (deltaY > 0) {
-      // Dragging downward
+      // Downward drag follows finger
       setDragY(deltaY);
-      currentYRef.current = e.clientY;
+      currentYRef.current = touch.clientY;
     } else {
       // Resistance upward
       setDragY(deltaY * 0.15);
     }
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
+  const handleTouchEnd = () => {
+    if (!isDragging || isClosing) return;
     setIsDragging(false);
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
 
-    const totalDelta = currentYRef.current - startYRef.current;
-    const elapsedTime = Math.max(1, Date.now() - startTimeRef.current);
-    const velocity = totalDelta / elapsedTime; // px per ms
+    const deltaY = currentYRef.current - startYRef.current;
+    const elapsed = Math.max(1, Date.now() - startTimeRef.current);
+    const velocity = deltaY / elapsed; // px per ms
 
-    if (totalDelta > 110 || velocity > 0.45) {
-      // Dismiss
-      setDragY(300);
-      onClose();
+    if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
+      // Threshold passed -> Dismiss with animated exit
+      setDragY(400);
+      handleRequestClose();
     } else {
-      // Snap back
+      // Snap back smoothly
       setDragY(0);
     }
   };
 
+  // Non-passive TouchMove prevention on drag handle for iOS Safari
   useEffect(() => {
-    if (!isOpen) {
-      setDragY(0);
-      setIsDragging(false);
-    }
-  }, [isOpen]);
+    const handleEl = dragHandleRef.current;
+    if (!handleEl) return;
 
-  const handleClose = () => {
-    if (dismissible) {
-      onClose();
-    }
-  };
+    const preventScroll = (e: TouchEvent) => {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    handleEl.addEventListener("touchmove", preventScroll, { passive: false });
+    return () => {
+      handleEl.removeEventListener("touchmove", preventScroll);
+    };
+  }, [mounted]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (!mounted) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mounted]);
+
+  if (!mounted) return null;
+
+  // Compute inline transform and transition for mobile bottom sheet
+  const isMobileOpen = entered && !isClosing;
+  const mobileTransform = isDragging
+    ? `translate3d(0, ${dragY}px, 0)`
+    : isClosing || !isMobileOpen
+    ? "translate3d(0, 100%, 0)"
+    : "translate3d(0, 0, 0)";
+
+  const mobileTransition = isDragging
+    ? "none"
+    : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1)";
+
+  // Backdrop opacity calculation
+  const backdropOpacity = isClosing || !entered
+    ? "opacity-0"
+    : isDragging
+    ? `opacity-${Math.max(20, Math.round(100 - (dragY / 300) * 80))}`
+    : "opacity-100";
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={handleClose}>
-        {/* Backdrop */}
-        <TransitionChild
-          as={Fragment}
-          enter="ease-out duration-200"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-150"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 overflow-hidden"
+    >
+      {/* Backdrop */}
+      <div
+        onClick={handleRequestClose}
+        className={`fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-240 ${backdropOpacity}`}
+      />
+
+      {/* Sheet / Dialog Container */}
+      <div className="fixed inset-0 z-50 flex min-h-full items-end justify-center p-0 md:items-center md:p-4 pointer-events-none">
+        <div
+          ref={panelRef}
+          style={{
+            transform: mobileTransform,
+            transition: mobileTransition,
+          }}
+          className={`pointer-events-auto w-full ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:rounded-2xl pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6 md:transform-none md:transition-all md:duration-200 ${
+            entered && !isClosing
+              ? "md:scale-100 md:opacity-100"
+              : "md:scale-95 md:opacity-0"
+          } ${className}`}
         >
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" />
-        </TransitionChild>
+          {/* Mobile Top Drag Handle Area (44px height for comfortable touch targeting) */}
+          <div
+            ref={dragHandleRef}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            className="flex h-11 w-full items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing md:hidden"
+            aria-label="Drag down to close"
+          >
+            <div className="h-1.5 w-12 rounded-full bg-slate-300 transition-colors hover:bg-slate-400 active:bg-kash-emerald" />
+          </div>
 
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-0 text-center md:items-center md:p-4">
-            <TransitionChild
-              as={Fragment}
-              enter="ease-out duration-250 transform"
-              enterFrom="opacity-0 translate-y-full md:translate-y-0 md:scale-95"
-              enterTo="opacity-100 translate-y-0 md:scale-100"
-              leave="ease-in duration-180 transform"
-              leaveFrom="opacity-100 translate-y-0 md:scale-100"
-              leaveTo="opacity-0 translate-y-full md:translate-y-0 md:scale-95"
-            >
-              <DialogPanel
-                style={{
-                  transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-                  transition: isDragging ? "none" : undefined,
-                }}
-                className={`w-full ${maxWidthClasses[maxWidth]} transform overflow-hidden rounded-t-2xl bg-white text-left align-middle shadow-2xl transition-all md:rounded-2xl pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6 ${className}`}
-              >
-                {/* Drag Handle for Mobile */}
-                <div
-                  onPointerDown={handlePointerDown}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={handlePointerUp}
-                  className="touch-none select-none cursor-grab active:cursor-grabbing pt-3 pb-1 md:hidden"
-                >
-                  <div className="mx-auto h-1.5 w-12 rounded-full bg-slate-300/90" />
-                </div>
-
-                {/* Header Region */}
-                {(title || showCloseButton) ? (
-                  <div
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    className="flex items-start justify-between gap-4 px-5 pt-2 pb-3 md:px-6 md:pt-6 touch-none"
-                  >
-                    <div className="min-w-0 flex-1">
-                      {title ? (
-                        <DialogTitle as="h2" className="text-lg font-extrabold text-slate-900 md:text-xl">
-                          {title}
-                        </DialogTitle>
-                      ) : null}
-                      {description ? (
-                        <div className="mt-1 text-xs md:text-sm font-semibold text-slate-600">
-                          {description}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {showCloseButton && dismissible ? (
-                      <IconButton
-                        icon={X}
-                        label="Close"
-                        onClick={onClose}
-                        className="shrink-0 text-slate-600 hover:text-slate-900"
-                      />
-                    ) : null}
+          {/* Header Region */}
+          {(title || showCloseButton) ? (
+            <div className="flex items-start justify-between gap-4 px-5 pt-1 pb-3 md:px-6 md:pt-6">
+              <div className="min-w-0 flex-1">
+                {title ? (
+                  <h2 className="text-lg font-extrabold text-slate-900 md:text-xl">
+                    {title}
+                  </h2>
+                ) : null}
+                {description ? (
+                  <div className="mt-1 text-xs md:text-sm font-semibold text-slate-600">
+                    {description}
                   </div>
                 ) : null}
+              </div>
 
-                {/* Scrollable Content Body */}
-                <div className={`px-5 py-2 md:px-6 max-h-[80vh] md:max-h-[75vh] overflow-y-auto overscroll-contain ${bodyClassName}`}>
-                  {children}
-                </div>
-              </DialogPanel>
-            </TransitionChild>
+              {showCloseButton && dismissible ? (
+                <IconButton
+                  icon={X}
+                  label="Close"
+                  onClick={handleRequestClose}
+                  className="shrink-0 text-slate-600 hover:text-slate-900"
+                />
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Scrollable Content Body (Protected from gesture interception) */}
+          <div
+            className={`px-5 py-2 md:px-6 max-h-[calc(85dvh-80px)] md:max-h-[75vh] overflow-y-auto overscroll-contain ${bodyClassName}`}
+          >
+            {children}
           </div>
         </div>
-      </Dialog>
-    </Transition>
+      </div>
+    </div>
   );
 }

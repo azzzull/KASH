@@ -19,8 +19,10 @@ import { Button } from "../components/ui/Button";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
+import { useI18n } from "../i18n";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitGoalSaved } from "../lib/appEvents";
 import { createGoal, getGoals, type GoalWithProgress } from "../lib/goals";
@@ -202,37 +204,21 @@ function CreateGoalModal({
     };
 
     return (
-        <div
-            className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35"
-            role="dialog"
-            aria-modal="true"
+        <Modal
+            isOpen
+            onClose={onClose}
+            maxWidth="lg"
+            title="New Goal"
+            description="KASH will create a dedicated savings pocket wallet for this goal."
         >
-            <button
-                className="absolute inset-0 h-full w-full cursor-default"
-                aria-label="Close goal form"
-                onClick={onClose}
-            />
-            <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <h2 className="text-xl font-extrabold text-slate-900">
-                            New Goal
-                        </h2>
-                        <p className="mt-1 text-sm font-semibold text-slate-700">
-                            KASH will create a dedicated savings pocket wallet
-                            for this goal.
-                        </p>
-                    </div>
-                    <IconButton icon={X} label="Close" onClick={onClose} />
-                </div>
-
+            <div>
                 {error ? (
-                    <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+                    <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
                         {error}
                     </div>
                 ) : null}
 
-                <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+                <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
                     <FormField
                         id="goal-name"
                         label="Goal Name"
@@ -257,44 +243,30 @@ function CreateGoalModal({
                                 ),
                             }))
                         }
-                        placeholder="25.000.000"
+                        placeholder="15.000.000"
                         value={form.targetAmount}
                     />
-                    <div className="w-full max-w-full min-w-0">
-                        <div className="flex items-center justify-between">
-                            <label
-                                className="block text-sm font-bold text-slate-900"
-                                htmlFor="goal-deadline"
-                            >
-                                Deadline (Optional)
-                            </label>
-                            {form.deadline ? (
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setForm((current) => ({
-                                            ...current,
-                                            deadline: "",
-                                        }))
-                                    }
-                                    className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark active:text-kash-emeraldPressed hover:underline transition"
-                                >
-                                    Clear deadline
-                                </button>
-                            ) : (
-                                <span className="text-xs font-semibold text-slate-600">
-                                    No deadline
-                                </span>
-                            )}
-                        </div>
+                    <FormField
+                        id="goal-pocket-institution"
+                        label="Bank / Institusi Kantong Tabungan (Opsional)"
+                        onChange={(event) =>
+                            setForm((current) => ({
+                                ...current,
+                                pocketInstitution: event.target.value,
+                            }))
+                        }
+                        placeholder="e.g. Bank Jago, BCA, Bibit"
+                        value={form.pocketInstitution}
+                    />
+                    <div>
                         <DatePickerField
                             id="goal-deadline"
+                            label="Target Date"
                             value={form.deadline}
-                            placeholder="Select Target Date"
-                            onChange={(val) =>
+                            onChange={(date) =>
                                 setForm((current) => ({
                                     ...current,
-                                    deadline: val,
+                                    deadline: date,
                                 }))
                             }
                         />
@@ -304,18 +276,6 @@ function CreateGoalModal({
                                 : "Optional. You can leave this empty if there is no deadline."}
                         </span>
                     </div>
-                    <FormField
-                        id="goal-pocket-institution"
-                        label="Pocket Institution"
-                        onChange={(event) =>
-                            setForm((current) => ({
-                                ...current,
-                                pocketInstitution: event.target.value,
-                            }))
-                        }
-                        placeholder="BCA, SeaBank, Jago Pocket"
-                        value={form.pocketInstitution}
-                    />
                     <SelectField
                         id="goal-icon"
                         label="Icon"
@@ -356,8 +316,8 @@ function CreateGoalModal({
                         Save Goal
                     </Button>
                 </form>
-            </section>
-        </div>
+            </div>
+        </Modal>
     );
 }
 
@@ -379,6 +339,7 @@ function GoalsSkeleton() {
 }
 
 export function GoalsPage() {
+    const { t } = useI18n();
     const [goals, setGoals] = useState<GoalWithProgress[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -424,14 +385,14 @@ export function GoalsPage() {
     return (
         <div className="w-full min-w-0 space-y-5">
             <PageHeader
-                eyebrow="Savings Goals"
+                eyebrow={t("goals.title")}
                 icon={Crosshair}
-                title="Goals"
-                description="Move money from existing wallets into dedicated goal pockets."
+                title={t("goals.title")}
+                description={t("goals.subtitle")}
                 actions={
                     <Button onClick={() => setShowCreateGoal(true)}>
                         <Plus aria-hidden="true" size={18} />
-                        New Goal
+                        {t("goals.create")}
                     </Button>
                 }
             />
@@ -439,7 +400,7 @@ export function GoalsPage() {
             <section className="grid gap-3 md:grid-cols-3">
                 <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        Total in Goal Pockets
+                        {t("wallets.allocatedToGoals")}
                     </p>
                     <p className="mt-2 text-xl font-extrabold text-slate-900">
                         {formatCurrency(summary.allocated, "IDR")}
@@ -447,7 +408,7 @@ export function GoalsPage() {
                 </article>
                 <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        Active Goals
+                        Target Aktif
                     </p>
                     <p className="mt-2 text-xl font-extrabold text-slate-900">
                         {summary.active}
@@ -455,7 +416,7 @@ export function GoalsPage() {
                 </article>
                 <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        Completed
+                        Tercapai
                     </p>
                     <p className="mt-2 flex items-center gap-2 text-xl font-extrabold text-slate-900">
                         <Trophy
@@ -471,13 +432,13 @@ export function GoalsPage() {
             {error ? (
                 <section className="rounded-lg border border-kash-expense/30 bg-white p-5 shadow-sm">
                     <h3 className="text-base font-extrabold text-slate-900">
-                        Something went wrong.
+                        {t("common.error")}
                     </h3>
                     <p className="mt-2 text-sm font-semibold text-slate-700">
                         {error}
                     </p>
                     <Button className="mt-4" onClick={() => void loadGoals()}>
-                        Retry
+                        {t("common.retry")}
                     </Button>
                 </section>
             ) : null}
@@ -494,19 +455,17 @@ export function GoalsPage() {
                         />
                     </div>
                     <h3 className="mt-4 text-lg font-extrabold text-slate-900">
-                        No goals yet.
+                        {t("goals.emptyTitle")}
                     </h3>
                     <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-slate-700">
-                        Create a personal savings target. KASH will add a
-                        dedicated pocket wallet, then you can move money into
-                        it.
+                        {t("goals.emptyDesc")}
                     </p>
                     <Button
                         className="mt-5"
                         onClick={() => setShowCreateGoal(true)}
                     >
                         <Plus aria-hidden="true" size={18} />
-                        New Goal
+                        {t("goals.create")}
                     </Button>
                 </section>
             ) : null}

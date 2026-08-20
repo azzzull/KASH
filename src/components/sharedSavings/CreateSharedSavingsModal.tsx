@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
+import { Modal } from "../ui/Modal";
 import { createSharedSavingsSpace } from "../../lib/sharedSavings";
 import { formatMoneyDigits, parseMoneyInputDigits } from "../../lib/money";
 
@@ -72,35 +73,29 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-xs"
-              style={{ backgroundColor: color }}
-            >
-              <Users size={20} strokeWidth={2.2} />
-            </span>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">Buat Tabungan Bersama</h2>
-              <p className="text-xs font-semibold text-slate-600">
-                Kelola dana tabungan bersama anggota keluarga atau teman
-              </p>
-            </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="lg"
+      title={
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
+            style={{ backgroundColor: color }}
+          >
+            <Users size={20} strokeWidth={2.2} />
+          </span>
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">Buat Tabungan Bersama</h2>
+            <p className="text-xs font-semibold text-slate-600">
+              Kelola dana tabungan bersama anggota keluarga atau teman
+            </p>
           </div>
-          <IconButton icon={X} label="Tutup" onClick={onClose} />
         </div>
-
-        {/* Body */}
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto p-5 space-y-4">
+      }
+    >
+      <div>
+        <form onSubmit={handleSubmit} className="flex flex-col space-y-4">
           {error && (
             <div className="rounded-xl border border-kash-expense/30 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
               {error}
@@ -190,6 +185,6 @@ export function CreateSharedSavingsModal({ isOpen, onClose, onCreated }: CreateS
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

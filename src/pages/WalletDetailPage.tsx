@@ -6,9 +6,11 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
+import { useI18n } from "../i18n";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
@@ -127,22 +129,20 @@ function EditWalletModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close edit wallet" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Edit Wallet</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">Balance changes should come from the ledger once transactions exist.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title="Edit Wallet"
+      description="Balance changes should come from the ledger once transactions exist."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <SelectField
             disabled
             id="edit-wallet-type"
@@ -215,8 +215,8 @@ function EditWalletModal({
             Save Changes
           </Button>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -307,24 +307,21 @@ function AdjustmentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close adjustment form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Adjust Balance</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-700">Reconcile KASH with the real balance in this wallet.</p>
-          </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="md"
+      title="Adjust Balance"
+      description="Reconcile KASH with the real balance in this wallet."
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Current KASH Balance</p>
             <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(currentBalance, wallet.currency)}</p>
@@ -356,8 +353,8 @@ function AdjustmentModal({
             Save Adjustment
           </Button>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -421,31 +418,32 @@ function UpdateValuationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-x-hidden bg-slate-900/35" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close valuation form" onClick={onClose} />
-      <section className="absolute inset-x-0 bottom-0 max-h-[92vh] w-full max-w-full min-w-0 box-border overflow-y-auto overflow-x-hidden rounded-t-2xl bg-white p-4 shadow-soft md:left-1/2 md:top-1/2 md:bottom-auto md:max-h-[86vh] md:w-full md:max-w-lg md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-kash-emerald">
-              <LineChart aria-hidden="true" size={20} />
-            </span>
-            <div>
-              <h2 className="text-xl font-extrabold text-slate-900">Update Nilai Investasi</h2>
-              <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                Pembaruan nilai pasar tidak mengubah arus kas riil (income/expense).
-              </p>
-            </div>
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="md"
+      title={
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-kash-emerald">
+            <LineChart aria-hidden="true" size={20} />
+          </span>
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900">Update Nilai Investasi</h2>
+            <p className="mt-0.5 text-xs font-semibold text-slate-600">
+              Pembaruan nilai pasar tidak mengubah arus kas riil (income/expense).
+            </p>
           </div>
-          <IconButton icon={X} label="Close" onClick={onClose} />
         </div>
-
+      }
+    >
+      <div>
         {error ? (
-          <div className="mt-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Modal Masuk (Cost Basis)</p>
@@ -499,8 +497,8 @@ function UpdateValuationModal({
             Simpan Nilai Valuasi
           </Button>
         </form>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
