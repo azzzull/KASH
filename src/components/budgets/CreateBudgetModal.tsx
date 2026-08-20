@@ -1,4 +1,4 @@
-import { Check, CreditCard, FolderPlus, HandCoins, Layers, PiggyBank, Plus, Tag, UserCheck, X } from "lucide-react";
+import { Check, CreditCard, FolderPlus, HandCoins, Layers, PiggyBank, Plus, Tag, Target, UserCheck, WalletCards, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { getActiveCategories } from "../../lib/categories";
@@ -32,6 +32,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
   const [counterpartyId, setCounterpartyId] = useState("");
   const [isSpecificItemTarget, setIsSpecificItemTarget] = useState(false);
   const [debtId, setDebtId] = useState("");
+  const [savingsMode, setSavingsMode] = useState<"pocket" | "goal">("pocket");
   const [goalId, setGoalId] = useState("");
   const [walletId, setWalletId] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
@@ -122,9 +123,15 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       }
     }
 
-    if (targetType === "goal" && !goalId && !walletId) {
-      setError("Pilih pos tabungan atau kantong tabungan.");
-      return;
+    if (targetType === "goal") {
+      if (savingsMode === "pocket" && !walletId) {
+        setError("Pilih kantong tabungan (savings pocket) yang ingin ditargetkan.");
+        return;
+      }
+      if (savingsMode === "goal" && !goalId) {
+        setError("Pilih target tabungan (goal) yang ingin ditargetkan.");
+        return;
+      }
     }
 
     let defaultName = "Budget";
@@ -141,12 +148,12 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
         defaultName = cpItem?.name ? `Cicil Utang: ${cpItem.name}` : "Cicilan Utang";
       }
     } else if (targetType === "goal") {
-      if (goalId) {
-        const gItem = goals.find((g) => g.id === goalId);
-        defaultName = gItem?.name ? `Tabungan: ${gItem.name}` : "Tabungan Bulanan";
-      } else if (walletId) {
+      if (savingsMode === "pocket") {
         const wItem = savingsWallets.find((w) => w.id === walletId);
         defaultName = wItem?.name ? `Nabung: ${wItem.name}` : "Kantong Tabungan";
+      } else {
+        const gItem = goals.find((g) => g.id === goalId);
+        defaultName = gItem?.name ? `Tabungan: ${gItem.name}` : "Tabungan Bulanan";
       }
     }
 
@@ -163,8 +170,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
         envelopeId: targetType === "envelope" ? envelopeId : null,
         counterpartyId: targetType === "debt" ? counterpartyId || null : null,
         debtId: targetType === "debt" && isSpecificItemTarget ? debtId || null : null,
-        goalId: targetType === "goal" ? goalId || null : null,
-        walletId: targetType === "goal" ? walletId || null : null,
+        goalId: targetType === "goal" && savingsMode === "goal" ? goalId || null : null,
+        walletId: targetType === "goal" && savingsMode === "pocket" ? walletId || null : null,
         note: note.trim() || null,
       });
 
@@ -400,45 +407,80 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           )}
 
           {targetType === "goal" && (
-            <SelectField
-              id="budget-goal"
-              label="Pilih Target / Kantong Tabungan *"
-              required
-              value={goalId ? `goal:${goalId}` : walletId ? `wallet:${walletId}` : ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val.startsWith("goal:")) {
-                  setGoalId(val.replace("goal:", ""));
-                  setWalletId("");
-                } else if (val.startsWith("wallet:")) {
-                  setWalletId(val.replace("wallet:", ""));
-                  setGoalId("");
-                } else {
-                  setGoalId("");
-                  setWalletId("");
-                }
-              }}
-            >
-              <option value="">-- Pilih Pos Tabungan atau Kantong Tabungan --</option>
-              {savingsWallets.length > 0 && (
-                <optgroup label="🏦 Kantong Tabungan (Savings Pockets)">
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Tipe Simpanan Tabungan
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSavingsMode("pocket");
+                      setGoalId("");
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs transition ${
+                      savingsMode === "pocket"
+                        ? "bg-kash-emerald text-white shadow-xs font-extrabold"
+                        : "border border-slate-200 bg-white text-slate-700 font-bold hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+                    }`}
+                  >
+                    <WalletCards size={16} />
+                    <span>Kantong Tabungan</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSavingsMode("goal");
+                      setWalletId("");
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs transition ${
+                      savingsMode === "goal"
+                        ? "bg-kash-emerald text-white shadow-xs font-extrabold"
+                        : "border border-slate-200 bg-white text-slate-700 font-bold hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+                    }`}
+                  >
+                    <Target size={16} />
+                    <span>Target Tabungan (Goal)</span>
+                  </button>
+                </div>
+              </div>
+
+              {savingsMode === "pocket" && (
+                <SelectField
+                  id="budget-savings-pocket"
+                  label="Pilih Kantong Tabungan (Savings Pocket) *"
+                  required
+                  value={walletId}
+                  onChange={(e) => setWalletId(e.target.value)}
+                >
+                  <option value="">-- Pilih Kantong Tabungan --</option>
                   {savingsWallets.map((w) => (
-                    <option key={`wallet:${w.id}`} value={`wallet:${w.id}`}>
+                    <option key={w.id} value={w.id}>
                       {w.name} {w.institution_name ? `(${w.institution_name})` : ""} — Saldo: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)}
                     </option>
                   ))}
-                </optgroup>
+                </SelectField>
               )}
-              {goals.length > 0 && (
-                <optgroup label="🎯 Target Tabungan (Goals)">
+
+              {savingsMode === "goal" && (
+                <SelectField
+                  id="budget-goal"
+                  label="Pilih Target Tabungan (Goal) *"
+                  required
+                  value={goalId}
+                  onChange={(e) => setGoalId(e.target.value)}
+                >
+                  <option value="">-- Pilih Target Tabungan (Goal) --</option>
                   {goals.map((g) => (
-                    <option key={`goal:${g.id}`} value={`goal:${g.id}`}>
+                    <option key={g.id} value={g.id}>
                       {g.name} — Target: {formatCurrency(g.target_amount, "IDR")}
                     </option>
                   ))}
-                </optgroup>
+                </SelectField>
               )}
-            </SelectField>
+            </div>
           )}
 
           {/* Budget Name */}
