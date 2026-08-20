@@ -32,10 +32,12 @@ import {
 } from "../lib/subscriptions";
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
 import type { RecurringPayment, Wallet as WalletType } from "../types/domain";
+import { useI18n } from "../i18n";
 
 export function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t, formatDate, formatCurrency } = useI18n();
 
   const [obligation, setObligation] = useState<RecurringObligationWithMeta | null>(null);
   const [payments, setPayments] = useState<RecurringPayment[]>([]);
@@ -61,7 +63,7 @@ export function SubscriptionDetailPage() {
     ]);
 
     if (obRes.error || !obRes.data) {
-      setError(obRes.error?.message || "Obligation not found.");
+      setError(obRes.error?.message || (t("subscriptions.notFound") || "Kewajiban tidak ditemukan."));
     } else {
       setObligation(obRes.data.obligation);
       setPayments(obRes.data.payments);
@@ -116,9 +118,9 @@ export function SubscriptionDetailPage() {
     return (
       <div className="mx-auto max-w-[1180px] space-y-4 py-8 text-center">
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-base font-extrabold text-slate-900">{error || "Obligation not found."}</p>
+          <p className="text-base font-extrabold text-slate-900">{error || (t("subscriptions.notFound") || "Kewajiban tidak ditemukan.")}</p>
           <Link to="/subscriptions" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-kash-emerald hover:underline">
-            <ArrowLeft size={16} /> Back to Bills & Subscriptions
+            <ArrowLeft size={16} /> {t("subscriptions.backToSubscriptions") || "Kembali ke Tagihan & Langganan"}
           </Link>
         </div>
       </div>
@@ -129,6 +131,26 @@ export function SubscriptionDetailPage() {
   const openPendingPayment = payments.find((p) => p.status === "pending" || p.status === "overdue");
   const canHardDelete = payments.length === 0;
 
+  const frequencyLabel = isInstallment
+    ? (t("subscriptions.monthlyInstallment") || "Cicilan Bulanan")
+    : obligation.frequency === "monthly"
+      ? (t("subscriptions.freqMonthly") || "Bulanan")
+      : obligation.frequency === "yearly"
+        ? (t("subscriptions.freqYearly") || "Tahunan")
+        : obligation.frequency === "weekly"
+          ? (t("subscriptions.freqWeekly") || "Mingguan")
+          : obligation.frequency === "quarterly"
+            ? (t("subscriptions.freqQuarterly") || "Triwulan")
+            : obligation.frequency;
+
+  const freqSuffix = isInstallment
+    ? (t("subscriptions.perMonthSuffix") || " /bln")
+    : obligation.frequency === "monthly"
+      ? (t("subscriptions.perMonthSuffix") || " /bln")
+      : obligation.frequency === "yearly"
+        ? (t("subscriptions.perYearSuffix") || " /thn")
+        : ` /${obligation.frequency}`;
+
   return (
     <div className="w-full min-w-0 space-y-5">
       {/* Back Button */}
@@ -136,7 +158,7 @@ export function SubscriptionDetailPage() {
         to="/subscriptions"
         className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-600 transition hover:text-slate-900"
       >
-        <ArrowLeft size={15} /> Back to Bills & Subscriptions
+        <ArrowLeft size={15} /> {t("subscriptions.backToSubscriptions") || "Kembali ke Tagihan & Langganan"}
       </Link>
 
       {/* Main Header */}
@@ -169,17 +191,17 @@ export function SubscriptionDetailPage() {
                       : "bg-slate-100 text-slate-600"
                 }`}
               >
-                {obligation.status}
+                {obligation.status === "active"
+                  ? (t("common.active") || "Aktif")
+                  : obligation.status === "completed"
+                    ? (t("goals.completed") || "Selesai")
+                    : (t("debts.cancelled") || "Dibatalkan")}
               </span>
             </div>
 
             <p className="mt-1 text-xs font-semibold text-slate-600">
-              {obligation.category?.name || "Uncategorized"} • First Due Date:{" "}
-              {new Date(obligation.start_date).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+              {obligation.category?.name || (t("categories.uncategorized") || "Tanpa Kategori")} • {t("subscriptions.firstDueDate") || "Jatuh Tempo Pertama"}:{" "}
+              {formatDate(new Date(obligation.start_date))}
             </p>
           </div>
         </div>
@@ -192,7 +214,7 @@ export function SubscriptionDetailPage() {
               className="flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold sm:flex-initial"
             >
               <CheckCircle2 size={15} className="shrink-0" />
-              <span className="truncate">Pay Bill</span>
+              <span className="truncate">{t("subscriptions.payBill") || "Bayar Tagihan"}</span>
             </Button>
           )}
 
@@ -203,7 +225,7 @@ export function SubscriptionDetailPage() {
               className="flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold sm:flex-initial"
             >
               <CreditCard size={15} className="shrink-0" />
-              <span className="truncate">Settle Early</span>
+              <span className="truncate">{t("subscriptions.settleEarly") || "Lunasi Sekarang"}</span>
             </Button>
           )}
 
@@ -214,7 +236,7 @@ export function SubscriptionDetailPage() {
               className="flex-1 justify-center gap-1.5 border-kash-expense/30 px-3 py-2 text-xs font-extrabold text-kash-expense hover:bg-kash-expense/10 sm:flex-initial"
             >
               <XCircle size={15} className="shrink-0" />
-              <span className="truncate">Cancel Plan</span>
+              <span className="truncate">{t("subscriptions.cancelPlan") || "Batalkan Layanan"}</span>
             </Button>
           )}
 
@@ -224,7 +246,7 @@ export function SubscriptionDetailPage() {
             className="flex-1 justify-center gap-1.5 border-slate-200 px-3 py-2 text-xs font-extrabold text-slate-600 hover:border-kash-expense/30 hover:bg-kash-expense/10 hover:text-kash-expense sm:flex-initial"
           >
             <Trash2 size={15} className="shrink-0" />
-            <span className="truncate">Delete</span>
+            <span className="truncate">{t("common.delete") || "Hapus"}</span>
           </Button>
         </div>
       </div>
@@ -234,21 +256,20 @@ export function SubscriptionDetailPage() {
         {/* Card 1: Amount & Billing Cycle */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-            {isInstallment ? "Installment Rate" : "Billing Cycle"}
+            {isInstallment ? (t("subscriptions.installmentRate") || "Biaya Cicilan") : (t("subscriptions.billingCycle") || "Siklus Penagihan")}
           </span>
           <p className="mt-2 text-2xl font-black text-slate-900">
-            {formatCurrency(obligation.amount)}
+            {formatCurrency(obligation.amount, "IDR")}
             <span className="text-xs font-bold text-slate-600">
-              {" "}
-              / {isInstallment ? "month" : obligation.frequency}
+              {freqSuffix}
             </span>
           </p>
           <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-600">
             <Calendar size={14} />
             <span>
               {obligation.next_due_date
-                ? `Next Due: ${new Date(obligation.next_due_date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}`
-                : "No active upcoming due date"}
+                ? `${t("subscriptions.nextDue") || "Jatuh Tempo Berikutnya"}: ${formatDate(new Date(obligation.next_due_date))}`
+                : (t("subscriptions.noUpcomingDueDate") || "Tidak ada jadwal tagihan berikutnya")}
             </span>
           </div>
         </div>
@@ -257,14 +278,14 @@ export function SubscriptionDetailPage() {
         {isInstallment ? (
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Contract Progress
+              {t("subscriptions.contractProgress") || "Kemajuan Kontrak"}
             </span>
             <div className="mt-2 flex items-baseline justify-between">
               <p className="text-2xl font-black text-slate-900">
                 {obligation.paid_count} / {obligation.installment_count}
               </p>
               <span className="text-xs font-extrabold text-kash-emeraldDark">
-                {obligation.progress_percentage}% completed
+                {obligation.progress_percentage}% {t("goals.completed") || "selesai"}
               </span>
             </div>
             <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
@@ -277,7 +298,7 @@ export function SubscriptionDetailPage() {
         ) : (
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Default Payment Wallet
+              {t("subscriptions.defaultPaymentWallet") || "Dompet Pembayaran Utama"}
             </span>
             <div className="mt-2 flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
@@ -285,10 +306,12 @@ export function SubscriptionDetailPage() {
               </span>
               <div>
                 <p className="text-base font-extrabold text-slate-900">
-                  {obligation.defaultWallet?.name || "No default wallet"}
+                  {obligation.defaultWallet?.name || (t("subscriptions.noDefaultWallet") || "Belum ada dompet utama")}
                 </p>
                 <p className="text-xs font-semibold text-slate-600">
-                  {obligation.defaultWallet ? "Default wallet configured" : "Select wallet during payment"}
+                  {obligation.defaultWallet
+                    ? (t("subscriptions.defaultWalletConfigured") || "Dompet utama terkonfigurasi")
+                    : (t("subscriptions.selectWalletDuringPayment") || "Pilih dompet saat pembayaran")}
                 </p>
               </div>
             </div>
@@ -298,7 +321,7 @@ export function SubscriptionDetailPage() {
         {/* Card 3: Reminder Settings */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-            Active Reminders
+            {t("subscriptions.activeReminders") || "Pengingat Aktif"}
           </span>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {obligation.reminder_offsets && obligation.reminder_offsets.length > 0 ? (
@@ -307,15 +330,17 @@ export function SubscriptionDetailPage() {
                   key={offset}
                   className="rounded-full bg-kash-selected px-2.5 py-1 text-[11px] font-bold text-kash-emeraldDark"
                 >
-                  {offset === 0 ? "Due Day" : `${offset} days before`}
+                  {offset === 0
+                    ? (t("subscriptions.dueDay") || "Hari H")
+                    : `${offset} ${t("subscriptions.daysBeforeSuffix") || "hari sebelumnya"}`}
                 </span>
               ))
             ) : (
-              <span className="text-xs font-semibold text-slate-600">No upcoming reminders</span>
+              <span className="text-xs font-semibold text-slate-600">{t("subscriptions.noUpcomingReminders") || "Tanpa pengingat"}</span>
             )}
             {obligation.overdue_reminder_enabled && (
               <span className="rounded-full bg-kash-expense/15 px-2.5 py-1 text-[11px] font-bold text-kash-expense">
-                Overdue Alert
+                {t("subscriptions.overdueAlert") || "Peringatan Terlambat"}
               </span>
             )}
           </div>
@@ -324,11 +349,11 @@ export function SubscriptionDetailPage() {
 
       {/* Payment History Section */}
       <div className="space-y-3 pt-2">
-        <h3 className="text-base font-extrabold text-slate-900">Payment Occurrences & History</h3>
+        <h3 className="text-base font-extrabold text-slate-900">{t("subscriptions.paymentOccurrencesHistory") || "Jadwal & Riwayat Pembayaran"}</h3>
 
         {payments.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-xs font-semibold text-slate-600">
-            No payment history recorded yet.
+            {t("subscriptions.noPaymentHistoryYet") || "Belum ada riwayat pembayaran tercatat."}
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -357,8 +382,8 @@ export function SubscriptionDetailPage() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-extrabold text-slate-900">
                             {isInstallment && p.installment_number
-                              ? `Installment #${p.installment_number}`
-                              : `Billing Cycle (${new Date(p.due_date).toLocaleDateString("id-ID", { month: "short", year: "numeric" })})`}
+                              ? (t("subscriptions.installmentNumber", { number: p.installment_number }) || `Cicilan #${p.installment_number}`)
+                              : `${t("subscriptions.billingCycle") || "Siklus Penagihan"} (${formatDate(new Date(p.due_date))})`}
                           </p>
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold uppercase ${
@@ -367,18 +392,18 @@ export function SubscriptionDetailPage() {
                                 : "bg-slate-100 text-slate-700"
                             }`}
                           >
-                            {p.status}
+                            {p.status === "paid" ? (t("subscriptions.paid") || "Lunas") : p.status === "overdue" ? (t("subscriptions.overdue") || "Terlambat") : (t("subscriptions.pending") || "Tertunda")}
                           </span>
                         </div>
 
                         <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                          Due: {new Date(p.due_date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                          {p.paid_at && ` • Paid on ${new Date(p.paid_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}`}
+                          {t("debts.due") || "Tempo"}: {formatDate(new Date(p.due_date))}
+                          {p.paid_at && ` • ${t("subscriptions.paidOn") || "Dibayar pada"} ${formatDate(new Date(p.paid_at))}`}
                         </p>
 
                         {isHistorical && (
                           <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-slate-600">
-                            <History size={12} /> Previous Payment (No wallet deduction)
+                            <History size={12} /> {t("subscriptions.previousPaymentNoDeduction") || "Pembayaran Lampau (Tanpa potong dompet)"}
                           </span>
                         )}
                       </div>
@@ -386,7 +411,7 @@ export function SubscriptionDetailPage() {
 
                     <div className="flex items-center justify-between gap-3 sm:justify-end">
                       <p className="text-sm font-black text-slate-900">
-                        {formatCurrency(p.amount)}
+                        {formatCurrency(p.amount, "IDR")}
                       </p>
 
                       {!isPaid && obligation.status === "active" && (
@@ -394,7 +419,7 @@ export function SubscriptionDetailPage() {
                           onClick={() => setPayModalPayment(p)}
                           className="gap-1 min-h-9 px-3 py-1.5 text-xs font-extrabold"
                         >
-                          <CheckCircle2 size={13} /> Pay
+                          <CheckCircle2 size={13} /> {t("debts.pay") || "Bayar"}
                         </Button>
                       )}
                     </div>
@@ -436,9 +461,9 @@ export function SubscriptionDetailPage() {
       {/* Cancel Subscription Confirmation */}
       {cancelModalOpen && (
         <ConfirmationDialog
-          title="Cancel Subscription"
-          description="Cancelling this subscription will stop future recurring billing cycles and reminders from now forward. Past payment records and Expense transactions will remain preserved."
-          confirmLabel={actionLoading ? "Cancelling..." : "Cancel Subscription"}
+          title={t("subscriptions.cancelSubscription") || "Batalkan Layanan"}
+          description={t("subscriptions.cancelSubscriptionDesc") || "Membatalkan layanan ini akan menghentikan siklus penagihan rutin dan pengingat ke depan. Catatan pembayaran dan transaksi Pengeluaran masa lalu akan tetap tersimpan."}
+          confirmLabel={actionLoading ? `${t("subscriptions.cancelling") || "Membatalkan..."}` : (t("subscriptions.cancelSubscription") || "Batalkan Layanan")}
           tone="danger"
           isLoading={actionLoading}
           onConfirm={() => void handleCancel()}
@@ -449,9 +474,9 @@ export function SubscriptionDetailPage() {
       {/* Delete Obligation Confirmation */}
       {deleteModalOpen && (
         <ConfirmationDialog
-          title="Delete Obligation"
-          description="Are you sure you want to delete this recurring obligation? This cannot be undone."
-          confirmLabel={actionLoading ? "Deleting..." : "Delete Obligation"}
+          title={t("subscriptions.deleteObligation") || "Hapus Tagihan"}
+          description={t("subscriptions.deleteObligationDesc") || "Apakah Anda yakin ingin menghapus kewajiban rutin ini? Tindakan ini tidak dapat dibatalkan."}
+          confirmLabel={actionLoading ? `${t("subscriptions.deleting") || "Menghapus..."}` : (t("common.delete") || "Hapus")}
           tone="danger"
           isLoading={actionLoading}
           onConfirm={() => void handleDelete()}

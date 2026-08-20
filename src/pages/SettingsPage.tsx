@@ -143,7 +143,7 @@ export function SettingsPage() {
         eyebrow="Account"
         icon={Settings}
         title={t("settings.title")}
-        description="Manage your profile, preferences, and finance setup."
+        description={t("settings.subtitle") || "Kelola profil, preferensi, dan konfigurasi keuangan Anda."}
       />
 
       <section className="grid gap-4">
@@ -163,9 +163,9 @@ export function SettingsPage() {
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-700">Display Language (Bahasa Tampilan)</p>
+              <p className="text-xs font-bold text-slate-700">{t("settings.language")}</p>
               <p className="text-xs text-slate-600">
-                Pilih bahasa antarmuka aplikasi. Nilai mata uang tetap terjaga sesuai data aslinya.
+                {t("settings.languageDesc")}
               </p>
             </div>
 
@@ -189,9 +189,9 @@ export function SettingsPage() {
               {profile?.full_name?.charAt(0)?.toUpperCase() ?? user?.email?.charAt(0)?.toUpperCase() ?? "U"}
             </span>
             <div>
-              <h2 className="text-base font-extrabold text-slate-900">Profile & Account</h2>
+              <h2 className="text-base font-extrabold text-slate-900">{t("settings.profileTitle") || "Profil & Akun"}</h2>
               <p className="text-xs font-semibold text-slate-600">
-                Update your display name and view account credentials
+                {t("settings.profileDesc") || "Perbarui nama tampilan dan lihat informasi akun Anda"}
               </p>
             </div>
           </div>
@@ -213,15 +213,15 @@ export function SettingsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 id="settings-display-name"
-                label="Display Name (Full Name)"
+                label={t("settings.displayName") || "Nama Tampilan (Nama Lengkap)"}
                 required
-                placeholder="e.g. John Doe"
+                placeholder="mis. John Doe"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
               />
 
               <label className="block w-full max-w-full min-w-0">
-                <span className="block text-sm font-bold text-slate-900">Email Address</span>
+                <span className="block text-sm font-bold text-slate-900">{t("settings.emailAddress") || "Alamat Email"}</span>
                 <div className="relative mt-2">
                   <input
                     type="text"
@@ -237,7 +237,7 @@ export function SettingsPage() {
             <div className="flex items-center justify-end pt-1">
               <Button type="submit" disabled={savingName || displayName.trim() === (profile?.full_name ?? "")}>
                 {savingName ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                {savingName ? "Saving..." : "Save Display Name"}
+                {savingName ? (t("settings.saving") || "Menyimpan...") : (t("settings.saveDisplayName") || "Simpan Nama Tampilan")}
               </Button>
             </div>
           </form>
@@ -245,13 +245,13 @@ export function SettingsPage() {
           {/* Readonly Preferences info */}
           <div className="mt-4 grid grid-cols-1 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 text-xs">
             <div className="rounded-lg bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">Default Currency</span>
+              <span className="font-bold text-slate-600">{t("settings.defaultCurrency") || "Mata Uang Utama"}</span>
               <p className="mt-0.5 font-extrabold text-slate-900">
                 {profile?.default_currency ?? "IDR"} (Indonesian Rupiah)
               </p>
             </div>
             <div className="rounded-lg bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">Timezone</span>
+              <span className="font-bold text-slate-600">{t("settings.timezone") || "Zona Waktu"}</span>
               <p className="mt-0.5 font-extrabold text-slate-900">
                 Asia/Jakarta (WIB)
               </p>
@@ -268,9 +268,9 @@ export function SettingsPage() {
             <Tags aria-hidden="true" size={19} />
           </span>
           <span>
-            <span className="block text-sm font-extrabold text-slate-900">Kategori & Amplop</span>
+            <span className="block text-sm font-extrabold text-slate-900">{t("categories.title")}</span>
             <span className="mt-0.5 block text-xs font-semibold text-slate-700">
-              Kelola kategori pemasukan/pengeluaran dan amplop pengeluaran anggaran.
+              {t("categories.subtitle")}
             </span>
           </span>
           <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />
@@ -284,28 +284,28 @@ export function SettingsPage() {
                 <Bell size={20} />
               </span>
               <div>
-                <h3 className="text-sm font-extrabold text-slate-900">Device Push Notifications</h3>
+                <h3 className="text-sm font-extrabold text-slate-900">{t("settings.pushNotifications") || "Notifikasi Push Perangkat"}</h3>
                 <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                  Receive due reminders for subscriptions, installments, debts, and bills even when the app is closed.
+                  {t("settings.pushNotificationsDesc") || "Terima pengingat jatuh tempo untuk tagihan, langganan, cicilan, dan utang bahkan saat aplikasi ditutup."}
                 </p>
 
                 <div className="mt-3 flex items-center gap-2 text-xs font-bold">
                   <span className="text-slate-600">Status:</span>
                   {permissionState === "granted" && isSubscribed ? (
                     <span className="rounded-full bg-kash-selected px-2.5 py-0.5 text-kash-emeraldDark">
-                      Active on this device
+                      {t("settings.pushActive") || "Aktif di perangkat ini"}
                     </span>
                   ) : permissionState === "denied" ? (
                     <span className="rounded-full bg-kash-expense/15 px-2.5 py-0.5 text-kash-expense">
-                      Permission Blocked / Denied
+                      {t("settings.pushBlocked") || "Izin Diblokir / Ditolak"}
                     </span>
                   ) : permissionState === "unsupported" ? (
                     <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-600">
-                      Unsupported on this browser
+                      {t("settings.pushUnsupported") || "Tidak didukung di browser ini"}
                     </span>
                   ) : (
                     <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-700">
-                      Not Enabled
+                      {t("settings.pushNotEnabled") || "Belum Diaktifkan"}
                     </span>
                   )}
                 </div>
@@ -322,7 +322,7 @@ export function SettingsPage() {
                   className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold text-slate-600 hover:text-kash-expense"
                 >
                   {pushLoading ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
-                  Disable on This Device
+                  {t("settings.disablePush") || "Nonaktifkan di Perangkat Ini"}
                 </Button>
               ) : permissionState !== "unsupported" ? (
                 <Button
@@ -331,7 +331,7 @@ export function SettingsPage() {
                   className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
                 >
                   {pushLoading ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
-                  Enable Notifications
+                  {t("settings.enablePush") || "Aktifkan Notifikasi"}
                 </Button>
               ) : null}
             </div>
@@ -355,7 +355,7 @@ export function SettingsPage() {
             <div className="mt-4 flex items-start gap-2.5 rounded-lg bg-slate-50 p-3 text-xs font-semibold text-slate-700">
               <Smartphone size={16} className="mt-0.5 shrink-0 text-slate-600" />
               <span>
-                On iPhone/iPad, add KASH to your <strong>Home Screen</strong> (Share &rarr; Add to Home Screen) to enable Web Push notifications.
+                {t("settings.iosPushNotice") || "Di iPhone/iPad, tambahkan KASH ke Layar Utama (Bagikan → Tambah ke Layar Utama) untuk mengaktifkan notifikasi Web Push."}
               </span>
             </div>
           )}
@@ -364,7 +364,7 @@ export function SettingsPage() {
             <div className="mt-4 flex items-start gap-2.5 rounded-lg bg-kash-expense/5 p-3 text-xs font-semibold text-slate-700">
               <Info size={16} className="mt-0.5 shrink-0 text-kash-expense" />
               <span>
-                Notification permissions are blocked by your browser. To re-enable, tap the lock/settings icon in your browser address bar and allow Notifications.
+                {t("settings.pushDeniedNotice") || "Izin notifikasi diblokir oleh browser Anda. Untuk mengaktifkan kembali, ketuk ikon gembok/pengaturan di bilah alamat browser dan izinkan Notifikasi."}
               </span>
             </div>
           )}

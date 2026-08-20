@@ -15,7 +15,7 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { CreateBudgetModal } from "../components/budgets/CreateBudgetModal";
 import { QuickCreateEnvelopeModal } from "../components/envelopes/QuickCreateEnvelopeModal";
@@ -25,6 +25,7 @@ import { DatePickerField } from "../components/ui/DatePickerField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
+import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
 import { getCategoryIcon } from "../lib/categoryMeta";
 import {
@@ -33,30 +34,9 @@ import {
   updateEnvelope,
   type EnvelopeMonthlyAnalytics,
 } from "../lib/envelopes";
-import { formatCurrency } from "../lib/money";
-
-const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-function formatMonthYearLabel(dateStr: string): string {
-  if (!dateStr) return "";
-  const [year, month] = dateStr.split("-").map(Number);
-  return `${MONTH_NAMES[month - 1]} ${year}`;
-}
 
 export function EnvelopeDetailPage() {
+  const { t, formatMonthYear, formatDate, formatCurrency } = useI18n();
   const { id: envelopeId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -78,6 +58,11 @@ export function EnvelopeDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const currentMonthLabel = useMemo(() => {
+    const [year, month] = currentMonth.split("-").map(Number);
+    return formatMonthYear(new Date(year, month - 1, 1));
+  }, [currentMonth, formatMonthYear]);
+
   // Synchronize state when URL month searchParam changes
   useEffect(() => {
     const paramMonth = searchParams.get("month");
@@ -94,16 +79,16 @@ export function EnvelopeDetailPage() {
     try {
       const res = await getEnvelopeMonthlyAnalytics(envelopeId, currentMonth);
       if (!res) {
-        setError("Amplop tidak ditemukan atau Anda tidak memiliki akses.");
+        setError(t("categories.envelopeNotFoundOrNoAccess") || "Amplop tidak ditemukan atau Anda tidak memiliki akses.");
       } else {
         setData(res);
       }
     } catch (err: any) {
-      setError(err.message || "Gagal memuat analitik amplop.");
+      setError(err.message || (t("categories.loadAnalyticsFailed") || "Gagal memuat analitik amplop."));
     } finally {
       setLoading(false);
     }
-  }, [envelopeId, currentMonth]);
+  }, [envelopeId, currentMonth, t]);
 
   useEffect(() => {
     void loadAnalytics();
@@ -149,7 +134,7 @@ export function EnvelopeDetailPage() {
       setShowArchiveDialog(false);
       navigate("/settings/categories");
     } catch (err: any) {
-      alert("Gagal mengarsipkan amplop: " + err.message);
+      setError(err.message || (t("categories.archiveEnvFailed") || "Gagal mengarsipkan amplop."));
     } finally {
       setActionLoading(false);
     }
@@ -164,7 +149,7 @@ export function EnvelopeDetailPage() {
       setShowDeleteDialog(false);
       navigate("/settings/categories");
     } catch (err: any) {
-      alert("Gagal menghapus amplop: " + err.message);
+      setError(err.message || (t("categories.deleteEnvFailed") || "Gagal menghapus amplop."));
     } finally {
       setActionLoading(false);
     }
@@ -193,16 +178,16 @@ export function EnvelopeDetailPage() {
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 transition hover:text-kash-emerald"
         >
           <ArrowLeft size={16} />
-          Kembali ke Kategori & Amplop
+          {t("categories.backToCategoriesAndEnvelopes") || "Kembali ke Kategori & Amplop"}
         </Link>
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <AlertCircle className="mx-auto text-kash-expense mb-3" size={36} />
-          <h2 className="text-base font-black text-slate-900">{error || "Amplop Tidak Ditemukan"}</h2>
+          <h2 className="text-base font-black text-slate-900">{error || (t("categories.envelopeNotFound") || "Amplop Tidak Ditemukan")}</h2>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Amplop yang Anda cari mungkin telah dihapus atau tidak tersedia.
+            {t("categories.envelopeNotFoundDesc") || "Amplop yang Anda cari mungkin telah dihapus atau tidak tersedia."}
           </p>
           <Button onClick={() => navigate("/settings/categories")} className="mt-4">
-            Kembali ke Daftar Amplop
+            {t("categories.backToEnvelopeList") || "Kembali ke Daftar Amplop"}
           </Button>
         </div>
       </div>
@@ -223,7 +208,7 @@ export function EnvelopeDetailPage() {
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 transition hover:text-kash-emerald"
         >
           <ArrowLeft size={16} />
-          Kembali ke Kategori & Amplop
+          {t("categories.backToCategoriesAndEnvelopes") || "Kembali ke Kategori & Amplop"}
         </Link>
 
         {/* Month Navigator Controls */}
@@ -232,7 +217,7 @@ export function EnvelopeDetailPage() {
             type="button"
             onClick={handlePrevMonth}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-            title="Bulan Sebelumnya"
+            title={t("common.prevMonth") || "Bulan Sebelumnya"}
           >
             <ChevronLeft size={16} />
           </button>
@@ -249,7 +234,7 @@ export function EnvelopeDetailPage() {
             type="button"
             onClick={handleNextMonth}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-            title="Bulan Berikutnya"
+            title={t("common.nextMonth") || "Bulan Berikutnya"}
           >
             <ChevronRight size={16} />
           </button>
@@ -269,17 +254,17 @@ export function EnvelopeDetailPage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-extrabold text-blue-700 border border-blue-200/60">
-                  Amplop Pengeluaran
+                  {t("nav.envelopes") || "Amplop Pengeluaran"}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  Periode: {formatMonthYearLabel(currentMonth)}
+                  {t("common.period") || "Periode"}: {currentMonthLabel}
                 </span>
               </div>
               <h1 className="mt-1 text-xl font-black text-slate-900 sm:text-2xl truncate">
                 {envelope.name}
               </h1>
               <p className="mt-1 text-xs font-semibold text-slate-600">
-                {envelope.note || "Pengelompokan tujuan pengeluaran mandiri lintas kategori."}
+                {envelope.note || (t("categories.envelopeDefaultNote") || "Pengelompokan tujuan pengeluaran mandiri lintas kategori.")}
               </p>
             </div>
           </div>
@@ -292,7 +277,7 @@ export function EnvelopeDetailPage() {
               className="gap-1.5 min-h-9 px-3 text-xs"
             >
               <Edit3 size={14} />
-              Edit
+              {t("common.edit")}
             </Button>
             <Button
               variant="secondary"
@@ -300,11 +285,11 @@ export function EnvelopeDetailPage() {
               className="gap-1.5 min-h-9 px-3 text-xs text-slate-600"
             >
               <Archive size={14} />
-              Arsip
+              {t("common.archive")}
             </Button>
             <IconButton
               icon={Trash2}
-              label="Hapus Amplop"
+              label={t("common.delete")}
               onClick={() => setShowDeleteDialog(true)}
               className="h-9 w-9 text-slate-500 hover:text-kash-expense hover:bg-red-50"
             />
@@ -320,28 +305,29 @@ export function EnvelopeDetailPage() {
               <div className="flex items-center gap-2">
                 <Target size={16} className="text-kash-emeraldDark" />
                 <span className="text-xs font-extrabold uppercase tracking-wider text-kash-emeraldDark">
-                  Target Budget Aktif Bulan Ini
+                  {t("budgets.activeBudgetThisMonth") || "Target Budget Aktif Bulan Ini"}
                 </span>
                 {activeBudget.status === "over_budget" ? (
                   <span className="rounded-full bg-kash-expense/15 px-2 py-0.5 text-[10px] font-extrabold text-kash-expense">
-                    Over Budget
+                    {t("budgets.overBudget") || "Over Budget"}
                   </span>
                 ) : activeBudget.status === "near_limit" ? (
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">
-                    Hampir Habis
+                    {t("budgets.nearLimit") || "Hampir Batas"}
                   </span>
                 ) : (
                   <span className="rounded-full bg-kash-emerald/15 px-2 py-0.5 text-[10px] font-extrabold text-kash-emeraldDark">
-                    Aman
+                    {t("budgets.healthy") || "Aman"}
                   </span>
                 )}
               </div>
               <p className="mt-1 text-sm font-bold text-slate-900">
-                Budget: {formatCurrency(activeBudget.effective_budget)} • Terpakai: {formatCurrency(activeBudget.spent)} (
-                {activeBudget.usage_percentage.toFixed(1)}%) • Sisa:{" "}
-                <span className={Number(activeBudget.remaining) < 0 ? "text-kash-expense" : "text-kash-emeraldDark"}>
-                  {formatCurrency(activeBudget.remaining)}
-                </span>
+                {t("budgets.budgetSummaryLine", {
+                  budget: formatCurrency(activeBudget.effective_budget),
+                  spent: formatCurrency(activeBudget.spent),
+                  percent: activeBudget.usage_percentage.toFixed(1),
+                  remaining: formatCurrency(activeBudget.remaining),
+                }) || `Budget: ${formatCurrency(activeBudget.effective_budget)} • Terpakai: ${formatCurrency(activeBudget.spent)} (${activeBudget.usage_percentage.toFixed(1)}%) • Sisa: ${formatCurrency(activeBudget.remaining)}`}
               </p>
             </div>
 
@@ -349,7 +335,7 @@ export function EnvelopeDetailPage() {
               to={`/budgets/${activeBudget.budget_id}?month=${currentMonth}`}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-kash-emerald px-4 py-2 text-xs font-black text-white shadow-sm transition hover:bg-kash-emeraldDark self-start sm:self-center"
             >
-              Lihat Detail Budget →
+              {t("budgets.viewBudgetDetail") || "Lihat Detail Budget →"}
             </Link>
           </div>
 
@@ -373,10 +359,10 @@ export function EnvelopeDetailPage() {
         <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-xs">
           <div>
             <p className="text-xs font-extrabold uppercase tracking-wider text-slate-600">
-              Target Budget Bulanan
+              {t("budgets.monthlyBudgetTarget") || "Target Budget Bulanan"}
             </p>
             <p className="text-xs font-semibold text-slate-700 mt-0.5">
-              Amplop ini belum memiliki target budget di {formatMonthYearLabel(currentMonth)}. Anda tetap dapat memantau realisasi dan rincian kategori secara independen.
+              {t("budgets.noBudgetForEnvelopeInMonth", { month: currentMonthLabel }) || `Amplop ini belum memiliki target budget di ${currentMonthLabel}. Anda tetap dapat memantau realisasi dan rincian kategori secara independen.`}
             </p>
           </div>
           <Button
@@ -384,7 +370,7 @@ export function EnvelopeDetailPage() {
             className="gap-1.5 min-h-9 px-3 text-xs self-start sm:self-center shrink-0"
           >
             <Plus size={14} />
-            Buat Budget Amplop
+            {t("budgets.createEnvelopeBudget") || "Buat Budget Amplop"}
           </Button>
         </section>
       )}
@@ -393,7 +379,7 @@ export function EnvelopeDetailPage() {
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-            Total Pengeluaran Amplop
+            {t("categories.totalEnvelopeExpenses") || "Total Pengeluaran Amplop"}
           </span>
           <p className="mt-1.5 text-xl font-black text-slate-900">
             {formatCurrency(totalSpent)}
@@ -402,16 +388,16 @@ export function EnvelopeDetailPage() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-            Jumlah Transaksi
+            {t("categories.transactionCount") || "Jumlah Transaksi"}
           </span>
           <p className="mt-1.5 text-xl font-black text-slate-900">
-            {transactionCount} transaksi
+            {transactionCount} {t("categories.transactions") || "transaksi"}
           </p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-            Kategori Terbesar
+            {t("categories.topCategory") || "Kategori Terbesar"}
           </span>
           <p className="mt-1.5 text-base font-black text-slate-900 truncate">
             {topCategory ? `${topCategory.categoryName} (${topCategory.percentage.toFixed(1)}%)` : "—"}
@@ -425,17 +411,17 @@ export function EnvelopeDetailPage() {
           <div className="flex items-center gap-2">
             <PieChart size={18} className="text-kash-emerald" />
             <h2 className="text-base font-extrabold text-slate-900">
-              Distribusi Kategori dalam Amplop Ini
+              {t("categories.categoryDistributionInEnvelope") || "Distribusi Kategori dalam Amplop Ini"}
             </h2>
           </div>
           <span className="text-xs font-bold text-slate-600">
-            {categoryBreakdown.length} Kategori Terlibat
+            {categoryBreakdown.length} {t("categories.categoriesInvolved") || "Kategori Terlibat"}
           </span>
         </div>
 
         {categoryBreakdown.length === 0 ? (
           <div className="py-8 text-center text-xs font-semibold text-slate-500">
-            Belum ada transaksi pengeluaran yang dicatat pada amplop ini di {formatMonthYearLabel(currentMonth)}.
+            {t("categories.noEnvelopeExpensesRecordedInMonth", { month: currentMonthLabel }) || `Belum ada transaksi pengeluaran yang dicatat pada amplop ini di ${currentMonthLabel}.`}
           </div>
         ) : (
           <div className="mt-4 space-y-4">
@@ -474,7 +460,7 @@ export function EnvelopeDetailPage() {
                           {item.categoryName}
                         </p>
                         <p className="text-[11px] font-semibold text-slate-500">
-                          {item.transactionCount} transaksi
+                          {item.transactionCount} {t("categories.transactions") || "transaksi"}
                         </p>
                       </div>
                     </div>
@@ -501,17 +487,17 @@ export function EnvelopeDetailPage() {
           <div className="flex items-center gap-2">
             <ReceiptText size={18} className="text-kash-emerald" />
             <h2 className="text-base font-extrabold text-slate-900">
-              Riwayat Transaksi Amplop ({transactions.length})
+              {t("categories.envelopeTransactionHistory") || "Riwayat Transaksi Amplop"} ({transactions.length})
             </h2>
           </div>
           <span className="text-xs font-bold text-slate-600">
-            Total: {formatCurrency(totalSpent)}
+            {t("common.total")}: {formatCurrency(totalSpent)}
           </span>
         </div>
 
         {transactions.length === 0 ? (
           <div className="py-10 text-center text-xs font-semibold text-slate-600">
-            Belum ada transaksi yang ditandai dengan amplop ini pada {formatMonthYearLabel(currentMonth)}.
+            {t("categories.noTransactionsTaggedInMonth", { month: currentMonthLabel }) || `Belum ada transaksi yang ditandai dengan amplop ini pada ${currentMonthLabel}.`}
           </div>
         ) : (
           <div className="mt-3 divide-y divide-slate-100">
@@ -520,7 +506,7 @@ export function EnvelopeDetailPage() {
                 <div className="min-w-0 pr-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-bold text-slate-900 truncate">
-                      {tx.title || tx.category?.name || "Transaksi"}
+                      {tx.title || tx.category?.name || (t("transactions.transaction") || "Transaksi")}
                     </p>
                     {tx.category?.name && (
                       <span
@@ -532,12 +518,8 @@ export function EnvelopeDetailPage() {
                     )}
                   </div>
                   <p className="mt-0.5 text-[11px] font-semibold text-slate-600">
-                    {new Date(tx.transaction_date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}{" "}
-                    • {(tx as any).wallet?.name || "Dompet"}
+                    {formatDate(new Date(tx.transaction_date))}{" "}
+                    • {(tx as any).wallet?.name || (t("wallets.walletFallback") || "Dompet")}
                     {tx.note ? ` — "${tx.note}"` : ""}
                   </p>
                 </div>
@@ -579,26 +561,26 @@ export function EnvelopeDetailPage() {
       {/* Archive Confirmation Dialog */}
       {showArchiveDialog && (
         <ConfirmationDialog
-          confirmLabel="Arsipkan Amplop"
-          description="Amplop ini akan disembunyikan dari pilihan transaksi baru tetapi seluruh riwayat transaksi masa lalu tetap tersimpan utuh."
+          confirmLabel={t("categories.archiveEnvelopeConfirm") || "Arsipkan Amplop"}
+          description={t("categories.archiveEnvelopeDesc") || "Amplop ini akan disembunyikan dari pilihan transaksi baru tetapi seluruh riwayat transaksi masa lalu tetap tersimpan utuh."}
           icon={Archive}
           isLoading={actionLoading}
           onCancel={() => setShowArchiveDialog(false)}
           onConfirm={handleArchive}
-          title={`Arsipkan ${envelope.name}?`}
+          title={t("categories.archiveItemTitle", { name: envelope.name }) || `Arsipkan ${envelope.name}?`}
         />
       )}
 
       {/* Delete Confirmation Dialog */}
       {showDeleteDialog && (
         <ConfirmationDialog
-          confirmLabel="Hapus Permanen"
-          description="Amplop ini akan dihapus secara permanen. Transaksi yang sebelumnya menggunakan amplop ini tetap ada namun tidak lagi terikat pada amplop ini."
+          confirmLabel={t("common.deletePermanently") || "Hapus Permanen"}
+          description={t("categories.deleteEnvelopeDefDesc") || "Amplop ini akan dihapus secara permanen. Transaksi yang sebelumnya menggunakan amplop ini tetap ada namun tidak lagi terikat pada amplop ini."}
           icon={Trash2}
           isLoading={actionLoading}
           onCancel={() => setShowDeleteDialog(false)}
           onConfirm={handleDelete}
-          title={`Hapus ${envelope.name}?`}
+          title={t("categories.deleteItemTitle", { name: envelope.name }) || `Hapus ${envelope.name}?`}
           tone="danger"
         />
       )}

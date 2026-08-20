@@ -56,6 +56,7 @@ function SummaryCard({ label, labelClassName = "text-slate-600", value }: { labe
 }
 
 function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
+  const { t, formatCurrency } = useI18n();
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
   const accent = wallet.color ?? "#10B981";
@@ -73,7 +74,7 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
       <span className="min-w-0">
         <span className="block truncate text-sm font-extrabold text-slate-900">{wallet.name}</span>
         <span className="mt-1 block truncate text-xs font-semibold text-slate-700">
-          {[wallet.institution_name, isGoalPocket ? "Goal Pocket" : typeOption.label].filter(Boolean).join(" / ")}
+          {[wallet.institution_name, isGoalPocket ? (t("wallets.goalPocket") || "Kantong Target") : typeOption.label].filter(Boolean).join(" / ")}
         </span>
       </span>
       <span className="min-w-[8.5rem] text-right">
@@ -82,15 +83,15 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
         </span>
         {isGoalPocket ? (
           <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200/60">
-            Goal: {wallet.goal_name}
+            {t("goals.goal") || "Goal"}: {wallet.goal_name}
           </span>
         ) : isSavingsPocket ? (
           <span className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-kash-emeraldDark bg-kash-selected border border-kash-emerald/20">
-            Savings pocket
+            {t("wallets.savingsPocket") || "Kantong Tabungan"}
           </span>
         ) : wallet.wallet_type === "investment" && wallet.balance?.return_percentage !== undefined ? (
           <span className={`mt-1 block text-xs font-bold ${Number(wallet.balance.return_percentage) >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-            {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}{Number(wallet.balance.return_percentage).toFixed(2)}% return
+            {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}{Number(wallet.balance.return_percentage).toFixed(2)}% {t("wallets.return") || "return"}
           </span>
         ) : null}
       </span>
@@ -107,6 +108,7 @@ function WalletFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<WalletFormState>({ ...defaultFormState, currency: defaultCurrency });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,17 +121,17 @@ function WalletFormModal({
     const initialBalance = parseMoneyInputDigits(form.initialBalance);
 
     if (!name) {
-      setError("Wallet name is required.");
+      setError(t("wallets.nameRequired") || "Nama dompet wajib diisi.");
       return;
     }
 
     if (selectedType.needsInstitution && !institutionName) {
-      setError("Institution is required for this wallet type.");
+      setError(t("wallets.institutionRequired") || "Institusi / Bank wajib diisi untuk tipe dompet ini.");
       return;
     }
 
     if (!initialBalance) {
-      setError("Initial balance is required. Enter 0 if this wallet is empty.");
+      setError(t("wallets.initialBalanceRequired") || "Saldo awal wajib diisi. Masukkan 0 jika kosong.");
       return;
     }
 
@@ -149,14 +151,14 @@ function WalletFormModal({
       });
 
       if (createError) {
-        setError("Couldn't create this wallet. Please check the details and try again.");
+        setError(t("wallets.createError") || "Gagal membuat dompet. Silakan periksa data dan coba lagi.");
         setSaving(false);
         return;
       }
 
       onSaved();
     } catch {
-      setError("Couldn't create this wallet. Please sign in and try again.");
+      setError(t("wallets.createErrorAuth") || "Gagal membuat dompet. Silakan coba lagi.");
       setSaving(false);
     }
   };
@@ -166,8 +168,8 @@ function WalletFormModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title="Add Wallet"
-      description="Initial balance is stored on the wallet, not as a transaction."
+      title={t("wallets.create") || "Tambah Dompet"}
+      description={t("wallets.initialBalanceHelp") || "Saldo awal dicatat pada dompet, bukan sebagai transaksi."}
     >
       <div>
         {error ? (
@@ -179,7 +181,7 @@ function WalletFormModal({
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <SelectField
             id="wallet-type"
-            label="Wallet Type"
+            label={t("wallets.type") || "Tipe Dompet"}
             value={form.walletType}
             onChange={(event) => setForm((current) => ({ ...current, walletType: event.target.value as WalletType }))}
           >
@@ -191,15 +193,15 @@ function WalletFormModal({
           </SelectField>
           <FormField
             id="wallet-name"
-            label="Wallet Name"
+            label={t("wallets.name") || "Nama Dompet"}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-            placeholder="BCA Secondary"
+            placeholder="BCA Utama"
             value={form.name}
           />
           {selectedType.needsInstitution ? (
             <FormField
               id="institution-name"
-              label="Institution"
+              label={t("wallets.institution") || "Institusi / Bank"}
               onChange={(event) => setForm((current) => ({ ...current, institutionName: event.target.value }))}
               placeholder="BCA"
               value={form.institutionName}
@@ -208,15 +210,15 @@ function WalletFormModal({
           <FormField
             id="initial-balance"
             inputMode="numeric"
-            label="Initial Balance"
+            label={t("wallets.initialBalance") || "Saldo Awal"}
             onChange={(event) => setForm((current) => ({ ...current, initialBalance: formatMoneyDigits(event.target.value) }))}
             placeholder="2.500.000"
             value={form.initialBalance}
           />
-          <SelectField id="currency" label="Currency" onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))} value={form.currency}>
+          <SelectField id="currency" label={t("wallets.currency") || "Mata Uang"} onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))} value={form.currency}>
             <option value="IDR">IDR - Indonesian Rupiah</option>
           </SelectField>
-          <SelectField id="wallet-icon" label="Icon" onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
+          <SelectField id="wallet-icon" label={t("wallets.icon") || "Ikon"} onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
             {walletIconOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -224,7 +226,7 @@ function WalletFormModal({
             ))}
           </SelectField>
           <fieldset>
-            <legend className="text-sm font-bold text-slate-900">Color Accent</legend>
+            <legend className="text-sm font-bold text-slate-900">{t("wallets.colorAccent") || "Aksen Warna"}</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {walletColors.map((color) => (
                 <button
@@ -240,14 +242,14 @@ function WalletFormModal({
           </fieldset>
           <ToggleField
             checked={form.includeInNetWorth}
-            description="Included wallets count toward Total Assets."
+            description={t("wallets.includeInNetWorthHelp") || "Dompet yang disertakan akan dihitung dalam Total Aset."}
             id="include-net-worth"
-            label="Include in Net Worth"
+            label={t("wallets.includeInNetWorth") || "Sertakan dalam Kekayaan Bersih"}
             onChange={(event) => setForm((current) => ({ ...current, includeInNetWorth: event.target.checked }))}
           />
           <Button disabled={saving} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            Create Wallet
+            {saving ? (t("common.saving") || "Menyimpan...") : (t("wallets.create") || "Tambah Dompet")}
           </Button>
         </form>
       </div>
@@ -270,7 +272,7 @@ function WalletSkeleton() {
 
 export function WalletsPage() {
   const { profile } = useAuth();
-  const { t } = useI18n();
+  const { t, formatCurrency } = useI18n();
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -282,7 +284,7 @@ export function WalletsPage() {
     const { data, error: loadError } = await getWallets();
 
     if (loadError || !data) {
-      setError("Couldn't load wallets. Please try again.");
+      setError(t("wallets.loadError") || "Gagal memuat dompet. Silakan coba lagi.");
       setLoading(false);
       return;
     }
@@ -349,11 +351,11 @@ export function WalletsPage() {
 
     // 4. Savings Pockets (pure savings wallets without linked goal)
     const savingsPockets = wallets.filter((w) => w.wallet_type === "savings" && !w.goal_id);
-    if (savingsPockets.length > 0) groups.push({ group: `${t("wallets.savings")} (Kantong Tabungan)`, wallets: savingsPockets });
+    if (savingsPockets.length > 0) groups.push({ group: `${t("wallets.savings")} (${t("wallets.savingsPocket") || "Kantong Tabungan"})`, wallets: savingsPockets });
 
     // 5. Goal Pockets (savings wallets linked to a goal)
     const goalPockets = wallets.filter((w) => Boolean(w.goal_id));
-    if (goalPockets.length > 0) groups.push({ group: "Goal Pockets (Kantong Target)", wallets: goalPockets });
+    if (goalPockets.length > 0) groups.push({ group: `${t("wallets.goalPockets") || "Goal Pockets"} (${t("wallets.goalPocket") || "Kantong Target"})`, wallets: goalPockets });
 
     // 6. Investments
     const investmentWallets = wallets.filter((w) => w.wallet_type === "investment");
@@ -361,7 +363,7 @@ export function WalletsPage() {
 
     // 7. Custom
     const customWallets = wallets.filter((w) => w.wallet_type === "custom");
-    if (customWallets.length > 0) groups.push({ group: "Custom", wallets: customWallets });
+    if (customWallets.length > 0) groups.push({ group: t("wallets.custom") || "Custom", wallets: customWallets });
 
     return groups;
   }, [wallets, t]);

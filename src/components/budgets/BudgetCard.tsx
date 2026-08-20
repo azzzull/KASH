@@ -1,8 +1,8 @@
 import { AlertCircle, CheckCircle2, ChevronRight, HandCoins } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getCategoryIcon } from "../../lib/categoryMeta";
-import { formatCurrency } from "../../lib/money";
 import type { BudgetWithProgress } from "../../types/domain";
+import { useI18n } from "../../i18n";
 
 type BudgetCardProps = {
   budget: BudgetWithProgress;
@@ -10,6 +10,7 @@ type BudgetCardProps = {
 };
 
 export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
+  const { t, formatCurrency } = useI18n();
   const targetType = budget.target_type ?? (budget.type === "envelope" ? "envelope" : "category");
   const isOverBudget = budget.status === "over_budget";
   const isNearLimit = budget.status === "near_limit";
@@ -25,17 +26,17 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
   const statusBadge = isOverBudget ? (
     <span className="flex items-center gap-1 rounded-full bg-kash-expense/15 px-2 py-0.5 text-[11px] font-extrabold text-kash-expense">
       <AlertCircle size={12} />
-      Over Budget
+      {t("budgets.overBudget") || "Over Budget"}
     </span>
   ) : isNearLimit ? (
     <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-800">
       <AlertCircle size={12} />
-      Hampir Habis
+      {t("budgets.nearLimit") || "Hampir Habis"}
     </span>
   ) : (
     <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2 py-0.5 text-[11px] font-extrabold text-kash-emeraldDark">
       <CheckCircle2 size={12} />
-      Aman
+      {t("budgets.healthy") || "Aman"}
     </span>
   );
 
@@ -59,23 +60,23 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
 
   const targetLabel =
     targetType === "envelope"
-      ? "Amplop"
+      ? (t("budgets.envelope") || "Amplop")
       : targetType === "debt"
-      ? "Cicil Utang"
+      ? (t("budgets.debtPayment") || "Cicil Utang")
       : targetType === "goal"
-      ? budget.wallet_id ? "Kantong" : "Tabungan"
-      : "Kategori";
+      ? budget.wallet_id ? (t("budgets.pocket") || "Kantong") : (t("dashboard.savings") || "Tabungan")
+      : (t("budgets.category") || "Kategori");
 
   const subtitle =
     targetType === "envelope"
-      ? budget.envelope_name || "Amplop Pengeluaran"
+      ? budget.envelope_name || (t("nav.envelopes") || "Amplop Pengeluaran")
       : targetType === "debt"
       ? budget.counterparty_name
-        ? `Utang ke ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}`
-        : budget.debt_title || "Target Pelunasan Utang"
+        ? `${t("debts.debtTo") || "Utang ke"} ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}`
+        : budget.debt_title || (t("budgets.debtSettlementTarget") || "Target Pelunasan Utang")
       : targetType === "goal"
-      ? budget.wallet_name ? `Kantong Tabungan: ${budget.wallet_name}` : budget.goal_name || "Target Alokasi Tabungan"
-      : budget.category_name || "Kategori Pengeluaran";
+      ? budget.wallet_name ? `${t("budgets.savingsPocket") || "Kantong Tabungan"}: ${budget.wallet_name}` : budget.goal_name || (t("budgets.savingsGoalTarget") || "Target Alokasi Tabungan")
+      : budget.category_name || (t("common.typeExpense") || "Kategori Pengeluaran");
 
   return (
     <Link
@@ -117,7 +118,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
       {/* Financial Numbers Grid */}
       <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 text-xs">
         <div>
-          <span className="text-slate-600 font-semibold">Terpakai:</span>
+          <span className="text-slate-600 font-semibold">{t("budgets.used") || "Terpakai"}:</span>
           <p className="font-extrabold text-slate-900">
             {formatCurrency(budget.spent)}
           </p>
@@ -125,7 +126,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
 
         <div className="text-right">
           <span className="text-slate-600 font-semibold">
-            {Number(budget.remaining) < 0 ? "Kelebihan:" : "Sisa Budget:"}
+            {Number(budget.remaining) < 0 ? (t("budgets.overspentLabel") || "Kelebihan:") : (t("budgets.remainingBudgetLabel") || "Sisa Budget:")}
           </span>
           <p
             className={`font-black ${
@@ -147,7 +148,7 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
         </div>
 
         <div className="mt-1.5 flex items-center justify-between text-[11px] font-bold text-slate-600">
-          <span>{budget.usage_percentage.toFixed(1)}% terpakai</span>
+          <span>{t("budgets.budgetUsedPercent", { percent: budget.usage_percentage.toFixed(1) }) || `${budget.usage_percentage.toFixed(1)}% terpakai`}</span>
           <div className="flex items-center gap-1.5">
             <span>Budget: {formatCurrency(budget.effective_budget)}</span>
             {Number(budget.rollover_amount) > 0 && (

@@ -1,6 +1,7 @@
 import { Bell, CheckCheck, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../../context/NotificationContext";
+import { useI18n } from "../../i18n";
 import {
   formatRelativeNotificationTime,
   getNotificationTargetPath,
@@ -39,6 +40,7 @@ export function NotificationsPopover({
   className = "",
   onClose,
 }: NotificationsPopoverProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const {
     clearRead,
@@ -91,36 +93,36 @@ export function NotificationsPopover({
     <div
       className={`absolute z-40 flex max-h-[620px] w-[440px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-soft ${className}`}
       role="dialog"
-      aria-label="Notifications"
+      aria-label={t("nav.notifications")}
     >
       <div className="grid grid-cols-[1fr_auto_auto] items-start gap-3 border-b border-slate-100 p-4">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900">Notifications</h2>
+          <h2 className="text-base font-extrabold text-slate-900">{t("nav.notifications")}</h2>
           <p className="mt-1 text-sm font-semibold text-slate-600">
             {unreadCount > 0
-              ? `${formatUnreadCount(unreadCount)} unread`
-              : "No unread notifications"}
+              ? `${formatUnreadCount(unreadCount)} ${t("common.unpaid").toLowerCase()}`
+              : t("notifications.emptyTitle")}
           </p>
         </div>
         <button
           type="button"
-          aria-label="Mark all notifications as read"
+          aria-label={t("notifications.markAllRead")}
           disabled={unreadCount === 0}
           onClick={() => void handleMarkAllRead()}
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-extrabold text-kash-emerald transition hover:bg-kash-selected disabled:text-slate-600 disabled:hover:bg-transparent"
         >
           <CheckCheck aria-hidden="true" size={15} />
-          Mark all
+          {t("notifications.markAllRead")}
         </button>
         <button
           type="button"
-          aria-label="Clear read notifications"
+          aria-label={t("notifications.clearRead")}
           disabled={!hasReadNotifications}
           onClick={() => void handleClearRead()}
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-extrabold text-kash-expense transition hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent"
         >
           <Trash2 aria-hidden="true" size={15} />
-          Clear
+          {t("notifications.clearRead")}
         </button>
       </div>
 
@@ -130,14 +132,14 @@ export function NotificationsPopover({
         {!isLoading && error ? (
           <div className="p-4">
             <div className="rounded-lg border border-kash-expense/30 bg-white p-4 text-sm shadow-sm">
-              <p className="font-extrabold text-slate-900">Couldn't load notifications.</p>
+              <p className="font-extrabold text-slate-900">{t("common.error")}</p>
               <p className="mt-1 font-semibold text-slate-600">{error}</p>
               <button
                 type="button"
                 onClick={() => void refresh()}
                 className="mt-3 text-sm font-extrabold text-kash-emerald hover:underline"
               >
-                Try again
+                {t("common.retry")}
               </button>
             </div>
           </div>
@@ -150,8 +152,8 @@ export function NotificationsPopover({
                 <Bell aria-hidden="true" size={18} strokeWidth={2.2} />
               </span>
               <div>
-                <p className="font-extrabold text-slate-900">No notifications yet.</p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">You're all caught up.</p>
+                <p className="font-extrabold text-slate-900">{t("notifications.emptyTitle")}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">{t("notifications.emptySubtitle")}</p>
               </div>
             </div>
           </div>

@@ -31,6 +31,7 @@ import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { PageHeader } from "../components/ui/PageHeader";
+import { useI18n } from "../i18n";
 import type { TransactionType } from "../types/domain";
 
 const transactionTone: Record<TransactionType, string> = {
@@ -116,6 +117,7 @@ function DashboardCard({ children, className = "" }: { children: ReactNode; clas
 }
 
 function MetricComparisonLine({ change, metric }: { change: DashboardMetricChange; metric: "income" | "expense" | "netCashFlow" }) {
+  const { t } = useI18n();
   if (change.state === "none") return null;
 
   const increased = change.state === "increase";
@@ -127,14 +129,14 @@ function MetricComparisonLine({ change, metric }: { change: DashboardMetricChang
   const tone = isPositive ? "text-kash-emerald" : "text-[#E50914]";
 
   if (change.state === "new") {
-    return <p className={`mt-2 text-xs font-bold ${tone}`}>New this month</p>;
+    return <p className={`mt-2 text-xs font-bold ${tone}`}>{t("dashboard.newThisMonth") || "New this month"}</p>;
   }
 
   if (change.state === "flat") {
     return (
       <p className="mt-2 text-xs font-bold">
         <span className="text-slate-700">0.0%</span>
-        <span className="ml-1 font-semibold text-slate-600">vs last month</span>
+        <span className="ml-1 font-semibold text-slate-600">{t("dashboard.vsLastMonth") || "vs last month"}</span>
       </p>
     );
   }
@@ -148,7 +150,7 @@ function MetricComparisonLine({ change, metric }: { change: DashboardMetricChang
         <Icon aria-hidden="true" size={13} strokeWidth={2.4} />
         {percentage}%
       </span>
-      <span className="font-semibold text-slate-600">vs last month</span>
+      <span className="font-semibold text-slate-600">{t("dashboard.vsLastMonth") || "vs last month"}</span>
     </p>
   );
 }
@@ -175,10 +177,20 @@ function PeriodPicker({
   summary: DashboardSummary;
   className?: string;
 }) {
+  const { t, locale } = useI18n();
   const pickerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [pickerYear, setPickerYear] = useState(selectedMonth.getFullYear());
-  const monthOptions = useMemo(() => buildMonthOptions(pickerYear), [pickerYear]);
+  const monthOptions = useMemo(() => {
+    return Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(pickerYear, index, 1);
+      return {
+        date,
+        key: monthKey(date),
+        label: new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { month: "short" }).format(date),
+      };
+    });
+  }, [pickerYear, locale]);
   const selectedPeriodKey = monthKey(selectedMonth);
 
   useEffect(() => {
@@ -205,7 +217,7 @@ function PeriodPicker({
         <div className="flex min-w-0 items-center gap-3">
           <CalendarDays aria-hidden="true" className="shrink-0 text-slate-700" size={18} />
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900">This Month</p>
+            <p className="text-sm font-bold text-slate-900">{t("dashboard.thisMonth") || "This Month"}</p>
             <p className="mt-1 truncate text-xs font-semibold text-slate-600">{summary.period.label}</p>
           </div>
         </div>
@@ -215,7 +227,7 @@ function PeriodPicker({
       {isOpen ? (
         <div className="absolute inset-x-0 top-[calc(100%+8px)] z-30 rounded-lg border border-slate-200 bg-white p-3 shadow-lg sm:left-auto sm:right-0 sm:w-72">
           <label className="block text-xs font-bold uppercase tracking-normal text-slate-600" htmlFor="dashboard-period-year">
-            Year
+            {t("dashboard.year") || "Year"}
           </label>
           <input
             id="dashboard-period-year"
@@ -273,18 +285,19 @@ function TopFinancialOverview({
   selectedMonth: Date;
   summary: DashboardSummary;
 }) {
+  const { t } = useI18n();
   return (
     <div className="grid gap-4 lg:grid-cols-12">
       <DashboardCard className="p-5 lg:col-span-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-bold text-slate-900">Net Worth</p>
+            <p className="text-sm font-bold text-slate-900">{t("dashboard.netWorth") || "Net Worth"}</p>
             <Info aria-hidden="true" className="text-slate-600" size={15} />
           </div>
           <button
             type="button"
             aria-pressed={balancesVisible}
-            aria-label={balancesVisible ? "Hide dashboard balances" : "Show dashboard balances"}
+            aria-label={balancesVisible ? (t("dashboard.hideBalances") || "Hide dashboard balances") : (t("dashboard.showBalances") || "Show dashboard balances")}
             onClick={onToggleBalances}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
           >
@@ -295,24 +308,24 @@ function TopFinancialOverview({
         {summary.netWorthBreakdown ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-600">
             <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-emerald-800">
-              Kas: {formatPrivateAmount(summary.netWorthBreakdown.availableCash, currency, balancesVisible)}
+              {t("dashboard.cash") || "Kas"}: {formatPrivateAmount(summary.netWorthBreakdown.availableCash, currency, balancesVisible)}
             </span>
             <span className="rounded-md bg-amber-50 px-2 py-0.5 text-amber-800">
-              Tabungan: {formatPrivateAmount(summary.netWorthBreakdown.savings, currency, balancesVisible)}
+              {t("dashboard.savings") || "Tabungan"}: {formatPrivateAmount(summary.netWorthBreakdown.savings, currency, balancesVisible)}
             </span>
             {summary.netWorthBreakdown.investments > 0 ? (
               <span className="rounded-md bg-purple-50 px-2 py-0.5 text-purple-800">
-                Investasi: {formatPrivateAmount(summary.netWorthBreakdown.investments, currency, balancesVisible)}
+                {t("dashboard.investments") || "Investasi"}: {formatPrivateAmount(summary.netWorthBreakdown.investments, currency, balancesVisible)}
               </span>
             ) : null}
             {summary.netWorthBreakdown.receivables > 0 ? (
               <span className="rounded-md bg-teal-50 px-2 py-0.5 text-teal-800">
-                Piutang: {formatPrivateAmount(summary.netWorthBreakdown.receivables, currency, balancesVisible)}
+                {t("dashboard.receivables") || "Piutang"}: {formatPrivateAmount(summary.netWorthBreakdown.receivables, currency, balancesVisible)}
               </span>
             ) : null}
             {summary.netWorthBreakdown.debt > 0 ? (
               <span className="rounded-md bg-orange-50 px-2 py-0.5 text-orange-800">
-                Utang: -{formatPrivateAmount(summary.netWorthBreakdown.debt, currency, balancesVisible)}
+                {t("dashboard.debt") || "Utang"}: -{formatPrivateAmount(summary.netWorthBreakdown.debt, currency, balancesVisible)}
               </span>
             ) : null}
           </div>
@@ -322,7 +335,7 @@ function TopFinancialOverview({
       <DashboardCard className="p-5 lg:col-span-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900">Available Balance</p>
+            <p className="text-sm font-bold text-slate-900">{t("dashboard.availableBalance") || "Available Balance"}</p>
             <p className="mt-4 break-words text-xl font-extrabold text-slate-900">{formatPrivateAmount(summary.availableBalance.amount, currency, balancesVisible)}</p>
           </div>
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-300 text-slate-700">
@@ -339,9 +352,11 @@ function TopFinancialOverview({
 }
 
 function MonthlySummary({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
+  const { t } = useI18n();
   const cards = [
     {
-      title: "Income",
+      key: "income",
+      title: t("common.typeIncome") || t("dashboard.income") || "Income",
       value: summary.monthlyIncome.amount,
       change: summary.monthComparison.income,
       metric: "income" as const,
@@ -350,7 +365,8 @@ function MonthlySummary({ balancesVisible, currency, summary }: { balancesVisibl
       tone: "text-kash-emerald",
     },
     {
-      title: "Expense",
+      key: "expense",
+      title: t("common.typeExpense") || t("dashboard.expense") || "Expense",
       value: summary.monthlyExpense.amount,
       change: summary.monthComparison.expense,
       metric: "expense" as const,
@@ -359,7 +375,8 @@ function MonthlySummary({ balancesVisible, currency, summary }: { balancesVisibl
       tone: "text-[#E50914]",
     },
     {
-      title: "Cash Flow",
+      key: "cashflow",
+      title: t("dashboard.netCashFlow") || "Cash Flow",
       value: summary.netCashFlow.amount,
       change: summary.monthComparison.netCashFlow,
       metric: "netCashFlow" as const,
@@ -372,7 +389,7 @@ function MonthlySummary({ balancesVisible, currency, summary }: { balancesVisibl
   return (
     <div className="grid gap-4 md:grid-cols-3">
       {cards.map((card) => (
-        <DashboardCard key={card.title} className="p-5">
+        <DashboardCard key={card.key} className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-bold text-slate-900">{card.title}</p>
@@ -390,6 +407,7 @@ function MonthlySummary({ balancesVisible, currency, summary }: { balancesVisibl
 }
 
 function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
+  const { t } = useI18n();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const hasData = summary.cashflow.some((point) => point.income > 0 || point.expense > 0);
   const width = 1120;
@@ -423,7 +441,7 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
     });
   }, [summary.period.daysInMonth, summary.period.start]);
 
-  if (!hasData) return <EmptyPanel title="No cash flow data this month" description="Income and expense activity will appear as a daily chart." className="min-h-64" />;
+  if (!hasData) return <EmptyPanel title={t("dashboard.noCashflowData") || "No cash flow data this month"} description={t("dashboard.noCashflowDesc") || "Income and expense activity will appear as a daily chart."} className="min-h-64" />;
 
   function renderChart({
     barClassName,
@@ -571,6 +589,7 @@ function buildDonutSegments(categories: DashboardCategorySpend[]) {
 }
 
 function SpendingByCategory({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
+  const { t } = useI18n();
   const categories = summary.spendingByCategory.slice(0, 5);
   const totalExpense = categories.reduce((sum, category) => sum + category.amount, 0);
 
@@ -578,9 +597,9 @@ function SpendingByCategory({ balancesVisible, currency, summary }: { balancesVi
     return (
       <div className="mt-4 grid min-h-64 min-w-0 items-center gap-5 md:grid-cols-[180px_minmax(0,1fr)]">
         <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-slate-100 sm:h-36 sm:w-36">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center text-xs font-bold text-slate-600">No data</div>
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center text-xs font-bold text-slate-600">{t("dashboard.noData") || "No data"}</div>
         </div>
-        <EmptyPanel title="No spending data yet" description="Completed expense categories will build this chart." className="min-h-36" />
+        <EmptyPanel title={t("dashboard.noSpendingTitle") || "No spending data yet"} description={t("dashboard.noSpendingDesc") || "Completed expense categories will build this chart."} className="min-h-36" />
       </div>
     );
   }
@@ -592,7 +611,7 @@ function SpendingByCategory({ balancesVisible, currency, summary }: { balancesVi
       <div className="relative mx-auto h-36 w-36 rounded-full sm:h-40 sm:w-40" style={{ background: donutBackground }}>
         <div className="absolute inset-6 flex items-center justify-center rounded-full bg-white text-center">
           <div>
-            <p className="text-[10px] font-bold uppercase text-slate-600">Total Expense</p>
+            <p className="text-[10px] font-bold uppercase text-slate-600">{t("dashboard.totalExpense") || "Total Expense"}</p>
             <p className="mt-1 max-w-20 break-words text-xs font-extrabold leading-tight text-slate-900">{formatPrivateAmount(totalExpense, currency, balancesVisible)}</p>
           </div>
         </div>
@@ -616,9 +635,13 @@ function SpendingByCategory({ balancesVisible, currency, summary }: { balancesVi
 }
 
 function DashboardCalendar({ month, onSelectDate, summary }: { month: Date; onSelectDate: (dateKey: string) => void; summary: DashboardSummary }) {
+  const { locale } = useI18n();
   const todayKey = localDateKey(new Date());
   const cells = useMemo(() => buildCalendarCells(month), [month]);
   const activityByDate = useMemo(() => new Map(summary.calendarActivity.map((activity) => [activity.dateKey, activity.types])), [summary.calendarActivity]);
+  const localizedWeekdays = useMemo(() => {
+    return locale === "id" ? ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  }, [locale]);
 
   return (
     <div className="mt-4">
@@ -626,7 +649,7 @@ function DashboardCalendar({ month, onSelectDate, summary }: { month: Date; onSe
         className="grid gap-1 text-center text-[11px] font-extrabold uppercase text-slate-600"
         style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
       >
-        {calendarWeekdays.map((weekday) => (
+        {localizedWeekdays.map((weekday) => (
           <div key={weekday} className="py-1">
             {weekday}
           </div>
@@ -663,7 +686,8 @@ function DashboardCalendar({ month, onSelectDate, summary }: { month: Date; onSe
 }
 
 function WalletSummary({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
-  if (summary.wallets.length === 0) return <EmptyPanel title="No wallets yet" description="Create your first wallet to start tracking your net worth." className="min-h-44" />;
+  const { t } = useI18n();
+  if (summary.wallets.length === 0) return <EmptyPanel title={t("dashboard.noWalletsTitle") || "No wallets yet"} description={t("dashboard.noWalletsDesc") || "Create your first wallet to start tracking your net worth."} className="min-h-44" />;
 
   return (
     <div className="divide-y divide-slate-100">
@@ -689,7 +713,8 @@ function WalletSummary({ balancesVisible, currency, summary }: { balancesVisible
 }
 
 function GoalsSummary({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
-  if (summary.goals.length === 0) return <EmptyPanel title="No goals yet" description="Create a goal to add a dedicated savings pocket." className="min-h-44" />;
+  const { t } = useI18n();
+  if (summary.goals.length === 0) return <EmptyPanel title={t("dashboard.noGoalsTitle") || "No goals yet"} description={t("dashboard.noGoalsDesc") || "Create a goal to add a dedicated savings pocket."} className="min-h-44" />;
 
   return (
     <div className="divide-y divide-slate-100">
@@ -699,7 +724,7 @@ function GoalsSummary({ balancesVisible, currency, summary }: { balancesVisible:
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-slate-900">{goal.name}</p>
               <p className="mt-1 text-xs font-semibold text-slate-600">
-                {formatPrivateAmount(goal.currentAmount, currency, balancesVisible)} of {formatPrivateAmount(goal.targetAmount, currency, balancesVisible)}
+                {formatPrivateAmount(goal.currentAmount, currency, balancesVisible)} {t("shared.ofTotal") || "of"} {formatPrivateAmount(goal.targetAmount, currency, balancesVisible)}
               </p>
             </div>
             <span className="shrink-0 text-sm font-extrabold text-kash-emerald">{goal.percentage.toFixed(0)}%</span>
@@ -722,13 +747,14 @@ function DebtReceivableSummary({
   currency: string;
   summary: DashboardSummary;
 }) {
+  const { t } = useI18n();
   const { totalDebt, totalReceivable, counterparties } = summary.debts;
 
   if (totalDebt === 0 && totalReceivable === 0 && counterparties.length === 0) {
     return (
       <EmptyPanel
-        title="No obligations yet"
-        description="Track money you owe or money owed to you."
+        title={t("dashboard.noObligationsTitle") || "No obligations yet"}
+        description={t("dashboard.noObligationsDesc") || "Track money you owe or money owed to you."}
         className="min-h-44"
       />
     );
@@ -738,13 +764,13 @@ function DebtReceivableSummary({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-slate-50 p-2.5">
-          <span className="text-[11px] font-bold text-slate-600">You Owe</span>
+          <span className="text-[11px] font-bold text-slate-600">{t("dashboard.youOwe") || "You Owe"}</span>
           <p className="mt-1 text-sm font-black text-slate-900">
             {formatPrivateAmount(totalDebt, currency, balancesVisible)}
           </p>
         </div>
         <div className="rounded-lg bg-slate-50 p-2.5">
-          <span className="text-[11px] font-bold text-slate-600">Owed to You</span>
+          <span className="text-[11px] font-bold text-slate-600">{t("dashboard.owedToYou") || "Owed to You"}</span>
           <p className="mt-1 text-sm font-black text-slate-900">
             {formatPrivateAmount(totalReceivable, currency, balancesVisible)}
           </p>
@@ -761,7 +787,7 @@ function DebtReceivableSummary({
             <div className="min-w-0">
               <p className="truncate font-bold text-slate-900">{cp.name}</p>
               <p className="text-[11px] font-semibold text-slate-600">
-                {cp.activeItemCount} active item{cp.activeItemCount !== 1 ? "s" : ""}
+                {t("dashboard.activeItems", { count: cp.activeItemCount }) || `${cp.activeItemCount} active items`}
               </p>
             </div>
             <div className="text-right">
@@ -790,6 +816,7 @@ function BudgetDashboardSummary({
   balancesVisible: boolean;
   currency: string;
 }) {
+  const { t } = useI18n();
   const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -818,8 +845,8 @@ function BudgetDashboardSummary({
   if (budgets.length === 0) {
     return (
       <EmptyPanel
-        title="Belum ada budget"
-        description="Atur batas belanja bulanan untuk mengendalikan pengeluaran."
+        title={t("dashboard.noBudgetsTitle") || "Belum ada budget"}
+        description={t("dashboard.noBudgetsDesc") || "Atur batas belanja bulanan untuk mengendalikan pengeluaran."}
         className="min-h-36"
       />
     );
@@ -875,7 +902,7 @@ function BudgetDashboardSummary({
           to="/budgets"
           className="inline-flex items-center gap-1 text-xs font-extrabold text-kash-emeraldDark hover:text-kash-emerald hover:underline"
         >
-          Lihat semua {budgets.length} budget &rarr;
+          {t("dashboard.viewAllBudgets", { count: budgets.length }) || `Lihat semua ${budgets.length} budget →`}
         </Link>
       </div>
     </div>
@@ -890,7 +917,8 @@ function transactionIcon(type: TransactionType) {
 }
 
 function RecentTransactions({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
-  if (summary.recentTransactions.length === 0) return <EmptyPanel title="No recent transactions" description="Saved Alpha ledger activity will appear here." className="min-h-48" />;
+  const { t, locale } = useI18n();
+  if (summary.recentTransactions.length === 0) return <EmptyPanel title={t("dashboard.noTransactionsTitle") || "No recent transactions"} description={t("dashboard.noTransactionsDesc") || "Saved Alpha ledger activity will appear here."} className="min-h-48" />;
 
   return (
     <div className="divide-y divide-slate-100 overflow-hidden">
@@ -920,13 +948,13 @@ function RecentTransactions({ balancesVisible, currency, summary }: { balancesVi
                 <p className={`text-sm font-extrabold ${transactionTone[transaction.type]}`}>
                   {transaction.type === "transfer" ? formatPrivateAmount(transaction.amount, currency, balancesVisible) : formatPrivateAmount(signedAmount, currency, balancesVisible)}
                 </p>
-                {transaction.transferFee > 0 ? <p className="text-xs font-semibold text-slate-600">Fee {formatPrivateAmount(transaction.transferFee, currency, balancesVisible)}</p> : null}
+                {transaction.transferFee > 0 ? <p className="text-xs font-semibold text-slate-600">{t("dashboard.fee") || "Fee"} {formatPrivateAmount(transaction.transferFee, currency, balancesVisible)}</p> : null}
               </div>
             </div>
 
             <div className="hidden grid-cols-[96px_1.2fr_1fr_1fr_120px_64px_20px] items-center gap-4 text-sm md:grid">
               <p className="font-semibold text-slate-600">
-                {new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(transactionDate)}
+                {new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { weekday: "short" }).format(transactionDate)}
               </p>
               <p className="truncate font-bold text-slate-900">{transaction.title}</p>
               <p className="truncate font-semibold text-slate-600">{transaction.categoryName}</p>
@@ -935,7 +963,7 @@ function RecentTransactions({ balancesVisible, currency, summary }: { balancesVi
                 {transaction.type === "transfer" ? formatPrivateAmount(transaction.amount, currency, balancesVisible) : formatPrivateAmount(signedAmount, currency, balancesVisible)}
               </p>
               <p className="text-right font-semibold text-slate-600">
-                {new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(transactionDate)}
+                {new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(transactionDate)}
               </p>
               <ArrowRight aria-hidden="true" className="justify-self-end text-slate-600" size={16} />
             </div>
@@ -968,6 +996,7 @@ function DashboardSkeleton() {
 }
 
 export function DashboardPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
@@ -1010,7 +1039,7 @@ export function DashboardPage() {
   if (error && !summary) {
     return (
       <DashboardCard className="p-6">
-        <p className="text-sm font-bold text-kash-expense">Dashboard could not load</p>
+        <p className="text-sm font-bold text-kash-expense">{t("common.error")}</p>
         <p className="mt-2 text-sm font-medium text-slate-600">{error}</p>
         <button
           type="button"
@@ -1018,7 +1047,7 @@ export function DashboardPage() {
           className="mt-5 inline-flex items-center gap-2 rounded-lg bg-kash-emerald px-4 py-2 text-sm font-bold text-white transition hover:bg-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
         >
           <RefreshCw size={17} />
-          Retry
+          {t("common.retry")}
         </button>
       </DashboardCard>
     );
@@ -1029,10 +1058,10 @@ export function DashboardPage() {
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
-        eyebrow="Dashboard"
+        eyebrow={t("nav.dashboard")}
         icon={Home}
-        title="Dashboard"
-        description={`Hi, ${firstName}. Here is your current financial picture.`}
+        title={t("nav.dashboard")}
+        description={t("dashboard.greeting", { name: firstName }) || `Hi, ${firstName}. Here is your current financial picture.`}
       />
 
       <TopFinancialOverview
@@ -1048,16 +1077,16 @@ export function DashboardPage() {
       <DashboardCard className="p-5">
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 className="text-base font-extrabold text-slate-900">
-            Cash Flow <span className="font-semibold text-slate-600">({summary.period.label})</span>
+            {t("dashboard.cashflow") || "Cash Flow"} <span className="font-semibold text-slate-600">({summary.period.label})</span>
           </h2>
           <div className="hidden items-center gap-5 text-xs font-bold text-slate-600 sm:flex">
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: CASHFLOW_INCOME_COLOR }} />
-              Income
+              {t("common.typeIncome") || t("dashboard.income") || "Income"}
             </span>
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: CASHFLOW_EXPENSE_COLOR }} />
-              Expense
+              {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
             </span>
           </div>
         </div>
@@ -1067,14 +1096,14 @@ export function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <DashboardCard className="p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-base font-extrabold text-slate-900">Spending by Category</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
           </div>
           <SpendingByCategory balancesVisible={balancesVisible} summary={summary} currency={currency} />
         </DashboardCard>
 
         <DashboardCard className="p-5">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-base font-extrabold text-slate-900">Calendar</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.calendar") || "Calendar"}</h2>
             <span className="text-xs font-bold text-slate-600">{summary.period.label}</span>
           </div>
           <DashboardCalendar
@@ -1090,10 +1119,10 @@ export function DashboardPage() {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Scale aria-hidden="true" className="text-kash-emerald" size={18} />
-              <h2 className="text-base font-extrabold text-slate-900">Budget</h2>
+              <h2 className="text-base font-extrabold text-slate-900">{t("nav.budgets")}</h2>
             </div>
             <Link to="/budgets" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
-              View All
+              {t("common.viewAll")}
             </Link>
           </div>
           <BudgetDashboardSummary balancesVisible={balancesVisible} currency={currency} />
@@ -1101,9 +1130,9 @@ export function DashboardPage() {
 
         <DashboardCard className="p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">Wallets</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("nav.wallets")}</h2>
             <Link to="/wallets" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
-              View All
+              {t("common.viewAll")}
             </Link>
           </div>
           <WalletSummary balancesVisible={balancesVisible} summary={summary} currency={currency} />
@@ -1113,10 +1142,10 @@ export function DashboardPage() {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <PiggyBank aria-hidden="true" className="text-kash-emerald" size={18} />
-              <h2 className="text-base font-extrabold text-slate-900">Goals</h2>
+              <h2 className="text-base font-extrabold text-slate-900">{t("nav.goals")}</h2>
             </div>
             <Link to="/goals" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
-              View All
+              {t("common.viewAll")}
             </Link>
           </div>
           <GoalsSummary balancesVisible={balancesVisible} summary={summary} currency={currency} />
@@ -1126,10 +1155,10 @@ export function DashboardPage() {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <HandCoins aria-hidden="true" className="text-kash-emerald" size={18} />
-              <h2 className="text-base font-extrabold text-slate-900">Debt & Receivable</h2>
+              <h2 className="text-base font-extrabold text-slate-900">{t("nav.debts")}</h2>
             </div>
             <Link to="/debts" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
-              View All
+              {t("common.viewAll")}
             </Link>
           </div>
           <DebtReceivableSummary balancesVisible={balancesVisible} summary={summary} currency={currency} />
@@ -1138,9 +1167,9 @@ export function DashboardPage() {
 
       <DashboardCard className="p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-extrabold text-slate-900">Recent Transactions</h2>
+          <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Recent Transactions"}</h2>
           <Link to="/transactions" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
-            View All
+            {t("common.viewAll")}
           </Link>
         </div>
         <RecentTransactions balancesVisible={balancesVisible} summary={summary} currency={currency} />

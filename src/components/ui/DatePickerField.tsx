@@ -437,13 +437,13 @@ export function DatePickerField({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
                   <Clock size={14} className="text-kash-emerald" />
-                  Waktu (Time):
+                  {locale === "id" ? "Waktu:" : "Time:"}
                 </span>
 
                 <div className="flex items-center gap-1.5">
                   {/* Hours Dropdown */}
                   <TimeDropdown
-                    ariaLabel="Pilih Jam"
+                    ariaLabel={locale === "id" ? "Pilih Jam" : "Select Hour"}
                     value={selectedHours}
                     options={HOUR_OPTIONS}
                     onChange={handleHourChange}
@@ -453,7 +453,7 @@ export function DatePickerField({
 
                   {/* Minutes Dropdown */}
                   <TimeDropdown
-                    ariaLabel="Pilih Menit"
+                    ariaLabel={locale === "id" ? "Pilih Menit" : "Select Minute"}
                     value={selectedMinutes}
                     options={MINUTE_OPTIONS}
                     onChange={handleMinuteChange}

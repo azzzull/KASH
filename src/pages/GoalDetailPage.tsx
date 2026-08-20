@@ -38,6 +38,7 @@ import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitGoalSaved, emitTransactionSaved } from "../lib/appEvents";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
+import { useI18n } from "../i18n";
 
 type GoalFormState = {
   name: string;
@@ -127,9 +128,22 @@ function GoalEditModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<GoalFormState>(toEditState(goal));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const localizedIconOptions = useMemo(
+    () => [
+      { icon: PiggyBank, label: t("goals.iconSavings") || "Tabungan", value: "piggy-bank" },
+      { icon: Laptop, label: t("goals.iconLaptop") || "Gadget / Laptop", value: "laptop" },
+      { icon: Plane, label: t("goals.iconTravel") || "Liburan", value: "plane" },
+      { icon: Home, label: t("goals.iconHome") || "Rumah", value: "home" },
+      { icon: Car, label: t("goals.iconVehicle") || "Kendaraan", value: "car" },
+      { icon: Sparkles, label: t("goals.iconDream") || "Impian", value: "sparkles" },
+    ],
+    [t],
+  );
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -137,12 +151,12 @@ function GoalEditModal({
     const targetAmount = parseMoneyInputDigits(form.targetAmount);
 
     if (!name) {
-      setError("Goal name is required.");
+      setError(t("goals.nameRequired") || "Nama target wajib diisi.");
       return;
     }
 
     if (!targetAmount || toNumber(targetAmount) <= 0) {
-      setError("Target amount must be greater than zero.");
+      setError(t("goals.amountGreaterThanZero") || "Target nominal harus lebih besar dari nol.");
       return;
     }
 
@@ -158,7 +172,7 @@ function GoalEditModal({
     });
 
     if (updateError) {
-      setError("Couldn't update this goal. Please check the details and try again.");
+      setError(t("goals.updateError") || "Gagal memperbarui target ini. Silakan periksa kembali data Anda.");
       setSaving(false);
       return;
     }
@@ -172,8 +186,8 @@ function GoalEditModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title="Edit Goal"
-      description="This only edits the goal target and metadata."
+      title={t("goals.editGoal") || "Edit Target"}
+      description={t("goals.editGoalDescription") || "Hanya mengubah target nominal dan detail informasi target."}
     >
       <div>
         {error ? (
@@ -183,18 +197,19 @@ function GoalEditModal({
         ) : null}
 
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
-          <FormField id="edit-goal-name" label="Goal Name" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} />
+          <FormField id="edit-goal-name" label={t("goals.goalName") || "Nama Target"} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} required />
           <FormField
             id="edit-goal-target"
             inputMode="numeric"
-            label="Target Amount"
+            label={t("goals.targetAmount") || "Target Nominal"}
             onChange={(event) => setForm((current) => ({ ...current, targetAmount: formatMoneyDigits(event.target.value) }))}
             value={form.targetAmount}
+            required
           />
           <div className="w-full max-w-full min-w-0">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-bold text-slate-900" htmlFor="edit-goal-deadline">
-                Deadline (Optional)
+                {t("goals.targetDate") || "Tenggat Waktu"}
               </label>
               {form.deadline ? (
                 <button
@@ -202,35 +217,35 @@ function GoalEditModal({
                   onClick={() => setForm((current) => ({ ...current, deadline: "" }))}
                   className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark active:text-kash-emeraldPressed hover:underline transition"
                 >
-                  Clear deadline
+                  {t("goals.clearDeadline") || "Hapus tenggat"}
                 </button>
               ) : (
-                <span className="text-xs font-semibold text-slate-600">No deadline</span>
+                <span className="text-xs font-semibold text-slate-600">{t("goals.noDeadline") || "Tanpa tenggat"}</span>
               )}
             </div>
             <DatePickerField
               id="edit-goal-deadline"
               value={form.deadline}
-              placeholder="Select Target Date"
+              placeholder={t("goals.selectDeadline") || "Pilih Tenggat Waktu"}
               onChange={(val) => setForm((current) => ({ ...current, deadline: val }))}
             />
             <span className="mt-1.5 block text-xs font-medium text-slate-600">
               {form.deadline
-                ? "KASH will track progress towards this target date."
-                : "Optional. You can leave this empty if there is no deadline."}
+                ? (t("goals.trackProgressHint") || "KASH akan memantau progres tabungan menuju tenggat waktu ini.")
+                : (t("goals.deadlineOptionalHint") || "Opsional. Kosongkan jika tanpa batas waktu.")}
             </span>
           </div>
-          <SelectField id="edit-goal-icon" label="Icon" onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
-            {iconOptions.map((option) => (
+          <SelectField id="edit-goal-icon" label={t("goals.icon") || "Ikon"} onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
+            {localizedIconOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </SelectField>
-          <FormField id="edit-goal-note" label="Note" onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} value={form.note} />
+          <FormField id="edit-goal-note" label={t("goals.note") || "Catatan (Opsional)"} onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} value={form.note} />
           <Button disabled={saving} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            Save Changes
+            {t("common.saveChanges") || "Simpan Perubahan"}
           </Button>
         </form>
       </div>
@@ -249,6 +264,7 @@ function ContributionModal({
   onSaved: () => void;
   wallets: WalletWithBalance[];
 }) {
+  const { t, formatCurrency } = useI18n();
   const [form, setForm] = useState<ContributionFormState>({
     amount: "",
     contributionDate: currentLocalDateTimeValue(),
@@ -267,17 +283,17 @@ function ContributionModal({
     const amountDigits = parseMoneyInputDigits(form.amount);
 
     if (!form.walletId) {
-      setError("Select a wallet first.");
+      setError(t("goals.selectWalletError") || "Pilih dompet asal terlebih dahulu.");
       return;
     }
 
     if (!amountDigits || toNumber(amountDigits) <= 0) {
-      setError("Amount must be greater than zero.");
+      setError(t("goals.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.");
       return;
     }
 
     if (toNumber(amountDigits) > sourceBalance) {
-      setError("Source wallet does not have enough balance.");
+      setError(t("goals.insufficientBalance") || "Saldo dompet asal tidak mencukupi.");
       return;
     }
 
@@ -293,7 +309,7 @@ function ContributionModal({
     });
 
     if (contributionError) {
-      setError(contributionError.message || "Couldn't add this contribution. Please try again.");
+      setError(contributionError.message || (t("goals.contributionError") || "Gagal menambahkan alokasi ini. Silakan coba lagi."));
       setSaving(false);
       return;
     }
@@ -308,8 +324,8 @@ function ContributionModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title="Add Contribution"
-      description="This creates an internal transfer from the source wallet to the goal pocket."
+      title={t("goals.addContribution") || "Tambah Alokasi Tabungan"}
+      description={t("goals.addContributionDesc") || "Ini membuat transfer internal dari dompet asal ke kantong target tabungan."}
     >
       <div>
         {error ? (
@@ -319,42 +335,43 @@ function ContributionModal({
         ) : null}
 
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
-          <SelectField id="contribution-wallet" label="From Wallet" onChange={(event) => setForm((current) => ({ ...current, walletId: event.target.value }))} value={form.walletId}>
-            {sourceWallets.length === 0 ? <option value="">No source wallets</option> : null}
+          <SelectField id="contribution-wallet" label={t("goals.fromWallet") || "Dari Dompet"} onChange={(event) => setForm((current) => ({ ...current, walletId: event.target.value }))} value={form.walletId}>
+            {sourceWallets.length === 0 ? <option value="">{t("goals.noSourceWallets") || "Tidak ada dompet asal"}</option> : null}
             {sourceWallets.map((wallet) => (
               <option key={wallet.id} value={wallet.id}>
-                {wallet.name} - Balance {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
+                {wallet.name} - {t("wallets.balance") || "Saldo"} {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
               </option>
             ))}
           </SelectField>
           <div className="rounded-lg border border-kash-emerald/20 bg-kash-selected p-4">
-            <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Source Wallet Balance</p>
+            <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("goals.sourceWalletBalance") || "Saldo Dompet Asal"}</p>
             <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(sourceBalance, selectedWallet?.currency ?? "IDR")}</p>
-            {amount > 0 ? <p className="mt-1 text-xs font-bold text-slate-700">After transfer: {formatCurrency(sourceBalance - amount, selectedWallet?.currency ?? "IDR")}</p> : null}
+            {amount > 0 ? <p className="mt-1 text-xs font-bold text-slate-700">{t("goals.afterTransfer") || "Setelah transfer"}: {formatCurrency(sourceBalance - amount, selectedWallet?.currency ?? "IDR")}</p> : null}
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-            <p className="font-extrabold text-slate-900">Destination</p>
-            <p className="mt-1">{goal.wallet?.name ?? "Goal pocket"}</p>
+            <p className="font-extrabold text-slate-900">{t("goals.destination") || "Tujuan"}</p>
+            <p className="mt-1">{goal.wallet?.name ?? (t("goals.goalPocket") || "Kantong Target")}</p>
           </div>
           <FormField
             id="contribution-amount"
             inputMode="numeric"
-            label="Amount"
+            label={t("goals.amount") || "Nominal"}
             onChange={(event) => setForm((current) => ({ ...current, amount: formatMoneyDigits(event.target.value) }))}
             placeholder="500.000"
             value={form.amount}
+            required
           />
           <DatePickerField
             id="contribution-date"
-            label="Date"
+            label={t("common.date") || "Tanggal"}
             enableTime
             onChange={(val) => setForm((current) => ({ ...current, contributionDate: val }))}
             value={form.contributionDate}
           />
-          <FormField id="contribution-note" label="Note" onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} placeholder="Optional note" value={form.note} />
+          <FormField id="contribution-note" label={t("goals.note") || "Catatan (Opsional)"} onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))} placeholder={t("goals.notePlaceholder") || "Catatan tambahan..."} value={form.note} />
           <Button disabled={saving || sourceWallets.length === 0} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            Save Contribution
+            {t("goals.saveContribution") || "Simpan Alokasi"}
           </Button>
         </form>
       </div>
@@ -377,6 +394,7 @@ function DetailSkeleton() {
 export function GoalDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t, formatDate: formatI18nDate, formatCurrency } = useI18n();
   const [goal, setGoal] = useState<GoalDetail | null>(null);
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -399,13 +417,13 @@ export function GoalDetailPage() {
     ]);
 
     if (goalError || !goalData) {
-      setError("Couldn't load this goal. It may not exist or you may not have access.");
+      setError(t("goals.loadError") || "Gagal memuat target ini. Mungkin target tidak ada atau Anda tidak memiliki akses.");
       setLoading(false);
       return;
     }
 
     if (walletError || !walletData) {
-      setError("Couldn't load wallets for contributions.");
+      setError(t("goals.loadWalletsError") || "Gagal memuat dompet untuk alokasi.");
       setLoading(false);
       return;
     }
@@ -433,7 +451,7 @@ export function GoalDetailPage() {
     if (!goal || !progress) return;
 
     if (progress.current > 0 && !closeDestinationWalletId) {
-      setCloseError("Please select a destination wallet to receive the remaining funds.");
+      setCloseError(t("goals.selectDestinationWalletError") || "Silakan pilih dompet tujuan untuk menerima sisa dana.");
       return;
     }
 
@@ -446,7 +464,7 @@ export function GoalDetailPage() {
     );
 
     if (rpcError) {
-      setCloseError(rpcError.message || "Couldn't close this goal. Please try again.");
+      setCloseError(rpcError.message || (t("goals.closeGoalError") || "Gagal menutup target ini. Silakan coba lagi."));
       setClosingGoal(false);
       return;
     }
@@ -463,13 +481,13 @@ export function GoalDetailPage() {
       <div className="mx-auto grid w-full max-w-4xl gap-4 p-4 md:p-6">
         <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/goals">
           <ArrowLeft aria-hidden="true" size={17} />
-          Goals
+          {t("goals.title") || "Target"}
         </Link>
         <section className="rounded-lg border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-extrabold text-slate-900">Something went wrong.</h2>
+          <h2 className="text-lg font-extrabold text-slate-900">{t("common.error")}</h2>
           <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
           <Button className="mt-4" onClick={() => void loadGoal()}>
-            Retry
+            {t("common.retry")}
           </Button>
         </section>
       </div>
@@ -484,23 +502,23 @@ export function GoalDetailPage() {
     <div className="w-full min-w-0 space-y-5">
       <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/goals">
         <ArrowLeft aria-hidden="true" size={17} />
-        Goals
+        {t("goals.title") || "Target"}
       </Link>
 
       <PageHeader
-        eyebrow={isCompleted ? "Goal Completed" : "Savings Goal"}
+        eyebrow={isCompleted ? (t("goals.goalCompleted") || "Target Tercapai") : (t("goals.title") || "Target Impian")}
         icon={Icon}
         title={goal.name}
-        description={goal.note || "Track money moved into this dedicated goal pocket."}
+        description={goal.note || (t("goals.pocketWalletDesc") || "Pantau dana yang dialokasikan ke kantong tabungan ini.")}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button disabled={isCancelled} onClick={() => setShowContribution(true)}>
               <Plus aria-hidden="true" size={17} />
-              Add Contribution
+              {t("goals.addContribution") || "Tambah Tabungan"}
             </Button>
             <Button disabled={isCancelled} onClick={() => setShowEdit(true)} variant="secondary">
               <Edit3 aria-hidden="true" size={17} />
-              Edit
+              {t("common.edit")}
             </Button>
             <Button
               disabled={closingGoal || isCancelled}
@@ -512,7 +530,7 @@ export function GoalDetailPage() {
               variant="secondary"
             >
               <Trash2 aria-hidden="true" size={17} />
-              Delete Goal
+              {t("goals.deleteGoal") || "Hapus Target"}
             </Button>
           </div>
         }
@@ -520,7 +538,7 @@ export function GoalDetailPage() {
 
       {isCancelled ? (
         <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700">
-          This goal is closed. Its historical contributions and records remain preserved in your history.
+          {t("goals.closedGoalBanner") || "Target ini sudah ditutup. Riwayat alokasi dan catatan transaksi tetap tersimpan dalam riwayat Anda."}
         </section>
       ) : null}
 
@@ -532,15 +550,15 @@ export function GoalDetailPage() {
                 <Icon aria-hidden="true" size={24} strokeWidth={2.4} />
               </span>
               <div>
-                <p className="text-sm font-bold text-slate-600">Progress</p>
+                <p className="text-sm font-bold text-slate-600">{t("goals.progress") || "Kemajuan"}</p>
                 <p className="text-2xl font-extrabold text-slate-900">{progress.percentage.toFixed(0)}%</p>
               </div>
             </div>
           </div>
           <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-3">
-            <DetailMetric label="Current" value={formatCurrency(progress.current, "IDR")} />
-            <DetailMetric label="Target" value={formatCurrency(progress.target, "IDR")} />
-            <DetailMetric label="Remaining" value={formatCurrency(progress.remaining, "IDR")} />
+            <DetailMetric label={t("goals.current") || "Terkumpul"} value={formatCurrency(progress.current, "IDR")} />
+            <DetailMetric label={t("goals.target") || "Target"} value={formatCurrency(progress.target, "IDR")} />
+            <DetailMetric label={t("debts.remaining") || "Sisa"} value={formatCurrency(progress.remaining, "IDR")} />
           </div>
         </div>
         <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
@@ -549,26 +567,32 @@ export function GoalDetailPage() {
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <DetailMetric label="Deadline" value={formatDate(goal.deadline)} />
-        <DetailMetric label="Pocket Wallet" value={goal.wallet?.name ?? "Goal pocket"} />
-        <DetailMetric label="Status" value={isCancelled ? "Closed" : isCompleted ? "Completed" : "Active"} />
+        <DetailMetric
+          label={t("goals.targetDate") || "Tenggat Waktu"}
+          value={goal.deadline ? formatI18nDate(new Date(`${goal.deadline}T00:00:00`)) : (t("goals.noDeadline") || "Tanpa tenggat")}
+        />
+        <DetailMetric label={t("goals.pocketWallet") || "Dompet Kantong"} value={goal.wallet?.name ?? (t("goals.goalPocket") || "Kantong Target")} />
+        <DetailMetric
+          label={t("common.status") || "Status"}
+          value={isCancelled ? (t("goals.statusClosed") || "Ditutup") : isCompleted ? (t("goals.completed") || "Tercapai") : (t("common.active") || "Aktif")}
+        />
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <WalletCards aria-hidden="true" className="text-slate-600" size={18} />
-            <h3 className="text-base font-extrabold text-slate-900">Contribution History</h3>
+            <h3 className="text-base font-extrabold text-slate-900">{t("goals.contributionHistory") || "Riwayat Alokasi Tabungan"}</h3>
           </div>
-          <span className="text-xs font-bold text-slate-600">{goal.contributions.length} entries</span>
+          <span className="text-xs font-bold text-slate-600">{goal.contributions.length} {t("goals.entries") || "catatan"}</span>
         </div>
 
         <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
           {goal.contributions.length === 0 ? (
             <div className="bg-slate-50 p-6 text-center">
-              <h4 className="text-base font-extrabold text-slate-900">No contributions yet.</h4>
+              <h4 className="text-base font-extrabold text-slate-900">{t("goals.noContributionsYet") || "Belum ada alokasi dana."}</h4>
               <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-700">
-                Add a contribution when you want to move money from a wallet into this goal pocket.
+                {t("goals.noContributionsDesc") || "Tambahkan alokasi saat Anda ingin memindahkan uang dari dompet ke kantong tabungan target ini."}
               </p>
             </div>
           ) : (
@@ -578,9 +602,9 @@ export function GoalDetailPage() {
                   <WalletCards aria-hidden="true" size={18} strokeWidth={2.3} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-extrabold text-slate-900">{contribution.wallet?.name ?? "Wallet"}</span>
+                  <span className="block truncate text-sm font-extrabold text-slate-900">{contribution.wallet?.name ?? (t("wallets.walletFallback") || "Dompet")}</span>
                   <span className="mt-1 block truncate text-xs font-semibold text-slate-600">
-                    {formatDateTime(contribution.contribution_date)}
+                    {formatI18nDate(new Date(contribution.contribution_date))}
                     {contribution.note ? ` - ${contribution.note}` : ""}
                   </span>
                 </span>
@@ -614,11 +638,11 @@ export function GoalDetailPage() {
       ) : null}
       {showCloseDialog ? (
         <ConfirmationDialog
-          confirmLabel={progress.current > 0 ? "Transfer & Close Goal" : "Delete Goal"}
+          confirmLabel={progress.current > 0 ? (t("goals.transferAndClose") || "Pindahkan & Tutup Target") : (t("goals.deleteGoal") || "Hapus Target")}
           description={
             progress.current > 0
-              ? `This goal pocket holds ${formatCurrency(progress.current, "IDR")}. Choose an active destination wallet to receive these funds before closing.`
-              : "Are you sure you want to delete this goal? Existing contribution history and historical records will be preserved."
+              ? (t("goals.transferRemainingDesc", { amount: formatCurrency(progress.current, "IDR") }) || `Kantong target ini masih memiliki saldo ${formatCurrency(progress.current, "IDR")}. Pilih dompet tujuan aktif untuk menerima dana ini sebelum ditutup.`)
+              : (t("goals.deleteGoalDesc") || "Apakah Anda yakin ingin menghapus target ini? Riwayat alokasi dan catatan transaksi masa lalu akan tetap tersimpan.")
           }
           disabled={progress.current > 0 && !closeDestinationWalletId}
           icon={Trash2}
@@ -626,14 +650,14 @@ export function GoalDetailPage() {
           itemLabel={goal.name}
           onCancel={() => setShowCloseDialog(false)}
           onConfirm={() => void handleCloseGoal()}
-          title={progress.current > 0 ? "Transfer Remaining Balance to Close Goal" : "Delete this goal?"}
+          title={progress.current > 0 ? (t("goals.transferRemainingTitle") || "Pindahkan Sisa Saldo untuk Menutup Target") : (t("goals.deleteGoalTitle") || "Hapus target ini?")}
           tone="danger"
         >
           {progress.current > 0 ? (
             <div className="mt-3 grid gap-3">
               <SelectField
                 id="close-goal-destination-wallet"
-                label="Destination Wallet for Remaining Funds"
+                label={t("goals.destinationWalletForRemaining") || "Dompet Tujuan untuk Sisa Saldo"}
                 value={closeDestinationWalletId}
                 onChange={(event) => setCloseDestinationWalletId(event.target.value)}
               >

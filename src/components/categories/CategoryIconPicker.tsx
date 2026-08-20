@@ -1,6 +1,7 @@
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categoryIconOptions, getCategoryIcon } from "../../lib/categoryMeta";
+import { useI18n } from "../../i18n";
 
 type CategoryIconPickerProps = {
   value: string;
@@ -9,33 +10,34 @@ type CategoryIconPickerProps = {
   label?: string;
 };
 
-const GROUPS = [
-  "Semua",
-  "Kuliner",
-  "Transportasi",
-  "Belanja",
-  "Tagihan",
-  "Keluarga",
-  "Pekerjaan",
-  "Hiburan",
-  "Kesehatan",
-  "Edukasi",
-  "Travel",
-  "Sosial",
-];
-
 export function CategoryIconPicker({
   value,
   onChange,
   accentColor = "#10B981",
   label = "Ikon Kategori",
 }: CategoryIconPickerProps) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [activeGroup, setActiveGroup] = useState("Semua");
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const GROUPS = useMemo(() => [
+    { key: "Semua", label: t("categories.groupAll") || "Semua" },
+    { key: "Kuliner", label: t("categories.groupFood") || "Kuliner" },
+    { key: "Transportasi", label: t("categories.groupTransport") || "Transportasi" },
+    { key: "Belanja", label: t("categories.groupShopping") || "Belanja" },
+    { key: "Tagihan", label: t("categories.groupBills") || "Tagihan" },
+    { key: "Keluarga", label: t("categories.groupFamily") || "Keluarga" },
+    { key: "Pekerjaan", label: t("categories.groupWork") || "Pekerjaan" },
+    { key: "Hiburan", label: t("categories.groupEntertainment") || "Hiburan" },
+    { key: "Kesehatan", label: t("categories.groupHealth") || "Kesehatan" },
+    { key: "Edukasi", label: t("categories.groupEducation") || "Edukasi" },
+    { key: "Travel", label: t("categories.groupTravel") || "Travel" },
+    { key: "Sosial", label: t("categories.groupSocial") || "Sosial" },
+  ], [t]);
 
   const selectedOption = useMemo(
     () => categoryIconOptions.find((opt) => opt.value === value) ?? categoryIconOptions[0],
@@ -151,7 +153,7 @@ export function CategoryIconPicker({
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Cari ikon (kopi, bensin, wifi, kado, gym)..."
+              placeholder={t("categories.searchIconPlaceholder") || "Cari ikon (kopi, bensin, wifi, kado, gym)..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/70 pl-8 pr-7 text-xs font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:bg-white focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
@@ -171,16 +173,16 @@ export function CategoryIconPicker({
           <div className="mb-2 flex shrink-0 gap-1 overflow-x-auto pb-1 no-scrollbar text-xs">
             {GROUPS.map((grp) => (
               <button
-                key={grp}
+                key={grp.key}
                 type="button"
-                onClick={() => setActiveGroup(grp)}
+                onClick={() => setActiveGroup(grp.key)}
                 className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold transition ${
-                  activeGroup === grp
+                  activeGroup === grp.key
                     ? "bg-kash-emerald text-white shadow-xs"
                     : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                {grp}
+                {grp.label}
               </button>
             ))}
           </div>
@@ -189,7 +191,7 @@ export function CategoryIconPicker({
           <div className="flex-1 overflow-y-auto p-0.5 no-scrollbar max-h-40 min-h-[120px]">
             {filteredIcons.length === 0 ? (
               <div className="py-6 text-center text-xs font-semibold text-slate-600">
-                Tidak ada ikon untuk &quot;{search}&quot;.
+                {t("categories.noIconFound", { search }) || `Tidak ada ikon untuk "${search}".`}
               </div>
             ) : (
               <div className="grid grid-cols-5 sm:grid-cols-6 gap-1.5">
@@ -241,13 +243,13 @@ export function CategoryIconPicker({
 
           {/* Footer inside popup */}
           <div className="mt-2 flex shrink-0 items-center justify-between border-t border-slate-100 pt-1.5 text-[10px] font-semibold text-slate-600">
-            <span>{filteredIcons.length} ikon</span>
+            <span>{t("categories.iconsCount", { count: filteredIcons.length }) || `${filteredIcons.length} ikon`}</span>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
               className="font-bold text-kash-emerald hover:text-kash-emeraldDark"
             >
-              Tutup
+              {t("common.close") || "Tutup"}
             </button>
           </div>
         </div>

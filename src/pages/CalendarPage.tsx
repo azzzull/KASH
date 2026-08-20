@@ -14,6 +14,7 @@ import {
 import { formatCurrency, toNumber } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
+import { useI18n } from "../i18n";
 import type { TransactionWithMeta } from "../lib/transactions";
 import {
   displayTransactionAmount,
@@ -27,7 +28,6 @@ import {
 import { Button } from "../components/ui/Button";
 import { PageHeader } from "../components/ui/PageHeader";
 
-const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const activityOrder = ["income", "expense", "transfer", "adjustment"] as const;
 const activityDotClass = {
   adjustment: "bg-slate-600",
@@ -36,35 +36,10 @@ const activityDotClass = {
   transfer: "bg-kash-transfer",
 };
 
-function formatMonthLabel(date: Date) {
-  return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(date);
-}
-
-function formatSelectedDate(dateKey: string) {
-  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(parseLocalDateKey(dateKey));
-}
-
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
-
-function formatSignedCurrency(amount: number, currency = "IDR") {
-  if (amount === 0) return formatCurrency(0, currency);
-  return `${amount > 0 ? "+" : ""}${formatCurrency(amount, currency)}`;
-}
-
-function formatCompactAmount(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000_000) {
-    return `${(amount / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} M`;
-  }
-  if (abs >= 1_000_000) {
-    return `${(amount / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
-  }
-  if (abs >= 1_000) {
-    return `${Math.round(amount / 1_000).toLocaleString("id-ID")} rb`;
-  }
-  return `${amount.toLocaleString("id-ID")}`;
+function formatSignedCurrency(amount: number, currency = "IDR", formatCurrencyFn?: (amount: number, currency?: string) => string) {
+  if (amount === 0) return formatCurrencyFn ? formatCurrencyFn(0, currency) : formatCurrency(0, currency);
+  const formatted = formatCurrencyFn ? formatCurrencyFn(amount, currency) : formatCurrency(amount, currency);
+  return `${amount > 0 ? "+" : ""}${formatted}`;
 }
 
 function CalendarSkeleton() {
@@ -106,7 +81,11 @@ function CalendarGrid({
   selectedDateKey: string;
   todayKey: string;
 }) {
+  const { locale, formatDate, formatCompactCurrency } = useI18n();
   const calendarCells = useMemo(() => buildCalendarCells(activeMonth), [activeMonth]);
+  const weekdays = useMemo(() => {
+    return locale === "id" ? ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  }, [locale]);
 
   return (
     <>
@@ -130,12 +109,13 @@ function CalendarGrid({
           const isSelected = selectedDateKey === cell.dateKey;
           const isToday = todayKey === cell.dateKey;
           const dayNumber = cell.date.getDate();
+          const selectedDateLabel = formatDate(parseLocalDateKey(cell.dateKey));
 
           return (
             <button
               key={cell.dateKey}
               type="button"
-              aria-label={`${formatSelectedDate(cell.dateKey)}${dayData ? `, ${dayData.summary.transactionCount} transactions` : ""}`}
+              aria-label={`${selectedDateLabel}${dayData ? `, ${dayData.summary.transactionCount} transactions` : ""}`}
               aria-pressed={isSelected}
               onClick={() => onSelectDate(cell.dateKey)}
               className={`flex min-h-[58px] flex-col items-center justify-between rounded-lg border p-1.5 text-sm transition focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 md:min-h-[76px] md:p-2 ${
@@ -151,12 +131,12 @@ function CalendarGrid({
                 <div className="flex w-full flex-col items-center gap-0.5 px-0.5 text-[9px] md:text-[10px] font-black leading-tight overflow-hidden">
                   {dayData.summary.income > 0 && (
                     <span className="truncate text-kash-emerald">
-                      +Rp{formatCompactAmount(dayData.summary.income)}
+                      +{formatCompactCurrency(dayData.summary.income)}
                     </span>
                   )}
                   {dayData.summary.expense > 0 && (
                     <span className="truncate text-kash-expense">
-                      -Rp{formatCompactAmount(dayData.summary.expense)}
+                      -{formatCompactCurrency(dayData.summary.expense)}
                     </span>
                   )}
                 </div>
@@ -186,34 +166,37 @@ function SelectedDatePanel({
   selectedSummary: ReturnType<typeof calculateDaySummary>;
   selectedTransactions: TransactionWithMeta[];
 }) {
+  const { t, formatDate, formatCurrency } = useI18n();
+  const formattedDate = formatDate(parseLocalDateKey(selectedDateKey));
+
   return (
     <section className="mt-6 border-t border-slate-100 pt-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-extrabold uppercase text-slate-600">Selected Date</p>
-          <h2 className="mt-1 text-lg font-extrabold text-slate-900">{formatSelectedDate(selectedDateKey)}</h2>
+          <p className="text-xs font-extrabold uppercase text-slate-600">{t("calendar.transactionsOnDate") || "Selected Date"}</p>
+          <h2 className="mt-1 text-lg font-extrabold text-slate-900">{formattedDate}</h2>
         </div>
         {isLoading ? <Loader2 aria-hidden="true" className="mt-1 animate-spin text-slate-600" size={18} /> : null}
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <SummaryCard label="Income" tone="text-kash-emerald" value={formatCurrency(selectedSummary.income, currency)} />
-        <SummaryCard label="Expense" tone="text-[#E50914]" value={formatCurrency(selectedSummary.expense, currency)} />
+        <SummaryCard label={t("common.typeIncome") || t("dashboard.income") || "Income"} tone="text-kash-emerald" value={formatCurrency(selectedSummary.income, currency)} />
+        <SummaryCard label={t("common.typeExpense") || t("dashboard.expense") || "Expense"} tone="text-[#E50914]" value={formatCurrency(selectedSummary.expense, currency)} />
         <SummaryCard
-          label="Net"
+          label={t("calendar.netSummary") || "Net"}
           tone={selectedSummary.net >= 0 ? "text-kash-emerald" : "text-[#E50914]"}
-          value={formatSignedCurrency(selectedSummary.net, currency)}
+          value={formatSignedCurrency(selectedSummary.net, currency, formatCurrency)}
         />
       </div>
 
       <div className="mt-5 border-t border-slate-100 pt-4">
-        <h3 className="text-sm font-extrabold text-slate-900">Transactions</h3>
+        <h3 className="text-sm font-extrabold text-slate-900">{t("nav.transactions")}</h3>
 
         {selectedTransactions.length === 0 ? (
           <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
             <ReceiptText className="mx-auto text-slate-600" size={28} />
-            <p className="mt-3 text-sm font-extrabold text-slate-900">No transactions on this day.</p>
-            <p className="mt-1 text-sm font-semibold text-slate-600">Dates with activity are marked in the calendar.</p>
+            <p className="mt-3 text-sm font-extrabold text-slate-900">{t("calendar.noTransactions") || "No transactions on this day."}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-600">{t("dashboard.noTransactionsDesc") || "Dates with activity are marked in the calendar."}</p>
           </div>
         ) : (
           <div className="mt-3 divide-y divide-slate-100">
@@ -250,6 +233,7 @@ function DayTransactionRow({
   onSelect: () => void;
   transaction: TransactionWithMeta;
 }) {
+  const { t, formatCurrency, formatTime } = useI18n();
   const Icon = transactionIcon(transaction.type);
 
   return (
@@ -272,7 +256,7 @@ function DayTransactionRow({
           <span className={`block text-sm font-extrabold ${transactionTone[transaction.type]}`}>{displayTransactionAmount(transaction, currency)}</span>
           {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
             <span className="block text-[11px] font-bold text-kash-expense">
-              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+              + {t("dashboard.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
             </span>
           ) : null}
           <span className="mt-1 block text-xs font-bold text-slate-600">{formatTime(transaction.transaction_date)}</span>
@@ -286,7 +270,7 @@ function DayTransactionRow({
         <span className="font-semibold text-slate-600">{formatTime(transaction.transaction_date)}</span>
         <span className="min-w-0">
           <span className="block truncate font-bold text-slate-900">{transactionTitle(transaction)}</span>
-          <span className="mt-0.5 block truncate text-xs font-semibold text-slate-600">{transaction.type === "transfer" ? "Transfer" : transaction.note}</span>
+          <span className="mt-0.5 block truncate text-xs font-semibold text-slate-600">{transaction.type === "transfer" ? (t("tx.transfer") || "Transfer") : transaction.note}</span>
         </span>
         <span className="truncate font-semibold text-slate-600">{transactionCategoryLabel(transaction)}</span>
         <span className="truncate font-semibold text-slate-600">{transactionWalletLabel(transaction)}</span>
@@ -294,7 +278,7 @@ function DayTransactionRow({
           <span>{displayTransactionAmount(transaction, currency)}</span>
           {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
             <span className="block text-[11px] font-bold text-kash-expense">
-              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+              + {t("dashboard.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
             </span>
           ) : null}
         </span>
@@ -304,6 +288,7 @@ function DayTransactionRow({
 }
 
 export function CalendarPage() {
+  const { t, formatMonthYear } = useI18n();
   const [searchParams] = useSearchParams();
   const today = useMemo(() => new Date(), []);
   const todayKey = localDateKey(today);
@@ -361,14 +346,14 @@ export function CalendarPage() {
   return (
     <div className="relative w-full min-w-0 space-y-5">
       <PageHeader
-        eyebrow="Calendar"
+        eyebrow={t("nav.calendar")}
         icon={CalendarDays}
-        title="Calendar"
-        description="Review financial activity by date."
+        title={t("nav.calendar")}
+        description={t("calendar.subtitle") || "Review financial activity by date."}
         actions={
           <Button variant="secondary" onClick={() => goToMonth(today)}>
             <CalendarDays aria-hidden="true" size={17} />
-            Today
+            {t("common.today")}
           </Button>
         }
       />
@@ -381,11 +366,11 @@ export function CalendarPage() {
 
       {error ? (
         <div className="mt-5 rounded-lg border border-kash-expense/30 bg-white p-4 text-sm shadow-sm">
-          <p className="font-extrabold text-slate-900">Couldn't load calendar.</p>
+          <p className="font-extrabold text-slate-900">{t("common.error")}</p>
           <p className="mt-1 font-semibold text-slate-600">{error}</p>
           <Button className="mt-4" variant="secondary" onClick={() => void loadMonth()}>
             {isLoading ? <Loader2 aria-hidden="true" className="animate-spin" size={16} /> : null}
-            Retry
+            {t("common.retry")}
           </Button>
         </div>
       ) : null}
@@ -401,7 +386,7 @@ export function CalendarPage() {
             >
               <ChevronLeft aria-hidden="true" size={18} />
             </button>
-            <h2 className="min-w-44 text-center text-base font-extrabold text-slate-900">{formatMonthLabel(activeMonth)}</h2>
+            <h2 className="min-w-44 text-center text-base font-extrabold text-slate-900">{formatMonthYear(activeMonth)}</h2>
             <button
               type="button"
               aria-label="Next month"

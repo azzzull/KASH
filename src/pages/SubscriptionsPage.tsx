@@ -24,6 +24,7 @@ import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents } from "../lib/appEvents";
+import { useI18n } from "../i18n";
 import { formatCurrency, toNumber } from "../../src/lib/money";
 import {
   getRecurringObligations,
@@ -36,6 +37,7 @@ type TabFilter = "all" | "subscriptions" | "installments" | "due_soon";
 
 export function SubscriptionsPage() {
   const navigate = useNavigate();
+  const { t, formatDate, formatCurrency } = useI18n();
   const [obligations, setObligations] = useState<RecurringObligationWithMeta[]>([]);
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,24 +150,24 @@ export function SubscriptionsPage() {
   }, [obligations, activeTab, searchQuery]);
 
   const tabOptions = useMemo(() => [
-    { label: "All", value: "all" },
-    { label: "Subscriptions & Bills", value: "subscriptions" },
-    { label: "PayLater & Installments", value: "installments" },
-    { label: "Due Soon / Overdue", value: "due_soon" },
-  ], []);
+    { label: t("common.all") || "Semua", value: "all" },
+    { label: t("subscriptions.tabSubscriptions") || "Langganan & Tagihan", value: "subscriptions" },
+    { label: t("subscriptions.tabInstallments") || "PayLater & Cicilan", value: "installments" },
+    { label: t("subscriptions.tabDueSoon") || "Segera Jatuh Tempo", value: "due_soon" },
+  ], [t]);
 
   return (
     <div className="w-full min-w-0 space-y-5">
       {/* Page Header */}
       <PageHeader
-        eyebrow="Finance"
+        eyebrow={t("subscriptions.eyebrow") || "Keuangan"}
         icon={Repeat}
-        title="Bills & Subscriptions"
-        description="Manage recurring bills, subscriptions, PayLater, and installments."
+        title={t("subscriptions.title") || "Tagihan & Langganan"}
+        description={t("subscriptions.subtitle") || "Kelola tagihan rutin, langganan, PayLater, dan cicilan bulanan."}
         actions={
           <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
             <Plus size={18} strokeWidth={2.4} />
-            Add Obligation
+            {t("subscriptions.addObligation") || "Tambah Tagihan"}
           </Button>
         }
       />
@@ -176,17 +178,17 @@ export function SubscriptionsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-slate-600">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Est. Monthly Cost
+              {t("subscriptions.estMonthlyCost") || "Estimasi Biaya Bulanan"}
             </span>
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark">
               <Repeat size={15} />
             </span>
           </div>
           <p className="mt-2 text-xl font-black text-slate-900">
-            {formatCurrency(summaryMetrics.monthlyRecurringTotal)}
+            {formatCurrency(summaryMetrics.monthlyRecurringTotal, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Across active subscriptions & bills
+            {t("subscriptions.acrossActiveDesc") || "Dari langganan & tagihan aktif"}
           </p>
         </div>
 
@@ -194,17 +196,17 @@ export function SubscriptionsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-slate-600">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Due Within 7 Days
+              {t("subscriptions.dueWithin7Days") || "Jatuh Tempo dlm 7 Hari"}
             </span>
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F28C45]/15 text-[#F28C45]">
               <AlertCircle size={15} />
             </span>
           </div>
           <p className="mt-2 text-xl font-black text-slate-900">
-            {formatCurrency(summaryMetrics.dueSoonAmount)}
+            {formatCurrency(summaryMetrics.dueSoonAmount, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-[#F28C45]">
-            {summaryMetrics.dueSoonCount} item{summaryMetrics.dueSoonCount !== 1 ? "s" : ""} requiring payment
+            {summaryMetrics.dueSoonCount} {t("subscriptions.itemsRequiringPayment") || "item perlu dibayar"}
           </p>
         </div>
 
@@ -212,7 +214,7 @@ export function SubscriptionsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-slate-600">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Active Subscriptions
+              {t("subscriptions.activeSubscriptions") || "Langganan Aktif"}
             </span>
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
               <Receipt size={15} />
@@ -222,7 +224,7 @@ export function SubscriptionsPage() {
             {summaryMetrics.activeSubsCount}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Auto-renewing services
+            {t("subscriptions.autoRenewingServices") || "Layanan perpanjangan otomatis"}
           </p>
         </div>
 
@@ -230,17 +232,17 @@ export function SubscriptionsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between text-slate-600">
             <span className="text-xs font-bold uppercase tracking-wider">
-              Installments Remaining
+              {t("subscriptions.installmentsRemaining") || "Sisa Cicilan PayLater"}
             </span>
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
               <CreditCard size={15} />
             </span>
           </div>
           <p className="mt-2 text-xl font-black text-slate-900">
-            {formatCurrency(summaryMetrics.totalInstallmentRemaining)}
+            {formatCurrency(summaryMetrics.totalInstallmentRemaining, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Across {summaryMetrics.activeInstallmentsCount} PayLater / Installments
+            {t("subscriptions.acrossInstallments", { count: summaryMetrics.activeInstallmentsCount }) || `Dari ${summaryMetrics.activeInstallmentsCount} PayLater / Cicilan`}
           </p>
         </div>
       </div>
@@ -257,7 +259,7 @@ export function SubscriptionsPage() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
           <input
             type="text"
-            placeholder="Search obligations..."
+            placeholder={t("subscriptions.searchPlaceholder") || "Cari tagihan atau langganan..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
@@ -275,16 +277,16 @@ export function SubscriptionsPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-kash-selected text-kash-emerald">
             <Repeat size={22} />
           </div>
-          <h4 className="mt-4 text-base font-extrabold text-slate-900">No recurring obligations found</h4>
+          <h4 className="mt-4 text-base font-extrabold text-slate-900">{t("subscriptions.noObligationsFound") || "Tidak ada kewajiban rutin ditemukan"}</h4>
           <p className="mt-1 text-xs font-semibold text-slate-600">
             {searchQuery
-              ? "Try adjusting your search query or active filter."
-              : "Track your monthly Netflix, Spotify, PLN electricity, or installment plans effortlessly."}
+              ? (t("subscriptions.adjustSearchHint") || "Coba sesuaikan pencarian atau filter aktif Anda.")
+              : (t("subscriptions.emptyDesc") || "Pantau tagihan bulanan Netflix, Spotify, listrik PLN, atau cicilan dengan mudah.")}
           </p>
           {!searchQuery && (
             <Button onClick={() => setCreateModalOpen(true)} className="mt-4 gap-2">
               <Plus size={16} />
-              Add Your First Obligation
+              {t("subscriptions.addFirstObligation") || "Tambah Tagihan Pertama"}
             </Button>
           )}
         </div>
@@ -296,7 +298,7 @@ export function SubscriptionsPage() {
             const isCancelled = ob.status === "cancelled";
 
             // Next Due Status calculations
-            let dueStatusLabel = "Active";
+            let dueStatusLabel = t("common.active") || "Aktif";
             let dueBadgeClass = "bg-slate-100 text-slate-700";
 
             if (ob.next_due_date && ob.status === "active") {
@@ -307,25 +309,45 @@ export function SubscriptionsPage() {
               const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
               if (diffDays < 0) {
-                dueStatusLabel = `Overdue (${Math.abs(diffDays)}d ago)`;
+                dueStatusLabel = `${t("subscriptions.overdue") || "Terlambat"} (${Math.abs(diffDays)}${t("subscriptions.daysAgo") || "h lalu"})`;
                 dueBadgeClass = "bg-kash-expense/15 text-kash-expense font-bold";
               } else if (diffDays === 0) {
-                dueStatusLabel = "Due Today";
+                dueStatusLabel = t("subscriptions.dueToday") || "Jatuh Tempo Hari Ini";
                 dueBadgeClass = "bg-[#F28C45]/15 text-[#F28C45] font-bold";
               } else if (diffDays <= 7) {
-                dueStatusLabel = `Due in ${diffDays} day${diffDays > 1 ? "s" : ""}`;
+                dueStatusLabel = t("subscriptions.dueIn", { days: diffDays }) || `Jatuh tempo dlm ${diffDays} hari`;
                 dueBadgeClass = "bg-kash-selected text-kash-emeraldDark font-bold";
               } else {
-                dueStatusLabel = `Due ${dueDate.toLocaleDateString("id-ID", { day: "numeric", month: "short" })}`;
+                dueStatusLabel = `${t("debts.due") || "Tempo"} ${formatDate(dueDate)}`;
                 dueBadgeClass = "bg-slate-100 text-slate-700 font-semibold";
               }
             } else if (isCompleted) {
-              dueStatusLabel = "Completed";
+              dueStatusLabel = t("goals.completed") || "Selesai";
               dueBadgeClass = "bg-kash-selected text-kash-emeraldDark font-bold";
             } else if (isCancelled) {
-              dueStatusLabel = "Cancelled";
+              dueStatusLabel = t("debts.cancelled") || "Dibatalkan";
               dueBadgeClass = "bg-slate-100 text-slate-600 font-semibold";
             }
+
+            const frequencyLabel = isInstallment
+              ? (t("subscriptions.monthlyInstallment") || "Cicilan Bulanan")
+              : ob.frequency === "monthly"
+                ? (t("subscriptions.freqMonthly") || "Bulanan")
+                : ob.frequency === "yearly"
+                  ? (t("subscriptions.freqYearly") || "Tahunan")
+                  : ob.frequency === "weekly"
+                    ? (t("subscriptions.freqWeekly") || "Mingguan")
+                    : ob.frequency === "quarterly"
+                      ? (t("subscriptions.freqQuarterly") || "Triwulan")
+                      : ob.frequency;
+
+            const freqSuffix = isInstallment
+              ? (t("subscriptions.perMonthSuffix") || " /bln")
+              : ob.frequency === "monthly"
+                ? (t("subscriptions.perMonthSuffix") || " /bln")
+                : ob.frequency === "yearly"
+                  ? (t("subscriptions.perYearSuffix") || " /thn")
+                  : ` /${ob.frequency}`;
 
             return (
               <div
@@ -367,7 +389,7 @@ export function SubscriptionsPage() {
                         </span>
                       )}
                       <span>•</span>
-                      <span className="capitalize">{isInstallment ? "Monthly Installment" : `${ob.frequency}`}</span>
+                      <span>{frequencyLabel}</span>
                       {ob.defaultWallet && (
                         <>
                           <span>•</span>
@@ -389,7 +411,7 @@ export function SubscriptionsPage() {
                           />
                         </div>
                         <span className="text-[11px] font-bold text-slate-600">
-                          {ob.paid_count} / {ob.installment_count} paid ({ob.progress_percentage}%)
+                          {ob.paid_count} / {ob.installment_count} {t("subscriptions.paid") || "terbayar"} ({ob.progress_percentage}%)
                         </span>
                       </div>
                     )}
@@ -400,9 +422,9 @@ export function SubscriptionsPage() {
                 <div className="flex items-center justify-between gap-3 border-t border-slate-100/80 pt-3 sm:border-0 sm:pt-0 sm:justify-end sm:gap-4">
                   <div className="text-left sm:text-right">
                     <p className="text-base font-black leading-tight text-slate-900">
-                      {formatCurrency(ob.amount)}
+                      {formatCurrency(ob.amount, "IDR")}
                       <span className="text-xs font-bold text-slate-600">
-                        {isInstallment ? " /mo" : ` /${ob.frequency === "monthly" ? "mo" : ob.frequency === "yearly" ? "yr" : ob.frequency}`}
+                        {freqSuffix}
                       </span>
                     </p>
                     <span className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[11px] ${dueBadgeClass}`}>
@@ -420,7 +442,7 @@ export function SubscriptionsPage() {
                         className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
                       >
                         <CheckCircle2 size={14} />
-                        Pay
+                        {t("debts.pay") || "Bayar"}
                       </Button>
                     )}
 

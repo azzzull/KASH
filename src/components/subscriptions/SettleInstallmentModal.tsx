@@ -10,6 +10,7 @@ import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
+import { useI18n } from "../../i18n";
 
 type SettleInstallmentModalProps = {
   obligation: RecurringObligationWithMeta;
@@ -24,12 +25,13 @@ export function SettleInstallmentModal({
   onSettled,
   wallets,
 }: SettleInstallmentModalProps) {
+  const { t, formatCurrency } = useI18n();
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("wallet");
   const [selectedWalletId, setSelectedWalletId] = useState<string>(
     obligation.default_wallet_id || (wallets.length > 0 ? wallets[0].id : ""),
   );
   const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
-  const [note, setNote] = useState("Early settlement for remaining balance");
+  const [note, setNote] = useState(t("subscriptions.earlySettlementDefaultNote") || "Pelunasan dipercepat untuk sisa tagihan");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +42,7 @@ export function SettleInstallmentModal({
     e.preventDefault();
 
     if (paymentMode === "wallet" && !selectedWalletId) {
-      setError("Please select a wallet for settlement.");
+      setError(t("debts.selectWalletError") || "Silakan pilih dompet untuk pelunasan.");
       return;
     }
 
@@ -70,8 +72,8 @@ export function SettleInstallmentModal({
       isOpen
       onClose={onClose}
       maxWidth="md"
-      title="Early Settlement"
-      description={`${obligation.name} (${remainingCount} installments remaining)`}
+      title={t("subscriptions.earlySettlement") || "Pelunasan Dipercepat"}
+      description={`${obligation.name} (${t("subscriptions.installmentsRemainingCount", { count: remainingCount }) || `${remainingCount} cicilan tersisa`})`}
     >
       <form onSubmit={submit} className="grid w-full max-w-full min-w-0 gap-4">
         {error && (
@@ -83,20 +85,20 @@ export function SettleInstallmentModal({
         {/* Settlement Amount Summary */}
         <div className="rounded-xl border border-kash-emerald/20 bg-kash-selected/30 p-4 text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-kash-emeraldDark">
-            Total Remaining Balance to Settle
+            {t("subscriptions.totalRemainingToSettle") || "Total Sisa Tagihan untuk Dilunasi"}
           </span>
           <p className="mt-1 text-2xl font-black text-slate-900">
-            {formatCurrency(remainingAmount)}
+            {formatCurrency(remainingAmount, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Settles {remainingCount} remaining installments at once
+            {t("subscriptions.settlesRemainingAtOnce", { count: remainingCount }) || `Melunasi sekaligus sisa ${remainingCount} bulan cicilan`}
           </p>
         </div>
 
         {/* Payment Mode Selector */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-            Settlement Method *
+            {t("debts.settlementMethod") || "Metode Pelunasan"} *
           </label>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button
@@ -109,7 +111,7 @@ export function SettleInstallmentModal({
               }`}
             >
               <WalletCards size={15} />
-              Pay from Wallet
+              {t("debts.payFromWallet") || "Potong Dompet"}
             </button>
 
             <button
@@ -122,7 +124,7 @@ export function SettleInstallmentModal({
               }`}
             >
               <History size={15} />
-              Already Settled
+              {t("debts.alreadySettled") || "Sudah Terbayar"}
             </button>
           </div>
         </div>
@@ -131,7 +133,7 @@ export function SettleInstallmentModal({
         {paymentMode === "wallet" && (
           <SelectField
             id="settle-wallet"
-            label="Deduct Total from Wallet *"
+            label={`${t("debts.deductWallet")} *`}
             value={selectedWalletId}
             onChange={(e) => setSelectedWalletId(e.target.value)}
           >
@@ -146,7 +148,7 @@ export function SettleInstallmentModal({
         {/* Paid Date */}
         <DatePickerField
           id="settle-date"
-          label="Settlement Date"
+          label={t("debts.settlementDate") || "Tanggal Pelunasan"}
           value={paidAt}
           onChange={(val) => setPaidAt(val)}
         />
@@ -154,18 +156,18 @@ export function SettleInstallmentModal({
         {/* Note */}
         <FormField
           id="settle-note"
-          label="Note (Optional)"
+          label={t("transactions.noteOptional") || "Catatan (Opsional)"}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
 
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
           <Button variant="secondary" type="button" onClick={onClose} disabled={saving}>
-            Cancel
+            {t("common.cancel") || "Batal"}
           </Button>
           <Button type="submit" disabled={saving}>
             <CheckCircle2 size={16} />
-            {saving ? "Settling..." : "Complete Settlement"}
+            {saving ? (t("common.saving") || "Menyimpan...") : (t("subscriptions.completeSettlement") || "Selesaikan Pelunasan")}
           </Button>
         </div>
       </form>

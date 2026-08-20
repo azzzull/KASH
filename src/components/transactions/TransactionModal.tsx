@@ -52,6 +52,22 @@ function isAmountError(error: string | null) {
 }
 
 export function TransactionModal({ mode, onClose, onSaved }: TransactionModalProps) {
+  const { t, formatCurrency } = useI18n();
+
+  const modeCopy: Record<
+    QuickTransactionMode,
+    {
+      accent: string;
+      icon: typeof ArrowDown;
+      title: string;
+      submitLabel: string;
+    }
+  > = {
+    expense: { accent: "text-kash-expense", icon: ArrowDown, submitLabel: t("transactions.saveExpense") || "Simpan Pengeluaran", title: t("transactions.newExpense") || "Pengeluaran Baru" },
+    income: { accent: "text-kash-income", icon: ArrowUp, submitLabel: t("transactions.saveIncome") || "Simpan Pemasukan", title: t("transactions.newIncome") || "Pemasukan Baru" },
+    transfer: { accent: "text-kash-transfer", icon: ArrowRightLeft, submitLabel: t("transactions.transfer") || "Transfer", title: t("transactions.newTransfer") || "Transfer Baru" },
+  };
+
   const copy = modeCopy[mode];
   const Icon = copy.icon;
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
@@ -83,7 +99,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     ]);
 
     if (walletResult.error || categoryResult.error || !walletResult.data || !categoryResult.data) {
-      setError("Couldn't load wallets and categories. Please try again.");
+      setError(t("transactions.loadError") || "Gagal memuat dompet dan kategori. Silakan coba lagi.");
       setLoading(false);
       return;
     }
@@ -129,23 +145,23 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const amountHasError = isAmountError(error);
 
   const validate = () => {
-    if (!walletId) return "Choose a wallet.";
-    if (!amountDigits || amountNumber <= 0) return "Amount must be greater than zero.";
-    if (!transactionDate) return "Choose a transaction date.";
+    if (!walletId) return t("transactions.chooseWallet") || "Pilih dompet.";
+    if (!amountDigits || amountNumber <= 0) return t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.";
+    if (!transactionDate) return t("transactions.chooseDate") || "Pilih tanggal transaksi.";
 
     if (mode === "transfer") {
-      if (!destinationWalletId) return "Choose a destination wallet.";
-      if (walletId === destinationWalletId) return "Source and destination wallets must be different.";
-      if (feeNumber < 0) return "Transfer fee cannot be negative.";
+      if (!destinationWalletId) return t("transactions.chooseDestinationWallet") || "Pilih dompet tujuan.";
+      if (walletId === destinationWalletId) return t("transactions.walletsMustBeDifferent") || "Dompet asal dan tujuan harus berbeda.";
+      if (feeNumber < 0) return t("transactions.feeCannotBeNegative") || "Biaya transfer tidak boleh bernilai negatif.";
       if (isMoneyGreaterThan(totalTransferDeduction, selectedWalletBalance)) {
-        return "Wallet balance is not enough. Check the transfer amount again.";
+        return t("transactions.insufficientBalanceTransfer") || "Saldo dompet tidak mencukupi. Periksa kembali nominal transfer.";
       }
       return null;
     }
 
-    if (!categoryId) return `Choose an ${mode} category.`;
+    if (!categoryId) return `${t("transactions.chooseCategory") || "Pilih kategori"} ${mode}.`;
     if (mode === "expense" && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
-      return "Wallet balance is not enough. Check the transaction amount again.";
+      return t("transactions.insufficientBalanceExpense") || "Saldo dompet tidak mencukupi. Periksa kembali nominal transaksi.";
     }
     return null;
   };
@@ -198,7 +214,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
       if (result.error) {
         console.error("Failed to create transaction", result.error);
-        setError("Couldn't save this transaction. Please check the details and try again.");
+        setError(t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.");
         setSaving(false);
         return;
       }
@@ -208,7 +224,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       onClose();
     } catch (transactionError) {
       console.error("Failed to create transaction", transactionError);
-      setError(transactionError instanceof Error ? transactionError.message : "Couldn't save this transaction. Please sign in and try again.");
+      setError(transactionError instanceof Error ? transactionError.message : (t("transactions.saveErrorAuth") || "Gagal menyimpan transaksi. Silakan coba lagi."));
       setSaving(false);
     }
   };
@@ -227,7 +243,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
         </div>
       }
       description={
-        mode === "transfer" ? "Pindahkan saldo antar dompet pribadi." : "Catat satu transaksi keuangan."
+        mode === "transfer" ? (t("transactions.transferDesc") || "Pindahkan saldo antar dompet pribadi.") : (t("transactions.singleTransactionDesc") || "Catat satu transaksi keuangan.")
       }
     >
       <div>
@@ -249,7 +265,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               hasError={amountHasError}
               id={`${mode}-amount`}
               inputMode="numeric"
-              label="Amount"
+              label={t("transactions.amount") || "Nominal"}
               onChange={(event) => setAmount(formatMoneyDigits(event.target.value))}
               placeholder="125.000"
               value={amount}
@@ -258,7 +274,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             {mode !== "transfer" ? (
               <SelectField
                 id={`${mode}-category`}
-                label="Category"
+                label={t("categories.title") || "Kategori"}
                 action={
                   <button
                     type="button"
@@ -266,7 +282,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                     className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
                   >
                     <Plus size={13} strokeWidth={2.5} />
-                    Tambah Kategori
+                    {t("categories.create") || "Tambah Kategori"}
                   </button>
                 }
                 onChange={(event) => {
@@ -283,14 +299,14 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                     {category.name}
                   </option>
                 ))}
-                <option value="__create_new__">+ Tambah Kategori Baru...</option>
+                <option value="__create_new__">{t("categories.createNewOption") || "+ Tambah Kategori Baru..."}</option>
               </SelectField>
             ) : null}
 
             {mode === "expense" ? (
               <SelectField
                 id="expense-envelope"
-                label="Amplop / Purpose Group (Opsional)"
+                label={t("envelopes.title") || "Amplop / Grup Anggaran (Opsional)"}
                 action={
                   <button
                     type="button"
@@ -298,7 +314,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                     className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
                   >
                     <Plus size={13} strokeWidth={2.5} />
-                    Tambah Amplop
+                    {t("envelopes.create") || "Tambah Amplop"}
                   </button>
                 }
                 onChange={(event) => {
@@ -310,17 +326,17 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                 }}
                 value={envelopeId}
               >
-                <option value="">-- Tanpa Amplop --</option>
+                <option value="">{t("envelopes.noEnvelope") || "-- Tanpa Amplop --"}</option>
                 {envelopes.map((env) => (
                   <option key={env.id} value={env.id}>
                     {env.name}
                   </option>
                 ))}
-                <option value="__create_new__">+ Buat Amplop Baru...</option>
+                <option value="__create_new__">{t("envelopes.createNewOption") || "+ Buat Amplop Baru..."}</option>
               </SelectField>
             ) : null}
 
-            <SelectField id={`${mode}-wallet`} label={mode === "transfer" ? "From" : "Wallet"} onChange={(event) => setWalletId(event.target.value)} value={walletId}>
+            <SelectField id={`${mode}-wallet`} label={mode === "transfer" ? (t("transactions.fromWallet") || "Dari Dompet") : (t("wallets.title") || "Dompet")} onChange={(event) => setWalletId(event.target.value)} value={walletId}>
               {wallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
                   {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
@@ -330,7 +346,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
             {mode === "transfer" ? (
               <>
-                <SelectField id="transfer-destination" label="To" onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
+                <SelectField id="transfer-destination" label={t("transactions.toWallet") || "Ke Dompet"} onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
                   {wallets.map((wallet) => (
                     <option key={wallet.id} value={wallet.id}>
                       {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
@@ -340,7 +356,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                 <FormField
                   id="transfer-fee"
                   inputMode="numeric"
-                  label="Biaya Transfer (Opsional)"
+                  label={t("transactions.transferFeeOptional") || "Biaya Transfer (Opsional)"}
                   onChange={(event) => setTransferFee(formatMoneyDigits(event.target.value))}
                   placeholder="0"
                   value={transferFee}
@@ -348,37 +364,37 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </>
             ) : null}
 
-            <DatePickerField id={`${mode}-date`} label="Date and Time" enableTime onChange={(value) => setTransactionDate(value)} value={transactionDate} />
+            <DatePickerField id={`${mode}-date`} label={t("transactions.dateTime") || "Tanggal & Waktu"} enableTime onChange={(value) => setTransactionDate(value)} value={transactionDate} />
 
             <FormField
               disabled={saving}
               hasError={!isAmountError(error) ? Boolean(error) : false}
               hint={!isAmountError(error) ? error ?? undefined : undefined}
               id="transaction-note"
-              label="Note (Optional)"
+              label={t("transactions.noteOptional") || "Catatan (Opsional)"}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="e.g. Lunch with team, monthly wifi"
+              placeholder={t("transactions.notePlaceholder") || "mis. Makan siang bersama tim, wifi bulanan"}
               value={note}
             />
 
             {mode === "transfer" && selectedWallet && destinationWallet ? (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-                <p className="font-bold text-slate-900">Transfer breakdown</p>
+                <p className="font-bold text-slate-900">{t("transactions.transferBreakdown") || "Rincian Transfer"}</p>
                 <dl className="mt-2 space-y-1">
                   <div className="flex justify-between gap-4">
-                    <dt>From {selectedWallet?.name ?? "-"}</dt>
+                    <dt>{t("transactions.from") || "Dari"} {selectedWallet?.name ?? "-"}</dt>
                     <dd>{formatCurrency(amountNumber, selectedWallet?.currency ?? "IDR")}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt>Fee</dt>
+                    <dt>{t("transactions.fee") || "Biaya"}</dt>
                     <dd>{formatCurrency(feeNumber, selectedWallet?.currency ?? "IDR")}</dd>
                   </div>
                   <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 text-slate-900">
-                    <dt>Total deducted</dt>
+                    <dt>{t("transactions.totalDeducted") || "Total Terpotong"}</dt>
                     <dd>{formatCurrency(totalDeducted, selectedWallet?.currency ?? "IDR")}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt>{destinationWallet?.name ?? "Destination"} receives</dt>
+                    <dt>{destinationWallet?.name ?? "Tujuan"} {t("transactions.receives") || "menerima"}</dt>
                     <dd>{formatCurrency(amountNumber, destinationWallet?.currency ?? "IDR")}</dd>
                   </div>
                 </dl>
@@ -387,13 +403,13 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
             {mode === "transfer" && wallets.length < 2 ? (
               <p className="rounded-lg border border-kash-gold/40 bg-kash-gold/10 px-4 py-3 text-sm font-bold text-slate-900">
-                Add another active wallet before creating a transfer.
+                {t("transactions.needTwoWallets") || "Tambahkan setidaknya satu dompet aktif lainnya sebelum membuat transfer."}
               </p>
             ) : null}
 
             <Button disabled={saving || (mode === "transfer" && wallets.length < 2)} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-              {copy.submitLabel}
+              {saving ? (t("common.saving") || "Menyimpan...") : copy.submitLabel}
             </Button>
           </form>
         )}

@@ -7,26 +7,35 @@ import { FormField } from "../components/ui/FormField";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 import { completeProfileOnboarding, updateProfileCurrency, updateProfileFullName } from "../lib/auth";
 import { formatCurrency as formatMoneyCurrency, formatMoneyDigits, parseMoneyInputDigits } from "../lib/money";
 import { createFirstWallet } from "../lib/wallets";
 import type { Wallet, WalletType } from "../types/domain";
 
-const walletTypes: Array<{ label: string; value: WalletType; needsInstitution: boolean }> = [
-  { label: "Bank", value: "bank", needsInstitution: true },
-  { label: "Digital Bank", value: "digital_bank", needsInstitution: true },
-  { label: "E-Wallet", value: "ewallet", needsInstitution: true },
-  { label: "Cash", value: "cash", needsInstitution: false },
-  { label: "Investment", value: "investment", needsInstitution: true },
-  { label: "Savings", value: "savings", needsInstitution: true },
-  { label: "Custom", value: "custom", needsInstitution: true },
-];
-
-const steps = ["Welcome", "Profile", "Currency", "First Wallet", "Initial Balance"];
-
 export function OnboardingPage() {
+  const { t, formatCurrency } = useI18n();
   const navigate = useNavigate();
   const { profile, refreshProfile, user } = useAuth();
+
+  const walletTypes: Array<{ label: string; value: WalletType; needsInstitution: boolean }> = useMemo(() => [
+    { label: t("wallets.bank") || "Bank", value: "bank", needsInstitution: true },
+    { label: t("wallets.digitalBank") || "Bank Digital", value: "digital_bank", needsInstitution: true },
+    { label: t("wallets.eWallet") || "E-Wallet", value: "ewallet", needsInstitution: true },
+    { label: t("wallets.cash") || "Uang Tunai", value: "cash", needsInstitution: false },
+    { label: t("wallets.investment") || "Investasi", value: "investment", needsInstitution: true },
+    { label: t("wallets.savings") || "Tabungan", value: "savings", needsInstitution: true },
+    { label: t("wallets.custom") || "Lainnya", value: "custom", needsInstitution: true },
+  ], [t]);
+
+  const steps = useMemo(() => [
+    t("onboarding.welcome") || "Selamat Datang",
+    t("onboarding.profile") || "Profil",
+    t("onboarding.currency") || "Mata Uang",
+    t("onboarding.firstWallet") || "Dompet Pertama",
+    t("onboarding.initialBalance") || "Saldo Awal",
+  ], [t]);
+
   const [step, setStep] = useState(0);
   const [displayName, setDisplayName] = useState(
     profile?.full_name ||
@@ -46,7 +55,7 @@ export function OnboardingPage() {
 
   const selectedWalletType = useMemo(
     () => walletTypes.find((type) => type.value === walletType) ?? walletTypes[0],
-    [walletType],
+    [walletType, walletTypes],
   );
   const isFinish = step >= steps.length;
   const progressPercent = isFinish ? 100 : ((step + 1) / steps.length) * 100;
@@ -56,7 +65,7 @@ export function OnboardingPage() {
     const trimmed = displayName.trim();
 
     if (!trimmed) {
-      setError("Please enter a display name.");
+      setError(t("onboarding.displayNameRequired") || "Silakan masukkan nama tampilan Anda.");
       return;
     }
 
@@ -66,7 +75,7 @@ export function OnboardingPage() {
     const { error: updateError } = await updateProfileFullName(user.id, trimmed);
 
     if (updateError) {
-      setError("Couldn't save your display name. Please try again.");
+      setError(t("onboarding.displayNameSaveError") || "Gagal menyimpan nama tampilan. Silakan coba lagi.");
       setLoading(false);
       return;
     }
@@ -84,7 +93,7 @@ export function OnboardingPage() {
     const { error: updateError } = await updateProfileCurrency(user.id, currency);
 
     if (updateError) {
-      setError("Couldn't save your currency. Please try again.");
+      setError(t("onboarding.currencySaveError") || "Gagal menyimpan mata uang. Silakan coba lagi.");
       setLoading(false);
       return;
     }
@@ -96,12 +105,12 @@ export function OnboardingPage() {
 
   const validateWalletInfo = () => {
     if (!walletName.trim()) {
-      setError("Wallet name is required.");
+      setError(t("wallets.nameRequired") || "Nama dompet wajib diisi.");
       return false;
     }
 
     if (selectedWalletType.needsInstitution && !institutionName.trim()) {
-      setError("Institution is required for this wallet type.");
+      setError(t("wallets.institutionRequired") || "Institusi / Bank wajib diisi untuk tipe dompet ini.");
       return false;
     }
 
@@ -114,7 +123,7 @@ export function OnboardingPage() {
 
     const effectiveName = displayName.trim() || profile?.full_name?.trim();
     if (!effectiveName) {
-      setError("Please set a display name before completing onboarding.");
+      setError(t("onboarding.displayNameRequired") || "Silakan atur nama tampilan sebelum menyelesaikan orientasi.");
       setStep(1);
       return;
     }
@@ -122,7 +131,7 @@ export function OnboardingPage() {
     const normalizedBalance = parseMoneyInputDigits(initialBalance);
 
     if (!normalizedBalance) {
-      setError("Initial balance is required. Enter 0 if the wallet is empty.");
+      setError(t("wallets.initialBalanceRequired") || "Saldo awal wajib diisi. Masukkan 0 jika dompet kosong.");
       return;
     }
 
@@ -131,7 +140,7 @@ export function OnboardingPage() {
 
     const { error: nameError } = await updateProfileFullName(user.id, effectiveName);
     if (nameError) {
-      setError("Couldn't save your display name. Please try again.");
+      setError(t("onboarding.displayNameSaveError") || "Gagal menyimpan nama tampilan. Silakan coba lagi.");
       setLoading(false);
       return;
     }
@@ -149,7 +158,7 @@ export function OnboardingPage() {
       });
 
       if (walletError || !data) {
-        setError("Couldn't create your first wallet. Please check the details and try again.");
+        setError(t("onboarding.walletCreateError") || "Gagal membuat dompet pertama Anda. Silakan periksa data dan coba lagi.");
         setLoading(false);
         return;
       }
@@ -161,7 +170,7 @@ export function OnboardingPage() {
     const { error: profileError } = await completeProfileOnboarding(user.id);
 
     if (profileError) {
-      setError("Your wallet was created, but onboarding couldn't be completed. Please try again.");
+      setError(t("onboarding.completeError") || "Dompet Anda berhasil dibuat, tetapi proses onboarding belum selesai. Silakan coba lagi.");
       setLoading(false);
       return;
     }
@@ -201,12 +210,12 @@ export function OnboardingPage() {
       <main className="kash-page-bg flex min-h-screen items-center justify-center px-4 py-10">
         <section className="w-full max-w-md rounded-lg border border-kash-emerald/10 bg-white/95 p-6 text-center shadow-sm">
           <KashLogo className="mx-auto h-auto w-40" />
-          <h1 className="mt-8 text-xl font-bold text-slate-900">Preparing your profile</h1>
+          <h1 className="mt-8 text-xl font-bold text-slate-900">{t("onboarding.preparingProfile") || "Menyiapkan profil Anda"}</h1>
           <p className="mt-3 text-sm leading-6 text-slate-700">
-            We could not load your KASH profile yet. If you just signed in, wait a moment and try again.
+            {t("onboarding.loadingProfileNotice") || "Kami sedang memuat profil KASH Anda. Tunggu sebentar dan coba lagi."}
           </p>
           <Button className="mt-6 w-full" onClick={() => void refreshProfile()}>
-            Retry
+            {t("common.retry") || "Coba Lagi"}
           </Button>
         </section>
       </main>
@@ -224,7 +233,7 @@ export function OnboardingPage() {
           <div className="mt-8">
             <div className="flex items-center justify-between text-xs font-bold text-slate-600">
               <span>
-                Step {step + 1} of {steps.length}
+                {t("onboarding.stepOf", { current: step + 1, total: steps.length }) || `Langkah ${step + 1} dari ${steps.length}`}
               </span>
               <span>{steps[step]}</span>
             </div>
@@ -243,15 +252,15 @@ export function OnboardingPage() {
         {step === 0 ? (
           <div className="mt-10 text-center">
             <h1 className="text-3xl font-bold leading-tight text-slate-900">
-              Your money,
+              {t("onboarding.heroTitleLine1") || "Keuangan Anda,"}
               <br />
-              organized in one place.
+              {t("onboarding.heroTitleLine2") || "tertata dalam satu tempat."}
             </h1>
             <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-slate-700">
-              Set up your profile, currency, and first wallet so KASH can start tracking your real balances.
+              {t("onboarding.heroDesc") || "Atur profil, mata uang, dan dompet pertama Anda agar KASH dapat mulai mencatat saldo riil Anda."}
             </p>
             <Button className="mt-8 w-full sm:w-auto" onClick={() => setStep(1)}>
-              Get Started
+              {t("onboarding.getStarted") || "Mulai Sekarang"}
             </Button>
           </div>
         ) : null}
@@ -261,15 +270,15 @@ export function OnboardingPage() {
             {step === 1 ? (
               <>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">What should we call you?</h1>
+                  <h1 className="text-2xl font-bold text-slate-900">{t("onboarding.nameTitle") || "Siapa nama panggilan Anda?"}</h1>
                   <p className="mt-2 text-sm leading-6 text-slate-700">
-                    This name will appear on your dashboard, profile, and navigation.
+                    {t("onboarding.nameDesc") || "Nama ini akan muncul pada dashboard, profil, dan navigasi Anda."}
                   </p>
                 </div>
                 <FormField
                   id="onboarding-display-name"
-                  label="Display Name"
-                  placeholder="e.g. Alex"
+                  label={t("onboarding.displayName") || "Nama Tampilan"}
+                  placeholder="mis. Alex"
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                   autoFocus
@@ -281,10 +290,10 @@ export function OnboardingPage() {
             {step === 2 ? (
               <>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">What's your main currency?</h1>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">IDR is the supported currency for the MVP.</p>
+                  <h1 className="text-2xl font-bold text-slate-900">{t("onboarding.currencyTitle") || "Apa mata uang utama Anda?"}</h1>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">{t("onboarding.currencyDesc") || "IDR adalah mata uang standar yang didukung."}</p>
                 </div>
-                <SelectField id="currency" label="Currency" value={currency} onChange={(event) => setCurrency(event.target.value)}>
+                <SelectField id="currency" label={t("wallets.currency") || "Mata Uang"} value={currency} onChange={(event) => setCurrency(event.target.value)}>
                   <option value="IDR">IDR - Indonesian Rupiah</option>
                 </SelectField>
               </>
@@ -293,12 +302,12 @@ export function OnboardingPage() {
             {step === 3 ? (
               <>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Add your first wallet</h1>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">Add where you keep money today.</p>
+                  <h1 className="text-2xl font-bold text-slate-900">{t("onboarding.walletTitle") || "Tambah dompet pertama Anda"}</h1>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">{t("onboarding.walletDesc") || "Tambahkan tempat Anda menyimpan uang saat ini."}</p>
                 </div>
                 <SelectField
                   id="wallet-type"
-                  label="Wallet Type"
+                  label={t("wallets.type") || "Tipe Dompet"}
                   value={walletType}
                   onChange={(event) => setWalletType(event.target.value as WalletType)}
                 >
@@ -310,7 +319,7 @@ export function OnboardingPage() {
                 </SelectField>
                 <FormField
                   id="wallet-name"
-                  label="Wallet Name"
+                  label={t("wallets.name") || "Nama Dompet"}
                   onChange={(event) => setWalletName(event.target.value)}
                   placeholder="BCA Utama"
                   value={walletName}
@@ -318,20 +327,20 @@ export function OnboardingPage() {
                 {selectedWalletType.needsInstitution ? (
                   <FormField
                     id="institution-name"
-                    label="Institution"
+                    label={t("wallets.institution") || "Institusi / Bank"}
                     onChange={(event) => setInstitutionName(event.target.value)}
                     placeholder="BCA"
                     value={institutionName}
                   />
                 ) : null}
-                <SelectField id="wallet-currency" label="Currency" value={currency} onChange={(event) => setCurrency(event.target.value)}>
+                <SelectField id="wallet-currency" label={t("wallets.currency") || "Mata Uang"} value={currency} onChange={(event) => setCurrency(event.target.value)}>
                   <option value="IDR">IDR - Indonesian Rupiah</option>
                 </SelectField>
                 <ToggleField
                   checked={includeInNetWorth}
-                  description="Include this wallet when KASH calculates your net worth."
+                  description={t("wallets.includeInNetWorthHelp") || "Sertakan dompet ini saat KASH menghitung kekayaan bersih Anda."}
                   id="include-net-worth"
-                  label="Include in Net Worth"
+                  label={t("wallets.includeInNetWorth") || "Sertakan dalam Kekayaan Bersih"}
                   onChange={(event) => setIncludeInNetWorth(event.target.checked)}
                 />
               </>
@@ -340,13 +349,13 @@ export function OnboardingPage() {
             {step === 4 ? (
               <>
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">Current Balance</h1>
+                  <h1 className="text-2xl font-bold text-slate-900">{t("onboarding.balanceTitle") || "Saldo Saat Ini"}</h1>
                   <p className="mt-2 text-sm leading-6 text-slate-700">
-                    Enter the real-world balance in this wallet. Initial balance is not income.
+                    {t("onboarding.balanceDesc") || "Masukkan saldo riil yang ada pada dompet ini. Saldo awal bukan merupakan pemasukan."}
                   </p>
                 </div>
                 <label className="block" htmlFor="initial-balance">
-                  <span className="text-sm font-bold text-slate-900">Initial Balance</span>
+                  <span className="text-sm font-bold text-slate-900">{t("wallets.initialBalance") || "Saldo Awal"}</span>
                   <div className="mt-2 flex h-14 items-center rounded-lg border border-slate-200 bg-white px-3 transition focus-within:border-kash-emerald focus-within:ring-4 focus-within:ring-[rgba(16,185,129,0.20)]">
                     <span className="mr-2 text-sm font-bold text-slate-700">Rp</span>
                     <input
@@ -364,11 +373,11 @@ export function OnboardingPage() {
 
             <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-between">
               <Button disabled={loading} onClick={() => setStep((current) => Math.max(0, current - 1))} variant="secondary">
-                Back
+                {t("common.back") || "Kembali"}
               </Button>
               <Button disabled={loading} type="submit">
                 {loading ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-                {step === 4 ? "Create Wallet" : "Continue"}
+                {step === 4 ? (t("wallets.create") || "Tambah Dompet") : (t("common.continue") || "Lanjutkan")}
               </Button>
             </div>
           </form>
@@ -379,14 +388,14 @@ export function OnboardingPage() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-kash-selected text-kash-emerald">
               <Check aria-hidden="true" size={24} strokeWidth={2.4} />
             </div>
-            <h1 className="mt-5 text-2xl font-bold text-slate-900">You're ready, {displayName.trim() || "friend"}.</h1>
+            <h1 className="mt-5 text-2xl font-bold text-slate-900">{t("onboarding.readyTitle", { name: displayName.trim() || "Kawan" }) || `Anda siap, ${displayName.trim() || "Kawan"}.`}</h1>
             <p className="mt-3 text-sm leading-6 text-slate-700">
               {createdWallet
-                ? `${formatMoneyCurrency(createdWallet.initial_balance, createdWallet.currency)} is now tracked in KASH.`
-                : "Your first wallet is now tracked in KASH."}
+                ? (t("onboarding.walletTrackedNotice", { amount: formatCurrency(createdWallet.initial_balance, createdWallet.currency) }) || `${formatMoneyCurrency(createdWallet.initial_balance, createdWallet.currency)} kini tercatat di KASH.`)
+                : (t("onboarding.firstWalletTracked") || "Dompet pertama Anda kini tercatat di KASH.")}
             </p>
             <Button className="mt-8 w-full sm:w-auto" onClick={() => navigate("/dashboard", { replace: true })}>
-              Go to Dashboard
+              {t("onboarding.goToDashboard") || "Buka Dashboard"}
             </Button>
           </div>
         ) : null}

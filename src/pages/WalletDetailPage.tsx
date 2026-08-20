@@ -80,6 +80,7 @@ function EditWalletModal({
   onSaved: () => void;
   wallet: WalletWithBalance;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<WalletEditState>(toEditState(wallet));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,17 +93,17 @@ function EditWalletModal({
     const initialBalance = parseMoneyInputDigits(form.initialBalance);
 
     if (!name) {
-      setError("Wallet name is required.");
+      setError(t("wallets.nameRequired") || "Nama dompet wajib diisi.");
       return;
     }
 
     if (selectedType.needsInstitution && !institutionName) {
-      setError("Institution is required for this wallet type.");
+      setError(t("wallets.institutionRequired") || "Institusi / Bank wajib diisi untuk tipe dompet ini.");
       return;
     }
 
     if (canEditInitialBalance && !initialBalance) {
-      setError("Initial balance is required. Enter 0 if this wallet is empty.");
+      setError(t("wallets.initialBalanceRequired") || "Saldo awal wajib diisi. Masukkan 0 jika kosong.");
       return;
     }
 
@@ -120,7 +121,7 @@ function EditWalletModal({
     });
 
     if (updateError) {
-      setError("Couldn't update this wallet. Please check the details and try again.");
+      setError(t("wallets.updateError") || "Gagal memperbarui dompet. Silakan periksa data dan coba lagi.");
       setSaving(false);
       return;
     }
@@ -133,8 +134,8 @@ function EditWalletModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title="Edit Wallet"
-      description="Balance changes should come from the ledger once transactions exist."
+      title={t("wallets.edit") || "Edit Dompet"}
+      description={t("wallets.editDesc") || "Perubahan saldo sebaiknya melalui buku besar setelah ada transaksi."}
     >
       <div>
         {error ? (
@@ -146,7 +147,7 @@ function EditWalletModal({
           <SelectField
             disabled
             id="edit-wallet-type"
-            label="Wallet Type"
+            label={t("wallets.type") || "Tipe Dompet"}
             onChange={(event) => setForm((current) => ({ ...current, walletType: event.target.value as WalletType }))}
             value={form.walletType}
           >
@@ -156,11 +157,11 @@ function EditWalletModal({
               </option>
             ))}
           </SelectField>
-          <FormField id="edit-wallet-name" label="Wallet Name" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} />
+          <FormField id="edit-wallet-name" label={t("wallets.name") || "Nama Dompet"} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} />
           {selectedType.needsInstitution ? (
             <FormField
               id="edit-institution-name"
-              label="Institution"
+              label={t("wallets.institution") || "Institusi / Bank"}
               onChange={(event) => setForm((current) => ({ ...current, institutionName: event.target.value }))}
               value={form.institutionName}
             />
@@ -169,19 +170,19 @@ function EditWalletModal({
             disabled={!canEditInitialBalance}
             hint={
               canEditInitialBalance
-                ? "Editable while this wallet has no completed financial history."
-                : "Locked because this wallet already has completed financial history."
+                ? (t("wallets.initialBalanceEditable") || "Dapat diedit selama dompet ini belum memiliki riwayat transaksi.")
+                : (t("wallets.initialBalanceLocked") || "Terkunci karena dompet ini sudah memiliki riwayat transaksi.")
             }
             id="edit-initial-balance"
             inputMode="numeric"
-            label="Initial Balance"
+            label={t("wallets.initialBalance") || "Saldo Awal"}
             onChange={(event) => setForm((current) => ({ ...current, initialBalance: formatMoneyDigits(event.target.value) }))}
             value={form.initialBalance}
           />
-          <SelectField disabled id="edit-currency" label="Currency" onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))} value={form.currency}>
+          <SelectField disabled id="edit-currency" label={t("wallets.currency") || "Mata Uang"} onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))} value={form.currency}>
             <option value="IDR">IDR - Indonesian Rupiah</option>
           </SelectField>
-          <SelectField id="edit-wallet-icon" label="Icon" onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
+          <SelectField id="edit-wallet-icon" label={t("wallets.icon") || "Ikon"} onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
             {walletIconOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -189,7 +190,7 @@ function EditWalletModal({
             ))}
           </SelectField>
           <fieldset>
-            <legend className="text-sm font-bold text-slate-900">Color Accent</legend>
+            <legend className="text-sm font-bold text-slate-900">{t("wallets.colorAccent") || "Aksen Warna"}</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {walletColors.map((color) => (
                 <button
@@ -205,14 +206,14 @@ function EditWalletModal({
           </fieldset>
           <ToggleField
             checked={form.includeInNetWorth}
-            description="Included wallets count toward Total Assets."
+            description={t("wallets.includeInNetWorthHelp") || "Dompet yang disertakan akan dihitung dalam Total Aset."}
             id="edit-include-net-worth"
-            label="Include in Net Worth"
+            label={t("wallets.includeInNetWorth") || "Sertakan dalam Kekayaan Bersih"}
             onChange={(event) => setForm((current) => ({ ...current, includeInNetWorth: event.target.checked }))}
           />
           <Button disabled={saving} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            Save Changes
+            {saving ? (t("common.saving") || "Menyimpan...") : (t("common.saveChanges") || "Simpan Perubahan")}
           </Button>
         </form>
       </div>
@@ -249,6 +250,7 @@ function AdjustmentModal({
   onSaved: () => void;
   wallet: WalletWithBalance;
 }) {
+  const { t, formatCurrency } = useI18n();
   const [actualBalance, setActualBalance] = useState("");
   const [reason, setReason] = useState("");
   const [transactionDate, setTransactionDate] = useState(currentLocalDateTimeValue());
@@ -265,17 +267,17 @@ function AdjustmentModal({
     if (saving) return;
 
     if (!actualDigits) {
-      setError("Actual balance is required.");
+      setError(t("wallets.actualBalanceRequired") || "Saldo riil wajib diisi.");
       return;
     }
 
     if (adjustmentAmount === 0) {
-      setError("Adjustment must not be zero.");
+      setError(t("wallets.adjustmentNonZero") || "Nilai penyesuaian tidak boleh nol.");
       return;
     }
 
     if (!reason.trim()) {
-      setError("Adjustment reason is required.");
+      setError(t("wallets.adjustmentReasonRequired") || "Alasan penyesuaian wajib diisi.");
       return;
     }
 
@@ -292,7 +294,7 @@ function AdjustmentModal({
 
       if (adjustmentError) {
         console.error("Failed to create adjustment", adjustmentError);
-        setError("Couldn't save this adjustment. Please check the details and try again.");
+        setError(t("wallets.saveAdjustmentError") || "Gagal menyimpan penyesuaian. Silakan periksa data dan coba lagi.");
         setSaving(false);
         return;
       }
@@ -301,7 +303,7 @@ function AdjustmentModal({
       onSaved();
     } catch (adjustmentError) {
       console.error("Failed to create adjustment", adjustmentError);
-      setError("Couldn't save this adjustment. Please sign in and try again.");
+      setError(t("wallets.saveAdjustmentErrorAuth") || "Gagal menyimpan penyesuaian. Silakan coba lagi.");
       setSaving(false);
     }
   };
@@ -311,8 +313,8 @@ function AdjustmentModal({
       isOpen
       onClose={onClose}
       maxWidth="md"
-      title="Adjust Balance"
-      description="Reconcile KASH with the real balance in this wallet."
+      title={t("wallets.adjustBalance") || "Sesuaikan Saldo"}
+      description={t("wallets.adjustBalanceDesc") || "Sesuaikan saldo KASH dengan saldo riil pada dompet ini."}
     >
       <div>
         {error ? (
@@ -323,34 +325,34 @@ function AdjustmentModal({
 
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Current KASH Balance</p>
+            <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.currentKashBalance") || "Saldo KASH Saat Ini"}</p>
             <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(currentBalance, wallet.currency)}</p>
           </div>
           <FormField
             id="actual-balance"
             inputMode="numeric"
-            label="Actual Balance"
+            label={t("wallets.actualBalance") || "Saldo Riil / Fisik"}
             onChange={(event) => setActualBalance(formatMoneyDigits(event.target.value))}
             placeholder="600.000"
             value={actualBalance}
           />
           <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Adjustment</p>
+            <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.adjustment") || "Penyesuaian"}</p>
             <p className={`mt-2 text-xl font-extrabold ${adjustmentAmount < 0 ? "text-kash-expense" : "text-kash-income"}`}>
               {adjustmentAmount === 0 ? formatCurrency(0, wallet.currency) : `${adjustmentAmount > 0 ? "+" : "-"}${formatCurrency(Math.abs(adjustmentAmount), wallet.currency)}`}
             </p>
           </div>
           <DatePickerField
             id="adjustment-date"
-            label="Date"
+            label={t("common.date") || "Tanggal"}
             enableTime
             onChange={(val) => setTransactionDate(val)}
             value={transactionDate}
           />
-          <FormField id="adjustment-reason" label="Reason" onChange={(event) => setReason(event.target.value)} placeholder="Cash count correction" value={reason} />
+          <FormField id="adjustment-reason" label={t("wallets.adjustmentReason") || "Alasan Penyesuaian"} onChange={(event) => setReason(event.target.value)} placeholder={t("wallets.adjustmentReasonPlaceholder") || "mis. Koreksi hitung kas fisik"} value={reason} />
           <Button disabled={saving} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            Save Adjustment
+            {saving ? (t("common.saving") || "Menyimpan...") : (t("wallets.saveAdjustment") || "Simpan Penyesuaian")}
           </Button>
         </form>
       </div>
@@ -371,6 +373,7 @@ function UpdateValuationModal({
   onSaved: () => void;
   wallet: WalletWithBalance;
 }) {
+  const { t, formatCurrency } = useI18n();
   const [marketValueInput, setMarketValueInput] = useState(formatDatabaseMoneyDigits(currentMarketValue));
   const [valuationDate, setValuationDate] = useState(getCurrentLocalDatetimeString());
   const [note, setNote] = useState("");
@@ -388,7 +391,7 @@ function UpdateValuationModal({
     if (saving) return;
 
     if (!marketValueDigits || nextMarketValue < 0) {
-      setError("Masukkan nilai pasar investasi yang valid (>= 0).");
+      setError(t("wallets.validMarketValueRequired") || "Masukkan nilai pasar investasi yang valid (>= 0).");
       return;
     }
 
@@ -404,7 +407,7 @@ function UpdateValuationModal({
       });
 
       if (valError) {
-        setError("Gagal memperbarui nilai pasar investasi.");
+        setError(t("wallets.updateValuationError") || "Gagal memperbarui nilai pasar investasi.");
         setSaving(false);
         return;
       }
@@ -412,7 +415,7 @@ function UpdateValuationModal({
       emitTransactionSaved();
       onSaved();
     } catch (err: any) {
-      setError(err?.message || "Gagal memperbarui nilai pasar investasi.");
+      setError(err?.message || (t("wallets.updateValuationError") || "Gagal memperbarui nilai pasar investasi."));
       setSaving(false);
     }
   };
@@ -428,9 +431,9 @@ function UpdateValuationModal({
             <LineChart aria-hidden="true" size={20} />
           </span>
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Update Nilai Investasi</h2>
+            <h2 className="text-xl font-extrabold text-slate-900">{t("wallets.updateInvestmentValuation") || "Update Nilai Investasi"}</h2>
             <p className="mt-0.5 text-xs font-semibold text-slate-600">
-              Pembaruan nilai pasar tidak mengubah arus kas riil (income/expense).
+              {t("wallets.updateValuationDesc") || "Pembaruan nilai pasar tidak mengubah arus kas riil (pemasukan/pengeluaran)."}
             </p>
           </div>
         </div>
@@ -446,11 +449,11 @@ function UpdateValuationModal({
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Modal Masuk (Cost Basis)</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.costBasis") || "Modal Masuk (Cost Basis)"}</p>
               <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(costBasisAmount, wallet.currency)}</p>
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nilai Pasar Sebelumnya</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.previousMarketValue") || "Nilai Pasar Sebelumnya"}</p>
               <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(currentMarketValue, wallet.currency)}</p>
             </div>
           </div>
@@ -458,15 +461,15 @@ function UpdateValuationModal({
           <FormField
             id="investment-market-value"
             inputMode="numeric"
-            label="Nilai Pasar Saat Ini (Current Market Value)"
+            label={t("wallets.currentMarketValueLabel") || "Nilai Pasar Saat Ini (Current Market Value)"}
             onChange={(event) => setMarketValueInput(formatMoneyDigits(event.target.value))}
-            placeholder="Contoh: 10.500.000"
+            placeholder={t("wallets.marketValuePlaceholder") || "Contoh: 10.500.000"}
             value={marketValueInput}
           />
 
           <div className="rounded-lg border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Keuntungan / Kerugian (Unrealized)</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">{t("wallets.unrealizedGainLoss") || "Keuntungan / Kerugian (Unrealized)"}</span>
               <span className={`text-xs font-extrabold ${unrealizedGain >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
                 {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(2)}%
               </span>
@@ -478,7 +481,7 @@ function UpdateValuationModal({
 
           <DatePickerField
             id="valuation-date"
-            label="Tanggal Valuasi"
+            label={t("wallets.valuationDate") || "Tanggal Valuasi"}
             enableTime
             onChange={(val) => setValuationDate(val)}
             value={valuationDate}
@@ -486,15 +489,15 @@ function UpdateValuationModal({
 
           <FormField
             id="valuation-note"
-            label="Catatan Valuasi (Opsional)"
+            label={t("wallets.valuationNoteOptional") || "Catatan Valuasi (Opsional)"}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Contoh: Update portofolio akhir bulan / dividen reinvest"
+            placeholder={t("wallets.valuationNotePlaceholder") || "Contoh: Update portofolio akhir bulan / dividen reinvest"}
             value={note}
           />
 
           <Button disabled={saving} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            Simpan Nilai Valuasi
+            {saving ? (t("common.saving") || "Menyimpan...") : (t("wallets.saveValuation") || "Simpan Nilai Valuasi")}
           </Button>
         </form>
       </div>
@@ -505,6 +508,7 @@ function UpdateValuationModal({
 export function WalletDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t, formatDate, formatCurrency } = useI18n();
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
   const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
   const [linkedGoalCount, setLinkedGoalCount] = useState(0);
@@ -529,7 +533,7 @@ export function WalletDetailPage() {
     ]);
 
     if (walletError || countError || goalCountError || !data) {
-      setError("Couldn't load this wallet. It may not exist or you may not have access.");
+      setError(t("wallets.loadDetailError") || "Gagal memuat dompet ini. Dompet mungkin tidak ada atau Anda tidak memiliki akses.");
       setLoading(false);
       return;
     }
@@ -561,7 +565,7 @@ export function WalletDetailPage() {
     if (!wallet) return;
 
     if (linkedGoalCount > 0) {
-      setError("This wallet is linked to a goal. Archive or edit the goal first before deleting this wallet.");
+      setError(t("wallets.linkedGoalDeletePrevented") || "Dompet ini terhubung ke target tabungan, sehingga tidak dapat dihapus langsung dari sini.");
       setShowDelete(false);
       return;
     }
@@ -573,7 +577,7 @@ export function WalletDetailPage() {
         : await archiveWallet(wallet.id);
 
     if (result.error) {
-      setError(transactionCount === 0 ? "Couldn't delete this wallet. Please try again." : "Couldn't archive this wallet. Please try again.");
+      setError(transactionCount === 0 ? (t("wallets.deleteError") || "Gagal menghapus dompet. Silakan coba lagi.") : (t("wallets.archiveError") || "Gagal mengarsipkan dompet. Silakan coba lagi."));
       setDeleting(false);
       setShowDelete(false);
       return;
@@ -590,13 +594,13 @@ export function WalletDetailPage() {
       <div className="mx-auto grid w-full max-w-4xl gap-4 p-4 md:p-6">
         <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/wallets">
           <ArrowLeft aria-hidden="true" size={17} />
-          Wallets
+          {t("wallets.title") || "Dompet"}
         </Link>
         <section className="rounded-lg border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-extrabold text-slate-900">Something went wrong.</h2>
+          <h2 className="text-lg font-extrabold text-slate-900">{t("common.error")}</h2>
           <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
           <Button className="mt-4" onClick={() => void loadWallet()}>
-            Retry
+            {t("common.retry")}
           </Button>
         </section>
       </div>
@@ -619,35 +623,35 @@ export function WalletDetailPage() {
     <div className="w-full min-w-0 space-y-5">
       <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/wallets">
         <ArrowLeft aria-hidden="true" size={17} />
-        Wallets
+        {t("wallets.title") || "Dompet"}
       </Link>
 
       <PageHeader
-        eyebrow={wallet.goal_name ? "Goal Pocket" : wallet.wallet_type === "savings" ? "Savings Pocket" : typeOption.label}
+        eyebrow={wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
         icon={Icon}
         title={wallet.name}
-        description={wallet.institution_name ?? "Wallet details and balance controls."}
+        description={wallet.institution_name ?? (t("wallets.detailSubtitle") || "Rincian dompet dan kontrol saldo.")}
         actions={
           <div className="flex flex-wrap gap-2">
             {isInvestment ? (
               <Button onClick={() => setShowValuation(true)}>
                 <LineChart aria-hidden="true" size={17} />
-                Update Nilai Investasi
+                {t("wallets.updateInvestmentValuation") || "Update Nilai Investasi"}
               </Button>
             ) : null}
             <Button onClick={() => setShowEdit(true)} variant="secondary">
               <Edit3 aria-hidden="true" size={17} />
-              Edit
+              {t("common.edit") || "Edit"}
             </Button>
             {!isInvestment ? (
               <Button onClick={() => setShowAdjustment(true)} variant="secondary">
                 <SlidersHorizontal aria-hidden="true" size={17} />
-                Adjust Balance
+                {t("wallets.adjustBalance") || "Sesuaikan Saldo"}
               </Button>
             ) : null}
             <Button disabled={deleting} onClick={() => setShowDelete(true)} variant="secondary">
               <Trash2 aria-hidden="true" size={17} />
-              Delete
+              {t("common.delete") || "Hapus"}
             </Button>
           </div>
         }
@@ -658,10 +662,10 @@ export function WalletDetailPage() {
           <div className="flex items-center gap-3">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
-                Kantong Terhubung ke Target Tabungan (Goal)
+                {t("wallets.pocketLinkedToGoal") || "Kantong Terhubung ke Target Tabungan (Goal)"}
               </p>
               <p className="text-sm font-bold text-slate-900">
-                {wallet.goal_name} {wallet.goal_target_amount ? `(Target: ${formatCurrency(Number(wallet.goal_target_amount), wallet.currency)})` : ""}
+                {wallet.goal_name} {wallet.goal_target_amount ? `(${t("goals.target") || "Target"}: ${formatCurrency(Number(wallet.goal_target_amount), wallet.currency)})` : ""}
               </p>
             </div>
           </div>
@@ -669,7 +673,7 @@ export function WalletDetailPage() {
             to={`/goals/${wallet.goal_id}`}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 self-start sm:self-center"
           >
-            Lihat Target Goal
+            {t("wallets.viewGoalTarget") || "Lihat Target Goal"}
           </Link>
         </section>
       ) : null}
@@ -679,26 +683,26 @@ export function WalletDetailPage() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <LineChart className="text-kash-emerald" size={18} />
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">Performa Investasi</h3>
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">{t("wallets.investmentPerformance") || "Performa Investasi"}</h3>
             </div>
             {lastValuationAt ? (
               <span className="text-xs font-semibold text-slate-500">
-                Valuasi Terakhir: {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(lastValuationAt))}
+                {t("wallets.lastValuation") || "Valuasi Terakhir"}: {formatDate(new Date(lastValuationAt))}
               </span>
             ) : null}
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Nilai Pasar Saat Ini</p>
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.currentMarketValue") || "Nilai Pasar Saat Ini"}</p>
               <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(currentBalance, wallet.currency)}</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Modal Masuk (Cost Basis)</p>
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.costBasis") || "Modal Masuk (Cost Basis)"}</p>
               <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(costBasis, wallet.currency)}</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Keuntungan / Kerugian</p>
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.gainLoss") || "Keuntungan / Kerugian"}</p>
               <div className="mt-2 flex items-center gap-2">
                 <p className={`text-xl font-extrabold ${unrealizedGainLoss >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
                   {unrealizedGainLoss === 0 ? formatCurrency(0, wallet.currency) : `${unrealizedGainLoss > 0 ? "+" : "-"}${formatCurrency(Math.abs(unrealizedGainLoss), wallet.currency)}`}
@@ -706,7 +710,7 @@ export function WalletDetailPage() {
               </div>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">Total Return</p>
+              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.totalReturn") || "Total Return"}</p>
               <div className="mt-2 flex items-center gap-1.5">
                 {returnPercentage >= 0 ? (
                   <TrendingUp className="text-kash-emerald" size={18} />
@@ -721,40 +725,40 @@ export function WalletDetailPage() {
           </div>
 
           <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 text-xs font-semibold text-emerald-950">
-            Pembaruan valuasi pasar tercatat sebagai keuntungan/kerugian modal (unrealized gain/loss), tanpa menghasilkan transaksi pengeluaran/pemasukan palsu.
+            {t("wallets.valuationHelpNote") || "Pembaruan valuasi pasar tercatat sebagai keuntungan/kerugian modal (unrealized gain/loss), tanpa menghasilkan transaksi pengeluaran/pemasukan palsu."}
           </div>
         </section>
       ) : (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="grid gap-3 md:grid-cols-4">
-            <DetailMetric label="Current Balance" value={formatCurrency(currentBalance, wallet.currency)} />
-            <DetailMetric label="Available Balance" value={formatCurrency(availableBalance, wallet.currency)} />
-            <DetailMetric label="Initial Balance" value={formatCurrency(wallet.initial_balance, wallet.currency)} />
-            <DetailMetric label="Wallet Type" value={typeOption.label} />
+            <DetailMetric label={t("wallets.currentBalance") || "Saldo Saat Ini"} value={formatCurrency(currentBalance, wallet.currency)} />
+            <DetailMetric label={t("wallets.availableBalance") || "Saldo Tersedia"} value={formatCurrency(availableBalance, wallet.currency)} />
+            <DetailMetric label={t("wallets.initialBalance") || "Saldo Awal"} value={formatCurrency(wallet.initial_balance, wallet.currency)} />
+            <DetailMetric label={t("wallets.type") || "Tipe Dompet"} value={typeOption.label} />
           </div>
         </section>
       )}
 
       <section className="grid gap-3 md:grid-cols-2">
-        <DetailMetric label="Currency" value={wallet.currency} />
-        <DetailMetric label="Include in Net Worth" value={wallet.include_in_net_worth ? "Yes" : "No"} />
+        <DetailMetric label={t("wallets.currency") || "Mata Uang"} value={wallet.currency} />
+        <DetailMetric label={t("wallets.includeInNetWorth") || "Sertakan dalam Kekayaan Bersih"} value={wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")} />
       </section>
 
       {isInvestment && valuations.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <History aria-hidden="true" className="text-slate-600" size={18} />
-            <h3 className="text-base font-extrabold text-slate-900">Riwayat Valuasi Nilai Pasar</h3>
+            <h3 className="text-base font-extrabold text-slate-900">{t("wallets.valuationHistory") || "Riwayat Valuasi Nilai Pasar"}</h3>
           </div>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
                 <tr>
-                  <th className="pb-3">Tanggal Valuasi</th>
-                  <th className="pb-3 text-right">Nilai Pasar</th>
-                  <th className="pb-3 text-right">Cost Basis</th>
+                  <th className="pb-3">{t("wallets.valuationDate") || "Tanggal Valuasi"}</th>
+                  <th className="pb-3 text-right">{t("wallets.marketValue") || "Nilai Pasar"}</th>
+                  <th className="pb-3 text-right">{t("wallets.costBasis") || "Cost Basis"}</th>
                   <th className="pb-3 text-right">Gain / Loss</th>
-                  <th className="pb-3 pl-4">Catatan</th>
+                  <th className="pb-3 pl-4">{t("transactions.note") || "Catatan"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
@@ -763,7 +767,7 @@ export function WalletDetailPage() {
                   return (
                     <tr key={v.id} className="hover:bg-slate-50/80">
                       <td className="py-3">
-                        {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(v.valuation_date))}
+                        {formatDate(new Date(v.valuation_date))}
                       </td>
                       <td className="py-3 text-right font-extrabold text-slate-900">
                         {formatCurrency(v.market_value, wallet.currency)}
@@ -789,12 +793,12 @@ export function WalletDetailPage() {
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-2">
           <WalletCards aria-hidden="true" className="text-slate-600" size={18} />
-          <h3 className="text-base font-extrabold text-slate-900">Recent Transactions</h3>
+          <h3 className="text-base font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Transaksi Terbaru"}</h3>
         </div>
         <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-          <h4 className="text-base font-extrabold text-slate-900">No transactions yet.</h4>
+          <h4 className="text-base font-extrabold text-slate-900">{t("transactions.emptyStateTitle") || "Belum ada transaksi."}</h4>
           <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-700">
-            Transaction history will appear here after the transaction system is implemented.
+            {t("wallets.transactionHistoryDesc") || "Riwayat transaksi untuk dompet ini akan muncul di sini."}
           </p>
         </div>
       </section>
@@ -835,13 +839,13 @@ export function WalletDetailPage() {
       ) : null}
       {showDelete ? (
         <ConfirmationDialog
-          confirmLabel={canHardDelete ? "Delete Wallet" : "Archive Wallet"}
+          confirmLabel={canHardDelete ? (t("wallets.deleteWallet") || "Hapus Dompet") : (t("wallets.archiveWallet") || "Arsipkan Dompet")}
           description={
             linkedGoalCount > 0
-              ? "This wallet is linked to a goal, so it cannot be deleted from here."
+              ? (t("wallets.linkedGoalDeletePrevented") || "Dompet ini terhubung ke target tabungan, sehingga tidak dapat dihapus langsung dari sini.")
               : canHardDelete
-                ? "This wallet has no transaction history, so it can be permanently deleted."
-                : "This wallet has financial history, so KASH will hide it from active wallet lists instead of deleting the records."
+                ? (t("wallets.hardDeleteExplanation") || "Dompet ini belum memiliki riwayat transaksi, sehingga dapat dihapus secara permanen.")
+                : (t("wallets.archiveExplanation") || "Dompet ini memiliki riwayat transaksi keuangan, sehingga KASH akan menyembunyikannya dari daftar aktif tanpa menghapus catatan historis.")
           }
           disabled={linkedGoalCount > 0}
           icon={canHardDelete ? Trash2 : Archive}
@@ -849,7 +853,7 @@ export function WalletDetailPage() {
           itemLabel={wallet.name}
           onCancel={() => setShowDelete(false)}
           onConfirm={() => void handleDeleteWallet()}
-          title={canHardDelete ? "Delete this wallet?" : "Archive this wallet?"}
+          title={canHardDelete ? (t("wallets.deleteWalletConfirm") || "Hapus dompet ini?") : (t("wallets.archiveWalletConfirm") || "Arsipkan dompet ini?")}
           tone={canHardDelete ? "danger" : "warning"}
         />
       ) : null}

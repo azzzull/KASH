@@ -10,6 +10,7 @@ import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
+import { useI18n } from "../../i18n";
 
 type PaymentModalProps = {
   obligation: RecurringObligationWithMeta;
@@ -26,6 +27,7 @@ export function PaymentModal({
   payment,
   wallets,
 }: PaymentModalProps) {
+  const { t, formatDate, formatCurrency } = useI18n();
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("wallet");
   const [selectedWalletId, setSelectedWalletId] = useState<string>(
     obligation.default_wallet_id || (wallets.length > 0 ? wallets[0].id : ""),
@@ -41,7 +43,7 @@ export function PaymentModal({
     e.preventDefault();
 
     if (paymentMode === "wallet" && !selectedWalletId) {
-      setError("Please select a wallet.");
+      setError(t("debts.selectWalletError") || "Silakan pilih dompet.");
       return;
     }
 
@@ -71,8 +73,8 @@ export function PaymentModal({
       isOpen
       onClose={onClose}
       maxWidth="md"
-      title="Record Payment"
-      description={`${obligation.name} ${isInstallment && payment.installment_number ? `(Installment #${payment.installment_number})` : ""}`}
+      title={t("subscriptions.recordPayment") || "Catat Pembayaran"}
+      description={`${obligation.name} ${isInstallment && payment.installment_number ? `(${t("subscriptions.installmentNumber", { number: payment.installment_number }) || `Cicilan #${payment.installment_number}`})` : ""}`}
     >
       <form onSubmit={submit} className="grid w-full max-w-full min-w-0 gap-4">
         {error && (
@@ -84,20 +86,20 @@ export function PaymentModal({
         {/* Amount Display */}
         <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 text-center">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-            Amount to Pay
+            {t("subscriptions.amountToPay") || "Jumlah yang Dibayar"}
           </span>
           <p className="mt-1 text-2xl font-black text-slate-900">
-            {formatCurrency(payment.amount)}
+            {formatCurrency(payment.amount, "IDR")}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Due Date: {new Date(payment.due_date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+            {t("debts.dueDate") || "Jatuh Tempo"}: {formatDate(new Date(payment.due_date))}
           </p>
         </div>
 
         {/* Payment Mode Selector */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-            Payment Method *
+            {t("debts.settlementMethod") || "Metode Pembayaran"} *
           </label>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button
@@ -110,7 +112,7 @@ export function PaymentModal({
               }`}
             >
               <WalletCards size={15} />
-              Pay from Wallet
+              {t("debts.payFromWallet") || "Potong Dompet"}
             </button>
 
             <button
@@ -123,7 +125,7 @@ export function PaymentModal({
               }`}
             >
               <History size={15} />
-              Already Paid
+              {t("debts.alreadySettled") || "Sudah Terbayar"}
             </button>
           </div>
         </div>
@@ -132,7 +134,7 @@ export function PaymentModal({
         {paymentMode === "wallet" && (
           <SelectField
             id="payment-wallet"
-            label="Deduct from Wallet *"
+            label={`${t("debts.deductWallet")} *`}
             value={selectedWalletId}
             onChange={(e) => setSelectedWalletId(e.target.value)}
           >
@@ -147,7 +149,7 @@ export function PaymentModal({
         {/* Paid Date */}
         <DatePickerField
           id="payment-date"
-          label="Payment Date"
+          label={t("debts.paymentDate") || "Tanggal Pembayaran"}
           value={paidAt}
           onChange={(val) => setPaidAt(val)}
         />
@@ -155,19 +157,19 @@ export function PaymentModal({
         {/* Note */}
         <FormField
           id="payment-note"
-          label="Note (Optional)"
-          placeholder="e.g. Paid via BCA Virtual Account"
+          label={t("transactions.noteOptional") || "Catatan (Opsional)"}
+          placeholder={t("subscriptions.paidViaHint") || "mis. Dibayar via BCA Virtual Account"}
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
 
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-3">
           <Button variant="secondary" type="button" onClick={onClose} disabled={saving}>
-            Cancel
+            {t("common.cancel") || "Batal"}
           </Button>
           <Button type="submit" disabled={saving}>
             <CheckCircle2 size={16} />
-            {saving ? "Recording..." : "Confirm Payment"}
+            {saving ? (t("common.saving") || "Menyimpan...") : (t("debts.confirmPayment") || "Konfirmasi Pembayaran")}
           </Button>
         </div>
       </form>

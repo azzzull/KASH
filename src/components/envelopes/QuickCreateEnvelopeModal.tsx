@@ -1,7 +1,6 @@
 import { Check, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { createEnvelope, updateEnvelope } from "../../lib/envelopes";
 import { categoryColors, getCategoryIcon } from "../../lib/categoryMeta";
 import type { Envelope } from "../../types/domain";
@@ -10,6 +9,7 @@ import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
+import { useI18n } from "../../i18n";
 
 type QuickCreateEnvelopeModalProps = {
   isOpen: boolean;
@@ -26,6 +26,7 @@ export function QuickCreateEnvelopeModal({
   onClose,
   onCreated,
 }: QuickCreateEnvelopeModalProps) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("layers");
   const [color, setColor] = useState<string>("#4F7DF3");
@@ -75,7 +76,7 @@ export function QuickCreateEnvelopeModal({
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Nama amplop tidak boleh kosong.");
+      setError(t("categories.envelopeNameRequired") || "Nama amplop tidak boleh kosong.");
       return;
     }
 
@@ -108,7 +109,7 @@ export function QuickCreateEnvelopeModal({
     setSaving(false);
 
     if (err || !resultEnvelope) {
-      setError(err?.message || `Gagal ${isEditing ? "memperbarui" : "membuat"} amplop.`);
+      setError(err?.message || (isEditing ? (t("categories.saveEnvFailed") || "Gagal memperbarui amplop.") : (t("categories.createEnvFailed") || "Gagal membuat amplop.")));
       return;
     }
 
@@ -133,10 +134,10 @@ export function QuickCreateEnvelopeModal({
           </span>
           <div>
             <h2 className="text-base font-extrabold text-slate-900">
-              {isEditing ? "Edit Amplop Pengeluaran" : "Tambah Amplop Baru"}
+              {isEditing ? (t("categories.editEnvelopeTitle") || "Edit Amplop Pengeluaran") : (t("categories.newEnvelopeTitle") || "Tambah Amplop Baru")}
             </h2>
             <p className="text-xs font-semibold text-slate-600">
-              {isEditing ? "Ubah nama, ikon, atau warna amplop" : "Buat amplop tujuan belanja khusus"}
+              {isEditing ? (t("categories.editEnvelopeSubtitle") || "Ubah nama, ikon, atau warna amplop") : (t("categories.newEnvelopeSubtitle") || "Buat amplop tujuan belanja khusus")}
             </p>
           </div>
         </div>
@@ -153,20 +154,20 @@ export function QuickCreateEnvelopeModal({
           {/* Name */}
           <FormField
             id="envelope-name"
-            label="Nama Amplop"
+            label={t("categories.envelopeNameLabel") || "Nama Amplop"}
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Contoh: Belanja Bulanan, Liburan, Kencan"
+            placeholder={t("categories.envelopeNamePlaceholder") || "Contoh: Belanja Bulanan, Liburan, Kencan"}
           />
 
           {/* Icon Picker */}
-          <CategoryIconPicker value={icon} onChange={setIcon} accentColor={color} label="Pilih Ikon Amplop" />
+          <CategoryIconPicker value={icon} onChange={setIcon} accentColor={color} label={t("categories.chooseEnvelopeIcon") || "Pilih Ikon Amplop"} />
 
           {/* Color Picker */}
           <div>
             <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">
-              Warna Amplop
+              {t("categories.envelopeColor") || "Warna Amplop"}
             </label>
             <div className="flex flex-wrap gap-2.5">
               {categoryColors.map((c) => {
@@ -191,19 +192,19 @@ export function QuickCreateEnvelopeModal({
           {/* Note / Description */}
           <FormField
             id="envelope-note"
-            label="Keterangan / Catatan (Opsional)"
+            label={t("categories.envelopeNoteLabel") || "Keterangan / Catatan (Opsional)"}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Tujuan amplop atau keterangan tambahan..."
+            placeholder={t("categories.envelopeNotePlaceholder") || "Tujuan amplop atau keterangan tambahan..."}
           />
 
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <Button variant="secondary" type="button" onClick={onClose} disabled={saving}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={saving || !name.trim()}>
-              {saving ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Simpan Amplop"}
+              {saving ? t("common.saving") : isEditing ? t("common.saveChanges") : (t("categories.saveEnvelope") || "Simpan Amplop")}
             </Button>
           </div>
         </form>

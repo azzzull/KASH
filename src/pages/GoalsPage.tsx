@@ -88,6 +88,7 @@ function formatDate(value: string | null) {
 }
 
 function GoalCard({ goal }: { goal: GoalWithProgress }) {
+    const { t, formatDate, formatCurrency } = useI18n();
     const Icon = getGoalIcon(goal.icon);
     const progress = goalProgress(goal);
     const isCompleted =
@@ -109,13 +110,15 @@ function GoalCard({ goal }: { goal: GoalWithProgress }) {
                         </span>
                         <span className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
                             <CalendarDays aria-hidden="true" size={14} />
-                            {formatDate(goal.deadline)}
+                            {goal.deadline
+                                ? formatDate(new Date(`${goal.deadline}T00:00:00`))
+                                : (t("goals.noDeadline") || "Tanpa tenggat")}
                         </span>
                     </span>
                 </div>
                 {isCompleted ? (
                     <span className="rounded-full bg-kash-selected px-2.5 py-1 text-xs font-extrabold text-kash-emeraldDark">
-                        Completed
+                        {t("goals.completed") || "Tercapai"}
                     </span>
                 ) : null}
             </div>
@@ -125,7 +128,7 @@ function GoalCard({ goal }: { goal: GoalWithProgress }) {
                     <p className="text-sm font-extrabold text-slate-900">
                         {formatCurrency(progress.current, "IDR")}{" "}
                         <span className="text-slate-600">
-                            of {formatCurrency(progress.target, "IDR")}
+                            {t("common.of") || "dari"} {formatCurrency(progress.target, "IDR")}
                         </span>
                     </p>
                     <p className="text-sm font-extrabold text-kash-emerald">
@@ -139,7 +142,7 @@ function GoalCard({ goal }: { goal: GoalWithProgress }) {
                     />
                 </div>
                 <p className="mt-2 text-xs font-semibold text-slate-600">
-                    Remaining {formatCurrency(progress.remaining, "IDR")}
+                    {t("debts.remaining") || "Sisa"} {formatCurrency(progress.remaining, "IDR")}
                 </p>
             </div>
         </Link>
@@ -153,9 +156,22 @@ function CreateGoalModal({
     onClose: () => void;
     onSaved: () => void;
 }) {
+    const { t } = useI18n();
     const [form, setForm] = useState(defaultForm);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const localizedIconOptions = useMemo(
+        () => [
+            { icon: BadgeDollarSign, label: t("goals.iconSavings") || "Tabungan", value: "badge-dollar-sign" },
+            { icon: Laptop, label: t("goals.iconLaptop") || "Gadget / Laptop", value: "laptop" },
+            { icon: Plane, label: t("goals.iconTravel") || "Liburan", value: "plane" },
+            { icon: Home, label: t("goals.iconHome") || "Rumah", value: "home" },
+            { icon: Car, label: t("goals.iconVehicle") || "Kendaraan", value: "car" },
+            { icon: Sparkles, label: t("goals.iconDream") || "Impian", value: "sparkles" },
+        ],
+        [t],
+    );
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -163,12 +179,12 @@ function CreateGoalModal({
         const targetAmount = parseMoneyInputDigits(form.targetAmount);
 
         if (!name) {
-            setError("Goal name is required.");
+            setError(t("goals.nameRequired") || "Nama target wajib diisi.");
             return;
         }
 
         if (!targetAmount || toNumber(targetAmount) <= 0) {
-            setError("Target amount must be greater than zero.");
+            setError(t("goals.amountGreaterThanZero") || "Target nominal harus lebih besar dari nol.");
             return;
         }
 
@@ -187,7 +203,7 @@ function CreateGoalModal({
 
             if (createError) {
                 setError(
-                    "Couldn't create this goal. Please check the details and try again.",
+                    t("goals.createError") || "Gagal membuat target ini. Silakan periksa kembali data Anda.",
                 );
                 setSaving(false);
                 return;
@@ -197,7 +213,7 @@ function CreateGoalModal({
             onSaved();
         } catch {
             setError(
-                "Couldn't create this goal. Please sign in and try again.",
+                t("goals.createError") || "Gagal membuat target ini. Silakan coba lagi.",
             );
             setSaving(false);
         }
@@ -208,8 +224,8 @@ function CreateGoalModal({
             isOpen
             onClose={onClose}
             maxWidth="lg"
-            title="New Goal"
-            description="KASH will create a dedicated savings pocket wallet for this goal."
+            title={t("goals.create") || "Target Baru"}
+            description={t("goals.createDescription") || "KASH akan membuat kantong tabungan khusus untuk target impian ini."}
         >
             <div>
                 {error ? (
@@ -221,20 +237,21 @@ function CreateGoalModal({
                 <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
                     <FormField
                         id="goal-name"
-                        label="Goal Name"
+                        label={t("goals.goalName") || "Nama Target"}
                         onChange={(event) =>
                             setForm((current) => ({
                                 ...current,
                                 name: event.target.value,
                             }))
                         }
-                        placeholder="MacBook Pro"
+                        placeholder={t("goals.goalNamePlaceholder") || "misal: MacBook Pro, Dana Darurat"}
                         value={form.name}
+                        required
                     />
                     <FormField
                         id="goal-target"
                         inputMode="numeric"
-                        label="Target Amount"
+                        label={t("goals.targetAmount") || "Target Nominal"}
                         onChange={(event) =>
                             setForm((current) => ({
                                 ...current,
@@ -245,24 +262,26 @@ function CreateGoalModal({
                         }
                         placeholder="15.000.000"
                         value={form.targetAmount}
+                        required
                     />
                     <FormField
                         id="goal-pocket-institution"
-                        label="Bank / Institusi Kantong Tabungan (Opsional)"
+                        label={t("goals.pocketInstitution") || "Bank / Institusi Kantong Tabungan (Opsional)"}
                         onChange={(event) =>
                             setForm((current) => ({
                                 ...current,
                                 pocketInstitution: event.target.value,
                             }))
                         }
-                        placeholder="e.g. Bank Jago, BCA, Bibit"
+                        placeholder={t("goals.pocketInstitutionPlaceholder") || "misal: Bank Jago, BCA, Bibit"}
                         value={form.pocketInstitution}
                     />
                     <div>
                         <DatePickerField
                             id="goal-deadline"
-                            label="Target Date"
+                            label={t("goals.targetDate") || "Tenggat Waktu"}
                             value={form.deadline}
+                            placeholder={t("goals.selectDeadline") || "Pilih Tenggat Waktu"}
                             onChange={(date) =>
                                 setForm((current) => ({
                                     ...current,
@@ -272,13 +291,13 @@ function CreateGoalModal({
                         />
                         <span className="mt-1.5 block text-xs font-medium text-slate-600">
                             {form.deadline
-                                ? "KASH will track progress towards this target date."
-                                : "Optional. You can leave this empty if there is no deadline."}
+                                ? (t("goals.trackProgressHint") || "KASH akan memantau progres tabungan menuju tenggat waktu ini.")
+                                : (t("goals.deadlineOptionalHint") || "Opsional. Kosongkan jika tanpa batas waktu.")}
                         </span>
                     </div>
                     <SelectField
                         id="goal-icon"
-                        label="Icon"
+                        label={t("goals.icon") || "Ikon"}
                         onChange={(event) =>
                             setForm((current) => ({
                                 ...current,
@@ -287,7 +306,7 @@ function CreateGoalModal({
                         }
                         value={form.icon}
                     >
-                        {iconOptions.map((option) => (
+                        {localizedIconOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                                 {option.label}
                             </option>
@@ -295,14 +314,14 @@ function CreateGoalModal({
                     </SelectField>
                     <FormField
                         id="goal-note"
-                        label="Note"
+                        label={t("goals.note") || "Catatan (Opsional)"}
                         onChange={(event) =>
                             setForm((current) => ({
                                 ...current,
                                 note: event.target.value,
                             }))
                         }
-                        placeholder="Optional note"
+                        placeholder={t("goals.notePlaceholder") || "Catatan tambahan..."}
                         value={form.note}
                     />
                     <Button disabled={saving} type="submit">
@@ -313,7 +332,7 @@ function CreateGoalModal({
                                 size={18}
                             />
                         ) : null}
-                        Save Goal
+                        {t("goals.saveGoal") || "Simpan Target"}
                     </Button>
                 </form>
             </div>
@@ -339,7 +358,7 @@ function GoalsSkeleton() {
 }
 
 export function GoalsPage() {
-    const { t } = useI18n();
+    const { t, formatCurrency } = useI18n();
     const [goals, setGoals] = useState<GoalWithProgress[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -351,7 +370,7 @@ export function GoalsPage() {
         const { data, error: loadError } = await getGoals();
 
         if (loadError || !data) {
-            setError("Couldn't load goals. Please try again.");
+            setError(t("goals.loadError") || "Gagal memuat target. Silakan coba lagi.");
             setLoading(false);
             return;
         }
@@ -408,7 +427,7 @@ export function GoalsPage() {
                 </article>
                 <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        Target Aktif
+                        {t("goals.activeGoals") || "Target Aktif"}
                     </p>
                     <p className="mt-2 text-xl font-extrabold text-slate-900">
                         {summary.active}
@@ -416,7 +435,7 @@ export function GoalsPage() {
                 </article>
                 <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        Tercapai
+                        {t("goals.completedGoals") || "Tercapai"}
                     </p>
                     <p className="mt-2 flex items-center gap-2 text-xl font-extrabold text-slate-900">
                         <Trophy

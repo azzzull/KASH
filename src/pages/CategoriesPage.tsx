@@ -39,6 +39,7 @@ import {
   getCategoryIcon,
   isAllowedCategoryColor,
 } from "../lib/categoryMeta";
+import { useI18n } from "../i18n";
 import type { Category, CategoryType, Envelope } from "../types/domain";
 
 type CategoryFormState = {
@@ -66,6 +67,7 @@ function CategoryPill({
   onDelete?: () => void;
   onEdit?: () => void;
 }) {
+  const { t } = useI18n();
   const Icon = getCategoryIcon(category.icon);
 
   return (
@@ -82,14 +84,14 @@ function CategoryPill({
             {category.name}
           </span>
           <span className="mt-0.5 block text-[11px] font-bold uppercase tracking-wide text-slate-600">
-            {category.is_system ? "System" : "Custom"}
+            {category.is_system ? (t("categories.system") || "System") : (t("categories.custom") || "Custom")}
           </span>
         </div>
       </div>
 
       {category.is_system ? (
         <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-          Read only
+          {t("categories.readOnly") || "Read only"}
         </span>
       ) : (
         <div className="shrink-0">
@@ -97,15 +99,15 @@ function CategoryPill({
           <div className="hidden md:flex items-center gap-1.5">
             <Button onClick={onEdit} variant="secondary" className="min-h-8 px-2.5 py-1 text-xs">
               <Edit3 aria-hidden="true" size={13} />
-              Edit
+              {t("common.edit")}
             </Button>
             <Button onClick={onArchive} variant="secondary" className="min-h-8 px-2.5 py-1 text-xs text-slate-600">
               <Archive aria-hidden="true" size={13} />
-              Arsip
+              {t("common.archive")}
             </Button>
             <IconButton
               icon={Trash2}
-              label="Hapus Kategori"
+              label={t("common.delete")}
               onClick={onDelete}
               className="h-8 w-8 text-slate-500 hover:text-kash-expense hover:bg-red-50"
             />
@@ -135,7 +137,7 @@ function CategoryPill({
                       }`}
                     >
                       <Edit3 size={14} />
-                      Edit Kategori
+                      {t("common.edit")}
                     </button>
                   )}
                 </MenuItem>
@@ -149,7 +151,7 @@ function CategoryPill({
                       }`}
                     >
                       <Archive size={14} />
-                      Arsipkan
+                      {t("common.archive")}
                     </button>
                   )}
                 </MenuItem>
@@ -164,7 +166,7 @@ function CategoryPill({
                       }`}
                     >
                       <Trash2 size={14} />
-                      Hapus Permanen
+                      {t("common.delete")}
                     </button>
                   )}
                 </MenuItem>
@@ -188,6 +190,7 @@ function EnvelopePill({
   onDelete?: () => void;
   onEdit?: () => void;
 }) {
+  const { t } = useI18n();
   const Icon = getCategoryIcon(envelope.icon || "layers");
 
   return (
@@ -204,7 +207,7 @@ function EnvelopePill({
             {envelope.name}
           </span>
           <span className="mt-0.5 block truncate text-xs font-medium text-slate-600">
-            {envelope.note || "Amplop Pengeluaran Khusus"}
+            {envelope.note || (t("categories.specialExpenseEnvelope") || "Amplop Pengeluaran Khusus")}
           </span>
         </div>
       </Link>
@@ -214,15 +217,15 @@ function EnvelopePill({
         <div className="hidden md:flex items-center gap-1.5">
           <Button onClick={onEdit} variant="secondary" className="min-h-8 px-2.5 py-1 text-xs font-bold">
             <Edit3 aria-hidden="true" size={13} />
-            Edit
+            {t("common.edit")}
           </Button>
           <Button onClick={onArchive} variant="secondary" className="min-h-8 px-2.5 py-1 text-xs text-slate-600 font-bold">
             <Archive aria-hidden="true" size={13} />
-            Arsip
+            {t("common.archive")}
           </Button>
           <IconButton
             icon={Trash2}
-            label="Hapus Amplop"
+            label={t("common.delete")}
             onClick={onDelete}
             className="h-8 w-8 text-slate-500 hover:text-kash-expense hover:bg-red-50"
           />
@@ -252,7 +255,7 @@ function EnvelopePill({
                     }`}
                   >
                     <Edit3 size={14} />
-                    Edit Amplop
+                    {t("common.edit")}
                   </button>
                 )}
               </MenuItem>
@@ -266,7 +269,7 @@ function EnvelopePill({
                     }`}
                   >
                     <Archive size={14} />
-                    Arsipkan
+                    {t("common.archive")}
                   </button>
                 )}
               </MenuItem>
@@ -281,7 +284,7 @@ function EnvelopePill({
                     }`}
                   >
                     <Trash2 size={14} />
-                    Hapus Permanen
+                    {t("common.delete")}
                   </button>
                 )}
               </MenuItem>
@@ -302,6 +305,7 @@ function CategoryFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<CategoryFormState>(
     category
       ? {
@@ -321,7 +325,7 @@ function CategoryFormModal({
     const name = form.name.trim();
 
     if (!name) {
-      setError("Nama kategori wajib diisi.");
+      setError(t("categories.nameRequired") || "Nama kategori wajib diisi.");
       return;
     }
 
@@ -358,8 +362,8 @@ function CategoryFormModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title={isEditing ? "Edit Kategori" : "Kategori Baru"}
-      description="Atur nama, jenis, warna, dan ikon kategori"
+      title={isEditing ? (t("categories.editCategory") || "Edit Kategori") : (t("categories.newCategory") || "Kategori Baru")}
+      description={t("categories.formDesc") || "Atur nama, jenis, warna, dan ikon kategori"}
     >
       <div>
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
@@ -372,9 +376,9 @@ function CategoryFormModal({
           <FormField
             disabled={saving}
             id="category-name"
-            label="Nama Kategori *"
+            label={`${t("categories.nameLabel") || "Nama Kategori"} *`}
             onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-            placeholder="e.g. Kopi & Nongkrong, Langganan Musik"
+            placeholder={t("categories.namePlaceholder") || "e.g. Kopi & Nongkrong, Langganan Musik"}
             required
             value={form.name}
             autoFocus
@@ -383,7 +387,7 @@ function CategoryFormModal({
           <SelectField
             disabled={saving || isEditing}
             id="category-type"
-            label="Tipe Transaksi"
+            label={t("categories.typeLabel") || "Tipe Transaksi"}
             onChange={(event) =>
               setForm((prev) => ({
                 ...prev,
@@ -392,8 +396,8 @@ function CategoryFormModal({
             }
             value={form.categoryType}
           >
-            <option value="expense">Pengeluaran (Expense)</option>
-            <option value="income">Pemasukan (Income)</option>
+            <option value="expense">{t("common.typeExpense") || "Pengeluaran (Expense)"}</option>
+            <option value="income">{t("common.typeIncome") || "Pemasukan (Income)"}</option>
           </SelectField>
 
           {/* Icon Picker Component */}
@@ -401,12 +405,12 @@ function CategoryFormModal({
             value={form.icon}
             onChange={(iconKey) => setForm((prev) => ({ ...prev, icon: iconKey }))}
             accentColor={form.color}
-            label="Pilih Ikon Kategori"
+            label={t("categories.chooseIcon") || "Pilih Ikon Kategori"}
           />
 
           {/* Color Picker */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">Pilih Warna Kategori</label>
+            <label className="block text-xs font-bold text-slate-700 mb-2">{t("categories.chooseColor") || "Pilih Warna Kategori"}</label>
             <div className="flex flex-wrap gap-2.5">
               {categoryColors.map((color) => {
                 const isSelected = form.color.toLowerCase() === color.toLowerCase();
@@ -430,10 +434,10 @@ function CategoryFormModal({
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <Button disabled={saving} onClick={onClose} type="button" variant="secondary">
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button disabled={saving || !form.name.trim()} type="submit">
-              {saving ? "Menyimpan..." : isEditing ? "Simpan Perubahan" : "Buat Kategori"}
+              {saving ? t("common.saving") : isEditing ? t("common.saveChanges") : (t("categories.createButton") || "Buat Kategori")}
             </Button>
           </div>
         </form>
@@ -475,6 +479,7 @@ function CategorySkeleton() {
 }
 
 export function CategoriesPage() {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<"categories" | "envelopes">("categories");
 
   // Category state
@@ -510,7 +515,7 @@ export function CategoriesPage() {
     ]);
 
     if (systemResult.error || userResult.error || !systemResult.data || !userResult.data) {
-      setError("Gagal memuat kategori. Silakan coba lagi.");
+      setError(t("categories.loadFailed") || "Gagal memuat kategori. Silakan coba lagi.");
       setLoading(false);
       return;
     }
@@ -541,7 +546,7 @@ export function CategoriesPage() {
     try {
       const { error: archiveError } = await archiveCategory(category);
       if (archiveError) {
-        setError("Gagal mengarsipkan kategori.");
+        setError(t("categories.archiveFailed") || "Gagal mengarsipkan kategori.");
         setArchivingCategory(false);
         setArchiveTarget(null);
         return;
@@ -549,7 +554,7 @@ export function CategoriesPage() {
       setArchiveTarget(null);
       await loadData();
     } catch {
-      setError("Kategori sistem tidak dapat diarsipkan.");
+      setError(t("categories.systemCannotArchive") || "Kategori sistem tidak dapat diarsipkan.");
     } finally {
       setArchivingCategory(false);
     }
@@ -563,7 +568,7 @@ export function CategoriesPage() {
       setDeleteTarget(null);
       await loadData();
     } catch (err: any) {
-      setError(err.message || "Gagal menghapus kategori.");
+      setError(err.message || (t("categories.deleteFailed") || "Gagal menghapus kategori."));
       setDeleteTarget(null);
     } finally {
       setDeletingCategory(false);
@@ -582,7 +587,7 @@ export function CategoriesPage() {
         isArchived: true,
       });
       if (envError) {
-        setError("Gagal mengarsipkan amplop.");
+        setError(t("categories.archiveEnvFailed") || "Gagal mengarsipkan amplop.");
         setArchivingEnvelope(false);
         setArchiveEnvelopeTarget(null);
         return;
@@ -590,7 +595,7 @@ export function CategoriesPage() {
       setArchiveEnvelopeTarget(null);
       await loadData();
     } catch (err: any) {
-      setError(err.message || "Gagal mengarsipkan amplop.");
+      setError(err.message || (t("categories.archiveEnvFailed") || "Gagal mengarsipkan amplop."));
     } finally {
       setArchivingEnvelope(false);
     }
@@ -602,14 +607,14 @@ export function CategoriesPage() {
     try {
       const { success, error: delError } = await deleteEnvelope(envelope.id);
       if (delError || !success) {
-        setError(delError?.message || "Gagal menghapus amplop.");
+        setError(delError?.message || (t("categories.deleteEnvFailed") || "Gagal menghapus amplop."));
         setDeleteEnvelopeTarget(null);
         return;
       }
       setDeleteEnvelopeTarget(null);
       await loadData();
     } catch (err: any) {
-      setError(err.message || "Gagal menghapus amplop.");
+      setError(err.message || (t("categories.deleteEnvFailed") || "Gagal menghapus amplop."));
       setDeleteEnvelopeTarget(null);
     } finally {
       setDeletingEnvelope(false);
@@ -617,26 +622,26 @@ export function CategoriesPage() {
   };
 
   const tabOptions = useMemo(() => [
-    { label: "Kategori Transaksi", value: "categories" },
-    { label: "Amplop Pengeluaran", value: "envelopes", count: envelopes.length },
-  ], [envelopes.length]);
+    { label: t("nav.categories") || "Kategori Transaksi", value: "categories" },
+    { label: t("nav.envelopes") || "Amplop Pengeluaran", value: "envelopes", count: envelopes.length },
+  ], [envelopes.length, t]);
 
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
-        eyebrow="Kelola Anggaran"
+        eyebrow={t("categories.manageBudget") || "Kelola Anggaran"}
         icon={activeTab === "categories" ? Tags : Layers}
-        title={activeTab === "categories" ? "Kategori Transaksi" : "Amplop Pengeluaran"}
+        title={activeTab === "categories" ? (t("nav.categories") || "Kategori Transaksi") : (t("nav.envelopes") || "Amplop Pengeluaran")}
         description={
           activeTab === "categories"
-            ? "Kelola kategori pengeluaran dan pemasukan dengan ikon dan warna kustom."
-            : "Kelola amplop alokasi tujuan khusus (seperti Date, Liburan, Proyek Rumah)."
+            ? (t("categories.categoriesDesc") || "Kelola kategori pengeluaran dan pemasukan dengan ikon dan warna kustom.")
+            : (t("categories.envelopesDesc") || "Kelola amplop alokasi tujuan khusus (seperti Date, Liburan, Proyek Rumah).")
         }
         actions={
           activeTab === "categories" ? (
             <Button onClick={() => setShowCategoryForm(true)} className="w-full sm:w-auto">
               <Plus aria-hidden="true" size={18} />
-              Kategori Baru
+              {t("categories.newCategory") || "Kategori Baru"}
             </Button>
           ) : (
             <Button
@@ -647,7 +652,7 @@ export function CategoriesPage() {
               className="w-full sm:w-auto"
             >
               <Plus aria-hidden="true" size={18} />
-              Amplop Baru
+              {t("categories.newEnvelope") || "Amplop Baru"}
             </Button>
           )
         }
@@ -662,10 +667,10 @@ export function CategoriesPage() {
 
       {error ? (
         <section className="rounded-xl border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h3 className="text-base font-extrabold text-slate-900">Terjadi kesalahan</h3>
+          <h3 className="text-base font-extrabold text-slate-900">{t("common.error")}</h3>
           <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
           <Button className="mt-4" onClick={() => void loadData()}>
-            Coba Lagi
+            {t("common.retry")}
           </Button>
         </section>
       ) : null}
@@ -677,11 +682,11 @@ export function CategoriesPage() {
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
             <div className="flex items-center gap-2">
               <Tags aria-hidden="true" className="text-slate-600" size={18} />
-              <h3 className="text-base font-extrabold text-slate-900">Kategori Kustom Saya</h3>
+              <h3 className="text-base font-extrabold text-slate-900">{t("categories.myCustomCategories") || "Kategori Kustom Saya"}</h3>
             </div>
             <div className="mt-4 grid gap-5">
               <div>
-                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">Pengeluaran</h4>
+                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">{t("common.typeExpense")}</h4>
                 {groupedCategories.customExpense.length > 0 ? (
                   <div className="grid gap-2">
                     {groupedCategories.customExpense.map((category) => (
@@ -699,12 +704,12 @@ export function CategoriesPage() {
                   </div>
                 ) : (
                   <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-                    Belum ada kategori pengeluaran kustom.
+                    {t("categories.noCustomExpense") || "Belum ada kategori pengeluaran kustom."}
                   </p>
                 )}
               </div>
               <div>
-                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">Pemasukan</h4>
+                <h4 className="mb-2 text-xs font-extrabold uppercase tracking-normal text-slate-700">{t("common.typeIncome")}</h4>
                 {groupedCategories.customIncome.length > 0 ? (
                   <div className="grid gap-2">
                     {groupedCategories.customIncome.map((category) => (
@@ -722,7 +727,7 @@ export function CategoriesPage() {
                   </div>
                 ) : (
                   <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-                    Belum ada kategori pemasukan kustom.
+                    {t("categories.noCustomIncome") || "Belum ada kategori pemasukan kustom."}
                   </p>
                 )}
               </div>
@@ -730,8 +735,8 @@ export function CategoriesPage() {
           </section>
 
           <div className="grid gap-5">
-            <CategoryGroup categories={groupedCategories.systemExpense} title="Kategori Pengeluaran Standar (Sistem)" />
-            <CategoryGroup categories={groupedCategories.systemIncome} title="Kategori Pemasukan Standar (Sistem)" />
+            <CategoryGroup categories={groupedCategories.systemExpense} title={t("categories.standardExpenseSystem") || "Kategori Pengeluaran Standar (Sistem)"} />
+            <CategoryGroup categories={groupedCategories.systemIncome} title={t("categories.standardIncomeSystem") || "Kategori Pemasukan Standar (Sistem)"} />
           </div>
         </div>
       ) : null}
@@ -740,9 +745,9 @@ export function CategoriesPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
             <div>
-              <h3 className="text-base font-black text-slate-900">Daftar Amplop Saya</h3>
+              <h3 className="text-base font-black text-slate-900">{t("categories.myEnvelopesList") || "Daftar Amplop Saya"}</h3>
               <p className="text-xs font-semibold text-slate-600">
-                Amplop digunakan untuk menandai transaksi dan membuat target budget tujuan spesifik
+                {t("categories.envelopesSubtitle") || "Amplop digunakan untuk menandai transaksi dan membuat target budget tujuan spesifik"}
               </p>
             </div>
             <Button
@@ -753,7 +758,7 @@ export function CategoriesPage() {
               className="gap-1.5 min-h-9 px-3 text-xs"
             >
               <Plus size={15} />
-              Tambah Amplop
+              {t("categories.addEnvelope") || "Tambah Amplop"}
             </Button>
           </div>
 
@@ -777,9 +782,9 @@ export function CategoriesPage() {
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark mb-3">
                 <Layers size={24} />
               </span>
-              <h4 className="text-sm font-black text-slate-900">Belum Ada Amplop</h4>
+              <h4 className="text-sm font-black text-slate-900">{t("categories.noEnvelopesTitle") || "Belum Ada Amplop"}</h4>
               <p className="mt-1 text-xs font-semibold text-slate-600 max-w-sm mx-auto">
-                Buat amplop seperti "Date", "Liburan Akhir Tahun", atau "Servis Motor" untuk mengelompokkan anggaran dan pengeluaran Anda.
+                {t("categories.noEnvelopesDesc") || "Buat amplop seperti \"Date\", \"Liburan Akhir Tahun\", atau \"Servis Motor\" untuk mengelompokkan anggaran dan pengeluaran Anda."}
               </p>
               <Button
                 onClick={() => {
@@ -789,7 +794,7 @@ export function CategoriesPage() {
                 className="mt-4 gap-1.5"
               >
                 <Plus size={16} />
-                Buat Amplop Pertama
+                {t("categories.createFirstEnvelope") || "Buat Amplop Pertama"}
               </Button>
             </div>
           )}
@@ -830,14 +835,14 @@ export function CategoriesPage() {
       {/* Category Archive Dialog */}
       {archiveTarget ? (
         <ConfirmationDialog
-          confirmLabel="Arsipkan Kategori"
-          description="Kategori ini akan disembunyikan dari pilihan transaksi aktif tetapi riwayat transaksi masa lalu tetap tersimpan."
+          confirmLabel={t("categories.archiveCategoryConfirm") || "Arsipkan Kategori"}
+          description={t("categories.archiveCategoryDesc") || "Kategori ini akan disembunyikan dari pilihan transaksi aktif tetapi riwayat transaksi masa lalu tetap tersimpan."}
           icon={Archive}
           isLoading={archivingCategory}
           itemLabel={archiveTarget.name}
           onCancel={() => setArchiveTarget(null)}
           onConfirm={() => void handleArchiveCategory(archiveTarget)}
-          title="Arsipkan kategori ini?"
+          title={t("categories.archiveCategoryTitle") || "Arsipkan kategori ini?"}
           tone="warning"
         />
       ) : null}
@@ -845,14 +850,14 @@ export function CategoriesPage() {
       {/* Category Delete Dialog */}
       {deleteTarget ? (
         <ConfirmationDialog
-          confirmLabel={deletingCategory ? "Menghapus..." : "Hapus Permanen"}
-          description="Apakah Anda yakin ingin menghapus kategori ini secara permanen? Kategori yang sudah memiliki riwayat transaksi tidak dapat dihapus dan disarankan untuk diarsipkan."
+          confirmLabel={deletingCategory ? t("common.deleting") : (t("common.deletePermanently") || "Hapus Permanen")}
+          description={t("categories.deleteCategoryDesc") || "Apakah Anda yakin ingin menghapus kategori ini secara permanen? Kategori yang sudah memiliki riwayat transaksi tidak dapat dihapus dan disarankan untuk diarsipkan."}
           icon={Trash2}
           isLoading={deletingCategory}
           itemLabel={deleteTarget.name}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => void handleDeleteCategory(deleteTarget)}
-          title="Hapus Kategori Permanen?"
+          title={t("categories.deleteCategoryTitle") || "Hapus Kategori Permanen?"}
           tone="danger"
         />
       ) : null}
@@ -860,14 +865,14 @@ export function CategoriesPage() {
       {/* Envelope Archive Dialog */}
       {archiveEnvelopeTarget ? (
         <ConfirmationDialog
-          confirmLabel="Arsipkan Amplop"
-          description="Amplop ini akan disembunyikan dari formulir aktif tetapi riwayat transaksi tetap terjaga."
+          confirmLabel={t("categories.archiveEnvelopeConfirm") || "Arsipkan Amplop"}
+          description={t("categories.archiveEnvelopeDesc") || "Amplop ini akan disembunyikan dari formulir aktif tetapi riwayat transaksi tetap terjaga."}
           icon={Archive}
           isLoading={archivingEnvelope}
           itemLabel={archiveEnvelopeTarget.name}
           onCancel={() => setArchiveEnvelopeTarget(null)}
           onConfirm={() => void handleArchiveEnvelope(archiveEnvelopeTarget)}
-          title="Arsipkan amplop ini?"
+          title={t("categories.archiveEnvelopeTitle") || "Arsipkan amplop ini?"}
           tone="warning"
         />
       ) : null}
@@ -875,14 +880,14 @@ export function CategoriesPage() {
       {/* Envelope Delete Dialog */}
       {deleteEnvelopeTarget ? (
         <ConfirmationDialog
-          confirmLabel={deletingEnvelope ? "Menghapus..." : "Hapus Amplop"}
-          description="Apakah Anda yakin ingin menghapus amplop ini secara permanen?"
+          confirmLabel={deletingEnvelope ? t("common.deleting") : (t("categories.deleteEnvelopeConfirm") || "Hapus Amplop")}
+          description={t("categories.deleteEnvelopeDesc") || "Apakah Anda yakin ingin menghapus amplop ini secara permanen?"}
           icon={Trash2}
           isLoading={deletingEnvelope}
           itemLabel={deleteEnvelopeTarget.name}
           onCancel={() => setDeleteEnvelopeTarget(null)}
           onConfirm={() => void handleDeleteEnvelope(deleteEnvelopeTarget)}
-          title="Hapus Amplop Permanen?"
+          title={t("categories.deleteEnvelopeTitle") || "Hapus Amplop Permanen?"}
           tone="danger"
         />
       ) : null}

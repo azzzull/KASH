@@ -8,6 +8,7 @@ import {
 import { Check, ChevronDown, Plus, User, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Counterparty } from "../../types/domain";
+import { useI18n } from "../../i18n";
 
 export type CounterpartyComboboxProps = {
   counterparties: Counterparty[];
@@ -24,13 +25,17 @@ export function CounterpartyCombobox({
   counterparties,
   disabled = false,
   id = "counterparty-combobox",
-  label = "Person / Counterparty *",
+  label,
   onChange,
-  placeholder = "Select or type a person's name...",
+  placeholder,
   required = false,
   value,
 }: CounterpartyComboboxProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
+
+  const effectiveLabel = label ?? (`${t("debts.personOrBusiness") || "Orang / Kontak"} *`);
+  const effectivePlaceholder = placeholder ?? (t("debts.searchOrAddPerson") || "Pilih atau ketik nama orang / kontak...");
 
   const filteredCounterparties = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -83,12 +88,12 @@ export function CounterpartyCombobox({
       onClose={() => setQuery("")}
     >
       <div className="relative w-full max-w-full min-w-0">
-        {label && (
+        {effectiveLabel && (
           <label
             htmlFor={id}
             className="block text-sm font-bold text-slate-900"
           >
-            {label}
+            {effectiveLabel}
           </label>
         )}
 
@@ -103,7 +108,7 @@ export function CounterpartyCombobox({
               item?.name ?? value ?? ""
             }
             onChange={handleInputChange}
-            placeholder={placeholder}
+            placeholder={effectivePlaceholder}
             required={required}
             className="block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white pl-9 pr-10 text-sm font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] disabled:bg-slate-50 disabled:text-slate-600"
           />
@@ -122,7 +127,7 @@ export function CounterpartyCombobox({
             >
               <UserPlus size={16} className="shrink-0" />
               <span className="truncate">
-                Add &ldquo;{query.trim()}&rdquo; as new person
+                {t("debts.addAsNewPerson", { name: query.trim() }) || `Tambah "${query.trim()}" sebagai kontak baru`}
               </span>
             </ComboboxOption>
           )}
@@ -151,13 +156,13 @@ export function CounterpartyCombobox({
           {/* Empty fallback */}
           {filteredCounterparties.length === 0 && query.trim().length === 0 && (
             <div className="p-3 text-center text-xs font-semibold text-slate-600">
-              No saved counterparties yet. Type a name to create one.
+              {t("debts.noSavedCounterparties") || "Belum ada kontak tersimpan. Ketik nama untuk membuat baru."}
             </div>
           )}
 
           {filteredCounterparties.length === 0 && query.trim().length > 0 && hasExactMatch && (
             <div className="p-3 text-center text-xs font-semibold text-slate-600">
-              No matching counterparties found.
+              {t("debts.noMatchingCounterparties") || "Tidak ada kontak yang cocok."}
             </div>
           )}
         </ComboboxOptions>

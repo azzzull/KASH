@@ -5,10 +5,12 @@ import { KashLogo } from "../components/brand/KashLogo";
 import { Button } from "../components/ui/Button";
 import { FormField } from "../components/ui/FormField";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 
 type AuthMode = "signin" | "signup";
 
 export function LoginPage() {
+  const { t } = useI18n();
   const { resendConfirmationEmail, signInWithGoogle, signInWithPassword, signUpWithPassword } = useAuth();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
@@ -58,23 +60,23 @@ export function LoginPage() {
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      setError("Please enter your email address.");
+      setError(t("login.emailRequired") || "Silakan masukkan alamat email Anda.");
       return;
     }
 
     if (!password) {
-      setError("Please enter your password.");
+      setError(t("login.passwordRequired") || "Silakan masukkan kata sandi Anda.");
       return;
     }
 
     if (mode === "signup") {
       if (password.length < 6) {
-        setError("Password must be at least 6 characters.");
+        setError(t("login.passwordMinLength") || "Kata sandi minimal 6 karakter.");
         return;
       }
 
       if (password !== confirmPassword) {
-        setError("Passwords do not match.");
+        setError(t("login.passwordMismatch") || "Konfirmasi kata sandi tidak cocok.");
         return;
       }
     }
@@ -120,7 +122,7 @@ export function LoginPage() {
     if (errorMessage) {
       setError(errorMessage);
     } else {
-      setResendSuccess("Confirmation email resent. Please check your inbox and spam folder.");
+      setResendSuccess(t("login.resendSuccess") || "Email konfirmasi telah dikirim ulang. Silakan periksa kotak masuk dan spam folder Anda.");
       setResendCooldown(60);
     }
   };
@@ -133,8 +135,8 @@ export function LoginPage() {
         </div>
 
         <div className="mt-6 text-center">
-          <h1 className="text-xl font-extrabold leading-tight text-slate-900">Your money, organized in one place.</h1>
-          <p className="mt-1 text-xs font-semibold text-slate-600">Track everything. Understand your money.</p>
+          <h1 className="text-xl font-extrabold leading-tight text-slate-900">{t("login.title") || "Keuangan Anda, tertata dalam satu tempat."}</h1>
+          <p className="mt-1 text-xs font-semibold text-slate-600">{t("login.subtitle") || "Pantau segalanya. Pahami alur keuangan Anda."}</p>
         </div>
 
         {/* Tab Switcher */}
@@ -148,7 +150,7 @@ export function LoginPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Sign In
+            {t("login.signIn") || "Masuk"}
           </button>
           <button
             type="button"
@@ -159,7 +161,7 @@ export function LoginPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Create Account
+            {t("login.signUp") || "Daftar Akun"}
           </button>
         </div>
 
@@ -178,12 +180,12 @@ export function LoginPage() {
         {emailConfirmationSent ? (
           <div className="mt-6 rounded-lg border border-kash-emerald/30 bg-kash-selected p-5 text-center">
             <CheckCircle2 aria-hidden="true" className="mx-auto text-kash-emerald" size={36} strokeWidth={2.2} />
-            <h2 className="mt-3 text-base font-extrabold text-slate-900">Check your inbox</h2>
+            <h2 className="mt-3 text-base font-extrabold text-slate-900">{t("login.checkInbox") || "Periksa kotak masuk Anda"}</h2>
             <p className="mt-2 text-xs font-semibold leading-5 text-slate-700">
-              We sent a verification link to <span className="font-extrabold text-slate-900">{email}</span>. Click the link in the email to activate your account.
+              {t("login.verificationSent", { email }) || `Kami telah mengirim tautan verifikasi ke ${email}. Klik tautan di email untuk mengaktifkan akun Anda.`}
             </p>
             <p className="mt-2 text-[11px] font-medium leading-4 text-slate-600">
-              If you don't see it within a minute, please check your spam folder or click below to resend.
+              {t("login.spamNotice") || "Jika belum melihatnya dalam 1 menit, silakan periksa folder spam atau klik tombol di bawah untuk kirim ulang."}
             </p>
 
             <div className="mt-4 flex flex-col gap-2">
@@ -195,10 +197,10 @@ export function LoginPage() {
               >
                 {resending ? <RefreshCw aria-hidden="true" className="animate-spin" size={13} /> : null}
                 {resending
-                  ? "Sending..."
+                  ? (t("login.sending") || "Mengirim...")
                   : resendCooldown > 0
-                  ? `Resend confirmation email (${resendCooldown}s)`
-                  : "Resend confirmation email"}
+                  ? `${t("login.resendConfirmation") || "Kirim ulang email verifikasi"} (${resendCooldown}s)`
+                  : (t("login.resendConfirmation") || "Kirim ulang email verifikasi")}
               </button>
 
               <Button
@@ -209,7 +211,7 @@ export function LoginPage() {
                 }}
                 variant="secondary"
               >
-                Back to Sign In
+                {t("login.backToSignIn") || "Kembali ke Halaman Masuk"}
               </Button>
             </div>
           </div>
@@ -223,13 +225,13 @@ export function LoginPage() {
               className="mt-5 flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <GoogleIcon className="h-5 w-5 shrink-0" />
-              <span>Continue with Google</span>
+              <span>{t("login.continueWithGoogle") || "Lanjutkan dengan Google"}</span>
             </button>
 
             <div className="relative my-5 flex items-center justify-center">
               <div className="w-full border-t border-slate-200" />
               <span className="absolute bg-white px-3 text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                or with email
+                {t("login.orWithEmail") || "atau dengan email"}
               </span>
             </div>
 
@@ -238,8 +240,8 @@ export function LoginPage() {
               {mode === "signup" ? (
                 <FormField
                   id="auth-fullname"
-                  label="Display Name (Optional)"
-                  placeholder="e.g. Alex"
+                  label={t("login.displayName") || "Nama Tampilan (Opsional)"}
+                  placeholder="mis. Alex"
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
                   autoComplete="name"
@@ -248,9 +250,9 @@ export function LoginPage() {
 
               <FormField
                 id="auth-email"
-                label="Email"
+                label={t("login.email") || "Email"}
                 type="email"
-                placeholder="name@example.com"
+                placeholder="nama@email.com"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
@@ -259,7 +261,7 @@ export function LoginPage() {
 
               <FormField
                 id="auth-password"
-                label="Password"
+                label={t("login.password") || "Kata Sandi"}
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -271,7 +273,7 @@ export function LoginPage() {
               {mode === "signup" ? (
                 <FormField
                   id="auth-confirm-password"
-                  label="Confirm Password"
+                  label={t("login.confirmPassword") || "Konfirmasi Kata Sandi"}
                   type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
@@ -285,18 +287,18 @@ export function LoginPage() {
                 {loading ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
                 {loading
                   ? mode === "signin"
-                    ? "Signing In..."
-                    : "Creating Account..."
+                    ? (t("login.signingIn") || "Sedang Masuk...")
+                    : (t("login.creatingAccount") || "Sedang Mendaftar...")
                   : mode === "signin"
-                    ? "Sign In"
-                    : "Create Account"}
+                    ? (t("login.signIn") || "Masuk")
+                    : (t("login.signUp") || "Daftar Akun")}
               </Button>
             </form>
           </>
         )}
 
         <p className="mt-5 text-center text-[11px] leading-5 text-slate-600">
-          By continuing, you agree to keep your financial data organized and secure in KASH.
+          {t("login.termsNotice") || "Dengan melanjutkan, Anda setuju untuk menjaga data keuangan tetap rapi dan aman di KASH."}
         </p>
       </section>
     </main>

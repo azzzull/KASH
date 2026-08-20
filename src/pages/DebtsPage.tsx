@@ -102,10 +102,10 @@ export function DebtsPage() {
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
-        eyebrow="Finance"
+        eyebrow={t("debts.financeEyebrow") || "Keuangan"}
         icon={HandCoins}
         title={t("debts.title")}
-        description="Track obligations and record settlements at the counterparty level."
+        description={t("debts.subtitle") || "Pantau kewajiban utang dan catat pelunasan tingkat kontak / pihak terkait."}
         actions={
           <Button onClick={() => setCreateModalOpen(true)}>
             <Plus aria-hidden="true" size={18} />
@@ -160,7 +160,7 @@ export function DebtsPage() {
         <div className="flex flex-wrap items-end gap-3 sm:flex-nowrap">
           <div className="min-w-[190px]">
             <SelectField
-              label="Status"
+              label={t("common.status") || "Status"}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             >
@@ -199,7 +199,7 @@ export function DebtsPage() {
           </h3>
           <p className="mt-1 text-xs font-semibold text-slate-600">
             {searchQuery
-              ? `No results matching "${searchQuery}".`
+              ? (t("debts.noMatchingDebts", { query: searchQuery }) || `Tidak ditemukan hasil yang cocok dengan "${searchQuery}".`)
               : t("debts.emptyDesc")}
           </p>
           {!searchQuery && (
@@ -247,7 +247,7 @@ export function DebtsPage() {
                         {cp.name}
                       </h3>
                       <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                        {cp.totalItemCount} total item{cp.totalItemCount !== 1 ? "s" : ""}
+                        {cp.totalItemCount} {t("debts.totalItems") || "total item"}
                       </p>
                     </div>
                     {isAllSettled && (
@@ -409,6 +409,7 @@ function CreateObligationModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t, formatCurrency } = useI18n();
   const [type, setType] = useState<DebtType>("debt");
   const [counterpartyName, setCounterpartyName] = useState("");
   const [items, setItems] = useState<
@@ -474,25 +475,25 @@ function CreateObligationModal({
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!counterpartyName.trim()) {
-      setError("Counterparty name is required.");
+      setError(t("debts.counterpartyRequired") || "Nama orang / kontak wajib diisi.");
       return;
     }
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (!item.title.trim()) {
-        setError(`Item #${i + 1} requires a title/description.`);
+        setError(t("debts.itemTitleRequired", { index: i + 1 }) || `Item #${i + 1} memerlukan judul / keterangan.`);
         return;
       }
       const rawDigits = parseMoneyInputDigits(item.originalAmount);
       if (!rawDigits || toNumber(rawDigits) <= 0) {
-        setError(`Item #${i + 1} ("${item.title}") must have an amount greater than zero.`);
+        setError(t("debts.itemAmountRequired", { index: i + 1, title: item.title }) || `Item #${i + 1} ("${item.title}") harus memiliki nominal lebih dari nol.`);
         return;
       }
     }
 
     if (linkWallet && !selectedWalletId) {
-      setError("Please select a wallet to process the funds.");
+      setError(t("debts.selectWalletError") || "Silakan pilih dompet untuk memproses dana.");
       return;
     }
 
@@ -503,7 +504,7 @@ function CreateObligationModal({
       // Find or create counterparty safely
       const { data: cp, error: cpError } = await findOrCreateCounterparty(counterpartyName);
       if (cpError || !cp) {
-        setError("Failed to resolve counterparty. Please try again.");
+        setError(t("debts.resolveCounterpartyFailed") || "Gagal memproses pihak terkait. Silakan coba lagi.");
         setSaving(false);
         return;
       }
@@ -524,7 +525,7 @@ function CreateObligationModal({
       });
 
       if (batchError) {
-        setError(batchError.message ?? "Failed to create obligation records. Please try again.");
+        setError(batchError.message ?? (t("debts.createObligationFailed") || "Gagal membuat catatan kewajiban. Silakan coba lagi."));
         setSaving(false);
         return;
       }
@@ -534,7 +535,7 @@ function CreateObligationModal({
       }
       onSaved();
     } catch (err: any) {
-      setError(err?.message ?? "An unexpected error occurred.");
+      setError(err?.message ?? (t("common.errorOccurred") || "Terjadi kesalahan yang tidak terduga."));
       setSaving(false);
     }
   };
@@ -544,8 +545,8 @@ function CreateObligationModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title="New Obligation"
-      description="Record one or more items you owe or someone owes to you."
+      title={type === "debt" ? (t("debts.newDebtTitle") || "Catat Utang Baru") : (t("debts.newReceivableTitle") || "Catat Piutang Baru")}
+      description={t("debts.obligationModalDesc") || "Catat satu atau beberapa item yang Anda pinjam atau pinjamkan."}
     >
       <div>
         {error ? (
@@ -565,7 +566,7 @@ function CreateObligationModal({
                   : "text-slate-600 hover:text-slate-900"
                 }`}
             >
-              I Owe (Debt)
+              {t("debts.iOwe") || "Saya Berutang (Utang)"}
             </button>
             <button
               type="button"
@@ -575,39 +576,39 @@ function CreateObligationModal({
                   : "text-slate-600 hover:text-slate-900"
                 }`}
             >
-              Owed to Me (Receivable)
+              {t("debts.owedToMe") || "Orang Berutang ke Saya (Piutang)"}
             </button>
           </div>
 
           <div className="w-full max-w-full min-w-0">
             <label className="block text-sm font-bold text-slate-900" htmlFor="counterparty-name">
-              Person or Business *
+              {t("debts.personOrBusiness") || "Orang atau Pihak Terkait"} *
             </label>
             <div className="mt-1">
               <CounterpartyCombobox
                 id="obligation-counterparty"
                 counterparties={allCounterparties}
                 onChange={(selected) => setCounterpartyName(selected)}
-                placeholder="Search or add a person / business..."
+                placeholder={t("debts.searchOrAddPerson") || "Cari atau tambah nama orang / pihak..."}
                 value={counterpartyName}
                 required
               />
             </div>
             <p className="mt-1.5 text-xs font-semibold text-slate-600">
-              Type a name to search existing people or add a new one.
+              {t("debts.typeNameToSearch") || "Ketik nama untuk mencari kontak yang sudah ada atau menambahkan baru."}
             </p>
           </div>
 
           {/* Dynamic Item Rows */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-900">Items / Obligations *</span>
+              <span className="text-sm font-bold text-slate-900">{t("debts.itemsObligations") || "Daftar Item / Kewajiban"} *</span>
               <button
                 type="button"
                 onClick={addItemRow}
                 className="inline-flex items-center gap-1 text-xs font-black text-kash-emerald hover:text-kash-emeraldDark"
               >
-                <Plus size={14} /> Add Another Item
+                <Plus size={14} /> {t("debts.addAnotherItem") || "Tambah Item Lain"}
               </button>
             </div>
 
@@ -615,13 +616,13 @@ function CreateObligationModal({
               <div key={item.id} className="relative rounded-lg border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
                 {items.length > 1 && (
                   <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
-                    <span className="text-xs font-black text-slate-500">Item #{index + 1}</span>
+                    <span className="text-xs font-black text-slate-500">{t("debts.item") || "Item"} #{index + 1}</span>
                     <button
                       type="button"
                       onClick={() => removeItemRow(item.id)}
                       className="text-xs font-bold text-kash-expense hover:underline"
                     >
-                      Remove
+                      {t("common.remove") || "Hapus"}
                     </button>
                   </div>
                 )}
@@ -629,11 +630,11 @@ function CreateObligationModal({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-800">
-                      Title / Item Name *
+                      {t("debts.itemTitleLabel") || "Nama / Keterangan Item"} *
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Tiket Konser, Beli Jaket"
+                      placeholder={t("debts.itemTitlePlaceholder") || "misal: Tiket Konser, Beli Jaket"}
                       value={item.title}
                       onChange={(e) => updateItemRow(item.id, "title", e.target.value)}
                       className="mt-1.5 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
@@ -643,7 +644,7 @@ function CreateObligationModal({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-800">
-                      Amount *
+                      {t("debts.amount") || "Nominal"} *
                     </label>
                     <input
                       inputMode="numeric"
@@ -662,7 +663,7 @@ function CreateObligationModal({
                   <div>
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-slate-800">
-                        Due Date (Optional)
+                        {t("debts.dueDateOptional") || "Jatuh Tempo (Opsional)"}
                       </label>
                       {item.dueDate ? (
                         <button
@@ -670,24 +671,24 @@ function CreateObligationModal({
                           onClick={() => updateItemRow(item.id, "dueDate", "")}
                           className="text-[11px] font-bold text-kash-emerald hover:underline"
                         >
-                          Clear
+                          {t("common.clear") || "Hapus"}
                         </button>
                       ) : null}
                     </div>
                     <DatePickerField
                       value={item.dueDate}
-                      placeholder="Select Due Date"
+                      placeholder={t("debts.selectDueDate") || "Pilih Jatuh Tempo"}
                       onChange={(val) => updateItemRow(item.id, "dueDate", val)}
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-800">
-                      Note (Optional)
+                      {t("debts.noteOptional") || "Catatan (Opsional)"}
                     </label>
                     <input
                       type="text"
-                      placeholder="Optional details..."
+                      placeholder={t("debts.notePlaceholder") || "Keterangan tambahan..."}
                       value={item.note}
                       onChange={(e) => updateItemRow(item.id, "note", e.target.value)}
                       className="mt-1.5 block h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
@@ -703,7 +704,7 @@ function CreateObligationModal({
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-xs font-bold text-slate-700 transition hover:border-kash-emerald hover:bg-emerald-50/50 hover:text-kash-emeraldDark"
             >
               <Plus size={15} />
-              Add Another Item for {counterpartyName || "this Person"}
+              {t("debts.addAnotherItemForPerson", { name: counterpartyName || (t("debts.thisPerson") || "pihak ini") }) || `Tambah Item Lain untuk ${counterpartyName || "pihak ini"}`}
             </button>
           </div>
 
@@ -724,13 +725,13 @@ function CreateObligationModal({
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-900">
                   {type === "debt"
-                    ? "Deposit money into my wallet (Uang pinjaman masuk ke rekening)"
-                    : "Pay from my wallet (Uang ditalangin / dipinjamkan keluar dari rekening)"}
+                    ? (t("debts.depositToWallet") || "Uang pinjaman masuk ke rekening")
+                    : (t("debts.payFromWallet") || "Uang ditalangin / dipinjamkan keluar dari rekening")}
                 </p>
                 <p className="text-[11px] font-medium text-slate-600">
                   {type === "debt"
-                    ? "Centang jika uang pinjaman ini Anda terima langsung ke rekening/dompet KASH saat ini."
-                    : "Centang jika Anda membayarkan/mentransfer uang ini dari rekening KASH sekarang (misal: ditalangin dulu untuk di-reimburse nanti)."}
+                    ? (t("debts.depositToWalletDesc") || "Centang jika uang pinjaman ini Anda terima langsung ke rekening/dompet KASH saat ini.")
+                    : (t("debts.payFromWalletDesc") || "Centang jika Anda membayarkan/mentransfer uang ini dari rekening KASH sekarang (misal: ditalangin dulu untuk di-reimburse nanti).")}
                 </p>
               </div>
             </label>
@@ -739,7 +740,7 @@ function CreateObligationModal({
               <div className="space-y-2 border-t border-slate-100 pt-2">
                 <SelectField
                   id="obligation-wallet"
-                  label={type === "debt" ? "Destination Wallet *" : "Source Wallet *"}
+                  label={type === "debt" ? `${t("debts.destinationWallet") || "Dompet Tujuan Penerimaan"} *` : `${t("debts.sourceWallet") || "Dompet Asal Pembayaran"} *`}
                   value={selectedWalletId}
                   onChange={(e) => setSelectedWalletId(e.target.value)}
                   required
@@ -754,7 +755,7 @@ function CreateObligationModal({
                 {selectedWallet && (
                   <div className="flex items-center justify-between rounded-lg bg-emerald-50/70 p-2.5 text-xs font-semibold text-slate-800">
                     <span>
-                      {type === "debt" ? "Wallet will receive:" : "Wallet will be deducted by:"}
+                      {type === "debt" ? (t("debts.walletWillReceive") || "Saldo dompet akan bertambah:") : (t("debts.walletWillBeDeducted") || "Saldo dompet akan berkurang:")}
                     </span>
                     <span className={`font-extrabold ${type === "debt" ? "text-kash-emeraldDark" : "text-kash-expense"}`}>
                       {type === "debt" ? "+" : "-"}{formatCurrency(totalAmountSum, "IDR")}
@@ -768,8 +769,8 @@ function CreateObligationModal({
           {/* Live Total Summary */}
           <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3.5">
             <div>
-              <span className="text-xs font-bold uppercase text-slate-600">Total Obligation</span>
-              <p className="text-xs font-semibold text-slate-600">{items.length} item{items.length !== 1 ? "s" : ""}</p>
+              <span className="text-xs font-bold uppercase text-slate-600">{t("debts.totalObligation") || "Total Kewajiban"}</span>
+              <p className="text-xs font-semibold text-slate-600">{items.length} {t("debts.items") || "item"}</p>
             </div>
             <p className="text-xl font-black text-slate-900">
               {formatCurrency(totalAmountSum, "IDR")}
@@ -779,7 +780,7 @@ function CreateObligationModal({
           <div className="mt-2">
             <Button disabled={saving} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-              Save {items.length} Obligation Item{items.length !== 1 ? "s" : ""}
+              {t("debts.saveObligationItems", { count: items.length }) || `Simpan ${items.length} Item Kewajiban`}
             </Button>
           </div>
         </form>
@@ -799,6 +800,7 @@ export function SettlementModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t, formatCurrency } = useI18n();
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("wallet");
   const [amount, setAmount] = useState("");
   const [walletId, setWalletId] = useState("");
@@ -832,16 +834,16 @@ export function SettlementModal({
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (parsedAmount <= 0) {
-      setError("Settlement amount must be greater than zero.");
+      setError(t("debts.amountGreaterThanZero") || "Nominal pelunasan harus lebih dari nol.");
       return;
     }
     if (parsedAmount > totalOutstanding) {
-      setError(`Payment amount cannot exceed the total outstanding balance of ${formatCurrency(totalOutstanding, "IDR")}.`);
+      setError(t("debts.amountExceedsBalance", { total: formatCurrency(totalOutstanding, "IDR") }) || `Nominal pembayaran tidak boleh melebihi sisa total ${formatCurrency(totalOutstanding, "IDR")}.`);
       return;
     }
 
     if (paymentMode === "wallet" && !walletId) {
-      setError("Please select a wallet.");
+      setError(t("debts.selectWalletError") || "Silakan pilih dompet.");
       return;
     }
 
@@ -861,14 +863,14 @@ export function SettlementModal({
       });
 
       if (settlementError) {
-        setError(settlementError.message ?? "Failed to record settlement. Please try again.");
+        setError(settlementError.message ?? (t("debts.recordSettlementFailed") || "Gagal mencatat pelunasan. Silakan coba lagi."));
         setSaving(false);
         return;
       }
 
       onSaved();
     } catch (err: any) {
-      setError(err?.message ?? "An unexpected error occurred.");
+      setError(err?.message ?? (t("common.errorOccurred") || "Terjadi kesalahan yang tidak terduga."));
       setSaving(false);
     }
   };
@@ -878,11 +880,11 @@ export function SettlementModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title={isDebt ? `Record Payment to ${counterparty.name}` : `Record Collection from ${counterparty.name}`}
+      title={isDebt ? (t("debts.recordPaymentTo", { name: counterparty.name }) || `Catat Pembayaran ke ${counterparty.name}`) : (t("debts.recordCollectionFrom", { name: counterparty.name }) || `Catat Penerimaan dari ${counterparty.name}`)}
       description={
         isDebt
-          ? `Total Outstanding Debt: ${formatCurrency(totalOutstanding, "IDR")}`
-          : `Total Outstanding Receivable: ${formatCurrency(totalOutstanding, "IDR")}`
+          ? `${t("debts.remainingDebt")}: ${formatCurrency(totalOutstanding, "IDR")}`
+          : `${t("debts.remainingReceivable")}: ${formatCurrency(totalOutstanding, "IDR")}`
       }
     >
       <div>
@@ -902,7 +904,7 @@ export function SettlementModal({
                 paymentMode === "wallet" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              {isDebt ? "Pay from Wallet" : "Receive into Wallet"}
+              {isDebt ? (t("debts.payFromWalletTab") || "Bayar dari Dompet") : (t("debts.receiveIntoWalletTab") || "Terima ke Dompet")}
             </button>
             <button
               type="button"
@@ -911,14 +913,14 @@ export function SettlementModal({
                 paymentMode === "historical" ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              {isDebt ? "Record Previous Payment" : "Record Previous Collection"}
+              {isDebt ? (t("debts.recordPreviousPaymentTab") || "Catat Pembayaran Masa Lalu") : (t("debts.recordPreviousCollectionTab") || "Catat Penerimaan Masa Lalu")}
             </button>
           </div>
 
           {/* Historical Explanation */}
           {paymentMode === "historical" && (
             <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-xs font-semibold text-blue-900">
-              This records a payment that already happened outside KASH. It reduces the outstanding obligation balance without changing your wallet balances.
+              {t("debts.historicalSettlementDesc") || "Mencatat pelunasan yang sudah terjadi di luar KASH. Mengurangi sisa kewajiban tanpa mempengaruhi saldo dompet Anda."}
             </div>
           )}
 
@@ -926,14 +928,14 @@ export function SettlementModal({
           <div className="w-full max-w-full min-w-0">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-bold text-slate-900" htmlFor="settlement-amount">
-                Amount *
+                {t("debts.amount") || "Nominal"} *
               </label>
               <button
                 type="button"
                 onClick={() => setAmount(formatMoneyDigits(totalOutstanding.toString()))}
                 className="text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark hover:underline"
               >
-                Bayar Penuh ({formatCurrency(totalOutstanding, "IDR")})
+                {t("debts.payFull") || "Bayar Penuh"} ({formatCurrency(totalOutstanding, "IDR")})
               </button>
             </div>
             <input
@@ -952,14 +954,14 @@ export function SettlementModal({
           {paymentMode === "wallet" && (
             <SelectField
               id="settlement-wallet"
-              label={isDebt ? "From Wallet (Source) *" : "To Wallet (Destination) *"}
+              label={isDebt ? `${t("debts.fromWalletSource") || "Dari Dompet (Sumber)"} *` : `${t("debts.toWalletDestination") || "Ke Dompet (Tujuan)"} *`}
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
             >
-              {wallets.length === 0 ? <option value="">No wallets available</option> : null}
+              {wallets.length === 0 ? <option value="">{t("wallets.noWalletsFound") || "Tidak ada dompet tersedia"}</option> : null}
               {wallets.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} - Balance: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")}
+                  {w.name} - {t("wallets.balance") || "Saldo"}: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")}
                 </option>
               ))}
             </SelectField>
@@ -968,7 +970,7 @@ export function SettlementModal({
           {/* Date Picker */}
           <DatePickerField
             id="settlement-date"
-            label="Payment Date *"
+            label={`${t("debts.paymentDate") || "Tanggal Pembayaran"} *`}
             enableTime
             value={paymentDate}
             onChange={(val) => setPaymentDate(val)}
@@ -977,36 +979,36 @@ export function SettlementModal({
           {/* Notes */}
           <FormField
             id="settlement-note"
-            label="Note (Optional)"
-            placeholder="e.g. Paid via BCA Transfer"
+            label={t("debts.noteOptional") || "Catatan (Opsional)"}
+            placeholder={t("debts.settlementNotePlaceholder") || "e.g. Ditransfer via BCA / Tunai"}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
 
           {/* Real-Time Live Preview */}
           <div className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Settlement Preview</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">{t("debts.settlementPreview") || "Pratinjau Pelunasan"}</p>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="font-semibold text-slate-700">Settlement Mode:</span>
-                <span className="font-black text-slate-900">Alokasi Otomatis (FIFO)</span>
+                <span className="font-semibold text-slate-700">{t("debts.settlementMode") || "Metode Alokasi:"}</span>
+                <span className="font-black text-slate-900">{t("debts.autoAllocationFifo") || "Alokasi Otomatis (FIFO)"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-slate-700">Settlement Amount:</span>
+                <span className="font-semibold text-slate-700">{t("debts.settlementAmountLabel") || "Nominal Pelunasan:"}</span>
                 <span className="font-black text-slate-900">{formatCurrency(parsedAmount, "IDR")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="font-semibold text-slate-700">Wallet Effect:</span>
+                <span className="font-semibold text-slate-700">{t("debts.walletEffect") || "Dampak ke Dompet:"}</span>
                 <span className="font-black text-slate-900">
                   {paymentMode === "historical"
-                    ? "No change (Historical)"
+                    ? (t("debts.noChangeHistorical") || "Tidak berubah (Histori Lampau)")
                     : isDebt
-                      ? `-${formatCurrency(parsedAmount, "IDR")} (${selectedWallet?.name ?? "Wallet"})`
-                      : `+${formatCurrency(parsedAmount, "IDR")} (${selectedWallet?.name ?? "Wallet"})`}
+                      ? `-${formatCurrency(parsedAmount, "IDR")} (${selectedWallet?.name ?? (t("wallets.walletFallback") || "Dompet")})`
+                      : `+${formatCurrency(parsedAmount, "IDR")} (${selectedWallet?.name ?? (t("wallets.walletFallback") || "Dompet")})`}
                 </span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-2">
-                <span className="font-bold text-slate-900">Remaining {isDebt ? "Debt" : "Receivable"}:</span>
+                <span className="font-bold text-slate-900">{t("debts.remainingObligation") || "Sisa"} {isDebt ? (t("debts.tabDebts") || "Utang") : (t("debts.tabReceivables") || "Piutang")}:</span>
                 <span className="font-black text-slate-900">{formatCurrency(remainingAfterPayment, "IDR")}</span>
               </div>
             </div>
@@ -1015,7 +1017,7 @@ export function SettlementModal({
           <div className="mt-2">
             <Button disabled={saving} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-              {isDebt ? "Confirm Debt Payment" : "Confirm Collection"}
+              {isDebt ? (t("debts.confirmDebtPayment") || "Konfirmasi Pembayaran Utang") : (t("debts.confirmCollection") || "Konfirmasi Penerimaan Piutang")}
             </Button>
           </div>
         </form>

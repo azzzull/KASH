@@ -1,7 +1,6 @@
 import { Check, Plus, RotateCcw, Tag, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { quickCreateCategory, unarchiveCategory } from "../../lib/categories";
 import { categoryColors, categoryIconOptions, getCategoryIcon } from "../../lib/categoryMeta";
 import type { Category, CategoryType } from "../../types/domain";
@@ -11,6 +10,7 @@ import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
+import { useI18n } from "../../i18n";
 
 type QuickCreateCategoryModalProps = {
   isOpen: boolean;
@@ -27,6 +27,7 @@ export function QuickCreateCategoryModal({
   onClose,
   onCreated,
 }: QuickCreateCategoryModalProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(initialName);
   const [icon, setIcon] = useState(() => (categoryType === "income" ? "briefcase" : "utensils"));
   const [color, setColor] = useState(() => (categoryType === "income" ? "#10B981" : "#E50914"));
@@ -68,7 +69,7 @@ export function QuickCreateCategoryModal({
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Nama kategori tidak boleh kosong.");
+      setError(t("categories.nameRequired") || "Nama kategori tidak boleh kosong.");
       return;
     }
 
@@ -105,7 +106,7 @@ export function QuickCreateCategoryModal({
     setSaving(false);
 
     if (restoreErr || !restored) {
-      setError(restoreErr?.message || "Gagal memulihkan kategori.");
+      setError(restoreErr?.message || (t("categories.restoreFailed") || "Gagal memulihkan kategori."));
       return;
     }
 
@@ -130,10 +131,10 @@ export function QuickCreateCategoryModal({
           </span>
           <div>
             <h2 className="text-base font-extrabold text-slate-900">
-              Tambah Kategori {categoryType === "income" ? "Pemasukan" : "Pengeluaran"}
+              {t("categories.addCategoryTitle", { type: categoryType === "income" ? (t("common.typeIncome") || "Pemasukan") : (t("common.typeExpense") || "Pengeluaran") }) || `Tambah Kategori ${categoryType === "income" ? "Pemasukan" : "Pengeluaran"}`}
             </h2>
             <p className="text-xs font-semibold text-slate-600">
-              Buat kategori baru secara cepat tanpa keluar dari form
+              {t("categories.quickCreateDesc") || "Buat kategori baru secara cepat tanpa keluar dari form"}
             </p>
           </div>
         </div>
@@ -153,7 +154,7 @@ export function QuickCreateCategoryModal({
                     className="gap-1.5 min-h-8 px-3 py-1 text-xs"
                   >
                     <RotateCcw size={13} />
-                    Pulihkan Kategori & Gunakan
+                    {t("categories.restoreAndUse") || "Pulihkan Kategori & Gunakan"}
                   </Button>
                 </div>
               )}
@@ -163,10 +164,10 @@ export function QuickCreateCategoryModal({
           {/* Name Field */}
           <FormField
             id="quick-category-name"
-            label="Nama Kategori"
+            label={t("categories.nameLabel") || "Nama Kategori"}
             required
             autoFocus
-            placeholder={categoryType === "income" ? "e.g. Bonus, Dividen" : "e.g. Pet Care, Kopi"}
+            placeholder={categoryType === "income" ? (t("categories.placeholderIncome") || "e.g. Bonus, Dividen") : (t("categories.placeholderExpense") || "e.g. Pet Care, Kopi")}
             value={name}
             onChange={(e) => {
               setName(e.target.value);
@@ -176,7 +177,7 @@ export function QuickCreateCategoryModal({
 
           {/* Icon Selector */}
           <CategoryIconPicker
-            label="Ikon Kategori"
+            label={t("categories.chooseIcon") || "Ikon Kategori"}
             value={icon}
             accentColor={color}
             onChange={(selectedIcon) => setIcon(selectedIcon)}
@@ -185,7 +186,7 @@ export function QuickCreateCategoryModal({
           {/* Color Palette Picker */}
           <div className="relative z-10">
             <label className="block text-sm font-bold text-slate-900 mb-2">
-              Warna Kategori
+              {t("categories.chooseColor") || "Warna Kategori"}
             </label>
             <div className="flex flex-wrap gap-2.5">
               {categoryColors.map((c) => {
@@ -212,10 +213,10 @@ export function QuickCreateCategoryModal({
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Menyimpan..." : "Simpan & Pilih"}
+              {saving ? t("common.saving") : (t("categories.saveAndSelect") || "Simpan & Pilih")}
             </Button>
           </div>
         </form>

@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "./Button";
 import { Modal } from "./Modal";
+import { useI18n } from "../../i18n";
 
 type ConfirmationTone = "danger" | "warning" | "neutral";
 
@@ -37,7 +38,7 @@ const toneStyles: Record<ConfirmationTone, { icon: string; confirm: string }> = 
 };
 
 export function ConfirmationDialog({
-  cancelLabel = "Batal",
+  cancelLabel,
   children,
   confirmLabel,
   description,
@@ -50,7 +51,9 @@ export function ConfirmationDialog({
   title,
   tone = "warning",
 }: ConfirmationDialogProps) {
+  const { t } = useI18n();
   const styles = toneStyles[tone];
+  const effectiveCancelLabel = cancelLabel ?? t("common.cancel");
 
   return (
     <Modal
@@ -79,7 +82,7 @@ export function ConfirmationDialog({
 
         <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end pt-2">
           <Button disabled={isLoading} onClick={onCancel} variant="secondary" className="justify-center">
-            {cancelLabel}
+            {effectiveCancelLabel}
           </Button>
           <Button
             className={`${styles.confirm} justify-center`}

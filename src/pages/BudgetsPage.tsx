@@ -49,6 +49,7 @@ function formatMonthYearLabel(dateStr: string): string {
 }
 
 export function BudgetsPage() {
+  const { t, formatMonthYear, formatCurrency } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -139,31 +140,34 @@ export function BudgetsPage() {
     100
   );
 
-  const { t } = useI18n();
-
   const filterTabOptions = useMemo(() => [
     { label: t("common.all"), value: "all", count: budgets.length },
     { label: t("budgets.categories"), value: "category", count: categoryBudgets.length },
     { label: t("budgets.envelopes"), value: "envelope", count: envelopeBudgets.length },
-    { label: "Cicil Utang", value: "debt", count: debtBudgets.length },
-    { label: "Tabungan", value: "goal", count: goalBudgets.length },
+    { label: t("budgets.debtPayment") || "Cicil Utang", value: "debt", count: debtBudgets.length },
+    { label: t("dashboard.savings") || "Tabungan", value: "goal", count: goalBudgets.length },
   ], [budgets.length, categoryBudgets.length, envelopeBudgets.length, debtBudgets.length, goalBudgets.length, t]);
+
+  const currentMonthLabel = useMemo(() => {
+    const [year, month] = currentMonth.split("-").map(Number);
+    return formatMonthYear(new Date(year, month - 1, 1));
+  }, [currentMonth, formatMonthYear]);
 
   return (
     <div className="w-full min-w-0 space-y-5">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
-          eyebrow="Planning"
+          eyebrow={t("budgets.planning") || "Planning"}
           icon={Scale}
-          title="Budget"
-          description="Kendalikan rencana keuangan bulanan: belanja, amplop, cicilan utang, dan tabungan."
+          title={t("nav.budgets")}
+          description={t("budgets.description") || "Kendalikan rencana keuangan bulanan: belanja, amplop, cicilan utang, dan tabungan."}
         />
 
         <div className="flex items-center gap-2">
           <Button onClick={() => setShowCreateModal(true)} className="gap-2">
             <Plus size={16} />
-            Buat Target Budget
+            {t("budgets.createTargetBudget") || "Buat Target Budget"}
           </Button>
         </div>
       </div>
@@ -175,7 +179,7 @@ export function BudgetsPage() {
             type="button"
             onClick={handlePrevMonth}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-            aria-label="Bulan Sebelumnya"
+            aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
           >
             <ChevronLeft size={18} />
           </button>
@@ -197,7 +201,7 @@ export function BudgetsPage() {
             type="button"
             onClick={handleNextMonth}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-            aria-label="Bulan Berikutnya"
+            aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
           >
             <ChevronRight size={18} />
           </button>
@@ -208,7 +212,7 @@ export function BudgetsPage() {
           onClick={handleSetCurrentMonth}
           className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
         >
-          Bulan Ini
+          {t("common.thisMonth") || "Bulan Ini"}
         </button>
       </div>
 
@@ -218,7 +222,7 @@ export function BudgetsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
             <div>
               <span className="text-xs font-extrabold uppercase text-slate-600">
-                Unified Financial Plan ({formatMonthYearLabel(currentMonth)})
+                {t("budgets.unifiedFinancialPlan") || "Unified Financial Plan"} ({currentMonthLabel})
               </span>
               <h2 className="mt-0.5 text-xl font-black text-slate-900">
                 {formatCurrency(overview.total_actual_cash_outflow)}{" "}
@@ -232,20 +236,20 @@ export function BudgetsPage() {
             <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
               <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2.5 py-1 text-kash-emeraldDark">
                 <CheckCircle2 size={13} />
-                {overview.healthy_count} Aman
+                {overview.healthy_count} {t("budgets.healthy") || "Aman"}
               </span>
 
               {overview.near_limit_count > 0 && (
                 <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">
                   <AlertCircle size={13} />
-                  {overview.near_limit_count} Hampir Batas
+                  {overview.near_limit_count} {t("budgets.nearLimit") || "Hampir Batas"}
                 </span>
               )}
 
               {overview.over_budget_count > 0 && (
                 <span className="flex items-center gap-1 rounded-full bg-kash-expense/15 px-2.5 py-1 text-kash-expense">
                   <AlertCircle size={13} />
-                  {overview.over_budget_count} Over Budget
+                  {overview.over_budget_count} {t("budgets.overBudget") || "Over Budget"}
                 </span>
               )}
             </div>
@@ -254,21 +258,21 @@ export function BudgetsPage() {
           {/* Numbers Grid */}
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
             <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">Total Alokasi Rencana</span>
+              <span className="font-bold text-slate-600">{t("budgets.totalAllocated") || "Total Alokasi Rencana"}</span>
               <p className="mt-0.5 text-base font-black text-slate-900">
                 {formatCurrency(overview.total_allocated)}
               </p>
             </div>
 
             <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">Arus Kas Keluar Riil</span>
+              <span className="font-bold text-slate-600">{t("budgets.actualCashOutflow") || "Arus Kas Keluar Riil"}</span>
               <p className="mt-0.5 text-base font-black text-slate-900">
                 {formatCurrency(overview.total_actual_cash_outflow)}
               </p>
             </div>
 
             <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">Sisa Alokasi Bersih</span>
+              <span className="font-bold text-slate-600">{t("budgets.netRemainingAllocation") || "Sisa Alokasi Bersih"}</span>
               <p className="mt-0.5 text-base font-black text-kash-emeraldDark">
                 {formatCurrency(overview.remaining_allocation)}
               </p>
@@ -277,15 +281,15 @@ export function BudgetsPage() {
 
           {/* Cashflow Breakdown Pill Chips */}
           <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-[11px] font-bold">
-            <span className="text-slate-500">Breakdown Kas Riil:</span>
+            <span className="text-slate-500">{t("budgets.actualCashBreakdown") || "Breakdown Kas Riil:"}</span>
             <span className="rounded-lg bg-red-50 text-red-700 px-2 py-0.5">
-              Belanja: {formatCurrency(overview.actual_expenses)}
+              {t("common.typeExpense") || "Belanja"}: {formatCurrency(overview.actual_expenses)}
             </span>
             <span className="rounded-lg bg-orange-50 text-orange-700 px-2 py-0.5">
-              Cicil Utang: {formatCurrency(overview.actual_debt_payments)}
+              {t("budgets.debtPayment") || "Cicil Utang"}: {formatCurrency(overview.actual_debt_payments)}
             </span>
             <span className="rounded-lg bg-amber-50 text-amber-800 px-2 py-0.5">
-              Tabungan/Goal: {formatCurrency(overview.actual_goal_contributions)}
+              {t("budgets.savingsGoal") || "Tabungan/Goal"}: {formatCurrency(overview.actual_goal_contributions)}
             </span>
           </div>
 
@@ -304,8 +308,8 @@ export function BudgetsPage() {
               />
             </div>
             <div className="mt-1.5 flex items-center justify-between text-xs font-bold text-slate-600">
-              <span>{overview.overall_usage_percentage.toFixed(1)}% anggaran terpakai</span>
-              <span>{overview.total_budgets_count} alokasi aktif</span>
+              <span>{t("budgets.budgetUsedPercent", { percent: overview.overall_usage_percentage.toFixed(1) }) || `${overview.overall_usage_percentage.toFixed(1)}% anggaran terpakai`}</span>
+              <span>{t("budgets.activeAllocationsCount", { count: overview.total_budgets_count ?? 0 }) || `${overview.total_budgets_count ?? 0} alokasi aktif`}</span>
             </div>
           </div>
         </div>
@@ -337,13 +341,13 @@ export function BudgetsPage() {
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark mb-3">
             <Scale size={28} />
           </div>
-          <h3 className="text-base font-extrabold text-slate-900">Belum Ada Budget di Bulan Ini</h3>
+          <h3 className="text-base font-extrabold text-slate-900">{t("budgets.noBudgetsInMonth") || "Belum Ada Budget di Bulan Ini"}</h3>
           <p className="mt-1 max-w-sm text-xs font-semibold text-slate-600">
-            Buat batas anggaran untuk kategori favorit atau kelompokkan kategori ke dalam amplop belanja.
+            {t("budgets.noBudgetsInMonthDesc") || "Buat batas anggaran untuk kategori favorit atau kelompokkan kategori ke dalam amplop belanja."}
           </p>
           <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
             <Plus size={16} />
-            Buat Budget Sekarang
+            {t("budgets.createBudgetNow") || "Buat Budget Sekarang"}
           </Button>
         </div>
       ) : (

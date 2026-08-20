@@ -25,18 +25,12 @@ import { DatePickerField } from "../components/ui/DatePickerField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 
+import { useI18n } from "../i18n";
+
 const INCOME_COLOR = "#10B981";
 const EXPENSE_COLOR = "#E50914";
 const NET_WORTH_COLOR = "#FBBF24";
 const CHART_GRID_COLOR = "rgba(16, 185, 129, 0.16)";
-const analyticsPeriodOptions: { label: string; value: AnalyticsPeriodKey }[] = [
-  { label: "This Month", value: "this_month" },
-  { label: "Last Month", value: "last_month" },
-  { label: "3 Months", value: "3_months" },
-  { label: "6 Months", value: "6_months" },
-  { label: "This Year", value: "this_year" },
-  { label: "Custom Range", value: "custom" },
-];
 
 function localDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -65,25 +59,6 @@ function EmptyPanel({ description, title, className = "" }: { className?: string
   );
 }
 
-function formatAmount(amount: number, currency: string) {
-  return formatCurrency(amount, currency);
-}
-
-function formatCompactAmount(amount: number, currency: string) {
-  const absoluteAmount = Math.abs(amount);
-  const prefix = currency === "IDR" ? "Rp" : currency;
-
-  if (absoluteAmount >= 1000000) {
-    return `${prefix}${(amount / 1000000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
-  }
-
-  if (absoluteAmount >= 1000) {
-    return `${prefix}${Math.round(amount / 1000).toLocaleString("id-ID")} rb`;
-  }
-
-  return `${prefix}${amount.toLocaleString("id-ID")}`;
-}
-
 function MetricComparison({
   change,
   comparisonLabel,
@@ -93,6 +68,7 @@ function MetricComparison({
   comparisonLabel: string;
   metric: "income" | "expense" | "netCashFlow";
 }) {
+  const { t } = useI18n();
   if (change.state === "none") return null;
 
   if (change.state === "flat") {
@@ -106,7 +82,7 @@ function MetricComparison({
 
   if (change.state === "new") {
     const tone = metric === "expense" ? "text-[#E50914]" : "text-kash-emerald";
-    return <p className={`mt-2 text-xs font-bold ${tone}`}>New in this period</p>;
+    return <p className={`mt-2 text-xs font-bold ${tone}`}>{t("analytics.newInPeriod") || "New in this period"}</p>;
   }
 
   const increased = change.state === "increase";
@@ -125,6 +101,7 @@ function MetricComparison({
 }
 
 function SummaryCards({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency } = useI18n();
   const cards = [
     {
       accent: "text-kash-emerald",
@@ -132,7 +109,7 @@ function SummaryCards({ currency, summary }: { currency: string; summary: Analyt
       change: summary.income.change,
       icon: ArrowUpRight,
       metric: "income" as const,
-      title: "Income",
+      title: t("common.typeIncome") || t("dashboard.income") || "Income",
       value: summary.income.amount,
     },
     {
@@ -141,7 +118,7 @@ function SummaryCards({ currency, summary }: { currency: string; summary: Analyt
       change: summary.expense.change,
       icon: ArrowDownRight,
       metric: "expense" as const,
-      title: "Expense",
+      title: t("common.typeExpense") || t("dashboard.expense") || "Expense",
       value: summary.expense.amount,
     },
     {
@@ -150,7 +127,7 @@ function SummaryCards({ currency, summary }: { currency: string; summary: Analyt
       change: summary.netCashFlow.change,
       icon: summary.netCashFlow.amount >= 0 ? ArrowUpRight : ArrowDownRight,
       metric: "netCashFlow" as const,
-      title: "Cash Flow",
+      title: t("dashboard.netCashFlow") || "Cash Flow",
       value: summary.netCashFlow.amount,
     },
   ];
@@ -162,7 +139,7 @@ function SummaryCards({ currency, summary }: { currency: string; summary: Analyt
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-extrabold uppercase text-slate-600">{card.title}</p>
-              <p className="mt-3 break-words text-xl font-extrabold text-slate-900 lg:text-2xl">{formatAmount(card.value, currency)}</p>
+              <p className="mt-3 break-words text-xl font-extrabold text-slate-900 lg:text-2xl">{formatCurrency(card.value, currency)}</p>
               <MetricComparison change={card.change} metric={card.metric} comparisonLabel={summary.period.comparisonLabel} />
             </div>
             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.badge}`}>
@@ -187,29 +164,30 @@ function formatPercent(value: number | null) {
   return `${value.toFixed(1)}%`;
 }
 
-function cashFlowHealth(summary: AnalyticsSummary) {
+function cashFlowHealth(summary: AnalyticsSummary, t: (k: any) => string) {
   if (summary.income.amount <= 0 && summary.expense.amount <= 0) {
-    return { helper: "No activity yet", tone: "text-slate-700", value: "No data" };
+    return { helper: t("analytics.healthNoActivity") || "No activity yet", tone: "text-slate-700", value: t("dashboard.noData") || "No data" };
   }
 
   if (summary.income.amount <= 0 && summary.expense.amount > 0) {
-    return { helper: "Expense without income", tone: "text-[#E50914]", value: "Needs attention" };
+    return { helper: t("analytics.healthExpenseWithoutIncome") || "Expense without income", tone: "text-[#E50914]", value: t("analytics.healthNeedsAttention") || "Needs attention" };
   }
 
   const ratio = summary.expense.amount / Math.max(summary.income.amount, 1);
 
   if (summary.netCashFlow.amount < 0) {
-    return { helper: "Spending exceeds income", tone: "text-[#E50914]", value: "Deficit" };
+    return { helper: t("analytics.healthSpendingExceeds") || "Spending exceeds income", tone: "text-[#E50914]", value: t("analytics.healthDeficit") || "Deficit" };
   }
 
   if (ratio >= 0.9) {
-    return { helper: "Small surplus margin", tone: "text-kash-gold", value: "Tight" };
+    return { helper: t("analytics.healthSmallSurplus") || "Small surplus margin", tone: "text-kash-gold", value: t("analytics.healthTight") || "Tight" };
   }
 
-  return { helper: "Income covers spending", tone: "text-kash-emerald", value: "Healthy" };
+  return { helper: t("analytics.healthIncomeCovers") || "Income covers spending", tone: "text-kash-emerald", value: t("analytics.healthHealthy") || "Healthy" };
 }
 
 function AnalyticsInsights({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency } = useI18n();
   const months = monthEquivalent(summary);
   const averageMonthlyExpense = summary.expense.amount / months;
   const averageMonthlyIncome = summary.income.amount / months;
@@ -224,62 +202,62 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
   const firstNetWorth = summary.netWorthTrend[0]?.amount ?? null;
   const lastNetWorth = summary.netWorthTrend[summary.netWorthTrend.length - 1]?.amount ?? null;
   const netWorthDelta = firstNetWorth != null && lastNetWorth != null ? lastNetWorth - firstNetWorth : null;
-  const health = cashFlowHealth(summary);
+  const health = cashFlowHealth(summary, t);
   const cashFlowTone = averageMonthlyCashFlow >= 0 ? "text-kash-emerald" : "text-[#E50914]";
 
   const insights = [
     {
-      label: "Avg Monthly Expense",
-      value: formatAmount(averageMonthlyExpense, currency),
-      helper: "Monthly spending pace",
+      label: t("analytics.avgMonthlyExpense") || "Avg Monthly Expense",
+      value: formatCurrency(averageMonthlyExpense, currency),
+      helper: t("analytics.avgMonthlyExpenseDesc") || "Monthly spending pace",
       tone: "text-[#E50914]",
     },
     {
-      label: "Avg Monthly Income",
-      value: formatAmount(averageMonthlyIncome, currency),
-      helper: "Monthly income pace",
+      label: t("analytics.avgMonthlyIncome") || "Avg Monthly Income",
+      value: formatCurrency(averageMonthlyIncome, currency),
+      helper: t("analytics.avgMonthlyIncomeDesc") || "Monthly income pace",
       tone: "text-kash-emerald",
     },
     {
-      label: "Avg Monthly Cash Flow",
-      value: formatAmount(averageMonthlyCashFlow, currency),
-      helper: averageMonthlyCashFlow >= 0 ? "Surplus pace" : "Deficit pace",
+      label: t("analytics.avgMonthlyCashFlow") || "Avg Monthly Cash Flow",
+      value: formatCurrency(averageMonthlyCashFlow, currency),
+      helper: averageMonthlyCashFlow >= 0 ? (t("analytics.surplusPace") || "Surplus pace") : (t("analytics.deficitPace") || "Deficit pace"),
       tone: cashFlowTone,
     },
     {
-      label: "Savings Rate",
+      label: t("analytics.savingsRate") || "Savings Rate",
       value: formatPercent(savingsRate),
-      helper: "Net cash flow / income",
+      helper: t("analytics.savingsRateDesc") || "Net cash flow / income",
       tone: savingsRate == null || savingsRate >= 0 ? "text-kash-emerald" : "text-[#E50914]",
     },
     {
-      label: "Expense / Income",
+      label: t("analytics.expenseIncome") || "Expense / Income",
       value: formatPercent(expenseIncomeRatio),
-      helper: "How much income was spent",
+      helper: t("analytics.expenseIncomeDesc") || "How much income was spent",
       tone: expenseIncomeRatio == null || expenseIncomeRatio <= 80 ? "text-kash-emerald" : expenseIncomeRatio <= 100 ? "text-kash-gold" : "text-[#E50914]",
     },
     {
-      label: "Cash Flow Health",
+      label: t("analytics.cashFlowHealth") || "Cash Flow Health",
       value: health.value,
       helper: health.helper,
       tone: health.tone,
     },
     {
-      label: "Transfer Fees",
-      value: formatAmount(summary.transferFees, currency),
-      helper: "Fees included in expense",
+      label: t("analytics.transferFees") || "Transfer Fees",
+      value: formatCurrency(summary.transferFees, currency),
+      helper: t("analytics.transferFeesDesc") || "Fees included in expense",
       tone: summary.transferFees > 0 ? "text-[#E50914]" : "text-slate-700",
     },
     {
-      label: "Highest Spending",
-      value: highestSpendingPeriod.expense > 0 ? formatAmount(highestSpendingPeriod.expense, currency) : "-",
-      helper: highestSpendingPeriod.expense > 0 ? `${summary.period.aggregation === "daily" ? "Day" : "Month"} ${highestSpendingPeriod.label}` : "No spending in period",
+      label: t("analytics.highestSpending") || "Highest Spending",
+      value: highestSpendingPeriod.expense > 0 ? formatCurrency(highestSpendingPeriod.expense, currency) : "-",
+      helper: highestSpendingPeriod.expense > 0 ? `${summary.period.aggregation === "daily" ? (t("common.date") || "Day") : (t("dashboard.thisMonth") || "Month")} ${highestSpendingPeriod.label}` : (t("analytics.noSpendingTitle") || "No spending in period"),
       tone: highestSpendingPeriod.expense > 0 ? "text-[#E50914]" : "text-slate-700",
     },
     {
-      label: "Net Worth Direction",
-      value: netWorthDelta == null ? "-" : formatAmount(netWorthDelta, currency),
-      helper: netWorthDelta == null ? "No net worth trend yet" : netWorthDelta >= 0 ? "Increased over period" : "Decreased over period",
+      label: t("analytics.netWorthDirection") || "Net Worth Direction",
+      value: netWorthDelta == null ? "-" : formatCurrency(netWorthDelta, currency),
+      helper: netWorthDelta == null ? (t("analytics.noNetWorthTrend") || "No net worth trend yet") : netWorthDelta >= 0 ? (t("analytics.increasedOverPeriod") || "Increased over period") : (t("analytics.decreasedOverPeriod") || "Decreased over period"),
       tone: netWorthDelta == null || netWorthDelta >= 0 ? "text-kash-emerald" : "text-[#E50914]",
     },
   ];
@@ -288,12 +266,12 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
     <AnalyticsCard className="p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900">Quick Insights</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-600">Simple interpretation from the selected period.</p>
+          <h2 className="text-base font-extrabold text-slate-900">{t("analytics.quickInsights") || "Quick Insights"}</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-600">{t("analytics.quickInsightsDesc") || "Simple interpretation from the selected period."}</p>
         </div>
         {topCategory ? (
           <div className="rounded-lg bg-kash-selected px-3 py-2 text-sm font-bold text-slate-900">
-            Top spending: <span className="text-kash-emeraldDark">{topCategory.name}</span>
+            {t("analytics.topSpending") || "Top spending:"} <span className="text-kash-emeraldDark">{topCategory.name}</span>
           </div>
         ) : null}
       </div>
@@ -344,6 +322,7 @@ function scrollChartToIndex(scrollElement: HTMLDivElement, itemCount: number, ta
 }
 
 function CashFlowOverview({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency, formatCompactCurrency } = useI18n();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const hasData = summary.incomeExpenseTrend.some((point) => point.income > 0 || point.expense > 0);
   const points = summary.incomeExpenseTrend;
@@ -358,7 +337,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
   }, [points]);
 
   if (!hasData) {
-    return <EmptyPanel title="No cash flow data" description="Income and expense activity in this period will build the chart." className="min-h-64" />;
+    return <EmptyPanel title={t("analytics.noCashFlowData") || "No cash flow data"} description={t("analytics.noCashFlowDesc") || "Income and expense activity in this period will build the chart."} className="min-h-64" />;
   }
 
   function renderChart({
@@ -409,7 +388,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
 
           return (
             <g key={point.key}>
-              <title>{`${point.label}: Income ${formatAmount(point.income, currency)}, Expense ${formatAmount(point.expense, currency)}`}</title>
+              <title>{`${point.label}: Income ${formatCurrency(point.income, currency)}, Expense ${formatCurrency(point.expense, currency)}`}</title>
               {point.income > 0 ? (
                 <text
                   x={centerX - barWidth / 2 - 2}
@@ -417,7 +396,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
                   textAnchor="middle"
                   className="fill-kash-emerald text-[9px] font-extrabold"
                 >
-                  {formatCompactAmount(point.income, currency)}
+                  {formatCompactCurrency(point.income)}
                 </text>
               ) : null}
               {point.expense > 0 ? (
@@ -427,7 +406,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
                   textAnchor="middle"
                   className="fill-[#E50914] text-[9px] font-extrabold"
                 >
-                  {formatCompactAmount(point.expense, currency)}
+                  {formatCompactCurrency(point.expense)}
                 </text>
               ) : null}
               <rect
@@ -487,6 +466,7 @@ function buildDonutSegments(categories: AnalyticsSummary["categorySpending"]) {
 }
 
 function SpendingByCategory({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency } = useI18n();
   const categories = summary.categorySpending.slice(0, 6);
   const totalExpense = categories.reduce((sum, category) => sum + category.amount, 0);
 
@@ -494,9 +474,9 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
     return (
       <div className="mt-4 grid min-h-64 items-center gap-5 md:grid-cols-[160px_minmax(0,1fr)]">
         <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-slate-100">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">No data</div>
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">{t("dashboard.noData") || "No data"}</div>
         </div>
-        <EmptyPanel title="No expense categories" description="Completed expenses in this period will appear here." className="min-h-32" />
+        <EmptyPanel title={t("analytics.noExpenseCategories") || "No expense categories"} description={t("analytics.noExpenseCategoriesDesc") || "Completed expenses in this period will appear here."} className="min-h-32" />
       </div>
     );
   }
@@ -506,8 +486,8 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
       <div className="relative mx-auto h-36 w-36 rounded-full" style={{ background: `conic-gradient(${buildDonutSegments(categories).join(", ")})` }}>
         <div className="absolute inset-6 flex items-center justify-center rounded-full bg-white text-center">
           <div>
-            <p className="text-[10px] font-bold uppercase text-slate-600">Total Expense</p>
-            <p className="mt-1 max-w-20 break-words text-xs font-extrabold leading-tight text-slate-900">{formatAmount(totalExpense, currency)}</p>
+            <p className="text-[10px] font-bold uppercase text-slate-600">{t("dashboard.totalExpense") || "Total Expense"}</p>
+            <p className="mt-1 max-w-20 break-words text-xs font-extrabold leading-tight text-slate-900">{formatCurrency(totalExpense, currency)}</p>
           </div>
         </div>
       </div>
@@ -519,7 +499,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
               <span className="truncate font-bold text-slate-700">{category.name}</span>
             </div>
             <div className="text-right">
-              <p className="font-extrabold leading-tight text-slate-900">{formatAmount(category.amount, currency)}</p>
+              <p className="font-extrabold leading-tight text-slate-900">{formatCurrency(category.amount, currency)}</p>
               <p className="text-xs font-semibold text-slate-600">{Math.round(category.percent)}%</p>
             </div>
           </div>
@@ -535,12 +515,13 @@ function linePath(points: { x: number; y: number }[]) {
 }
 
 function IncomeExpenseLineChart({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency } = useI18n();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const hasData = summary.incomeExpenseTrend.some((point) => point.income > 0 || point.expense > 0);
   const points = summary.incomeExpenseTrend;
 
   if (!hasData) {
-    return <EmptyPanel title="No trend data" description="Income and expense trend will appear after activity exists." className="mt-4 min-h-64" />;
+    return <EmptyPanel title={t("analytics.noTrendData") || "No trend data"} description={t("analytics.noTrendDataDesc") || "Income and expense trend will appear after activity exists."} className="mt-4 min-h-64" />;
   }
 
   const desktopWidth = 560;
@@ -595,7 +576,7 @@ function IncomeExpenseLineChart({ currency, summary }: { currency: string; summa
         <path d={linePath(expensePoints)} fill="none" stroke={EXPENSE_COLOR} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
         {points.map((point, index) => (
           <g key={point.key}>
-            <title>{`${point.label}: Income ${formatAmount(point.income, currency)}, Expense ${formatAmount(point.expense, currency)}`}</title>
+            <title>{`${point.label}: Income ${formatCurrency(point.income, currency)}, Expense ${formatCurrency(point.expense, currency)}`}</title>
             <circle cx={incomePoints[index].x} cy={incomePoints[index].y} r="3.5" fill={INCOME_COLOR} />
             <circle cx={expensePoints[index].x} cy={expensePoints[index].y} r="3.5" fill={EXPENSE_COLOR} />
             <text x={incomePoints[index].x} y={height - 10} textAnchor="middle" className="fill-slate-700 text-[10px] font-bold">
@@ -631,12 +612,13 @@ function IncomeExpenseLineChart({ currency, summary }: { currency: string; summa
 }
 
 function NetWorthTrend({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency } = useI18n();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const hasData = summary.netWorthTrend.some((point) => point.amount !== 0);
   const pointsData = summary.netWorthTrend;
 
   if (!hasData) {
-    return <EmptyPanel title="No net worth trend yet" description="Wallet balances and ledger activity will build this trend." className="mt-4 min-h-56" />;
+    return <EmptyPanel title={t("analytics.noNetWorthTrend") || "No net worth trend yet"} description={t("analytics.noNetWorthTrendDesc") || "Wallet balances and ledger activity will build this trend."} className="mt-4 min-h-56" />;
   }
 
   const desktopWidth = 1040;
@@ -693,7 +675,7 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
         <path d={linePath(points)} fill="none" stroke={NET_WORTH_COLOR} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
         {pointsData.map((point, index) => (
           <g key={point.key}>
-            <title>{`${point.label}: ${formatAmount(point.amount, currency)}`}</title>
+            <title>{`${point.label}: ${formatCurrency(point.amount, currency)}`}</title>
             <circle cx={points[index].x} cy={points[index].y} r="3.5" fill={NET_WORTH_COLOR} />
             <text x={points[index].x} y={height - 10} textAnchor="middle" className="fill-slate-700 text-[10px] font-bold">
               {point.label}
@@ -728,10 +710,11 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
 }
 
 function WalletDistribution({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency } = useI18n();
   const totalAssets = summary.walletDistribution.reduce((sum, item) => sum + item.amount, 0);
 
   if (summary.walletDistribution.length === 0 || totalAssets <= 0) {
-    return <EmptyPanel title="No wallet distribution" description="Active wallets included in net worth will appear here." className="mt-4 min-h-40" />;
+    return <EmptyPanel title={t("analytics.noWalletDistTitle") || "No wallet distribution"} description={t("analytics.noWalletDistDesc") || "Active wallets included in net worth will appear here."} className="mt-4 min-h-40" />;
   }
 
   return (
@@ -754,12 +737,12 @@ function WalletDistribution({ currency, summary }: { currency: string; summary: 
               <span className="truncate font-bold text-slate-700">{item.label}</span>
               <span className="shrink-0 font-semibold text-slate-600">({item.percent.toFixed(1)}%)</span>
             </div>
-            <p className="text-right font-extrabold text-slate-900">{formatAmount(item.amount, currency)}</p>
+            <p className="text-right font-extrabold text-slate-900">{formatCurrency(item.amount, currency)}</p>
           </div>
         ))}
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-slate-200 pt-3 text-sm">
-          <p className="font-extrabold text-slate-900">Net Worth</p>
-          <p className="text-right font-extrabold text-slate-900">{formatAmount(summary.walletNetWorth, currency)}</p>
+          <p className="font-extrabold text-slate-900">{t("dashboard.netWorth") || "Net Worth"}</p>
+          <p className="text-right font-extrabold text-slate-900">{formatCurrency(summary.walletNetWorth, currency)}</p>
         </div>
       </div>
     </div>
@@ -799,10 +782,23 @@ function PeriodControls({
   onPeriodChange: (value: AnalyticsPeriodKey) => void;
   period: AnalyticsPeriodKey;
 }) {
+  const { t } = useI18n();
+  const periodOptions: { label: string; value: AnalyticsPeriodKey }[] = useMemo(
+    () => [
+      { label: t("analytics.thisMonth") || "This Month", value: "this_month" },
+      { label: t("analytics.lastMonth") || "Last Month", value: "last_month" },
+      { label: t("analytics.3Months") || "3 Months", value: "3_months" },
+      { label: t("analytics.6Months") || "6 Months", value: "6_months" },
+      { label: t("analytics.thisYear") || "This Year", value: "this_year" },
+      { label: t("analytics.customRange") || "Custom Range", value: "custom" },
+    ],
+    [t],
+  );
+
   return (
     <div className="grid gap-3 sm:grid-cols-[220px_auto_auto] sm:items-end">
-      <SelectField label="Period" value={period} onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}>
-        {analyticsPeriodOptions.map((option) => (
+      <SelectField label={t("analytics.period") || "Period"} value={period} onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}>
+        {periodOptions.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
@@ -812,13 +808,13 @@ function PeriodControls({
         <>
           <DatePickerField
             id="analytics-start-date"
-            label="Start Date"
+            label={t("analytics.startDate") || "Start Date"}
             value={customStartDate}
             onChange={(val) => onCustomStartDateChange(val)}
           />
           <DatePickerField
             id="analytics-end-date"
-            label="End Date"
+            label={t("analytics.endDate") || "End Date"}
             value={customEndDate}
             onChange={(val) => onCustomEndDateChange(val)}
           />
@@ -829,12 +825,13 @@ function PeriodControls({
 }
 
 function BudgetVsActualCard({ currency }: { currency: string }) {
+  const { t, formatMonthYear, formatCurrency } = useI18n();
   const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
   const monthYearLabel = useMemo(() => {
-    return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date());
-  }, []);
+    return formatMonthYear(new Date());
+  }, [formatMonthYear]);
 
   useEffect(() => {
     getMonthlyBudgets()
@@ -852,10 +849,10 @@ function BudgetVsActualCard({ currency }: { currency: string }) {
       <div className="flex items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-2">
           <Scale aria-hidden="true" className="text-kash-emerald" size={18} />
-          <h2 className="text-base font-extrabold text-slate-900">Budget ({monthYearLabel})</h2>
+          <h2 className="text-base font-extrabold text-slate-900">{t("nav.budgets")} ({monthYearLabel})</h2>
         </div>
         <Link to="/budgets" className="text-xs font-bold text-slate-600 hover:text-kash-emerald">
-          Lihat Semua
+          {t("common.viewAll")}
         </Link>
       </div>
 
@@ -893,6 +890,7 @@ function BudgetVsActualCard({ currency }: { currency: string }) {
 }
 
 export function AnalyticsPage() {
+  const { t } = useI18n();
   const { profile } = useAuth();
   const currency = profile?.default_currency ?? "IDR";
   const [period, setPeriod] = useState<AnalyticsPeriodKey>("this_month");
@@ -936,7 +934,7 @@ export function AnalyticsPage() {
   if (error && !summary) {
     return (
       <AnalyticsCard className="p-6">
-        <p className="text-sm font-bold text-kash-expense">Analytics could not load</p>
+        <p className="text-sm font-bold text-kash-expense">{t("common.error")}</p>
         <p className="mt-2 text-sm font-medium text-slate-600">{error}</p>
         <button
           type="button"
@@ -944,7 +942,7 @@ export function AnalyticsPage() {
           className="mt-5 inline-flex items-center gap-2 rounded-lg bg-kash-emerald px-4 py-2 text-sm font-bold text-white transition hover:bg-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
         >
           <RefreshCw size={17} />
-          Retry
+          {t("common.retry")}
         </button>
       </AnalyticsCard>
     );
@@ -955,10 +953,10 @@ export function AnalyticsPage() {
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
-        eyebrow="Analytics"
+        eyebrow={t("nav.analytics")}
         icon={BarChart3}
-        title="Analytics"
-        description="Comprehensive insights across cash flow, spending distribution, and net worth."
+        title={t("nav.analytics")}
+        description={t("analytics.description") || "Comprehensive insights across cash flow, spending distribution, and net worth."}
       />
 
       <PeriodControls
@@ -979,17 +977,17 @@ export function AnalyticsPage() {
       <AnalyticsCard className="p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Cash Flow Overview</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-600">{summary.period.aggregation === "daily" ? "Daily" : "Monthly"} aggregation</p>
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-600">{summary.period.aggregation === "daily" ? (t("analytics.dailyAggregation") || "Daily aggregation") : (t("analytics.monthlyAggregation") || "Monthly aggregation")}</p>
           </div>
           <div className="flex items-center gap-5 text-xs font-bold text-slate-600">
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: INCOME_COLOR }} />
-              Income
+              {t("common.typeIncome") || t("dashboard.income") || "Income"}
             </span>
             <span className="inline-flex items-center gap-2">
               <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: EXPENSE_COLOR }} />
-              Expense
+              {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
             </span>
           </div>
         </div>
@@ -999,7 +997,7 @@ export function AnalyticsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsCard className="p-5">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-base font-extrabold text-slate-900">Spending by Category</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
             <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />
           </div>
           <SpendingByCategory summary={summary} currency={currency} />
@@ -1007,15 +1005,15 @@ export function AnalyticsPage() {
 
         <AnalyticsCard className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">Income vs Expense</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.incomeVsExpense") || "Income vs Expense"}</h2>
             <div className="flex items-center gap-5 text-xs font-bold text-slate-600">
               <span className="inline-flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
-                Income
+                {t("common.typeIncome") || t("dashboard.income") || "Income"}
               </span>
               <span className="inline-flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
-                Expense
+                {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
               </span>
             </div>
           </div>
@@ -1026,12 +1024,12 @@ export function AnalyticsPage() {
       <AnalyticsCard className="p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">Net Worth Trend</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-600">Reconstructed from wallet initial balances and completed ledger activity.</p>
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.netWorthTrend") || "Net Worth Trend"}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-600">{t("analytics.netWorthTrendDesc") || "Reconstructed from wallet initial balances and completed ledger activity."}</p>
           </div>
           <div className="inline-flex items-center gap-2 text-xs font-bold text-slate-600">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NET_WORTH_COLOR }} />
-            Net Worth
+            {t("dashboard.netWorth") || "Net Worth"}
           </div>
         </div>
         <NetWorthTrend summary={summary} currency={currency} />
@@ -1041,18 +1039,18 @@ export function AnalyticsPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <WalletCards aria-hidden="true" className="text-slate-700" size={18} />
-            <h2 className="text-base font-extrabold text-slate-900">Wallet Distribution</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.walletDistribution") || "Wallet Distribution"}</h2>
           </div>
           <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
             <CalendarDays aria-hidden="true" size={15} />
-            Current balances
+            {t("analytics.currentBalances") || "Current balances"}
           </div>
         </div>
         <WalletDistribution summary={summary} currency={currency} />
       </AnalyticsCard>
 
       <p className="text-xs font-semibold text-slate-600">
-        Transfer fees are included in Expense. Transfer principal and balance adjustments are excluded from Income, Expense, and Cash Flow.
+        {t("analytics.footerNote") || "Transfer fees are included in Expense. Transfer principal and balance adjustments are excluded from Income, Expense, and Cash Flow."}
       </p>
     </div>
   );

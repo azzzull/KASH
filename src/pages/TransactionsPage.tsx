@@ -234,10 +234,48 @@ function TransactionRow({
   onSelect: () => void;
   transaction: TransactionWithMeta;
 }) {
+  const { t, formatCurrency } = useI18n();
   const Icon = transactionIcon(transaction.type);
   const date = new Date(transaction.transaction_date);
   const isVoid = transaction.status === "void";
   const timeLabel = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(date);
+
+  const getTranslatedTitle = () => {
+    if (transaction.title) return transaction.title;
+    if (transaction.type === "transfer") return `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`;
+    if (transaction.type === "adjustment") {
+      if (transaction.related_entity_type === "debt_payment") return t("debts.debtPayment") || "Pembayaran Utang";
+      if (transaction.related_entity_type === "receivable_payment") return t("debts.receivableCollection") || "Pelunasan Piutang";
+      if (transaction.related_entity_type === "shared_savings_contribution") return t("sharedSavings.contribution") || "Setoran Tabungan Bersama";
+      if (transaction.related_entity_type === "shared_savings_withdrawal") return t("sharedSavings.withdrawal") || "Penarikan Tabungan Bersama";
+      if (transaction.related_entity_type === "goal_contribution") return t("goals.contribution") || "Setoran Target";
+      if (transaction.related_entity_type === "goal_refund") return t("goals.refund") || "Pengembalian Target";
+      return t("wallets.balanceAdjustment") || "Penyesuaian Saldo";
+    }
+    return transaction.category?.name ?? (transaction.type === "income" ? (t("transactions.income") || "Pemasukan") : (t("transactions.expense") || "Pengeluaran"));
+  };
+
+  const getTranslatedCategoryLabel = () => {
+    if (transaction.type === "transfer") return t("transactions.transfer") || "Transfer";
+    if (transaction.type === "adjustment") {
+      if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return t("debts.debt") || "Utang";
+      if (transaction.related_entity_type === "receivable_payment" || transaction.related_entity_type === "receivable_creation") return t("debts.receivable") || "Piutang";
+      if (
+        transaction.related_entity_type === "shared_savings_contribution" ||
+        transaction.related_entity_type === "shared_savings_withdrawal"
+      ) {
+        return t("sharedSavings.title") || "Tabungan Bersama";
+      }
+      if (
+        transaction.related_entity_type === "goal_contribution" ||
+        transaction.related_entity_type === "goal_refund"
+      ) {
+        return t("goals.title") || "Target";
+      }
+      return t("wallets.adjustment") || "Penyesuaian";
+    }
+    return transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
+  };
 
   return (
     <button
@@ -252,11 +290,11 @@ function TransactionRow({
           <Icon aria-hidden="true" size={18} strokeWidth={2.2} />
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-extrabold text-slate-900">{transactionTitle(transaction)}</span>
+          <span className="block truncate text-sm font-extrabold text-slate-900">{getTranslatedTitle()}</span>
           <span className="mt-1 block truncate text-xs font-semibold text-slate-600">
-            {transactionCategoryLabel(transaction)} • {transactionWalletLabel(transaction)}
+            {getTranslatedCategoryLabel()} • {transactionWalletLabel(transaction)}
           </span>
-          {isVoid ? <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold text-slate-600">Voided</span> : null}
+          {isVoid ? <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold text-slate-600">{t("transactions.voided") || "Dibatalkan"}</span> : null}
         </span>
         <span className="text-right">
           <span className={`block text-sm font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
@@ -264,7 +302,7 @@ function TransactionRow({
           </span>
           {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
             <span className="block text-[11px] font-bold text-kash-expense">
-              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+              + {t("transactions.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
             </span>
           ) : null}
           <span className="mt-1 block text-xs font-bold text-slate-600">{timeLabel}</span>
@@ -279,16 +317,16 @@ function TransactionRow({
           <Icon aria-hidden="true" size={17} strokeWidth={2.2} />
         </span>
         <span className="min-w-0">
-          <span className="block truncate font-bold text-slate-900">{transactionTitle(transaction)}</span>
-          <span className="mt-0.5 block truncate text-xs font-semibold text-slate-600">{transactionCategoryLabel(transaction)}</span>
-          {isVoid ? <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase text-slate-600">Voided</span> : null}
+          <span className="block truncate font-bold text-slate-900">{getTranslatedTitle()}</span>
+          <span className="mt-0.5 block truncate text-xs font-semibold text-slate-600">{getTranslatedCategoryLabel()}</span>
+          {isVoid ? <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase text-slate-600">{t("transactions.voided") || "Dibatalkan"}</span> : null}
         </span>
         <span className="min-w-0 truncate font-semibold text-slate-600">{transactionWalletLabel(transaction)}</span>
         <span className={`text-right font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
           <span>{displayAmount(transaction, currency)}</span>
           {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
             <span className="block text-[11px] font-bold text-kash-expense">
-              + biaya {formatCurrency(transaction.transfer_fee, currency)}
+              + {t("transactions.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
             </span>
           ) : null}
         </span>
@@ -314,6 +352,7 @@ function TransactionFormModal({
   transaction: TransactionWithMeta;
   wallets: Wallet[];
 }) {
+  const { t, formatCurrency } = useI18n();
   const isAmountError = (message: string | null) => {
     if (!message) return false;
     const normalizedMessage = message.toLowerCase();
@@ -365,15 +404,15 @@ function TransactionFormModal({
   }, [error]);
 
   const validate = () => {
-    if (!walletId) return "Choose a wallet.";
-    if (!transactionDate) return "Choose a transaction date.";
-    if (!amountValue || toNumber(amountValue) === 0) return transaction.type === "adjustment" ? "Adjustment amount cannot be zero." : "Amount must be greater than zero.";
-    if (transaction.type !== "adjustment" && toNumber(amountValue) <= 0) return "Amount must be greater than zero.";
-    if ((transaction.type === "income" || transaction.type === "expense") && !categoryId) return "Choose a category.";
+    if (!walletId) return t("transactions.chooseWallet") || "Pilih dompet.";
+    if (!transactionDate) return t("transactions.chooseDate") || "Pilih tanggal transaksi.";
+    if (!amountValue || toNumber(amountValue) === 0) return transaction.type === "adjustment" ? (t("wallets.adjustmentNonZero") || "Nilai penyesuaian tidak boleh nol.") : (t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.");
+    if (transaction.type !== "adjustment" && toNumber(amountValue) <= 0) return t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.";
+    if ((transaction.type === "income" || transaction.type === "expense") && !categoryId) return t("transactions.chooseCategory") || "Pilih kategori.";
     if (transaction.type === "transfer") {
-      if (!destinationWalletId) return "Choose a destination wallet.";
-      if (walletId === destinationWalletId) return "Source and destination wallets must be different.";
-      if (toNumber(feeValue) < 0) return "Transfer fee cannot be negative.";
+      if (!destinationWalletId) return t("transactions.chooseDestinationWallet") || "Pilih dompet tujuan.";
+      if (walletId === destinationWalletId) return t("transactions.walletsMustBeDifferent") || "Dompet asal dan tujuan harus berbeda.";
+      if (toNumber(feeValue) < 0) return t("transactions.feeCannotBeNegative") || "Biaya transfer tidak boleh bernilai negatif.";
     }
     return null;
   };
@@ -445,7 +484,7 @@ function TransactionFormModal({
             });
 
       if (result.error) {
-        setError("Couldn't save this transaction. Please check the details and try again.");
+        setError(t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.");
         setSaving(false);
         return;
       }
@@ -454,7 +493,7 @@ function TransactionFormModal({
       onSaved();
       onClose();
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Couldn't save this transaction.");
+      setError(caughtError instanceof Error ? caughtError.message : (t("transactions.saveError") || "Gagal menyimpan transaksi."));
       setSaving(false);
     }
   };
@@ -464,8 +503,8 @@ function TransactionFormModal({
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title={mode === "duplicate" ? "Duplicate Transaction" : "Edit Transaction"}
-      description={`Type: ${transaction.type}`}
+      title={mode === "duplicate" ? (t("transactions.duplicateTitle") || "Duplikat Transaksi") : (t("transactions.editTitle") || "Edit Transaksi")}
+      description={`${t("transactions.type") || "Tipe"}: ${transaction.type}`}
     >
       <div>
         {error ? <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</div> : null}
@@ -475,7 +514,7 @@ function TransactionFormModal({
             hasError={amountHasError}
             id="transaction-edit-amount"
             inputMode="numeric"
-            label={transaction.type === "adjustment" ? "Signed Amount" : "Amount"}
+            label={transaction.type === "adjustment" ? (t("transactions.signedAmount") || "Nominal Bertanda (+/-)") : (t("transactions.amount") || "Nominal")}
             onChange={(event) => setAmount(transaction.type === "adjustment" ? formatSignedMoneyInput(event.target.value) : formatMoneyDigits(event.target.value))}
             value={amount}
           />
@@ -483,7 +522,7 @@ function TransactionFormModal({
           {(transaction.type === "income" || transaction.type === "expense") ? (
             <SelectField
               id="transaction-edit-category"
-              label="Category"
+              label={t("categories.title") || "Kategori"}
               action={
                 <button
                   type="button"
@@ -491,7 +530,7 @@ function TransactionFormModal({
                   className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
                 >
                   <Plus size={13} strokeWidth={2.5} />
-                  Tambah Kategori
+                  {t("categories.create") || "Tambah Kategori"}
                 </button>
               }
               value={categoryId}
@@ -508,18 +547,18 @@ function TransactionFormModal({
                   {category.name}
                 </option>
               ))}
-              <option value="__create_new__">+ Tambah Kategori Baru...</option>
+              <option value="__create_new__">{t("categories.createNewOption") || "+ Tambah Kategori Baru..."}</option>
             </SelectField>
           ) : null}
 
           {transaction.type === "expense" && envelopes.length > 0 ? (
             <SelectField
               id="transaction-edit-envelope"
-              label="Amplop / Purpose Group (Opsional)"
+              label={t("envelopes.title") || "Amplop / Purpose Group (Opsional)"}
               value={envelopeId}
               onChange={(event) => setEnvelopeId(event.target.value)}
             >
-              <option value="">Tanpa Amplop (Pengeluaran Bebas)</option>
+              <option value="">{t("envelopes.noEnvelope") || "Tanpa Amplop (Pengeluaran Bebas)"}</option>
               {envelopes.map((env) => (
                 <option key={env.id} value={env.id}>
                   {env.name}
@@ -531,13 +570,13 @@ function TransactionFormModal({
           <SelectField
             disabled={mode !== "duplicate" && (transaction.type === "adjustment" || transaction.type === "transfer")}
             id="transaction-edit-wallet"
-            label={transaction.type === "transfer" ? "Source Wallet" : "Wallet"}
+            label={transaction.type === "transfer" ? (t("transactions.fromWallet") || "Dari Dompet") : (t("wallets.title") || "Dompet")}
             onChange={(event) => setWalletId(event.target.value)}
             value={walletId}
           >
             {activeWallets.map((wallet) => (
               <option key={wallet.id} value={wallet.id}>
-                {wallet.name}{wallet.is_archived ? " (Archived)" : ""}
+                {wallet.name}{wallet.is_archived ? ` (${t("common.archived") || "Diarsipkan"})` : ""}
               </option>
             ))}
           </SelectField>
@@ -546,43 +585,43 @@ function TransactionFormModal({
             <SelectField
               disabled={mode !== "duplicate"}
               id="transaction-edit-destination-wallet"
-              label="Destination Wallet"
+              label={t("transactions.toWallet") || "Ke Dompet"}
               onChange={(event) => setDestinationWalletId(event.target.value)}
               value={destinationWalletId}
             >
               {activeWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name}{wallet.is_archived ? " (Archived)" : ""}
+                  {wallet.name}{wallet.is_archived ? ` (${t("common.archived") || "Diarsipkan"})` : ""}
                 </option>
               ))}
             </SelectField>
           ) : null}
 
           {transaction.type === "transfer" ? (
-            <FormField id="transaction-edit-transfer-fee" inputMode="numeric" label="Transfer Fee (Optional)" onChange={(event) => setTransferFee(formatMoneyDigits(event.target.value))} value={transferFee} />
+            <FormField id="transaction-edit-transfer-fee" inputMode="numeric" label={t("transactions.transferFeeOptional") || "Biaya Transfer (Opsional)"} onChange={(event) => setTransferFee(formatMoneyDigits(event.target.value))} value={transferFee} />
           ) : null}
 
           <DatePickerField
             id="transaction-edit-date"
-            label="Date"
+            label={t("common.date") || "Tanggal"}
             enableTime
             onChange={(val) => setTransactionDate(val)}
             value={transactionDate}
           />
 
-          <FormField id="transaction-edit-note" label={transaction.type === "adjustment" ? "Reason / Note" : "Note"} value={note} onChange={(event) => setNote(event.target.value)} />
+          <FormField id="transaction-edit-note" label={transaction.type === "adjustment" ? (t("transactions.reasonOrNote") || "Alasan / Catatan") : (t("transactions.note") || "Catatan")} value={note} onChange={(event) => setNote(event.target.value)} />
 
           {transaction.type === "transfer" ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-              <p className="font-extrabold text-slate-900">Transfer Summary</p>
-              <div className="mt-3 flex justify-between gap-4"><span>Total deducted</span><span>{formatCurrency(toNumber(amountValue) + toNumber(feeValue), "IDR")}</span></div>
-              <div className="mt-2 flex justify-between gap-4"><span>Destination receives</span><span>{formatCurrency(toNumber(amountValue), "IDR")}</span></div>
+              <p className="font-extrabold text-slate-900">{t("transactions.transferSummary") || "Ringkasan Transfer"}</p>
+              <div className="mt-3 flex justify-between gap-4"><span>{t("transactions.totalDeducted") || "Total Terpotong"}</span><span>{formatCurrency(toNumber(amountValue) + toNumber(feeValue), "IDR")}</span></div>
+              <div className="mt-2 flex justify-between gap-4"><span>{t("transactions.destinationReceives") || "Tujuan Menerima"}</span><span>{formatCurrency(toNumber(amountValue), "IDR")}</span></div>
             </div>
           ) : null}
 
           <Button disabled={saving} type="submit">
             {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            {mode === "duplicate" ? "Create Duplicate" : "Save Changes"}
+            {saving ? (t("common.saving") || "Menyimpan...") : mode === "duplicate" ? (t("transactions.createDuplicate") || "Buat Duplikat") : (t("common.saveChanges") || "Simpan Perubahan")}
           </Button>
         </form>
 
@@ -652,42 +691,58 @@ function AdvancedFilterContent({
   onUpdate: <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) => void;
   wallets: Wallet[];
 }) {
+  const { t } = useI18n();
+
+  const periodOptions: Array<{ label: string; value: TransactionPeriodFilter }> = [
+    { label: t("calendar.allTime") || "Semua Waktu", value: "all" },
+    { label: t("calendar.thisMonth") || "Bulan Ini", value: "this_month" },
+    { label: t("calendar.lastMonth") || "Bulan Lalu", value: "last_month" },
+    { label: t("calendar.thisYear") || "Tahun Ini", value: "this_year" },
+  ];
+
+  const statusOptions: Array<{ label: string; value: "all" | TransactionStatus }> = [
+    { label: t("transactions.allStatus") || "Semua Status", value: "all" },
+    { label: t("transactions.completed") || "Selesai", value: "completed" },
+    { label: t("transactions.voided") || "Dibatalkan", value: "void" },
+  ];
+
   return (
     <div>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900">Filter Transactions</h2>
-          <p className="mt-1 text-xs font-semibold text-slate-600">Narrow your ledger by date, wallet, category, or status.</p>
+          <h2 className="text-base font-extrabold text-slate-900">{t("transactions.filterTitle") || "Filter Transaksi"}</h2>
+          <p className="mt-1 text-xs font-semibold text-slate-600">{t("transactions.filterSubtitle") || "Persempit buku kas berdasarkan tanggal, dompet, kategori, atau status."}</p>
         </div>
         <IconButton icon={X} label="Close filters" onClick={onClose} />
       </div>
 
       <div className="mt-4 grid gap-3">
-        <SelectField id="transaction-period-filter" label="Period" value={filters.period} onChange={(event) => onUpdate("period", event.target.value as TransactionPeriodFilter)}>
+        <SelectField id="transaction-period-filter" label={t("analytics.period") || "Periode"} value={filters.period} onChange={(event) => onUpdate("period", event.target.value as TransactionPeriodFilter)}>
           {periodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </SelectField>
-        <SelectField id="transaction-wallet-filter" label="Wallet" value={filters.walletId ?? ""} onChange={(event) => onUpdate("walletId", event.target.value || undefined)}>
-          <option value="">All Wallets</option>
-          {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}{wallet.is_archived ? " (Archived)" : ""}</option>)}
+        <SelectField id="transaction-wallet-filter" label={t("wallets.title") || "Dompet"} value={filters.walletId ?? ""} onChange={(event) => onUpdate("walletId", event.target.value || undefined)}>
+          <option value="">{t("wallets.allWallets") || "Semua Dompet"}</option>
+          {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}{wallet.is_archived ? ` (${t("common.archived") || "Diarsipkan"})` : ""}</option>)}
         </SelectField>
-        <SelectField id="transaction-category-filter" label="Category" value={filters.categoryId ?? ""} onChange={(event) => onUpdate("categoryId", event.target.value || undefined)}>
-          <option value="">All Categories</option>
+        <SelectField id="transaction-category-filter" label={t("categories.title") || "Kategori"} value={filters.categoryId ?? ""} onChange={(event) => onUpdate("categoryId", event.target.value || undefined)}>
+          <option value="">{t("categories.allCategories") || "Semua Kategori"}</option>
           {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
         </SelectField>
-        <SelectField id="transaction-status-filter" label="Status" value={filters.status} onChange={(event) => onUpdate("status", event.target.value as "all" | TransactionStatus)}>
+        <SelectField id="transaction-status-filter" label={t("common.status") || "Status"} value={filters.status} onChange={(event) => onUpdate("status", event.target.value as "all" | TransactionStatus)}>
           {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </SelectField>
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <Button variant="secondary" onClick={onReset}>Reset</Button>
-        <Button onClick={onClose}>Done</Button>
+        <Button variant="secondary" onClick={onReset}>{t("common.reset") || "Reset"}</Button>
+        <Button onClick={onClose}>{t("common.done") || "Selesai"}</Button>
       </div>
     </div>
   );
 }
 
 export function TransactionsPage() {
+  const { t, formatDate } = useI18n();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<TransactionFilters>(() => ({
     dateKey: searchParams.get("date") ?? undefined,
@@ -713,6 +768,21 @@ export function TransactionsPage() {
   const filterMenuRef = useRef<HTMLDivElement>(null);
   const currency = "IDR";
 
+  const typeOptions: Array<{ label: string; value: TransactionTypeFilter }> = [
+    { label: t("common.all") || "Semua", value: "all" },
+    { label: t("transactions.income") || "Pemasukan", value: "income" },
+    { label: t("transactions.expense") || "Pengeluaran", value: "expense" },
+    { label: t("transactions.transfer") || "Transfer", value: "transfer" },
+    { label: t("wallets.adjustment") || "Penyesuaian", value: "adjustment" },
+  ];
+
+  const sortOptions: Array<{ label: string; value: TransactionSort }> = [
+    { label: t("transactions.latest") || "Terbaru", value: "latest" },
+    { label: t("transactions.oldest") || "Terlama", value: "oldest" },
+    { label: t("transactions.amountHigh") || "Nominal Terbesar", value: "amount_high" },
+    { label: t("transactions.amountLow") || "Nominal Terkecil", value: "amount_low" },
+  ];
+
   const loadTransactions = useCallback(async (nextFilters = filters, append = false) => {
     setIsLoading(true);
     setError(null);
@@ -725,11 +795,11 @@ export function TransactionsPage() {
       setHasMore(result.hasMore);
       if (!append) setSelectedTransaction(null);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Couldn't load transactions.");
+      setError(caughtError instanceof Error ? caughtError.message : (t("transactions.loadTransactionsError") || "Gagal memuat transaksi."));
     } finally {
       setIsLoading(false);
     }
-  }, [filters]);
+  }, [filters, t]);
 
   useEffect(() => {
     void loadTransactions(filters);
@@ -757,7 +827,26 @@ export function TransactionsPage() {
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
   }, [filterPanelOpen]);
 
-  const groupedTransactions = useMemo(() => groupTransactions(transactions), [transactions]);
+  const groupTransactionsLocalized = (txList: TransactionWithMeta[]) => {
+    const today = new Date();
+    const todayStr = today.toDateString();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    const groups = new Map<string, TransactionWithMeta[]>();
+
+    txList.forEach((transaction) => {
+      const txDate = new Date(transaction.transaction_date);
+      const isToday = txDate.toDateString() === todayStr;
+      const isYesterday = txDate.toDateString() === yesterdayStr;
+      const label = isToday ? (t("calendar.today") || "Hari Ini") : isYesterday ? (t("calendar.yesterday") || "Kemarin") : formatDate(txDate);
+      groups.set(label, [...(groups.get(label) ?? []), transaction]);
+    });
+
+    return Array.from(groups.entries()).map(([label, items]) => ({ items, label }));
+  };
+
+  const groupedTransactions = useMemo(() => groupTransactionsLocalized(transactions), [transactions, t]);
   const activeCategories = categories.filter((category) => !category.is_archived);
   const activeWallets = wallets.filter((wallet) => !wallet.is_archived);
   const activeAdvancedFilters = advancedFilterCount(filters);
@@ -785,7 +874,7 @@ export function TransactionsPage() {
       setVoidTarget(null);
       await loadTransactions(filters);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Couldn't void this transaction.");
+      setError(caughtError instanceof Error ? caughtError.message : (t("transactions.voidError") || "Gagal membatalkan transaksi."));
     } finally {
       setVoidSaving(false);
     }
@@ -795,10 +884,10 @@ export function TransactionsPage() {
     <div className="relative w-full min-w-0 space-y-5 md:min-h-[calc(100dvh-3rem)]">
       <div>
         <PageHeader
-          eyebrow="Ledger"
+          eyebrow={t("transactions.eyebrow") || "Buku Kas"}
           icon={ReceiptText}
-          title="Transactions"
-          description="Search, filter, and review your financial history."
+          title={t("transactions.title")}
+          description={t("transactions.subtitle")}
           actions={
             <label className="hidden h-11 w-full min-w-80 max-w-sm items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 focus-within:border-kash-emerald focus-within:ring-4 focus-within:ring-kash-emerald/20 md:flex">
               <Search aria-hidden="true" size={17} />
@@ -806,7 +895,7 @@ export function TransactionsPage() {
                 value={filters.query ?? ""}
                 onChange={(event) => updateFilter("query", event.target.value)}
                 className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-600"
-                placeholder="Search transactions..."
+                placeholder={t("transactions.searchPlaceholder") || "Cari transaksi..."}
               />
             </label>
           }
@@ -819,7 +908,7 @@ export function TransactionsPage() {
               value={filters.query ?? ""}
               onChange={(event) => updateFilter("query", event.target.value)}
               className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-600"
-              placeholder="Search transactions..."
+              placeholder={t("transactions.searchPlaceholder") || "Cari transaksi..."}
             />
           </label>
         </div>
@@ -844,7 +933,7 @@ export function TransactionsPage() {
                   }`}
                 >
                   <Filter aria-hidden="true" size={16} />
-                  Filter
+                  {t("common.filter") || "Filter"}
                   {activeAdvancedFilters > 0 ? (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-[11px] text-kash-emeraldDark">{activeAdvancedFilters}</span>
                   ) : null}
@@ -866,7 +955,7 @@ export function TransactionsPage() {
                   aria-label="Sort transactions"
                   className="[&>button]:mt-0 [&>button]:h-10"
                   id="transaction-sort"
-                  label="Sort:"
+                  label={`${t("transactions.sort") || "Urutkan"}:`}
                   value={filters.sort}
                   onChange={(event) => updateFilter("sort", event.target.value as TransactionSort)}
                 >
@@ -879,7 +968,7 @@ export function TransactionsPage() {
           {clearableFilters(filters) ? (
             <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-2 text-sm font-extrabold text-kash-emerald">
               <SlidersHorizontal size={16} />
-              {filters.dateKey ? `Clear date filter (${filters.dateKey})` : "Clear filters"}
+              {filters.dateKey ? `${t("transactions.clearDateFilter") || "Hapus filter tanggal"} (${filters.dateKey})` : (t("transactions.clearFilters") || "Hapus Filter")}
             </button>
           ) : null}
         </section>
@@ -889,17 +978,17 @@ export function TransactionsPage() {
           {error ? (
             <div className="m-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-4 text-sm font-bold text-slate-900">
               {error}
-              <button type="button" onClick={() => void loadTransactions(filters)} className="ml-3 text-kash-emerald">Retry</button>
+              <button type="button" onClick={() => void loadTransactions(filters)} className="ml-3 text-kash-emerald">{t("common.retry") || "Coba Lagi"}</button>
             </div>
           ) : null}
           {!isLoading && !error && transactions.length === 0 ? (
             <div className="p-8 text-center">
               <ReceiptText className="mx-auto text-slate-600" size={34} />
-              <p className="mt-3 text-lg font-extrabold text-slate-900">{clearableFilters(filters) ? "No matching transactions." : "No transactions yet."}</p>
+              <p className="mt-3 text-lg font-extrabold text-slate-900">{clearableFilters(filters) ? (t("transactions.noMatching") || "Tidak ada transaksi yang cocok.") : (t("transactions.emptyStateTitle") || "Belum ada transaksi.")}</p>
               <p className="mt-2 text-sm font-semibold text-slate-600">
-                {clearableFilters(filters) ? "Try changing your search or filters." : "Add your first income or expense to start tracking your money."}
+                {clearableFilters(filters) ? (t("transactions.noMatchingDesc") || "Coba ubah kata kunci pencarian atau filter Anda.") : (t("transactions.emptyStateDesc") || "Tambah pemasukan atau pengeluaran pertama Anda untuk mulai mencatat keuangan.")}
               </p>
-              {clearableFilters(filters) ? <Button className="mt-4" variant="secondary" onClick={clearFilters}>Clear Filters</Button> : null}
+              {clearableFilters(filters) ? <Button className="mt-4" variant="secondary" onClick={clearFilters}>{t("transactions.clearFilters") || "Hapus Filter"}</Button> : null}
             </div>
           ) : null}
 
@@ -928,10 +1017,10 @@ export function TransactionsPage() {
               onClick={() => void loadTransactions({ ...filters, page: Math.floor(transactions.length / PAGE_SIZE) }, true)}
             >
               <Filter size={16} />
-              Load More
+              {t("common.loadMore") || "Muat Lebih Banyak"}
             </Button>
           </div>
-        ) : transactions.length > 0 ? <p className="mt-4 text-center text-sm font-semibold text-slate-600">No more transactions</p> : null}
+        ) : transactions.length > 0 ? <p className="mt-4 text-center text-sm font-semibold text-slate-600">{t("transactions.noMore") || "Semua transaksi telah dimuat"}</p> : null}
 
       </div>
 
@@ -963,14 +1052,14 @@ export function TransactionsPage() {
 
       {voidTarget ? (
         <ConfirmationDialog
-          confirmLabel="Void Transaction"
-          description="This transaction will stop affecting your wallet balance, but will remain in transaction history for audit purposes."
+          confirmLabel={t("transactions.voidTransaction") || "Batalkan Transaksi (Void)"}
+          description={t("transactions.voidConfirmDesc") || "Transaksi ini tidak akan lagi mempengaruhi saldo dompet Anda, namun tetap tercatat dalam riwayat untuk keperluan audit."}
           icon={ReceiptText}
           isLoading={voidSaving}
           itemLabel={transactionTitle(voidTarget)}
           onCancel={() => setVoidTarget(null)}
           onConfirm={() => void handleVoid()}
-          title="Void this transaction?"
+          title={t("transactions.voidConfirmTitle") || "Batalkan transaksi ini?"}
           tone="danger"
         />
       ) : null}

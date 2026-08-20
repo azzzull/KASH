@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationContext";
+import { useI18n } from "../../i18n";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
 import kashLogo from "../../../logo/SVG/KASHLogo.svg";
@@ -12,6 +13,7 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ visible }: AppHeaderProps) {
+    const { t } = useI18n();
     const navigate = useNavigate();
     const { profile, signOut } = useAuth();
     const { unreadCount } = useNotifications();
@@ -87,7 +89,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                     <div ref={notificationsRef} className="relative">
                         <IconButton
                             icon={Bell}
-                            label="Open notifications"
+                            label={t("nav.notifications")}
                             onClick={() =>
                                 setNotificationsOpen((current) => !current)
                             }
@@ -107,7 +109,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                     <div ref={profileMenuRef} className="relative">
                         <button
                             type="button"
-                            aria-label="Open profile menu"
+                            aria-label={t("nav.account")}
                             aria-expanded={profileMenuOpen}
                             onClick={() =>
                                 setProfileMenuOpen((current) => !current)
@@ -120,7 +122,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                             <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-56 rounded-lg border border-kash-emerald/15 bg-white p-2 shadow-soft">
                                 <div className="border-b border-slate-100 px-3 py-2">
                                     <p className="truncate text-sm font-extrabold text-slate-900">
-                                        {profile?.full_name || "Account"}
+                                        {profile?.full_name || t("nav.account")}
                                     </p>
                                     <p className="truncate text-xs font-semibold text-slate-600">
                                         {profile?.email}
@@ -135,7 +137,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                                     className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition hover:bg-kash-selected hover:text-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
                                 >
                                     <Settings aria-hidden="true" size={17} />
-                                    Profile settings
+                                    {t("nav.settings")}
                                 </button>
                                 <button
                                     type="button"
@@ -143,7 +145,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-kash-expense transition hover:bg-kash-expense/10 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
                                 >
                                     <LogOut aria-hidden="true" size={17} />
-                                    Sign out
+                                    {t("nav.signOut")}
                                 </button>
                             </div>
                         ) : null}

@@ -13,25 +13,12 @@ import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
+import { useI18n } from "../../i18n";
 
 type CreateObligationModalProps = {
   onClose: () => void;
   onSaved: () => void;
 };
-
-const FREQUENCY_OPTIONS = [
-  { value: "monthly", label: "Monthly" },
-  { value: "yearly", label: "Yearly" },
-  { value: "weekly", label: "Weekly" },
-  { value: "quarterly", label: "Quarterly" },
-];
-
-const REMINDER_OFFSET_OPTIONS = [
-  { value: 7, label: "7 days before" },
-  { value: 3, label: "3 days before" },
-  { value: 1, label: "1 day before" },
-  { value: 0, label: "Due day" },
-];
 
 function findSmartCategory(targetType: RecurringObligationType, catList: Category[]): string {
   const norm = (str: string) => str.toLowerCase().trim();
@@ -60,6 +47,7 @@ function findSmartCategory(targetType: RecurringObligationType, catList: Categor
 }
 
 export function CreateObligationModal({ onClose, onSaved }: CreateObligationModalProps) {
+  const { t, formatCurrency } = useI18n();
   const [type, setType] = useState<RecurringObligationType>("subscription");
   const [name, setName] = useState("");
   const [provider, setProvider] = useState("");
@@ -79,6 +67,20 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const frequencyOptions = useMemo(() => [
+    { value: "monthly", label: t("subscriptions.freqMonthly") || "Bulanan" },
+    { value: "yearly", label: t("subscriptions.freqYearly") || "Tahunan" },
+    { value: "weekly", label: t("subscriptions.freqWeekly") || "Mingguan" },
+    { value: "quarterly", label: t("subscriptions.freqQuarterly") || "Triwulan" },
+  ], [t]);
+
+  const reminderOffsetOptions = useMemo(() => [
+    { value: 7, label: t("subscriptions.daysBefore", { days: 7 }) || "7 hari sebelumnya" },
+    { value: 3, label: t("subscriptions.daysBefore", { days: 3 }) || "3 hari sebelumnya" },
+    { value: 1, label: t("subscriptions.daysBefore", { days: 1 }) || "1 hari sebelumnya" },
+    { value: 0, label: t("subscriptions.dueDay") || "Hari H" },
+  ], [t]);
 
   useEffect(() => {
     Promise.all([getActiveCategories(), getWallets()])
@@ -129,13 +131,13 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Name is required.");
+      setError(t("subscriptions.nameRequired") || "Nama tagihan wajib diisi.");
       return;
     }
 
     const rawAmt = parseMoneyInputDigits(amount);
     if (!rawAmt || toNumber(rawAmt) <= 0) {
-      setError("Amount must be greater than zero.");
+      setError(t("subscriptions.amountPositive") || "Nominal harus lebih besar dari 0.");
       return;
     }
 
@@ -143,11 +145,11 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
       const count = parseInt(installmentCount, 10);
       const paid = parseInt(alreadyPaidCount, 10) || 0;
       if (!count || count <= 0) {
-        setError("Installment count must be at least 1.");
+        setError(t("subscriptions.installmentCountMin") || "Jumlah cicilan minimal 1.");
         return;
       }
       if (paid < 0 || paid > count) {
-        setError(`Already paid installments must be between 0 and ${count}.`);
+        setError(t("subscriptions.alreadyPaidCountRange", { max: count }) || `Cicilan yang sudah dibayar harus antara 0 dan ${count}.`);
         return;
       }
     }
@@ -189,8 +191,8 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title="Add Recurring Obligation"
-      description="Track subscriptions, bills, PayLater, or installments"
+      title={t("subscriptions.addRecurringObligation") || "Tambah Kewajiban Rutin"}
+      description={t("subscriptions.addRecurringObligationDesc") || "Lacak langganan, tagihan, PayLater, atau cicilan bulanan"}
     >
       <div>
         {/* Scrollable Form Body */}
@@ -205,14 +207,14 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             {/* Obligation Type Selector */}
             <div>
               <span className="block text-sm font-bold text-slate-900">
-                Obligation Type
+                {t("subscriptions.obligationType") || "Tipe Tagihan"}
               </span>
               <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
-                  { id: "subscription", label: "Subscription" },
-                  { id: "bill", label: "Bill / Utility" },
+                  { id: "subscription", label: t("subscriptions.typeSubscription") || "Langganan" },
+                  { id: "bill", label: t("subscriptions.typeBill") || "Tagihan / Utilitas" },
                   { id: "paylater", label: "PayLater" },
-                  { id: "installment", label: "Installment" },
+                  { id: "installment", label: t("subscriptions.typeInstallment") || "Cicilan" },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -234,16 +236,16 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <FormField
                 id="obligation-name"
-                label="Obligation Name"
+                label={t("subscriptions.obligationName") || "Nama Tagihan / Layanan"}
                 required
-                placeholder={type === "subscription" ? "e.g. Netflix, Spotify" : type === "bill" ? "e.g. Electricity, WiFi" : "e.g. SPayLater, Shopee Checkout"}
+                placeholder={type === "subscription" ? "e.g. Netflix, Spotify" : type === "bill" ? "e.g. Listrik PLN, WiFi" : "e.g. SPayLater, Tokopedia Cicilan"}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
 
               <FormField
                 id="obligation-provider"
-                label="Provider (Optional)"
+                label={t("subscriptions.providerOptional") || "Penyedia Layanan (Opsional)"}
                 placeholder="e.g. Shopee, Gojek, Telkomsel, PLN"
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
@@ -256,7 +258,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                 id="obligation-amount"
                 inputMode="numeric"
                 required
-                label={isInstallmentType ? "Installment Amount / Month" : "Billing Amount"}
+                label={isInstallmentType ? (t("subscriptions.installmentAmountPerMonth") || "Nominal Cicilan / Bulan") : (t("subscriptions.billingAmount") || "Nominal Tagihan")}
                 placeholder="150.000"
                 value={amount}
                 onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
@@ -265,11 +267,11 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
               {!isInstallmentType ? (
                 <SelectField
                   id="obligation-frequency"
-                  label="Billing Frequency"
+                  label={t("subscriptions.billingFrequency") || "Frekuensi Penagihan"}
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}
                 >
-                  {FREQUENCY_OPTIONS.map((opt) => (
+                  {frequencyOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
@@ -282,7 +284,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                   min="1"
                   max="120"
                   required
-                  label="Tenor (Installments / Months)"
+                  label={t("subscriptions.tenorInstallments") || "Tenor (Jumlah Bulan Cicilan)"}
                   value={installmentCount}
                   onChange={(e) => setInstallmentCount(e.target.value)}
                 />
@@ -292,12 +294,12 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             {/* Quick Tenor Presets for PayLater & Installments */}
             {isInstallmentType && (
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-[11px] font-bold text-slate-500">Quick Tenor:</span>
+                <span className="text-[11px] font-bold text-slate-500">{t("subscriptions.quickTenor") || "Pilihan Tenor:"}</span>
                 {[
-                  { count: "1", label: "1 Bulan (Bayar Bulan Depan)" },
-                  { count: "3", label: "3 Bulan" },
-                  { count: "6", label: "6 Bulan" },
-                  { count: "12", label: "12 Bulan" },
+                  { count: "1", label: t("subscriptions.tenor1Month") || "1 Bulan (Bayar Bulan Depan)" },
+                  { count: "3", label: t("subscriptions.tenor3Months") || "3 Bulan" },
+                  { count: "6", label: t("subscriptions.tenor6Months") || "6 Bulan" },
+                  { count: "12", label: t("subscriptions.tenor12Months") || "12 Bulan" },
                 ].map((preset) => (
                   <button
                     key={preset.count}
@@ -319,15 +321,15 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             {isInstallmentType && (
               <div className="rounded-xl border border-kash-emerald/20 bg-kash-selected/30 p-3.5 sm:p-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-600">Calculated Total Contract Value:</span>
+                  <span className="font-bold text-slate-600">{t("subscriptions.calculatedTotalContract") || "Estimasi Total Nilai Kontrak:"}</span>
                   <span className="font-black text-slate-900">
-                    {formatCurrency(calculatedTotalAmount)}
+                    {formatCurrency(calculatedTotalAmount, "IDR")}
                   </span>
                 </div>
 
                 <div className="mt-3 border-t border-kash-emerald/10 pt-3">
                   <span className="block text-xs font-bold text-slate-700">
-                    Already paid installments prior to KASH:
+                    {t("subscriptions.alreadyPaidPrior") || "Cicilan yang sudah terbayar sebelum pakai KASH:"}
                   </span>
                   <div className="mt-1 flex items-center gap-2">
                     <input
@@ -339,7 +341,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                       className="block h-10 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:ring-4 focus:ring-[rgba(16,185,129,0.20)]"
                     />
                     <span className="text-xs font-semibold text-slate-600">
-                      of {installmentCount} months ({Math.max(0, parseInt(installmentCount, 10) - (parseInt(alreadyPaidCount, 10) || 0))} remaining)
+                      {t("subscriptions.ofTenorRemaining", { total: installmentCount, remaining: Math.max(0, parseInt(installmentCount, 10) - (parseInt(alreadyPaidCount, 10) || 0)) }) || `dari ${installmentCount} bulan (${Math.max(0, parseInt(installmentCount, 10) - (parseInt(alreadyPaidCount, 10) || 0))} tersisa)`}
                     </span>
                   </div>
                 </div>
@@ -350,14 +352,14 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <DatePickerField
                 id="obligation-due-date"
-                label="First Due Date"
+                label={t("subscriptions.firstDueDate") || "Jatuh Tempo Pertama"}
                 value={startDate}
                 onChange={(val) => setStartDate(val)}
               />
 
               <SelectField
                 id="obligation-category"
-                label="Expense Category"
+                label={t("subscriptions.expenseCategory") || "Kategori Pengeluaran"}
                 action={
                   <button
                     type="button"
@@ -365,7 +367,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                     className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
                   >
                     <Plus size={13} strokeWidth={2.5} />
-                    Tambah
+                    {t("common.add") || "Tambah"}
                   </button>
                 }
                 value={categoryId}
@@ -377,27 +379,27 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                   }
                 }}
               >
-                <option value="">No Category</option>
+                <option value="">{t("categories.noCategory") || "Tanpa Kategori"}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
                 ))}
-                <option value="__create_new__">+ Tambah Kategori Baru...</option>
+                <option value="__create_new__">+ {t("categories.addNewCategory") || "Tambah Kategori Baru..."}</option>
               </SelectField>
             </div>
 
             {/* Default Wallet */}
             <SelectField
               id="obligation-default-wallet"
-              label="Default Payment Wallet (Optional)"
+              label={t("subscriptions.defaultPaymentWalletOptional") || "Dompet Pembayaran Utama (Opsional)"}
               value={defaultWalletId}
               onChange={(e) => setDefaultWalletId(e.target.value)}
             >
-              <option value="">Choose Wallet (Optional)</option>
+              <option value="">{t("subscriptions.chooseWalletOptional") || "Pilih Dompet (Opsional)"}</option>
               {wallets.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance)})
+                  {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")})
                 </option>
               ))}
             </SelectField>
@@ -405,10 +407,10 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             {/* Reminder Settings */}
             <div>
               <span className="block text-sm font-bold text-slate-900">
-                Reminder Notifications
+                {t("subscriptions.reminderNotifications") || "Pengingat Notifikasi"}
               </span>
               <div className="mt-2 flex flex-wrap gap-2">
-                {REMINDER_OFFSET_OPTIONS.map((opt) => {
+                {reminderOffsetOptions.map((opt) => {
                   const active = reminderOffsets.includes(opt.value);
                   return (
                     <button
@@ -432,8 +434,8 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
             {/* Note */}
             <FormField
               id="obligation-note"
-              label="Note (Optional)"
-              placeholder="e.g. Shared with family, automatic debit"
+              label={t("transactions.noteOptional") || "Catatan (Opsional)"}
+              placeholder={t("subscriptions.notePlaceholder") || "mis. Berlangganan bersama keluarga, autodebet"}
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
@@ -442,10 +444,10 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
           {/* Fixed Footer (Sticky Actions) */}
           <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/90 px-5 py-3.5 backdrop-blur-sm sm:px-6">
             <Button variant="secondary" type="button" onClick={onClose} disabled={saving}>
-              Cancel
+              {t("common.cancel") || "Batal"}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save Obligation"}
+              {saving ? (t("common.saving") || "Menyimpan...") : (t("subscriptions.saveObligation") || "Simpan Tagihan")}
             </Button>
           </div>
         </form>

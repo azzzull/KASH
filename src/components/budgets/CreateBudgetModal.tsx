@@ -18,6 +18,7 @@ import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { ToggleField } from "../ui/ToggleField";
+import { useI18n } from "../../i18n";
 
 type CreateBudgetModalProps = {
   initialMonth?: string; // YYYY-MM-DD
@@ -26,6 +27,7 @@ type CreateBudgetModalProps = {
 };
 
 export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudgetModalProps) {
+  const { t } = useI18n();
   const [targetType, setTargetType] = useState<BudgetTargetType>("category");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -101,62 +103,62 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
     const numAmount = toNumber(rawAmount);
 
     if (numAmount <= 0) {
-      setError("Masukkan nominal budget yang valid (lebih dari 0).");
+      setError(t("budgets.enterValidAmount") || "Masukkan nominal budget yang valid (lebih dari 0).");
       return;
     }
 
     if (targetType === "category" && !categoryId) {
-      setError("Pilih kategori pengeluaran.");
+      setError(t("budgets.chooseExpenseCategory") || "Pilih kategori pengeluaran.");
       return;
     }
 
     if (targetType === "envelope" && !envelopeId) {
-      setError("Pilih amplop pengeluaran.");
+      setError(t("budgets.chooseExpenseEnvelope") || "Pilih amplop pengeluaran.");
       return;
     }
 
     if (targetType === "debt") {
       if (isSpecificItemTarget && !debtId) {
-        setError("Pilih item utang spesifik yang ingin ditargetkan.");
+        setError(t("budgets.chooseSpecificDebtItem") || "Pilih item utang spesifik yang ingin ditargetkan.");
         return;
       }
       if (!isSpecificItemTarget && !counterpartyId) {
-        setError("Pilih orang / kontak yang ingin dicicil utangnya.");
+        setError(t("budgets.chooseDebtContact") || "Pilih orang / kontak yang ingin dicicil utangnya.");
         return;
       }
     }
 
     if (targetType === "goal") {
       if (savingsMode === "pocket" && !walletId) {
-        setError("Pilih kantong tabungan (savings pocket) yang ingin ditargetkan.");
+        setError(t("budgets.chooseSavingsPocket") || "Pilih kantong tabungan (savings pocket) yang ingin ditargetkan.");
         return;
       }
       if (savingsMode === "goal" && !goalId) {
-        setError("Pilih target tabungan (goal) yang ingin ditargetkan.");
+        setError(t("budgets.chooseSavingsGoal") || "Pilih target tabungan (goal) yang ingin ditargetkan.");
         return;
       }
     }
 
     let defaultName = "Budget";
     if (targetType === "category") {
-      defaultName = categories.find((c) => c.id === categoryId)?.name ? `Budget ${categories.find((c) => c.id === categoryId)?.name}` : "Budget Kategori";
+      defaultName = categories.find((c) => c.id === categoryId)?.name ? `Budget ${categories.find((c) => c.id === categoryId)?.name}` : (t("budgets.categoryBudget") || "Budget Kategori");
     } else if (targetType === "envelope") {
-      defaultName = envelopes.find((env) => env.id === envelopeId)?.name ? `Amplop ${envelopes.find((env) => env.id === envelopeId)?.name}` : "Budget Amplop";
+      defaultName = envelopes.find((env) => env.id === envelopeId)?.name ? `Amplop ${envelopes.find((env) => env.id === envelopeId)?.name}` : (t("budgets.envelopeBudget") || "Budget Amplop");
     } else if (targetType === "debt") {
       if (isSpecificItemTarget && debtId) {
         const debtItem = debts.find((d) => d.debt_id === debtId);
-        defaultName = debtItem?.title ? `Pelunasan: ${debtItem.title}` : "Pelunasan Utang";
+        defaultName = debtItem?.title ? `${t("budgets.debtSettlement") || "Pelunasan"}: ${debtItem.title}` : (t("budgets.debtSettlement") || "Pelunasan Utang");
       } else {
         const cpItem = counterparties.find((c) => c.id === counterpartyId);
-        defaultName = cpItem?.name ? `Cicil Utang: ${cpItem.name}` : "Cicilan Utang";
+        defaultName = cpItem?.name ? `${t("budgets.debtPayment") || "Cicil Utang"}: ${cpItem.name}` : (t("budgets.debtPayment") || "Cicilan Utang");
       }
     } else if (targetType === "goal") {
       if (savingsMode === "pocket") {
         const wItem = savingsWallets.find((w) => w.id === walletId);
-        defaultName = wItem?.name ? `Nabung: ${wItem.name}` : "Kantong Tabungan";
+        defaultName = wItem?.name ? `${t("dashboard.savings") || "Nabung"}: ${wItem.name}` : (t("budgets.savingsPocket") || "Kantong Tabungan");
       } else {
         const gItem = goals.find((g) => g.id === goalId);
-        defaultName = gItem?.name ? `Tabungan: ${gItem.name}` : "Tabungan Bulanan";
+        defaultName = gItem?.name ? `${t("dashboard.savings") || "Tabungan"}: ${gItem.name}` : (t("budgets.monthlySavings") || "Tabungan Bulanan");
       }
     }
 
@@ -181,7 +183,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Gagal membuat budget. Periksa kembali data Anda.");
+      setError(err.message || (t("budgets.createBudgetFailed") || "Gagal membuat budget. Periksa kembali data Anda."));
     } finally {
       setSaving(false);
     }
@@ -192,8 +194,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
       isOpen
       onClose={onClose}
       maxWidth="lg"
-      title="Buat Target Budget Baru"
-      description="Rencanakan alokasi keuangan bulanan Anda secara terarah"
+      title={t("budgets.createTargetBudget") || "Buat Target Budget Baru"}
+      description={t("budgets.planMonthlyAllocation") || "Rencanakan alokasi keuangan bulanan Anda secara terarah"}
     >
       <div>
         {/* Form Body */}
@@ -207,7 +209,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           {/* Budget Target Type Selector Tabs */}
           <div>
             <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-2">
-              Jenis Target Perencanaan
+              {t("budgets.planningTargetType") || "Jenis Target Perencanaan"}
             </label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <button
@@ -220,7 +222,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 }`}
               >
                 <Tag size={18} />
-                <span className="text-xs">Kategori</span>
+                <span className="text-xs">{t("budgets.category") || "Kategori"}</span>
               </button>
 
               <button
@@ -233,7 +235,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 }`}
               >
                 <Layers size={18} />
-                <span className="text-xs">Amplop</span>
+                <span className="text-xs">{t("budgets.envelope") || "Amplop"}</span>
               </button>
 
               <button
@@ -246,7 +248,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 }`}
               >
                 <HandCoins size={18} />
-                <span className="text-xs">Cicil Utang</span>
+                <span className="text-xs">{t("budgets.debtPayment") || "Cicil Utang"}</span>
               </button>
 
               <button
@@ -259,24 +261,24 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 }`}
               >
                 <PiggyBank size={18} />
-                <span className="text-xs">Tabungan</span>
+                <span className="text-xs">{t("dashboard.savings") || "Tabungan"}</span>
               </button>
             </div>
           </div>
 
           {/* Context Info Banner */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs font-semibold text-slate-700">
-            {targetType === "category" && "Target belanja pada kategori pengeluaran tertentu."}
-            {targetType === "envelope" && "Target belanja pada amplop tujuan spesifik."}
-            {targetType === "debt" && "Target pembayaran cicilan utang bulanan. Mengurangi kewajiban utang, bukan pengeluaran konsumtif."}
-            {targetType === "goal" && "Target menabung bulanan. Mengakumulasi aset masa depan, bukan pengeluaran konsumtif."}
+            {targetType === "category" && (t("budgets.categoryTargetContext") || "Target belanja pada kategori pengeluaran tertentu.")}
+            {targetType === "envelope" && (t("budgets.envelopeTargetContext") || "Target belanja pada amplop tujuan spesifik.")}
+            {targetType === "debt" && (t("budgets.debtTargetContext") || "Target pembayaran cicilan utang bulanan. Mengurangi kewajiban utang, bukan pengeluaran konsumtif.")}
+            {targetType === "goal" && (t("budgets.goalTargetContext") || "Target menabung bulanan. Mengakumulasi aset masa depan, bukan pengeluaran konsumtif.")}
           </div>
 
           {/* Target Specific Selectors */}
           {targetType === "category" && (
             <SelectField
               id="budget-category"
-              label="Pilih Kategori Pengeluaran *"
+              label={`${t("budgets.chooseExpenseCategory") || "Pilih Kategori Pengeluaran"} *`}
               action={
                 <button
                   type="button"
@@ -284,7 +286,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                   className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
                 >
                   <Plus size={13} strokeWidth={2.5} />
-                  Tambah Kategori
+                  {t("categories.addCategory") || "Tambah Kategori"}
                 </button>
               }
               required
@@ -297,20 +299,20 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 }
               }}
             >
-              <option value="">-- Pilih Kategori --</option>
+              <option value="">-- {t("budgets.selectCategoryOption") || "Pilih Kategori"} --</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
-              <option value="__create_new__">+ Tambah Kategori Baru...</option>
+              <option value="__create_new__">+ {t("categories.addNewCategoryOption") || "Tambah Kategori Baru..."}</option>
             </SelectField>
           )}
 
           {targetType === "envelope" && (
             <SelectField
               id="budget-envelope"
-              label="Pilih Amplop Pengeluaran *"
+              label={`${t("budgets.chooseExpenseEnvelope") || "Pilih Amplop Pengeluaran"} *`}
               action={
                 <button
                   type="button"
@@ -318,7 +320,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                   className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark focus:outline-none"
                 >
                   <Plus size={13} strokeWidth={2.5} />
-                  Tambah Amplop
+                  {t("categories.addEnvelope") || "Tambah Amplop"}
                 </button>
               }
               required
@@ -331,13 +333,13 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                 }
               }}
             >
-              <option value="">-- Pilih Amplop --</option>
+              <option value="">-- {t("budgets.selectEnvelopeOption") || "Pilih Amplop"} --</option>
               {envelopes.map((env) => (
                 <option key={env.id} value={env.id}>
                   {env.name}
                 </option>
               ))}
-              <option value="__create_new__">+ Buat Amplop Baru...</option>
+              <option value="__create_new__">+ {t("categories.addNewEnvelopeOption") || "Buat Amplop Baru..."}</option>
             </SelectField>
           )}
 
@@ -345,7 +347,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             <div className="space-y-3">
               <SelectField
                 id="budget-debt-counterparty"
-                label="Pilih Orang / Kontak yang Diutangi *"
+                label={`${t("budgets.chooseDebtContact") || "Pilih Orang / Kontak yang Diutangi"} *`}
                 required={!isSpecificItemTarget}
                 value={counterpartyId}
                 onChange={(e) => {
@@ -358,18 +360,18 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                   }
                 }}
               >
-                <option value="">-- Pilih Kontak / Orang --</option>
+                <option value="">-- {t("budgets.selectContactOption") || "Pilih Kontak / Orang"} --</option>
                 {counterparties.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} — Total Utang: {formatCurrency(c.debtTotal, "IDR")}{c.activeDebtCount > 1 ? ` (${c.activeDebtCount} item)` : ""}
+                    {c.name} — {t("debts.totalDebt") || "Total Utang"}: {formatCurrency(c.debtTotal, "IDR")}{c.activeDebtCount > 1 ? ` (${c.activeDebtCount} item)` : ""}
                   </option>
                 ))}
               </SelectField>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
                 <ToggleField
-                  label="Target item utang tertentu (Opsional)"
-                  description="Aktifkan jika budget ini khusus untuk melunasi 1 item utang spesifik"
+                  label={t("budgets.targetSpecificDebtItem") || "Target item utang tertentu (Opsional)"}
+                  description={t("budgets.targetSpecificDebtItemDesc") || "Aktifkan jika budget ini khusus untuk melunasi 1 item utang spesifik"}
                   checked={isSpecificItemTarget}
                   onChange={(e) => setIsSpecificItemTarget(e.target.checked)}
                 />
@@ -378,7 +380,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                   <div className="mt-3 pt-3 border-t border-slate-200/60">
                     <SelectField
                       id="budget-specific-debt"
-                      label="Pilih Item Utang Spesifik *"
+                      label={`${t("budgets.chooseSpecificDebtItem") || "Pilih Item Utang Spesifik"} *`}
                       required
                       value={debtId}
                       onChange={(e) => {
@@ -389,12 +391,12 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                         }
                       }}
                     >
-                      <option value="">-- Pilih Item Utang --</option>
+                      <option value="">-- {t("budgets.selectDebtItemOption") || "Pilih Item Utang"} --</option>
                       {debts
                         .filter((d) => !counterpartyId || d.counterparty_id === counterpartyId)
                         .map((d) => (
                           <option key={d.debt_id} value={d.debt_id}>
-                            {d.title} (Sisa: {formatCurrency(d.remaining_amount, "IDR")})
+                            {d.title} ({t("debts.remaining") || "Sisa"}: {formatCurrency(d.remaining_amount, "IDR")})
                           </option>
                         ))}
                     </SelectField>
@@ -408,7 +410,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Tipe Simpanan Tabungan
+                  {t("budgets.savingsType") || "Tipe Simpanan Tabungan"}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -424,7 +426,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                     }`}
                   >
                     <WalletCards size={16} />
-                    <span>Kantong Tabungan</span>
+                    <span>{t("budgets.savingsPocket") || "Kantong Tabungan"}</span>
                   </button>
 
                   <button
@@ -440,7 +442,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
                     }`}
                   >
                     <Target size={16} />
-                    <span>Target Tabungan (Goal)</span>
+                    <span>{t("budgets.savingsGoal") || "Target Tabungan (Goal)"}</span>
                   </button>
                 </div>
               </div>
@@ -448,15 +450,15 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
               {savingsMode === "pocket" && (
                 <SelectField
                   id="budget-savings-pocket"
-                  label="Pilih Kantong Tabungan (Savings Pocket) *"
+                  label={`${t("budgets.chooseSavingsPocket") || "Pilih Kantong Tabungan (Savings Pocket)"} *`}
                   required
                   value={walletId}
                   onChange={(e) => setWalletId(e.target.value)}
                 >
-                  <option value="">-- Pilih Kantong Tabungan --</option>
+                  <option value="">-- {t("budgets.selectSavingsPocketOption") || "Pilih Kantong Tabungan"} --</option>
                   {savingsWallets.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {w.name} {w.institution_name ? `(${w.institution_name})` : ""} — Saldo: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)}
+                      {w.name} {w.institution_name ? `(${w.institution_name})` : ""} — {t("wallets.balance") || "Saldo"}: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)}
                     </option>
                   ))}
                 </SelectField>
@@ -465,15 +467,15 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
               {savingsMode === "goal" && (
                 <SelectField
                   id="budget-goal"
-                  label="Pilih Target Tabungan (Goal) *"
+                  label={`${t("budgets.chooseSavingsGoal") || "Pilih Target Tabungan (Goal)"} *`}
                   required
                   value={goalId}
                   onChange={(e) => setGoalId(e.target.value)}
                 >
-                  <option value="">-- Pilih Target Tabungan (Goal) --</option>
+                  <option value="">-- {t("budgets.selectSavingsGoalOption") || "Pilih Target Tabungan (Goal)"} --</option>
                   {goals.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.name} — Target: {formatCurrency(g.target_amount, "IDR")}
+                      {g.name} — {t("goals.target") || "Target"}: {formatCurrency(g.target_amount, "IDR")}
                     </option>
                   ))}
                 </SelectField>
@@ -484,8 +486,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           {/* Budget Name */}
           <FormField
             id="budget-name"
-            label="Nama Target Budget (Opsional)"
-            placeholder="Biarkan kosong untuk menggunakan nama otomatis"
+            label={t("budgets.targetBudgetName") || "Nama Target Budget (Opsional)"}
+            placeholder={t("budgets.targetBudgetNamePlaceholder") || "Biarkan kosong untuk menggunakan nama otomatis"}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -496,7 +498,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
               id="budget-amount"
               inputMode="numeric"
               required
-              label="Nominal Target Bulanan"
+              label={t("budgets.monthlyTargetAmount") || "Nominal Target Bulanan"}
               placeholder="1.500.000"
               value={amount}
               onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
@@ -504,7 +506,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
 
             <DatePickerField
               id="budget-start-period"
-              label="Mulai Berlaku Bulan"
+              label={t("budgets.effectiveStartMonth") || "Mulai Berlaku Bulan"}
               value={startPeriod}
               onChange={(val) => setStartPeriod(val ? `${val.substring(0, 7)}-01` : val)}
             />
@@ -514,8 +516,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
             <ToggleField
               id="budget-repeat-monthly"
-              label="Ulangi Otomatis Setiap Bulan"
-              description="Target anggaran akan otomatis dilanjutkan ke bulan-bulan berikutnya."
+              label={t("budgets.repeatMonthly") || "Ulangi Otomatis Setiap Bulan"}
+              description={t("budgets.repeatMonthlyDesc") || "Target anggaran akan otomatis dilanjutkan ke bulan-bulan berikutnya."}
               checked={repeatMonthly}
               onChange={(e) => setRepeatMonthly(e.target.checked)}
             />
@@ -524,8 +526,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
               <div className="border-t border-slate-200/60 pt-3">
                 <ToggleField
                   id="budget-rollover"
-                  label="Aktifkan Rollover Positif"
-                  description="Sisa budget yang tidak terpakai di akhir bulan akan ditambahkan ke bulan berikutnya."
+                  label={t("budgets.enablePositiveRollover") || "Aktifkan Rollover Positif"}
+                  description={t("budgets.rolloverDesc") || "Sisa budget yang tidak terpakai di akhir bulan akan ditambahkan ke bulan berikutnya."}
                   checked={rolloverEnabled}
                   onChange={(e) => setRolloverEnabled(e.target.checked)}
                 />
@@ -536,8 +538,8 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           {/* Note Field */}
           <FormField
             id="budget-note"
-            label="Catatan (Opsional)"
-            placeholder="e.g. Alokasi wajib awal bulan setelah gajian"
+            label={t("budgets.noteLabel") || "Catatan (Opsional)"}
+            placeholder={t("budgets.notePlaceholder") || "e.g. Alokasi wajib awal bulan setelah gajian"}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -545,10 +547,10 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button type="button" variant="secondary" onClick={onClose} disabled={saving}>
-              Batal
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Menyimpan..." : "Simpan Target Budget"}
+              {saving ? t("common.saving") : (t("budgets.saveTargetBudget") || "Simpan Target Budget")}
             </Button>
           </div>
         </form>

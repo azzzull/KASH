@@ -10,6 +10,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useI18n } from "../../i18n";
 import { formatCurrency, toNumber } from "../../lib/money";
 import { IconButton } from "../ui/IconButton";
 import type { TransactionType } from "../../types/domain";
@@ -117,11 +118,49 @@ export function TransactionDetailPanel({
   onVoid?: () => void;
   transaction: TransactionWithMeta;
 }) {
+  const { t, formatDate, formatCurrency } = useI18n();
   const Icon = transactionIcon(transaction.type);
-  const dateLabel = new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short" }).format(new Date(transaction.transaction_date));
+  const dateLabel = formatDate(new Date(transaction.transaction_date));
   const isVoid = transaction.status === "void";
   const amount = toNumber(transaction.amount);
   const fee = toNumber(transaction.transfer_fee);
+
+  const getTranslatedTitle = () => {
+    if (transaction.title) return transaction.title;
+    if (transaction.type === "transfer") return `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`;
+    if (transaction.type === "adjustment") {
+      if (transaction.related_entity_type === "debt_payment") return t("debts.debtPayment") || "Pembayaran Utang";
+      if (transaction.related_entity_type === "receivable_payment") return t("debts.receivableCollection") || "Pelunasan Piutang";
+      if (transaction.related_entity_type === "shared_savings_contribution") return t("sharedSavings.contribution") || "Setoran Tabungan Bersama";
+      if (transaction.related_entity_type === "shared_savings_withdrawal") return t("sharedSavings.withdrawal") || "Penarikan Tabungan Bersama";
+      if (transaction.related_entity_type === "goal_contribution") return t("goals.contribution") || "Setoran Target";
+      if (transaction.related_entity_type === "goal_refund") return t("goals.refund") || "Pengembalian Target";
+      return t("wallets.balanceAdjustment") || "Penyesuaian Saldo";
+    }
+    return transaction.category?.name ?? (transaction.type === "income" ? (t("transactions.income") || "Pemasukan") : (t("transactions.expense") || "Pengeluaran"));
+  };
+
+  const getTranslatedCategoryLabel = () => {
+    if (transaction.type === "transfer") return t("transactions.transfer") || "Transfer";
+    if (transaction.type === "adjustment") {
+      if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return t("debts.debt") || "Utang";
+      if (transaction.related_entity_type === "receivable_payment" || transaction.related_entity_type === "receivable_creation") return t("debts.receivable") || "Piutang";
+      if (
+        transaction.related_entity_type === "shared_savings_contribution" ||
+        transaction.related_entity_type === "shared_savings_withdrawal"
+      ) {
+        return t("sharedSavings.title") || "Tabungan Bersama";
+      }
+      if (
+        transaction.related_entity_type === "goal_contribution" ||
+        transaction.related_entity_type === "goal_refund"
+      ) {
+        return t("goals.title") || "Target";
+      }
+      return t("wallets.adjustment") || "Penyesuaian";
+    }
+    return transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
+  };
 
   const isLinked =
     transaction.related_entity_type === "goal_contribution" ||
@@ -136,13 +175,13 @@ export function TransactionDetailPanel({
   const linkedMessage =
     transaction.related_entity_type === "shared_savings_contribution" ||
     transaction.related_entity_type === "shared_savings_withdrawal"
-      ? "Transaksi Tabungan Bersama. Dikelola langsung dari ruang Tabungan Bersama."
+      ? (t("transactions.linkedSharedSavings") || "Transaksi Tabungan Bersama. Dikelola langsung dari ruang Tabungan Bersama.")
       : transaction.related_entity_type === "debt_payment" ||
         transaction.related_entity_type === "receivable_payment" ||
         transaction.related_entity_type === "debt_creation" ||
         transaction.related_entity_type === "receivable_creation"
-        ? "Obligation transaction linked to Debt & Receivable. Managed directly from Debt & Receivable."
-        : "Goal transfer linked to Goals. Edits and voids are managed from Goals.";
+        ? (t("transactions.linkedDebt") || "Transaksi terhubung dengan Utang & Piutang. Dikelola langsung dari halaman Utang & Piutang.")
+        : (t("transactions.linkedGoal") || "Transaksi terhubung dengan Target Tabungan. Perubahan dan pembatalan dikelola dari halaman Target Tabungan.");
 
   return (
     <aside className={`overflow-y-auto border border-slate-200 bg-white p-5 shadow-soft ${className}`}>
@@ -154,12 +193,12 @@ export function TransactionDetailPanel({
       </div>
 
       <div className="mt-6">
-        <p className="text-sm font-bold text-slate-600">{transaction.type === "transfer" ? "Transfer" : transactionCategoryLabel(transaction)}</p>
-        <h2 className="mt-2 text-xl font-extrabold text-slate-900">{transactionTitle(transaction)}</h2>
+        <p className="text-sm font-bold text-slate-600">{transaction.type === "transfer" ? (t("transactions.transfer") || "Transfer") : getTranslatedCategoryLabel()}</p>
+        <h2 className="mt-2 text-xl font-extrabold text-slate-900">{getTranslatedTitle()}</h2>
         <p className={`mt-4 break-words text-3xl font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
           {displayTransactionAmount(transaction, currency)}
         </p>
-        {isVoid ? <p className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">Voided</p> : null}
+        {isVoid ? <p className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">{t("transactions.voided") || "Dibatalkan"}</p> : null}
       </div>
 
       {isLinked ? (
@@ -169,17 +208,17 @@ export function TransactionDetailPanel({
       ) : null}
 
       <dl className="mt-6 divide-y divide-slate-100 border-y border-slate-100">
-        <DetailLine label="Date" value={dateLabel} />
-        <DetailLine label={transaction.type === "transfer" ? "From" : "Wallet"} value={transaction.wallet?.name ?? "Wallet"} />
-        {transaction.type === "transfer" ? <DetailLine label="To" value={transaction.destinationWallet?.name ?? "Wallet"} /> : null}
-        {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label="Category" value={transactionCategoryLabel(transaction)} /> : null}
-        {transaction.envelope ? <DetailLine label="Envelope" value={transaction.envelope.name} /> : null}
-        {transaction.type === "transfer" ? <DetailLine label="Transfer Fee" value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
-        {transaction.type === "transfer" ? <DetailLine label="Total Deducted" value={formatCurrency(amount + fee, currency)} /> : null}
-        {transaction.type === "transfer" ? <DetailLine label="Destination Received" value={formatCurrency(amount, currency)} /> : null}
-        <DetailLine label="Notes" value={transaction.note || "-"} />
-        <DetailLine label="Status" value={isVoid ? "Voided" : "Completed"} />
-        <DetailLine label="Transaction ID" value={transaction.id} />
+        <DetailLine label={t("common.date") || "Tanggal"} value={dateLabel} />
+        <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
+        {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
+        {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}
+        {transaction.envelope ? <DetailLine label={t("envelopes.title") || "Amplop"} value={transaction.envelope.name} /> : null}
+        {transaction.type === "transfer" ? <DetailLine label={t("transactions.transferFee") || "Biaya Transfer"} value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
+        {transaction.type === "transfer" ? <DetailLine label={t("transactions.totalDeducted") || "Total Terpotong"} value={formatCurrency(amount + fee, currency)} /> : null}
+        {transaction.type === "transfer" ? <DetailLine label={t("transactions.destinationReceived") || "Diterima Tujuan"} value={formatCurrency(amount, currency)} /> : null}
+        <DetailLine label={t("transactions.note") || "Catatan"} value={transaction.note || "-"} />
+        <DetailLine label={t("common.status") || "Status"} value={isVoid ? (t("transactions.voided") || "Dibatalkan") : (t("transactions.completed") || "Selesai")} />
+        <DetailLine label={t("transactions.transactionId") || "ID Transaksi"} value={transaction.id} />
       </dl>
 
       {onEdit || onDuplicate || onVoid ? (
@@ -187,19 +226,19 @@ export function TransactionDetailPanel({
           {onEdit ? (
             <button disabled={isVoid || isLinked} type="button" onClick={onEdit} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:text-slate-600">
               <Edit3 size={17} />
-              Edit
+              {t("common.edit") || "Edit"}
             </button>
           ) : null}
           {onDuplicate ? (
             <button type="button" onClick={onDuplicate} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50">
               <Copy size={17} />
-              Duplicate
+              {t("transactions.duplicate") || "Duplikat"}
             </button>
           ) : null}
           {onVoid ? (
             <button disabled={isVoid || isLinked} type="button" onClick={onVoid} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent">
               <Trash2 size={17} />
-              Void
+              {t("transactions.void") || "Void"}
             </button>
           ) : null}
         </div>

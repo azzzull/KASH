@@ -23,34 +23,14 @@ import { DatePickerField } from "../components/ui/DatePickerField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
+import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
 import { archiveBudget, deleteBudget, getBudgetDetail, getBudgetMatchingTransactions } from "../lib/budgets";
 import { getCategoryIcon } from "../lib/categoryMeta";
-import { formatCurrency } from "../lib/money";
 import type { BudgetWithProgress, Transaction } from "../types/domain";
 
-const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-function formatMonthYearLabel(dateStr: string): string {
-  if (!dateStr) return "";
-  const [year, month] = dateStr.split("-").map(Number);
-  return `${MONTH_NAMES[month - 1]} ${year}`;
-}
-
 export function BudgetDetailPage() {
+  const { t, formatMonthYear, formatDate, formatCurrency } = useI18n();
   const { id: budgetId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -70,6 +50,11 @@ export function BudgetDetailPage() {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const currentMonthLabel = useMemo(() => {
+    const [year, month] = currentMonth.split("-").map(Number);
+    return formatMonthYear(new Date(year, month - 1, 1));
+  }, [currentMonth, formatMonthYear]);
 
   // Synchronize state when URL month searchParam changes
   useEffect(() => {
@@ -169,7 +154,7 @@ export function BudgetDetailPage() {
     let total = 0;
     for (const tx of transactions) {
       const catId = (tx as any).category_id || "__uncategorized__";
-      const catName = (tx as any).category?.name || "Tanpa Kategori";
+      const catName = (tx as any).category?.name || (t("transactions.uncategorized") || "Tanpa Kategori");
       const catIcon = (tx as any).category?.icon || "tag";
       const catColor = (tx as any).category?.color || "#91A3BB";
       const amount = Number(tx.amount);
@@ -188,7 +173,7 @@ export function BudgetDetailPage() {
         percentage: total > 0 ? (item.total / total) * 100 : 0,
       }))
       .sort((a, b) => b.total - a.total);
-  }, [targetType, transactions]);
+  }, [targetType, transactions, t]);
 
   if (loading && !budget) {
     return (
@@ -203,12 +188,12 @@ export function BudgetDetailPage() {
       <div className="mx-auto max-w-4xl p-6 text-center">
         <div className="rounded-2xl border border-slate-200 bg-white p-10 shadow-xs">
           <Scale size={32} className="mx-auto text-slate-600 mb-3" />
-          <h2 className="text-lg font-black text-slate-900">Budget Tidak Ditemukan</h2>
+          <h2 className="text-lg font-black text-slate-900">{t("budgets.budgetNotFound") || "Budget Tidak Ditemukan"}</h2>
           <p className="mt-1 text-xs font-semibold text-slate-600">
-            Budget ini tidak aktif pada bulan yang dipilih atau telah dihapus.
+            {t("budgets.budgetNotFoundDesc") || "Budget ini tidak aktif pada bulan yang dipilih atau telah dihapus."}
           </p>
           <Button onClick={() => navigate("/budgets")} className="mt-4">
-            Kembali ke Daftar Budget
+            {t("budgets.backToBudgetList") || "Kembali ke Daftar Budget"}
           </Button>
         </div>
       </div>
@@ -245,12 +230,12 @@ export function BudgetDetailPage() {
 
   const targetLabel =
     targetType === "envelope"
-      ? "Amplop Belanja"
+      ? (t("budgets.shoppingEnvelope") || "Amplop Belanja")
       : targetType === "debt"
-      ? "Target Cicilan Utang"
+      ? (t("budgets.debtPaymentTarget") || "Target Cicilan Utang")
       : targetType === "goal"
-      ? budget.wallet_id ? "Kantong Tabungan" : "Target Tabungan / Goal"
-      : "Budget Kategori";
+      ? budget.wallet_id ? (t("budgets.savingsPocket") || "Kantong Tabungan") : (t("budgets.savingsGoalTarget") || "Target Tabungan / Goal")
+      : (t("budgets.categoryBudget") || "Budget Kategori");
 
   return (
     <div className="w-full min-w-0 space-y-5">
@@ -261,7 +246,7 @@ export function BudgetDetailPage() {
           className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-600 transition hover:text-kash-emeraldDark"
         >
           <ArrowLeft size={16} />
-          Kembali ke Budgets
+          {t("budgets.backToBudgets") || "Kembali ke Budgets"}
         </Link>
 
         {/* Month Selector Bar */}
@@ -270,21 +255,21 @@ export function BudgetDetailPage() {
             type="button"
             onClick={handlePrevMonth}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-            aria-label="Bulan Sebelumnya"
+            aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
           >
             <ChevronLeft size={16} />
           </button>
 
           <div className="flex items-center gap-1.5 px-1.5 text-xs font-extrabold text-slate-800">
             <Calendar size={14} className="text-kash-emerald" />
-            <span>{formatMonthYearLabel(currentMonth)}</span>
+            <span>{currentMonthLabel}</span>
           </div>
 
           <button
             type="button"
             onClick={handleNextMonth}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-            aria-label="Bulan Berikutnya"
+            aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
           >
             <ChevronRight size={16} />
           </button>
@@ -297,7 +282,7 @@ export function BudgetDetailPage() {
             className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
           >
             <Edit2 size={14} />
-            Edit Budget
+            {t("budgets.editBudget") || "Edit Budget"}
           </Button>
 
           <Button
@@ -306,12 +291,12 @@ export function BudgetDetailPage() {
             className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold text-slate-600 hover:text-amber-800"
           >
             <Archive size={14} />
-            Hentikan / Arsipkan
+            {t("budgets.stopArchive") || "Hentikan / Arsipkan"}
           </Button>
 
           <IconButton
             icon={Trash2}
-            label="Hapus Permanen"
+            label={t("common.deletePermanently") || "Hapus Permanen"}
             onClick={() => setShowDeleteDialog(true)}
             className="text-slate-600 hover:text-kash-expense"
           />
@@ -338,7 +323,7 @@ export function BudgetDetailPage() {
               </div>
 
               <p className="mt-1 text-xs font-semibold text-slate-600">
-                {budget.note || (targetType === "debt" ? (budget.counterparty_name ? `Utang ke ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}` : budget.debt_title) : targetType === "goal" ? budget.goal_name : targetType === "envelope" ? budget.envelope_name : budget.category_name) || "Tidak ada catatan."}
+                {budget.note || (targetType === "debt" ? (budget.counterparty_name ? `${t("debts.debtTo") || "Utang ke"} ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}` : budget.debt_title) : targetType === "goal" ? budget.goal_name : targetType === "envelope" ? budget.envelope_name : budget.category_name) || (t("common.noNotes") || "Tidak ada catatan.")}
               </p>
             </div>
           </div>
@@ -348,17 +333,17 @@ export function BudgetDetailPage() {
             {isOverBudget ? (
               <span className="flex items-center gap-1.5 rounded-full bg-kash-expense/15 px-3 py-1 text-xs font-black text-kash-expense">
                 <AlertCircle size={14} />
-                Over Budget ({budget.usage_percentage.toFixed(1)}%)
+                {t("budgets.overBudget") || "Over Budget"} ({budget.usage_percentage.toFixed(1)}%)
               </span>
             ) : isNearLimit ? (
               <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
                 <AlertCircle size={14} />
-                Mendekati Batas ({budget.usage_percentage.toFixed(1)}%)
+                {t("budgets.nearLimit") || "Mendekati Batas"} ({budget.usage_percentage.toFixed(1)}%)
               </span>
             ) : (
               <span className="flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-1 text-xs font-black text-kash-emeraldDark">
                 <CheckCircle2 size={14} />
-                Aman ({budget.usage_percentage.toFixed(1)}%)
+                {t("budgets.healthy") || "Aman"} ({budget.usage_percentage.toFixed(1)}%)
               </span>
             )}
           </div>
@@ -367,21 +352,21 @@ export function BudgetDetailPage() {
         {/* Financial Breakdown Grid */}
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
           <div className="rounded-xl bg-slate-50 p-3">
-            <span className="font-bold text-slate-600">Base Budget</span>
+            <span className="font-bold text-slate-600">{t("budgets.baseBudget") || "Base Budget"}</span>
             <p className="mt-0.5 text-sm font-black text-slate-900">
               {formatCurrency(budget.base_amount)}
             </p>
           </div>
 
           <div className="rounded-xl bg-slate-50 p-3">
-            <span className="font-bold text-slate-600">Rollover Masuk</span>
+            <span className="font-bold text-slate-600">{t("budgets.incomingRollover") || "Rollover Masuk"}</span>
             <p className="mt-0.5 text-sm font-black text-amber-800">
               +{formatCurrency(budget.rollover_amount)}
             </p>
           </div>
 
           <div className="rounded-xl bg-slate-50 p-3">
-            <span className="font-bold text-slate-600">Total Efektif</span>
+            <span className="font-bold text-slate-600">{t("budgets.effectiveTotal") || "Total Efektif"}</span>
             <p className="mt-0.5 text-sm font-black text-slate-900">
               {formatCurrency(budget.effective_budget)}
             </p>
@@ -389,7 +374,7 @@ export function BudgetDetailPage() {
 
           <div className="rounded-xl bg-slate-50 p-3">
             <span className="font-bold text-slate-600">
-              {Number(budget.remaining) < 0 ? "Kelebihan" : "Sisa Alokasi"}
+              {Number(budget.remaining) < 0 ? (t("budgets.overspent") || "Kelebihan") : (t("budgets.remainingAllocation") || "Sisa Alokasi")}
             </span>
             <p
               className={`mt-0.5 text-sm font-black ${
@@ -410,7 +395,7 @@ export function BudgetDetailPage() {
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs font-bold text-slate-600">
-            <span>Terpenuhi: {formatCurrency(budget.spent)}</span>
+            <span>{t("budgets.fulfilled") || "Terpenuhi"}: {formatCurrency(budget.spent)}</span>
             <span>{budget.usage_percentage.toFixed(1)}%</span>
           </div>
         </div>
@@ -419,7 +404,7 @@ export function BudgetDetailPage() {
         {targetType === "category" && budget.included_category_names && budget.included_category_names.length > 0 ? (
           <div className="mt-5 border-t border-slate-100 pt-4">
             <span className="text-xs font-extrabold uppercase text-slate-600">
-              Kategori Terkait dalam Periode Ini
+              {t("budgets.relatedCategoriesInPeriod") || "Kategori Terkait dalam Periode Ini"}
             </span>
             <div className="mt-2 flex flex-wrap gap-2">
               {budget.included_category_names.map((name, i) => (
@@ -442,7 +427,7 @@ export function BudgetDetailPage() {
               <div className="flex items-center gap-2">
                 <PieChart size={16} className="text-kash-emerald" />
                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
-                  Rincian Distribusi Kategori Amplop
+                  {t("budgets.envelopeCategoryDistribution") || "Rincian Distribusi Kategori Amplop"}
                 </span>
               </div>
               {budget.envelope_id && (
@@ -450,7 +435,7 @@ export function BudgetDetailPage() {
                   to={`/envelopes/${budget.envelope_id}?month=${currentMonth}`}
                   className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark"
                 >
-                  Buka Halaman Amplop →
+                  {t("budgets.openEnvelopePage") || "Buka Halaman Amplop →"}
                 </Link>
               )}
             </div>
@@ -498,7 +483,7 @@ export function BudgetDetailPage() {
               </>
             ) : (
               <p className="text-xs font-semibold text-slate-500 bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                Belum ada transaksi pengeluaran di amplop ini pada {formatMonthYearLabel(currentMonth)}.
+                {t("budgets.noEnvelopeTransactionsInMonth", { month: currentMonthLabel }) || `Belum ada transaksi pengeluaran di amplop ini pada ${currentMonthLabel}.`}
               </p>
             )}
           </div>
@@ -512,20 +497,20 @@ export function BudgetDetailPage() {
             <ReceiptText size={18} className="text-kash-emerald" />
             <h2 className="text-base font-extrabold text-slate-900">
               {targetType === "debt"
-                ? `Riwayat Pembayaran Cicilan (${transactions.length})`
+                ? `${t("budgets.debtPaymentHistory") || "Riwayat Pembayaran Cicilan"} (${transactions.length})`
                 : targetType === "goal"
-                ? `Riwayat Alokasi Menabung (${transactions.length})`
-                : `Transaksi Pengeluaran Bulan Ini (${transactions.length})`}
+                ? `${t("budgets.savingsAllocationHistory") || "Riwayat Alokasi Menabung"} (${transactions.length})`
+                : `${t("budgets.monthlyExpenseTransactions") || "Transaksi Pengeluaran Bulan Ini"} (${transactions.length})`}
             </h2>
           </div>
           <span className="text-xs font-bold text-slate-600">
-            Total: {formatCurrency(budget.spent)}
+            {t("common.total")}: {formatCurrency(budget.spent)}
           </span>
         </div>
 
         {transactions.length === 0 ? (
           <div className="py-10 text-center text-xs font-semibold text-slate-600">
-            Belum ada aktivitas finansial yang tercatat untuk target ini pada bulan terpilih.
+            {t("budgets.noFinancialActivityRecorded") || "Belum ada aktivitas finansial yang tercatat untuk target ini pada bulan terpilih."}
           </div>
         ) : (
           <div className="mt-3 divide-y divide-slate-100">
@@ -534,7 +519,7 @@ export function BudgetDetailPage() {
                 <div className="min-w-0 pr-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-bold text-slate-900 truncate">
-                      {tx.title || tx.category?.name || "Aktivitas"}
+                      {tx.title || tx.category?.name || (t("transactions.activity") || "Aktivitas")}
                     </p>
                     {tx.category?.name && (
                       <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
@@ -543,12 +528,8 @@ export function BudgetDetailPage() {
                     )}
                   </div>
                   <p className="mt-0.5 text-[11px] font-semibold text-slate-600">
-                    {new Date(tx.transaction_date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}{" "}
-                    &bull; {tx.wallet?.name || "Dompet"}
+                    {formatDate(new Date(tx.transaction_date))}{" "}
+                    &bull; {tx.wallet?.name || (t("wallets.walletFallback") || "Dompet")}
                   </p>
                 </div>
 
@@ -574,9 +555,9 @@ export function BudgetDetailPage() {
       {/* Archive / End Period Confirmation Dialog */}
       {showArchiveDialog && (
         <ConfirmationDialog
-          title="Hentikan Budget Ini?"
-          description="Budget ini tidak akan muncul lagi di bulan-bulan berikutnya. Riwayat dan perhitungan transaksi di bulan-bulan sebelumnya akan tetap tersimpan aman."
-          confirmLabel={actionLoading ? "Memproses..." : "Ya, Hentikan"}
+          title={t("budgets.stopBudgetTitle") || "Hentikan Budget Ini?"}
+          description={t("budgets.stopBudgetDesc") || "Budget ini tidak akan muncul lagi di bulan-bulan berikutnya. Riwayat dan perhitungan transaksi di bulan-bulan sebelumnya akan tetap tersimpan aman."}
+          confirmLabel={actionLoading ? t("common.processing") : (t("budgets.confirmStop") || "Ya, Hentikan")}
           isLoading={actionLoading}
           tone="warning"
           onConfirm={() => void handleArchive()}
@@ -587,9 +568,9 @@ export function BudgetDetailPage() {
       {/* Delete Confirmation Dialog */}
       {showDeleteDialog && (
         <ConfirmationDialog
-          title="Hapus Budget Permanen?"
-          description="Apakah Anda yakin ingin menghapus definisi budget ini secara permanen? Transaksi Anda tidak akan terhapus."
-          confirmLabel={actionLoading ? "Menghapus..." : "Hapus Permanen"}
+          title={t("budgets.deleteBudgetTitle") || "Hapus Budget Permanen?"}
+          description={t("budgets.deleteBudgetDesc") || "Apakah Anda yakin ingin menghapus definisi budget ini secara permanen? Transaksi Anda tidak akan terhapus."}
+          confirmLabel={actionLoading ? t("common.deleting") : (t("common.deletePermanently") || "Hapus Permanen")}
           isLoading={actionLoading}
           tone="danger"
           onConfirm={() => void handleDelete()}
