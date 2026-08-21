@@ -138,16 +138,20 @@ export function DebtDetailPage() {
   };
   const counterpartySummaryObject = counterpartySummary;
 
-  const activeDebtOriginal = debts
-    .filter((d) => d.type === "debt" && d.status !== "settled" && d.status !== "cancelled")
-    .reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
+  const activeDebtItems = debts.filter((d) => d.type === "debt" && d.status !== "settled" && d.status !== "cancelled");
+  const activeReceivableItems = debts.filter((d) => d.type === "receivable" && d.status !== "settled" && d.status !== "cancelled");
 
-  const activeReceivableOriginal = debts
-    .filter((d) => d.type === "receivable" && d.status !== "settled" && d.status !== "cancelled")
-    .reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
+  const activeDebtOriginal = activeDebtItems.reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
+  const activeDebtPaid = activeDebtItems.reduce((sum, d) => sum + (Number(d.total_paid) || 0), 0);
+
+  const activeReceivableOriginal = activeReceivableItems.reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
+  const activeReceivablePaid = activeReceivableItems.reduce((sum, d) => sum + (Number(d.total_paid) || 0), 0);
 
   const displayTotalDebtOriginal = activeDebtOriginal > 0 ? activeDebtOriginal : summary.totalDebtOriginal;
+  const displayTotalDebtPaid = activeDebtItems.length > 0 ? activeDebtPaid : summary.totalDebtPaid;
+
   const displayTotalReceivableOriginal = activeReceivableOriginal > 0 ? activeReceivableOriginal : summary.totalReceivableOriginal;
+  const displayTotalReceivablePaid = activeReceivableItems.length > 0 ? activeReceivablePaid : summary.totalReceivablePaid;
 
   return (
     <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
@@ -193,7 +197,7 @@ export function DebtDetailPage() {
             <div>
               <span className="text-white/60 font-semibold">{t("debts.paidAmount") || "Utang Terbayar"}</span>
               <p className="mt-0.5 text-sm font-extrabold text-white">
-                {formatCurrency(summary.totalDebtPaid, "IDR")}
+                {formatCurrency(displayTotalDebtPaid, "IDR")}
               </p>
             </div>
             <div>
@@ -205,7 +209,7 @@ export function DebtDetailPage() {
             <div>
               <span className="text-white/60 font-semibold">{t("debts.collectedAmount") || "Piutang Diterima"}</span>
               <p className="mt-0.5 text-sm font-extrabold text-white">
-                {formatCurrency(summary.totalReceivablePaid, "IDR")}
+                {formatCurrency(displayTotalReceivablePaid, "IDR")}
               </p>
             </div>
           </div>
