@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Calendar,
   CheckCircle2,
-  ChevronRight,
   CreditCard,
   History,
   Loader2,
@@ -402,26 +401,18 @@ export function SubscriptionsPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {ob.status === "active" && ob.currentPayment && (
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPayingItem({ obligation: ob, payment: ob.currentPayment! });
-                        }}
-                        className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
-                      >
-                        <CheckCircle2 size={14} />
-                        {t("debts.pay") || "Bayar"}
-                      </Button>
-                    )}
-
-                    <span
-                      className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-kash-emerald"
+                  {ob.status === "active" && ob.currentPayment && (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPayingItem({ obligation: ob, payment: ob.currentPayment! });
+                      }}
+                      className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
                     >
-                      <ChevronRight size={18} />
-                    </span>
-                  </div>
+                      <CheckCircle2 size={14} />
+                      {t("debts.pay") || "Bayar"}
+                    </Button>
+                  )}
                 </div>
               </div>
             );
