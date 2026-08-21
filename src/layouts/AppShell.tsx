@@ -32,56 +32,33 @@ export function AppShell() {
   }, [location.pathname]);
 
   useEffect(() => {
-    let previousScrollY = Math.max(0, window.scrollY);
-    let accumulatedDelta = 0;
+    const getScrollTop = () => {
+      const winScroll = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      const mainScroll = contentRef.current?.scrollTop || 0;
+      return Math.max(winScroll, mainScroll);
+    };
+
+    let previousScrollY = getScrollTop();
     let ticking = false;
 
     const updateHeaderVisibility = () => {
-      const currentScrollY = window.scrollY;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const innerHeight = window.innerHeight;
-      const maxScrollableDistance = scrollHeight - innerHeight;
-
-      // 1. Short page protection: If page cannot meaningfully scroll, keep header visible
-      if (maxScrollableDistance < 100) {
-        setMobileHeaderVisible(true);
-        previousScrollY = Math.max(0, currentScrollY);
-        accumulatedDelta = 0;
-        ticking = false;
-        return;
-      }
-
-      // 2. Near top boundary: always keep header visible
-      if (currentScrollY <= 20) {
-        setMobileHeaderVisible(true);
-        previousScrollY = Math.max(0, currentScrollY);
-        accumulatedDelta = 0;
-        ticking = false;
-        return;
-      }
-
-      // 3. Bottom boundary / rubber-band bounce protection
-      if (currentScrollY >= maxScrollableDistance - 20) {
-        previousScrollY = currentScrollY;
-        ticking = false;
-        return;
-      }
-
+      const currentScrollY = getScrollTop();
       const delta = currentScrollY - previousScrollY;
 
-      // Immediately reveal header on ANY upward scroll gesture
-      if (delta < -3) {
+      // 1. Always keep header visible when near the top of the page
+      if (currentScrollY <= 15) {
         setMobileHeaderVisible(true);
-        accumulatedDelta = 0;
-      } else if (delta > 3) {
-        // Downward intentional scroll: hide header after 25px threshold
-        if (accumulatedDelta < 0) accumulatedDelta = 0;
-        accumulatedDelta += delta;
+        previousScrollY = Math.max(0, currentScrollY);
+        ticking = false;
+        return;
+      }
 
-        if (accumulatedDelta >= 25 && currentScrollY > 60) {
-          setMobileHeaderVisible(false);
-          accumulatedDelta = 0;
-        }
+      // 2. Instant reveal on ANY upward scroll gesture (delta < 0)
+      if (delta < 0) {
+        setMobileHeaderVisible(true);
+      } else if (delta > 5 && currentScrollY > 45) {
+        // Hide header when scrolling DOWN intentionally (> 5px)
+        setMobileHeaderVisible(false);
       }
 
       previousScrollY = currentScrollY;
@@ -95,8 +72,18 @@ export function AppShell() {
       }
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    const mainEl = contentRef.current;
+    if (mainEl) {
+      mainEl.addEventListener("scroll", handleScroll, { passive: true });
+    }
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll, { capture: true } as EventListenerOptions);
+      if (mainEl) {
+        mainEl.removeEventListener("scroll", handleScroll);
+      }
+    };
   }, []);
 
   useEffect(() => {
