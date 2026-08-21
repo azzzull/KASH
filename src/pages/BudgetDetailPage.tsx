@@ -278,31 +278,23 @@ export function BudgetDetailPage() {
 
       {/* Main Dominant Hero Progress Surface (Directly below Month Picker) */}
       <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3 min-w-0">
-            <span
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-extrabold text-sm shadow-xs bg-white/20 text-white"
-            >
-              <IconComp size={22} />
-            </span>
-            <div className="min-w-0">
-              <h1 className="text-xl font-extrabold text-white truncate">{budget.name}</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-white/20 px-2 py-0.5 text-xs font-bold text-white/90">
-                  {targetLabel}
-                </span>
-              </div>
-              <p className="mt-1 text-xs font-medium text-white/70 truncate">
-                {budget.note || (targetType === "debt" ? (budget.counterparty_name ? `${t("debts.debtTo") || "Utang ke"} ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}` : budget.debt_title) : targetType === "goal" ? budget.goal_name : targetType === "envelope" ? budget.envelope_name : budget.category_name) || (t("common.noNotes") || "Tidak ada catatan.")}
-              </p>
+        <div className="flex items-start gap-3 min-w-0">
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-extrabold text-sm shadow-xs bg-white/20 text-white"
+          >
+            <IconComp size={22} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-extrabold text-white truncate">{budget.name}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-white/20 px-2 py-0.5 text-xs font-bold text-white/90">
+                {targetLabel}
+              </span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold ${isOverBudget ? "bg-red-500/30 text-white" : isNearLimit ? "bg-amber-500/30 text-white" : "bg-white/20 text-white"}`}>
+                {isOverBudget || isNearLimit ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
+                {budget.usage_percentage.toFixed(1)}%
+              </span>
             </div>
-          </div>
-
-          <div className="self-start sm:self-auto shrink-0">
-            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-extrabold ${isOverBudget ? "bg-red-500/30 text-white" : isNearLimit ? "bg-amber-500/30 text-white" : "bg-white/20 text-white"}`}>
-              {isOverBudget || isNearLimit ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
-              {budget.usage_percentage.toFixed(1)}%
-            </span>
           </div>
         </div>
 
@@ -348,8 +340,8 @@ export function BudgetDetailPage() {
         </div>
       </section>
 
-      {/* Actions Row Below Hero - Single Horizontal Scrollable Row on Mobile */}
-      <div className="flex flex-nowrap items-center justify-end gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      {/* Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
+      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <Button
           variant="secondary"
           onClick={() => setShowEditModal(true)}
