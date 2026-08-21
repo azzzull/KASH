@@ -965,9 +965,9 @@ export function AnalyticsPage() {
   if (!summary) return null;
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-4">
+    <div className="w-full max-w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
       {/* 1. Compact Top Bar with Title + Compact Period Selector in SAME ROW */}
-      <div className="flex items-center justify-between gap-3 pt-1">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <BarChart3 className="text-kash-emerald shrink-0" size={22} />
           <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.analytics") || "Analitik Keuangan"}</h1>
