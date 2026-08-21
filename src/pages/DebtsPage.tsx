@@ -125,7 +125,7 @@ export function DebtsPage() {
         eyebrow={t("debts.financeEyebrow") || "Keuangan"}
         title={t("debts.title") || "Utang & Piutang"}
         primaryMetricLabel={t("debts.netObligation") || "Sisa Kewajiban Bersih"}
-        primaryMetricValue={formatCurrency(totalDebt - totalReceivable, "IDR")}
+        primaryMetricValue={formatCurrency(totalReceivable - totalDebt, "IDR")}
         supportingMetrics={
           <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-white/90">
             <div>
