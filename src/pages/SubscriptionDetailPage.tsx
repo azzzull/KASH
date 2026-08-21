@@ -20,6 +20,7 @@ import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { SettleInstallmentModal } from "../components/subscriptions/SettleInstallmentModal";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents } from "../lib/appEvents";
@@ -151,105 +152,154 @@ export function SubscriptionDetailPage() {
         ? (t("subscriptions.perYearSuffix") || " /thn")
         : ` /${obligation.frequency}`;
 
+  // Installment progress calculations
+  const tenor = obligation.installment_count || 0;
+  const remainingCount = obligation.remaining_count ?? 0;
+  const paidCount = Math.max(0, tenor - remainingCount);
+  const paidAmount = paidCount * toNumber(obligation.amount);
+  const rawPercent = tenor > 0 ? (paidCount / tenor) * 100 : (obligation.status === "completed" ? 100 : 0);
+  const progressPercent = Math.min(100, Math.max(0, rawPercent));
+
   return (
-    <div className="w-full min-w-0 space-y-5">
-      {/* Back Button */}
-      <Link
-        to="/subscriptions"
-        className="inline-flex items-center gap-2 text-xs font-extrabold text-slate-600 transition hover:text-slate-900"
-      >
-        <ArrowLeft size={15} /> {t("subscriptions.backToSubscriptions") || "Kembali ke Tagihan & Langganan"}
-      </Link>
+    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+      {/* 1. Back Navigation Link */}
+      <div>
+        <Link
+          to="/subscriptions"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 transition hover:text-kash-emeraldDark"
+        >
+          <ArrowLeft size={14} />
+          {t("subscriptions.backToSubscriptions") || "Kembali ke Tagihan & Langganan"}
+        </Link>
+      </div>
 
-      {/* Main Header */}
-      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
-        <div className="flex items-start gap-4">
-          <span
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-              isInstallment
-                ? "bg-[#F28C45]/15 text-[#F28C45]"
-                : "bg-kash-selected text-kash-emeraldDark"
-            }`}
-          >
-            {isInstallment ? <CreditCard size={24} /> : <Repeat size={24} />}
+      {/* 2. Canonical Emerald Hero Card */}
+      <FinancialHeroCard
+        icon={isInstallment ? <CreditCard size={22} /> : <Repeat size={22} />}
+        eyebrow={obligation.provider || obligation.category?.name || (t("subscriptions.title") || "Tagihan & Langganan")}
+        title={obligation.name}
+        badge={
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
+            {obligation.status === "active" ? (
+              <>
+                <Clock size={13} /> {t("common.active") || "Aktif"}
+              </>
+            ) : obligation.status === "completed" ? (
+              <>
+                <CheckCircle2 size={13} /> {t("goals.completed") || "Selesai"}
+              </>
+            ) : (
+              <>
+                <XCircle size={13} /> {t("debts.cancelled") || "Dibatalkan"}
+              </>
+            )}
           </span>
-
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-xl font-black text-slate-900">{obligation.name}</h2>
-              {obligation.provider && (
-                <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-slate-600">
-                  {obligation.provider}
-                </span>
-              )}
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-extrabold capitalize ${
-                  obligation.status === "active"
-                    ? "bg-kash-selected text-kash-emeraldDark"
-                    : obligation.status === "completed"
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {obligation.status === "active"
-                  ? (t("common.active") || "Aktif")
-                  : obligation.status === "completed"
-                    ? (t("goals.completed") || "Selesai")
-                    : (t("debts.cancelled") || "Dibatalkan")}
-              </span>
+        }
+        primaryMetricLabel={
+          isInstallment
+            ? (t("subscriptions.remainingBalance") || "Sisa Tanggungan")
+            : (t("subscriptions.billingRate") || "Estimasi Tagihan")
+        }
+        primaryMetricValue={
+          isInstallment
+            ? formatCurrency(obligation.remaining_amount, "IDR")
+            : `${formatCurrency(obligation.amount, "IDR")}${freqSuffix}`
+        }
+        supportingMetrics={
+          isInstallment ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs font-semibold text-white/90">
+              <div>
+                <span className="text-white/60 font-semibold">{t("subscriptions.installmentRate") || "Cicilan /bln"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white">
+                  {formatCurrency(obligation.amount, "IDR")}
+                </p>
+              </div>
+              <div>
+                <span className="text-white/60 font-semibold">{t("subscriptions.remainingTenor") || "Sisa Tenor"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white">
+                  {remainingCount} / {tenor} {t("subscriptions.items") || "cicilan"}
+                </p>
+              </div>
+              <div>
+                <span className="text-white/60 font-semibold">{t("debts.paidAmount") || "Terbayar"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white">
+                  {formatCurrency(paidAmount, "IDR")}
+                </p>
+              </div>
+              <div>
+                <span className="text-white/60 font-semibold">{t("subscriptions.nextDue") || "Jatuh Tempo"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white truncate">
+                  {obligation.next_due_date ? formatDate(new Date(obligation.next_due_date)) : "-"}
+                </p>
+              </div>
             </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs font-semibold text-white/90">
+              <div>
+                <span className="text-white/60 font-semibold">{t("subscriptions.frequency") || "Frekuensi"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white capitalize">
+                  {frequencyLabel}
+                </p>
+              </div>
+              <div>
+                <span className="text-white/60 font-semibold">{t("subscriptions.nextDue") || "Jatuh Tempo Berikutnya"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white truncate">
+                  {obligation.next_due_date ? formatDate(new Date(obligation.next_due_date)) : "-"}
+                </p>
+              </div>
+              <div>
+                <span className="text-white/60 font-semibold">{t("subscriptions.category") || "Kategori"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white truncate">
+                  {obligation.category?.name || "-"}
+                </p>
+              </div>
+              <div>
+                <span className="text-white/60 font-semibold">{t("subscriptions.defaultPaymentWallet") || "Dompet Utama"}</span>
+                <p className="mt-0.5 text-sm font-extrabold text-white truncate">
+                  {obligation.defaultWallet?.name || "-"}
+                </p>
+              </div>
+            </div>
+          )
+        }
+        progress={
+          isInstallment
+            ? {
+                percent: progressPercent,
+                labelLeft: `${paidCount} / ${tenor} ${t("subscriptions.paid") || "terbayar"} (${progressPercent.toFixed(0)}%)`,
+                labelRight: `${t("debts.remainingDebt") || "Sisa"}: ${formatCurrency(obligation.remaining_amount, "IDR")}`,
+              }
+            : undefined
+        }
+      />
 
-            <p className="mt-1 text-xs font-semibold text-slate-600">
-              {obligation.category?.name || (t("categories.uncategorized") || "Tanpa Kategori")} • {t("subscriptions.firstDueDate") || "Jatuh Tempo Pertama"}:{" "}
-              {formatDate(new Date(obligation.start_date))}
-            </p>
-          </div>
-        </div>
-
-        {/* Quick Action Buttons */}
-        <div className="grid w-full grid-cols-2 gap-2 sm:w-auto sm:flex sm:items-center">
-          {obligation.status === "active" && openPendingPayment && (
+      {/* 3. Primary Actions Row Directly Below Hero */}
+      {(obligation.status === "active" && (openPendingPayment || (isInstallment && remainingCount > 0))) && (
+        <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {openPendingPayment && (
             <Button
+              type="button"
               onClick={() => setPayModalPayment(openPendingPayment)}
-              className="flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold sm:flex-initial"
+              className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-4 py-1.5 text-xs font-extrabold"
             >
-              <CheckCircle2 size={15} className="shrink-0" />
-              <span className="truncate">{t("subscriptions.payBill") || "Bayar Tagihan"}</span>
+              <CheckCircle2 size={15} />
+              {t("subscriptions.payBill") || "Bayar Tagihan"}
             </Button>
           )}
 
-          {isInstallment && obligation.status === "active" && obligation.remaining_count > 0 && (
+          {isInstallment && remainingCount > 0 && (
             <Button
+              type="button"
               variant="secondary"
               onClick={() => setSettleModalOpen(true)}
-              className="flex-1 justify-center gap-1.5 px-3 py-2 text-xs font-extrabold sm:flex-initial"
+              className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-4 py-1.5 text-xs font-extrabold"
             >
-              <CreditCard size={15} className="shrink-0" />
-              <span className="truncate">{t("subscriptions.settleEarly") || "Lunasi Sekarang"}</span>
+              <CreditCard size={15} />
+              {t("subscriptions.settleEarly") || "Lunasi Sekarang"}
             </Button>
           )}
-
-          {!isInstallment && obligation.status === "active" && (
-            <Button
-              variant="secondary"
-              onClick={() => setCancelModalOpen(true)}
-              className="flex-1 justify-center gap-1.5 border-kash-expense/30 px-3 py-2 text-xs font-extrabold text-kash-expense hover:bg-kash-expense/10 sm:flex-initial"
-            >
-              <XCircle size={15} className="shrink-0" />
-              <span className="truncate">{t("subscriptions.cancelPlan") || "Batalkan Layanan"}</span>
-            </Button>
-          )}
-
-          <Button
-            variant="secondary"
-            onClick={() => setDeleteModalOpen(true)}
-            className="flex-1 justify-center gap-1.5 border-slate-200 px-3 py-2 text-xs font-extrabold text-slate-600 hover:border-kash-expense/30 hover:bg-kash-expense/10 hover:text-kash-expense sm:flex-initial"
-          >
-            <Trash2 size={15} className="shrink-0" />
-            <span className="truncate">{t("common.delete") || "Hapus"}</span>
-          </Button>
         </div>
-      </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -429,6 +479,36 @@ export function SubscriptionDetailPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Secondary Management Actions Section */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+          {t("subscriptions.managementActions") || "Pengaturan & Tindakan Layanan"}
+        </h4>
+        <div className="flex flex-wrap items-center gap-2">
+          {!isInstallment && obligation.status === "active" && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setCancelModalOpen(true)}
+              className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold border-kash-expense/30 text-kash-expense hover:bg-kash-expense/10"
+            >
+              <XCircle size={15} />
+              {t("subscriptions.cancelPlan") || "Batalkan Layanan"}
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setDeleteModalOpen(true)}
+            className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold border-slate-200 text-slate-600 hover:border-kash-expense/30 hover:bg-kash-expense/10 hover:text-kash-expense"
+          >
+            <Trash2 size={15} />
+            {t("common.delete") || "Hapus"}
+          </Button>
+        </div>
       </div>
 
       {/* Payment Modal */}

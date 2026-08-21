@@ -22,6 +22,7 @@ import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
+import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents } from "../lib/appEvents";
@@ -160,97 +161,61 @@ export function SubscriptionsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-5">
-      {/* Page Header */}
-      <PageHeader
+    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+      {/* 1. Compact Top Bar with Title + Desktop Add Button */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Repeat className="text-kash-emerald shrink-0" size={22} />
+          <h1 className="text-lg font-black text-slate-900 truncate">{t("subscriptions.title") || "Tagihan & Langganan"}</h1>
+        </div>
+
+        <div ref={createActionRef} className="hidden sm:block shrink-0">
+          <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+            <Plus aria-hidden="true" size={15} />
+            {t("subscriptions.addObligation") || "Tambah Tagihan"}
+          </Button>
+        </div>
+      </div>
+
+      {/* 2. Unified Emerald Hero Card */}
+      <FinancialHeroCard
+        icon={<Repeat size={22} />}
         eyebrow={t("subscriptions.eyebrow") || "Keuangan"}
-        icon={Repeat}
         title={t("subscriptions.title") || "Tagihan & Langganan"}
-        description={t("subscriptions.subtitle") || "Kelola tagihan rutin, langganan, PayLater, dan cicilan bulanan."}
-        actions={
-          <div ref={createActionRef} className="hidden sm:block">
-            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
-              <Plus size={18} strokeWidth={2.4} />
-              {t("subscriptions.addObligation") || "Tambah Tagihan"}
-            </Button>
+        primaryMetricLabel={t("subscriptions.estMonthlyCost") || "Estimasi Biaya Bulanan"}
+        primaryMetricValue={formatCurrency(summaryMetrics.monthlyRecurringTotal, "IDR")}
+        supportingMetrics={
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 text-xs font-semibold text-white/90">
+            <div>
+              <span className="text-white/60 font-semibold">{t("subscriptions.dueWithin7Days") || "Jatuh Tempo 7 Hari"}</span>
+              <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                {formatCurrency(summaryMetrics.dueSoonAmount, "IDR")}
+              </p>
+              <p className="text-[11px] text-white/70">
+                {summaryMetrics.dueSoonCount} {t("subscriptions.itemsRequiringPayment") || "item"}
+              </p>
+            </div>
+            <div>
+              <span className="text-white/60 font-semibold">{t("subscriptions.activeObligations") || "Kewajiban Aktif"}</span>
+              <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                {obligations.filter((ob) => ob.status === "active").length} {t("common.active") || "aktif"}
+              </p>
+              <p className="text-[11px] text-white/70">
+                {summaryMetrics.activeSubsCount} {t("subscriptions.tabSubscriptions") || "langganan"}
+              </p>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <span className="text-white/60 font-semibold">{t("subscriptions.installmentsRemaining") || "Sisa Cicilan"}</span>
+              <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                {formatCurrency(summaryMetrics.totalInstallmentRemaining, "IDR")}
+              </p>
+              <p className="text-[11px] text-white/70">
+                {summaryMetrics.activeInstallmentsCount} {t("subscriptions.tabInstallments") || "cicilan"}
+              </p>
+            </div>
           </div>
         }
       />
-
-      {/* Summary Metrics Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Monthly Recurring Cost */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-600">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {t("subscriptions.estMonthlyCost") || "Estimasi Biaya Bulanan"}
-            </span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark">
-              <Repeat size={15} />
-            </span>
-          </div>
-          <p className="mt-2 text-xl font-black text-slate-900">
-            {formatCurrency(summaryMetrics.monthlyRecurringTotal, "IDR")}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-600">
-            {t("subscriptions.acrossActiveDesc") || "Dari langganan & tagihan aktif"}
-          </p>
-        </div>
-
-        {/* Card 2: Due Soon */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-600">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {t("subscriptions.dueWithin7Days") || "Jatuh Tempo dlm 7 Hari"}
-            </span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F28C45]/15 text-[#F28C45]">
-              <AlertCircle size={15} />
-            </span>
-          </div>
-          <p className="mt-2 text-xl font-black text-slate-900">
-            {formatCurrency(summaryMetrics.dueSoonAmount, "IDR")}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-[#F28C45]">
-            {summaryMetrics.dueSoonCount} {t("subscriptions.itemsRequiringPayment") || "item perlu dibayar"}
-          </p>
-        </div>
-
-        {/* Card 3: Active Subscriptions */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-600">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {t("subscriptions.activeSubscriptions") || "Langganan Aktif"}
-            </span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-              <Receipt size={15} />
-            </span>
-          </div>
-          <p className="mt-2 text-xl font-black text-slate-900">
-            {summaryMetrics.activeSubsCount}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-600">
-            {t("subscriptions.autoRenewingServices") || "Layanan perpanjangan otomatis"}
-          </p>
-        </div>
-
-        {/* Card 4: Installment Remaining */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between text-slate-600">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {t("subscriptions.installmentsRemaining") || "Sisa Cicilan PayLater"}
-            </span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <CreditCard size={15} />
-            </span>
-          </div>
-          <p className="mt-2 text-xl font-black text-slate-900">
-            {formatCurrency(summaryMetrics.totalInstallmentRemaining, "IDR")}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-600">
-            {t("subscriptions.acrossInstallments", { count: summaryMetrics.activeInstallmentsCount }) || `Dari ${summaryMetrics.activeInstallmentsCount} PayLater / Cicilan`}
-          </p>
-        </div>
-      </div>
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">

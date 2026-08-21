@@ -170,36 +170,40 @@ function SelectedDatePanel({
   const formattedDate = formatDate(parseLocalDateKey(selectedDateKey));
 
   return (
-    <section className="mt-6 border-t border-slate-100 pt-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-extrabold uppercase text-slate-600">{t("calendar.transactionsOnDate") || "Selected Date"}</p>
-          <h2 className="mt-1 text-lg font-extrabold text-slate-900">{formattedDate}</h2>
+    <section className="mt-5 border-t border-slate-100 pt-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-extrabold text-slate-900">{formattedDate}</h2>
+          {isLoading ? <Loader2 aria-hidden="true" className="animate-spin text-slate-400" size={15} /> : null}
         </div>
-        {isLoading ? <Loader2 aria-hidden="true" className="mt-1 animate-spin text-slate-600" size={18} /> : null}
+
+        {/* Compact Inline Summary Bar */}
+        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-1.5 text-xs font-bold">
+          <span className="text-kash-emerald">
+            +{formatCurrency(selectedSummary.income, currency)}
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className="text-[#E50914]">
+            -{formatCurrency(selectedSummary.expense, currency)}
+          </span>
+          <span className="text-slate-300">•</span>
+          <span className={selectedSummary.net >= 0 ? "text-kash-emerald" : "text-[#E50914]"}>
+            {formatSignedCurrency(selectedSummary.net, currency, formatCurrency)}
+          </span>
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <SummaryCard label={t("common.typeIncome") || t("dashboard.income") || "Income"} tone="text-kash-emerald" value={formatCurrency(selectedSummary.income, currency)} />
-        <SummaryCard label={t("common.typeExpense") || t("dashboard.expense") || "Expense"} tone="text-[#E50914]" value={formatCurrency(selectedSummary.expense, currency)} />
-        <SummaryCard
-          label={t("calendar.netSummary") || "Net"}
-          tone={selectedSummary.net >= 0 ? "text-kash-emerald" : "text-[#E50914]"}
-          value={formatSignedCurrency(selectedSummary.net, currency, formatCurrency)}
-        />
-      </div>
-
-      <div className="mt-5 border-t border-slate-100 pt-4">
-        <h3 className="text-sm font-extrabold text-slate-900">{t("nav.transactions")}</h3>
+      <div className="mt-4">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">{t("nav.transactions") || "Transaksi Hari Ini"}</h3>
 
         {selectedTransactions.length === 0 ? (
-          <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
-            <ReceiptText className="mx-auto text-slate-600" size={28} />
-            <p className="mt-3 text-sm font-extrabold text-slate-900">{t("calendar.noTransactions") || "No transactions on this day."}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-600">{t("dashboard.noTransactionsDesc") || "Dates with activity are marked in the calendar."}</p>
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+            <ReceiptText className="mx-auto text-slate-400" size={24} />
+            <p className="mt-2 text-xs font-extrabold text-slate-700">{t("calendar.noTransactions") || "Tidak ada transaksi pada tanggal ini."}</p>
+            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">{t("dashboard.noTransactionsDesc") || "Tanggal yang memiliki aktivitas transaksi ditandai pada kalender."}</p>
           </div>
         ) : (
-          <div className="mt-3 divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-xs">
             {selectedTransactions.map((transaction) => (
               <DayTransactionRow
                 key={transaction.id}
@@ -212,15 +216,6 @@ function SelectedDatePanel({
         )}
       </div>
     </section>
-  );
-}
-
-function SummaryCard({ label, tone, value }: { label: string; tone: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <p className="text-xs font-bold text-slate-600">{label}</p>
-      <p className={`mt-2 break-words text-sm font-extrabold md:text-base ${tone}`}>{value}</p>
-    </div>
   );
 }
 
@@ -240,7 +235,7 @@ function DayTransactionRow({
     <button
       type="button"
       onClick={onSelect}
-      className="block w-full border-b border-slate-100 py-3 text-left transition last:border-b-0 hover:bg-slate-50 md:px-2"
+      className="block w-full border-b border-slate-100 py-3 text-left transition last:border-b-0 hover:bg-slate-50 px-3"
     >
       <span className="grid grid-cols-[auto_1fr_auto] items-center gap-3 md:hidden">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
@@ -248,18 +243,18 @@ function DayTransactionRow({
         </span>
         <span className="min-w-0">
           <span className="block truncate text-sm font-extrabold text-slate-900">{transactionTitle(transaction)}</span>
-          <span className="mt-1 block truncate text-xs font-semibold text-slate-600">
+          <span className="mt-0.5 block truncate text-xs font-semibold text-slate-600">
             {transactionCategoryLabel(transaction)} / {transactionWalletLabel(transaction)}
           </span>
         </span>
-        <span className="text-right">
+        <span className="text-right shrink-0">
           <span className={`block text-sm font-extrabold ${transactionTone[transaction.type]}`}>{displayTransactionAmount(transaction, currency)}</span>
           {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
             <span className="block text-[11px] font-bold text-kash-expense">
               + {t("dashboard.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
             </span>
           ) : null}
-          <span className="mt-1 block text-xs font-bold text-slate-600">{formatTime(transaction.transaction_date)}</span>
+          <span className="mt-0.5 block text-[11px] font-semibold text-slate-600">{formatTime(transaction.transaction_date)}</span>
         </span>
       </span>
 
@@ -344,28 +339,28 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="relative w-full min-w-0 space-y-5">
-      <PageHeader
-        eyebrow={t("nav.calendar")}
-        icon={CalendarDays}
-        title={t("nav.calendar")}
-        description={t("calendar.subtitle") || "Review financial activity by date."}
-        actions={
-          <Button variant="secondary" onClick={() => goToMonth(today)}>
-            <CalendarDays aria-hidden="true" size={17} />
-            {t("common.today")}
-          </Button>
-        }
-      />
+    <div className="relative w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+      {/* 1. Compact Top Bar with Title + "Hari Ini" Button */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <CalendarDays className="text-kash-emerald shrink-0" size={22} />
+          <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.calendar") || "Kalender Keuangan"}</h1>
+        </div>
+
+        <Button variant="secondary" onClick={() => goToMonth(today)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold shrink-0">
+          <CalendarDays aria-hidden="true" size={15} />
+          {t("common.today") || "Hari Ini"}
+        </Button>
+      </div>
 
       {isLoading && !monthData ? (
-        <div className="mt-5">
+        <div className="mt-4">
           <CalendarSkeleton />
         </div>
       ) : null}
 
       {error ? (
-        <div className="mt-5 rounded-lg border border-kash-expense/30 bg-white p-4 text-sm shadow-sm">
+        <div className="mt-4 rounded-xl border border-kash-expense/30 bg-white p-5 text-sm shadow-xs">
           <p className="font-extrabold text-slate-900">{t("common.error")}</p>
           <p className="mt-1 font-semibold text-slate-600">{error}</p>
           <Button className="mt-4" variant="secondary" onClick={() => void loadMonth()}>
@@ -376,22 +371,22 @@ export function CalendarPage() {
       ) : null}
 
       {!error && monthData ? (
-        <section className="mt-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-center gap-3">
+        <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between sm:justify-center gap-3">
             <button
               type="button"
               aria-label="Previous month"
               onClick={() => goToMonth(addMonths(activeMonth, -1))}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 shrink-0"
             >
               <ChevronLeft aria-hidden="true" size={18} />
             </button>
-            <h2 className="min-w-44 text-center text-base font-extrabold text-slate-900">{formatMonthYear(activeMonth)}</h2>
+            <h2 className="min-w-36 text-center text-base font-extrabold text-slate-900">{formatMonthYear(activeMonth)}</h2>
             <button
               type="button"
               aria-label="Next month"
               onClick={() => goToMonth(addMonths(activeMonth, 1))}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 shrink-0"
             >
               <ChevronRight aria-hidden="true" size={18} />
             </button>
