@@ -12,11 +12,12 @@ import {
   Sparkles,
   Tag,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BudgetCard } from "../components/budgets/BudgetCard";
 import { CreateBudgetModal } from "../components/budgets/CreateBudgetModal";
 import { Button } from "../components/ui/Button";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -153,24 +154,25 @@ export function BudgetsPage() {
     return formatMonthYear(new Date(year, month - 1, 1));
   }, [currentMonth, formatMonthYear]);
 
+  const createActionRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="w-full min-w-0 space-y-5">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          eyebrow={t("budgets.planning") || "Planning"}
-          icon={Scale}
-          title={t("nav.budgets")}
-          description={t("budgets.description") || "Kendalikan rencana keuangan bulanan: belanja, amplop, cicilan utang, dan tabungan."}
-        />
-
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-            <Plus size={16} />
-            {t("budgets.createTargetBudget") || "Buat Target Budget"}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={t("budgets.planning") || "Planning"}
+        icon={Scale}
+        title={t("nav.budgets")}
+        description={t("budgets.description") || "Kendalikan rencana keuangan bulanan: belanja, amplop, cicilan utang, dan tabungan."}
+        actions={
+          <div ref={createActionRef}>
+            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <Plus size={16} />
+              {t("budgets.createTargetBudget") || "Buat Target Budget"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Month Navigator Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
@@ -366,6 +368,11 @@ export function BudgetsPage() {
           onSaved={() => void loadData()}
         />
       )}
+      <ContextualCreateAction
+        targetRef={createActionRef}
+        onClick={() => setShowCreateModal(true)}
+        label={t("budgets.createTargetBudget") || "Buat Target Budget"}
+      />
     </div>
   );
 }

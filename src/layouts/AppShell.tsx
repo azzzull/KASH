@@ -139,15 +139,6 @@ export function AppShell() {
           </div>
         </div>
 
-        <button
-          aria-label="Add transaction"
-          className="fixed bottom-8 right-8 z-30 hidden h-14 w-14 items-center justify-center rounded-full bg-kash-emerald text-white shadow-soft transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 lg:flex"
-          onClick={() => setQuickAddOpen(true)}
-          type="button"
-        >
-          <Plus aria-hidden="true" size={24} strokeWidth={2.4} />
-        </button>
-
         <MobileBottomNav onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />

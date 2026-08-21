@@ -25,7 +25,7 @@ import { DatePickerField } from "../components/ui/DatePickerField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
 
 const INCOME_COLOR = "#10B981";
 const EXPENSE_COLOR = "#E50914";
@@ -164,7 +164,7 @@ function formatPercent(value: number | null) {
   return `${value.toFixed(1)}%`;
 }
 
-function cashFlowHealth(summary: AnalyticsSummary, t: (k: any) => string) {
+function cashFlowHealth(summary: AnalyticsSummary, t: (k: TranslationKey) => string) {
   if (summary.income.amount <= 0 && summary.expense.amount <= 0) {
     return { helper: t("analytics.healthNoActivity") || "No activity yet", tone: "text-slate-700", value: t("dashboard.noData") || "No data" };
   }

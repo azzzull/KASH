@@ -17,10 +17,11 @@ import {
   X,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
 import { Button } from "../components/ui/Button";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
@@ -99,6 +100,8 @@ export function DebtsPage() {
     { label: t("debts.tabReceivables"), value: "receivable" },
   ], [t]);
 
+  const createActionRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
@@ -107,10 +110,12 @@ export function DebtsPage() {
         title={t("debts.title")}
         description={t("debts.subtitle") || "Pantau kewajiban utang dan catat pelunasan tingkat kontak / pihak terkait."}
         actions={
-          <Button onClick={() => setCreateModalOpen(true)}>
-            <Plus aria-hidden="true" size={18} />
-            {t("debts.createDebt")}
-          </Button>
+          <div ref={createActionRef}>
+            <Button onClick={() => setCreateModalOpen(true)}>
+              <Plus aria-hidden="true" size={18} />
+              {t("debts.createDebt")}
+            </Button>
+          </div>
         }
       />
 
@@ -396,6 +401,11 @@ export function DebtsPage() {
           }}
         />
       )}
+      <ContextualCreateAction
+        targetRef={createActionRef}
+        onClick={() => setCreateModalOpen(true)}
+        label={t("debts.createDebt")}
+      />
     </div>
   );
 }

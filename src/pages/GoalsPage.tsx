@@ -13,9 +13,10 @@ import {
     X,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
@@ -401,6 +402,8 @@ export function GoalsPage() {
         );
     }, [goals]);
 
+    const createActionRef = useRef<HTMLDivElement>(null);
+
     return (
         <div className="w-full min-w-0 space-y-5">
             <PageHeader
@@ -409,10 +412,12 @@ export function GoalsPage() {
                 title={t("goals.title")}
                 description={t("goals.subtitle")}
                 actions={
-                    <Button onClick={() => setShowCreateGoal(true)}>
-                        <Plus aria-hidden="true" size={18} />
-                        {t("goals.create")}
-                    </Button>
+                    <div ref={createActionRef}>
+                        <Button onClick={() => setShowCreateGoal(true)}>
+                            <Plus aria-hidden="true" size={18} />
+                            {t("goals.create")}
+                        </Button>
+                    </div>
                 }
             />
 
@@ -496,6 +501,12 @@ export function GoalsPage() {
                     ))}
                 </section>
             ) : null}
+
+            <ContextualCreateAction
+                targetRef={createActionRef}
+                onClick={() => setShowCreateGoal(true)}
+                label={t("goals.create")}
+            />
 
             {showCreateGoal ? (
                 <CreateGoalModal

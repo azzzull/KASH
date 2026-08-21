@@ -9,9 +9,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { CategoryIconPicker } from "../components/categories/CategoryIconPicker";
 import { QuickCreateEnvelopeModal } from "../components/envelopes/QuickCreateEnvelopeModal";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -626,6 +627,8 @@ export function CategoriesPage() {
     { label: t("nav.envelopes") || "Amplop Pengeluaran", value: "envelopes", count: envelopes.length },
   ], [envelopes.length, t]);
 
+  const createActionRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
@@ -638,23 +641,25 @@ export function CategoriesPage() {
             : (t("categories.envelopesDesc") || "Kelola amplop alokasi tujuan khusus (seperti Date, Liburan, Proyek Rumah).")
         }
         actions={
-          activeTab === "categories" ? (
-            <Button onClick={() => setShowCategoryForm(true)} className="w-full sm:w-auto">
-              <Plus aria-hidden="true" size={18} />
-              {t("categories.newCategory") || "Kategori Baru"}
-            </Button>
-          ) : (
-            <Button
-              onClick={() => {
-                setEditingEnvelope(null);
-                setShowEnvelopeModal(true);
-              }}
-              className="w-full sm:w-auto"
-            >
-              <Plus aria-hidden="true" size={18} />
-              {t("categories.newEnvelope") || "Amplop Baru"}
-            </Button>
-          )
+          <div ref={createActionRef}>
+            {activeTab === "categories" ? (
+              <Button onClick={() => setShowCategoryForm(true)} className="w-full sm:w-auto">
+                <Plus aria-hidden="true" size={18} />
+                {t("categories.newCategory") || "Kategori Baru"}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  setEditingEnvelope(null);
+                  setShowEnvelopeModal(true);
+                }}
+                className="w-full sm:w-auto"
+              >
+                <Plus aria-hidden="true" size={18} />
+                {t("categories.newEnvelope") || "Amplop Baru"}
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -891,6 +896,18 @@ export function CategoriesPage() {
           tone="danger"
         />
       ) : null}
+      <ContextualCreateAction
+        targetRef={createActionRef}
+        onClick={() => {
+          if (activeTab === "categories") {
+            setShowCategoryForm(true);
+          } else {
+            setEditingEnvelope(null);
+            setShowEnvelopeModal(true);
+          }
+        }}
+        label={activeTab === "categories" ? (t("categories.newCategory") || "Kategori Baru") : (t("categories.newEnvelope") || "Amplop Baru")}
+      />
     </div>
   );
 }

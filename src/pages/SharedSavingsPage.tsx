@@ -19,9 +19,10 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
 import { CreateSharedSavingsModal } from "../components/sharedSavings/CreateSharedSavingsModal";
@@ -102,6 +103,8 @@ export function SharedSavingsPage() {
     { label: t("shared.invitationsTab"), value: "invites", count: invites.length },
   ], [spaces.length, invites.length, t]);
 
+  const createActionRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
@@ -129,10 +132,12 @@ export function SharedSavingsPage() {
           onChange={(val) => setActiveTab(val as "spaces" | "invites")}
         />
 
-        <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
-          <Plus aria-hidden="true" size={18} />
-          {t("shared.createSpace")}
-        </Button>
+        <div ref={createActionRef}>
+          <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
+            <Plus aria-hidden="true" size={18} />
+            {t("shared.createSpace")}
+          </Button>
+        </div>
       </div>
 
       {/* Loading Skeleton */}
@@ -396,6 +401,11 @@ export function SharedSavingsPage() {
           void loadData();
           navigate(`/shared-savings/${spaceId}`);
         }}
+      />
+      <ContextualCreateAction
+        targetRef={createActionRef}
+        onClick={() => setShowCreateModal(true)}
+        label={t("shared.createSpace")}
       />
     </div>
   );

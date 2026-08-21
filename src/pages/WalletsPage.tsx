@@ -1,7 +1,8 @@
 import { Loader2, Plus, WalletCards, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
@@ -368,6 +369,8 @@ export function WalletsPage() {
     return groups;
   }, [wallets, t]);
 
+  const createActionRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="w-full min-w-0 space-y-5">
       <PageHeader
@@ -376,10 +379,12 @@ export function WalletsPage() {
         title={t("wallets.title")}
         description={t("wallets.subtitle")}
         actions={
-          <Button onClick={() => setShowAddWallet(true)}>
-            <Plus aria-hidden="true" size={18} />
-            {t("wallets.create")}
-          </Button>
+          <div ref={createActionRef}>
+            <Button onClick={() => setShowAddWallet(true)}>
+              <Plus aria-hidden="true" size={18} />
+              {t("wallets.create")}
+            </Button>
+          </div>
         }
       />
 
@@ -434,6 +439,12 @@ export function WalletsPage() {
             : null}
         </div>
       </section>
+
+      <ContextualCreateAction
+        targetRef={createActionRef}
+        onClick={() => setShowAddWallet(true)}
+        label={t("wallets.create")}
+      />
 
       {showAddWallet ? (
         <WalletFormModal

@@ -15,11 +15,12 @@ import {
   TrendingUp,
   Wallet as WalletIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CreateObligationModal } from "../components/subscriptions/CreateObligationModal";
 import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { Button } from "../components/ui/Button";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
@@ -156,6 +157,8 @@ export function SubscriptionsPage() {
     { label: t("subscriptions.tabDueSoon") || "Segera Jatuh Tempo", value: "due_soon" },
   ], [t]);
 
+  const createActionRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="w-full min-w-0 space-y-5">
       {/* Page Header */}
@@ -165,10 +168,12 @@ export function SubscriptionsPage() {
         title={t("subscriptions.title") || "Tagihan & Langganan"}
         description={t("subscriptions.subtitle") || "Kelola tagihan rutin, langganan, PayLater, dan cicilan bulanan."}
         actions={
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
-            <Plus size={18} strokeWidth={2.4} />
-            {t("subscriptions.addObligation") || "Tambah Tagihan"}
-          </Button>
+          <div ref={createActionRef}>
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+              <Plus size={18} strokeWidth={2.4} />
+              {t("subscriptions.addObligation") || "Tambah Tagihan"}
+            </Button>
+          </div>
         }
       />
 
@@ -483,6 +488,11 @@ export function SubscriptionsPage() {
           }}
         />
       )}
+      <ContextualCreateAction
+        targetRef={createActionRef}
+        onClick={() => setCreateModalOpen(true)}
+        label={t("subscriptions.addObligation") || "Tambah Tagihan"}
+      />
     </div>
   );
 }
