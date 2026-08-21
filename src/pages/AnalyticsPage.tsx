@@ -233,19 +233,19 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
         {insights.map((item) => (
           <div
             key={item.label}
-            className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4.5 sm:p-5 shadow-card hover:shadow-md transition"
+            className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 sm:p-5 shadow-card hover:shadow-md transition min-w-0 max-w-full box-border"
           >
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <div className="min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 leading-tight">
                   {item.label}
                 </span>
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-extrabold text-xs ${item.accentBg}`}>
-                  <item.icon size={18} />
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-extrabold text-xs ${item.accentBg}`}>
+                  <item.icon size={16} />
                 </span>
               </div>
 
-              <p className={`mt-3 text-2xl font-extrabold ${item.tone}`}>
+              <p className={`mt-3 text-xl sm:text-2xl font-extrabold truncate ${item.tone}`}>
                 {item.value}
               </p>
             </div>
