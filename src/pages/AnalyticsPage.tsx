@@ -100,40 +100,49 @@ function AnalyticsHeroStory({ currency, summary }: { currency: string; summary: 
   const savingsRate = summary.income.amount > 0 ? (netCashFlow / summary.income.amount) * 100 : 0;
   const topCategory = summary.categorySpending[0];
 
-  // Signed deficit formatting fix (Requirement 5)
+  // Signed deficit formatting fix
   const formattedNetCashFlow = netCashFlow < 0
     ? `-${formatCurrency(Math.abs(netCashFlow), currency)}`
     : formatCurrency(netCashFlow, currency);
 
   return (
     <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
+      {/* Top Row: Title Left + Period Badge Right */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-bold uppercase tracking-wider text-white/70">
-          {t("dashboard.netCashFlow") || "Arus Kas Bersih"}
+          {t("dashboard.netCashFlow") || "ARUS KAS BERSIH"}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
-          {isSurplus ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
-          {isSurplus ? (t("analytics.surplusState") || "Surplus") : (t("analytics.deficitState") || "Defisit")}
+        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 px-2.5 py-0.5 text-xs font-bold text-white/90 shrink-0">
+          <CalendarDays size={13} />
+          {summary.period.label}
         </span>
       </div>
 
+      {/* Status Badge Above Nominal */}
+      <div className="mt-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-xs font-extrabold text-white">
+          {isSurplus ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+          {isSurplus ? (t("analytics.surplusState") || "Surplus Arus Kas") : (t("analytics.deficitState") || "Defisit Arus Kas")}
+        </span>
+      </div>
+
+      {/* Main Nominal */}
       <div className="mt-2.5">
         <p className="break-words text-3xl font-extrabold text-white sm:text-4xl">
           {formattedNetCashFlow}
         </p>
       </div>
 
-      <div className="mt-3 text-xs font-medium text-white/80">
-        <span className="font-extrabold text-white/90">{summary.period.label}</span>
-        <p className="mt-1 text-xs text-white/75 leading-relaxed max-w-xl">
-          {isSurplus
-            ? (t("analytics.surplusStoryDesc", { rate: savingsRate.toFixed(1), category: topCategory?.name || "-" }) ||
-              `Anda berhasil mempertahankan tingkat tabungan bersih sebesar ${savingsRate.toFixed(1)}%. Pengeluaran terbesar dialokasikan untuk ${topCategory?.name || "-"}.`)
-            : (t("analytics.deficitStoryDesc", { category: topCategory?.name || "-" }) ||
-              `Arus kas keluar periode ini lebih besar dari total pemasukan. Evaluasi pengeluaran pada ${topCategory?.name || "-"} untuk menjaga keseimbangan kas.`)}
-        </p>
-      </div>
+      {/* Short Contextual Explanation */}
+      <p className="mt-2.5 text-xs font-medium text-white/80 leading-relaxed max-w-xl">
+        {isSurplus
+          ? (t("analytics.surplusStoryDesc", { rate: savingsRate.toFixed(1), category: topCategory?.name || "-" }) ||
+            `Anda berhasil mempertahankan tingkat tabungan bersih sebesar ${savingsRate.toFixed(1)}%. Pengeluaran terbesar dialokasikan untuk ${topCategory?.name || "-"}.`)
+          : (t("analytics.deficitStoryDesc", { category: topCategory?.name || "-" }) ||
+            `Arus kas keluar periode ini lebih besar dari total pemasukan. Evaluasi pengeluaran pada ${topCategory?.name || "-"} untuk menjaga keseimbangan kas.`)}
+      </p>
 
+      {/* Bottom Inline Summary Row: Pemasukan | Pengeluaran */}
       <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs">
         <div>
           <span className="text-white/60 font-semibold">{t("common.typeIncome") || "Pemasukan"}</span>
