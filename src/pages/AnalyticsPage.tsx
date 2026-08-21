@@ -408,19 +408,18 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
     );
   }
 
+  const scrollChartWidth = Math.max(720, points.length * 48);
+
   return (
-    <div className="min-w-0 overflow-hidden">
-      <div ref={mobileScrollRef} className="-mx-5 w-[calc(100%+2.5rem)] overflow-x-auto sm:hidden">
+    <div className="w-full max-w-full min-w-0 overflow-hidden">
+      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {renderChart({
-          className: "block h-64 max-w-none",
-          chartPadding: { bottom: 34, left: 0, right: 0, top: 16 },
-          showYAxisLabels: false,
-          style: { width: `${mobileWidth}px` },
-          width: mobileWidth,
+          className: "block h-64 sm:h-72 max-w-none",
+          chartPadding: { bottom: 34, left: 10, right: 10, top: 16 },
+          showYAxisLabels: true,
+          style: { width: `${Math.max(100, (points.length / 7) * 100)}%`, minWidth: "100%" },
+          width: scrollChartWidth,
         })}
-      </div>
-      <div className="hidden min-w-0 sm:block">
-        {renderChart({ className: "block h-72 w-full max-w-full", width: 1040 })}
       </div>
     </div>
   );
@@ -464,9 +463,9 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
   });
 
   return (
-    <div className="mt-4 flex flex-col items-center justify-center gap-5 md:flex-row md:items-start">
-      {/* Donut - Centered horizontally on mobile */}
-      <div className="relative mx-auto flex h-36 w-36 sm:h-40 sm:w-40 max-w-full shrink-0 items-center justify-center md:mx-0">
+    <div className="mt-4 flex flex-col items-center justify-center gap-6 md:flex-row md:items-center">
+      {/* Donut - Larger ring & vertically centered on desktop */}
+      <div className="relative mx-auto flex h-36 w-36 sm:h-44 sm:w-44 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
         <svg viewBox="0 0 120 120" className="kash-ring-chart h-full w-full -rotate-90">
           {segments.map((seg) => (
             <circle
@@ -487,14 +486,14 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
         <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
           <div className="min-w-0 max-w-full">
             <p className="text-[11px] font-bold text-slate-500">{t("dashboard.totalExpense") || "Total Spend"}</p>
-            <p className="mt-0.5 max-w-[5.5rem] truncate text-xs sm:text-sm font-extrabold leading-tight text-slate-900">
+            <p className="mt-0.5 max-w-[7rem] truncate text-xs sm:text-sm md:text-base font-extrabold leading-tight text-slate-900">
               {formatCurrency(totalExpense, currency)}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Legend - Responsive full width under donut on mobile */}
+      {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
       <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
         {categories.map((category) => (
           <div key={category.id} className="flex items-center justify-between gap-2.5 text-xs sm:text-sm">
@@ -592,23 +591,17 @@ function IncomeExpenseLineChart({ currency, summary }: { currency: string; summa
     );
   }
 
+  const scrollChartWidth = Math.max(640, points.length * 48);
+
   return (
-    <div className="mt-4 min-w-0 overflow-hidden">
-      <div ref={mobileScrollRef} className="-mx-5 w-[calc(100%+2.5rem)] overflow-x-auto sm:hidden">
+    <div className="mt-4 w-full max-w-full min-w-0 overflow-hidden">
+      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {renderChart({
-          chartPadding: { bottom: 34, left: 0, right: 0, top: 18 },
+          chartPadding: { bottom: 34, left: 10, right: 10, top: 18 },
           className: "block h-64 max-w-none",
-          showYAxisLabels: false,
-          style: { width: `${mobileWidth}px` },
-          width: mobileWidth,
-        })}
-      </div>
-      <div className="hidden min-w-0 sm:block">
-        {renderChart({
-          chartPadding: { bottom: 34, left: 40, right: 14, top: 18 },
-          className: "block h-64 w-full",
           showYAxisLabels: true,
-          width: desktopWidth,
+          style: { width: `${Math.max(100, (points.length / 7) * 100)}%`, minWidth: "100%" },
+          width: scrollChartWidth,
         })}
       </div>
     </div>
@@ -690,23 +683,17 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
     );
   }
 
+  const scrollChartWidth = Math.max(640, pointsData.length * 48);
+
   return (
-    <div className="mt-4 min-w-0 overflow-hidden">
-      <div ref={mobileScrollRef} className="-mx-5 w-[calc(100%+2.5rem)] overflow-x-auto sm:hidden">
+    <div className="mt-4 w-full max-w-full min-w-0 overflow-hidden">
+      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {renderChart({
-          chartPadding: { bottom: 34, left: 0, right: 0, top: 18 },
+          chartPadding: { bottom: 34, left: 10, right: 10, top: 18 },
           className: "block h-64 max-w-none",
-          showYAxisLabels: false,
-          style: { width: `${mobileWidth}px` },
-          width: mobileWidth,
-        })}
-      </div>
-      <div className="hidden min-w-0 sm:block">
-        {renderChart({
-          chartPadding: { bottom: 34, left: 56, right: 16, top: 18 },
-          className: "block h-64 w-full",
           showYAxisLabels: true,
-          width: desktopWidth,
+          style: { width: `${Math.max(100, (pointsData.length / 7) * 100)}%`, minWidth: "100%" },
+          width: scrollChartWidth,
         })}
       </div>
     </div>

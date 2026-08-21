@@ -504,9 +504,9 @@ function SpendingDonut({ balancesVisible, currency, summary }: { balancesVisible
   return (
     <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
       <h2 className="text-sm font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
-      <div className="mt-4 flex flex-col items-center justify-center gap-5 md:flex-row md:items-start">
-        {/* Donut - Centered horizontally on mobile */}
-        <div className="relative mx-auto flex h-36 w-36 sm:h-40 sm:w-40 max-w-full shrink-0 items-center justify-center md:mx-0">
+      <div className="mt-4 flex flex-col items-center justify-center gap-6 md:flex-row md:items-center">
+        {/* Donut - Larger ring & vertically centered on desktop */}
+        <div className="relative mx-auto flex h-36 w-36 sm:h-44 sm:w-44 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
           <svg viewBox="0 0 120 120" className="kash-ring-chart h-full w-full -rotate-90">
             {segments.map((seg) => (
               <circle
@@ -527,14 +527,14 @@ function SpendingDonut({ balancesVisible, currency, summary }: { balancesVisible
           <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
             <div className="min-w-0 max-w-full">
               <p className="text-[11px] font-bold text-slate-500">{t("dashboard.totalExpense") || "Total Spend"}</p>
-              <p className="mt-0.5 max-w-[5.5rem] truncate text-xs sm:text-sm font-extrabold leading-tight text-slate-900">
+              <p className="mt-0.5 max-w-[7rem] truncate text-xs sm:text-sm md:text-base font-extrabold leading-tight text-slate-900">
                 {formatPrivateAmount(totalExpense, currency, balancesVisible)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Legend - Responsive full width under donut on mobile */}
+        {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
         <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
           {categories.map((category) => (
             <div key={category.id} className="flex items-center justify-between gap-2.5 text-xs sm:text-sm">
@@ -694,33 +694,24 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
     );
   }
 
-  // Calculate percentage width so ~7 days fit per visible viewport on mobile
-  const mobileWidthStyle = `${(daysInMonth / 7) * 100}%`;
+  // Calculate percentage width so ~7 days fit per visible viewport
+  const scrollWidthStyle = `${(daysInMonth / 7) * 100}%`;
+  const chartWidth = Math.max(1120, daysInMonth * 55);
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-hidden">
-      {/* Mobile view: Scrolls horizontally inside card with ~7 days per viewport */}
-      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto no-scrollbar sm:hidden">
+      {/* Scrollable chart area: ~7 days per viewport for bold, readable daily bars on all screen sizes */}
+      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {renderChart({
-          barClassName: "block h-48 max-w-none",
-          barMaxWidth: 12,
-          barMinWidth: 7,
+          barClassName: "block h-52 max-w-none",
+          barMaxWidth: 16,
+          barMinWidth: 8,
           chartPadding: mobilePadding,
-          chartWidth: mobileChartWidth,
+          chartWidth: chartWidth,
           points: dailyPoints,
           showGridLines: true,
-          showYAxisLabels: false,
-          style: { width: mobileWidthStyle, minWidth: "100%" },
-        })}
-      </div>
-      {/* Desktop view: Fits card width */}
-      <div className="hidden w-full max-w-full min-w-0 sm:block">
-        {renderChart({
-          barClassName: "block h-52 w-full max-w-full",
-          barMaxWidth: 18,
-          barMinWidth: 8,
-          points: dailyPoints,
           showYAxisLabels: balancesVisible,
+          style: { width: scrollWidthStyle, minWidth: "100%" },
         })}
       </div>
     </div>
