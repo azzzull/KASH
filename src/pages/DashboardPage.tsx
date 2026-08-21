@@ -463,14 +463,14 @@ function SpendingDonut({ balancesVisible, currency, summary }: { balancesVisible
 
   if (summary.spendingByCategory.length === 0 || totalExpense <= 0) {
     return (
-      <DashboardCard className="p-5">
+      <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
         <h2 className="text-sm font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
-        <div className="mt-4 flex flex-col items-center gap-4 md:flex-row md:items-start">
-          <div className="relative mx-auto flex h-36 w-36 items-center justify-center">
+        <div className="mt-4 flex flex-col items-center justify-center gap-4 md:flex-row md:items-start">
+          <div className="relative mx-auto flex h-32 w-32 shrink-0 items-center justify-center">
             <svg viewBox="0 0 120 120" className="h-full w-full">
               <circle cx="60" cy="60" r="48" fill="none" stroke="#F1F5F9" strokeWidth="18" />
             </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center text-center">
               <span className="text-xs font-bold text-slate-500">{t("dashboard.noData") || "No data"}</span>
             </div>
           </div>
@@ -502,11 +502,11 @@ function SpendingDonut({ balancesVisible, currency, summary }: { balancesVisible
   });
 
   return (
-    <DashboardCard className="p-5">
+    <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
       <h2 className="text-sm font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
-      <div className="mt-4 flex flex-col items-center gap-5 md:flex-row md:items-start">
-        {/* Donut */}
-        <div className="relative mx-auto flex h-40 w-40 shrink-0 items-center justify-center md:mx-0">
+      <div className="mt-4 flex flex-col items-center justify-center gap-5 md:flex-row md:items-start">
+        {/* Donut - Centered horizontally on mobile */}
+        <div className="relative mx-auto flex h-36 w-36 sm:h-40 sm:w-40 max-w-full shrink-0 items-center justify-center md:mx-0">
           <svg viewBox="0 0 120 120" className="kash-ring-chart h-full w-full -rotate-90">
             {segments.map((seg) => (
               <circle
@@ -524,26 +524,26 @@ function SpendingDonut({ balancesVisible, currency, summary }: { balancesVisible
               />
             ))}
           </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-xs font-bold text-slate-500">{t("dashboard.totalExpense") || "Total Spend"}</p>
-              <p className="mt-0.5 max-w-[5.5rem] break-words text-sm font-extrabold leading-tight text-slate-900">
+          <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
+            <div className="min-w-0 max-w-full">
+              <p className="text-[11px] font-bold text-slate-500">{t("dashboard.totalExpense") || "Total Spend"}</p>
+              <p className="mt-0.5 max-w-[5.5rem] truncate text-xs sm:text-sm font-extrabold leading-tight text-slate-900">
                 {formatPrivateAmount(totalExpense, currency, balancesVisible)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="min-w-0 flex-1 space-y-2.5">
+        {/* Legend - Responsive full width under donut on mobile */}
+        <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
           {categories.map((category) => (
-            <div key={category.id} className="flex items-center justify-between gap-3">
+            <div key={category.id} className="flex items-center justify-between gap-2.5 text-xs sm:text-sm">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
-                <span className="truncate text-sm font-semibold text-slate-700">{category.name}</span>
+                <span className="truncate font-semibold text-slate-700">{category.name}</span>
               </div>
               <div className="shrink-0 text-right">
-                <span className="text-sm font-bold text-slate-900">{formatPrivateAmount(category.amount, currency, balancesVisible)}</span>
+                <span className="font-bold text-slate-900">{formatPrivateAmount(category.amount, currency, balancesVisible)}</span>
                 <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
               </div>
             </div>
@@ -576,8 +576,9 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
   const width = 1120;
   const height = 220;
   const padding = { bottom: 30, left: 10, right: 0, top: 10 };
-  const mobileWidth = Math.max(330, summary.period.daysInMonth * 48);
-  const mobilePadding = { bottom: 30, left: 0, right: 0, top: 10 };
+  const daysInMonth = summary.period.daysInMonth || 30;
+  const mobileChartWidth = daysInMonth * 44; // 44px per day slot for smooth mobile bar rendering
+  const mobilePadding = { bottom: 30, left: 10, right: 10, top: 10 };
   const ticks = [0, 0.25, 0.5, 0.75, 1];
   const dailyPoints = summary.cashflow.map((point) => ({
     key: String(point.day),
@@ -594,15 +595,15 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
     const today = new Date();
     const periodStart = new Date(summary.period.start);
     const isCurrentMonth = today.getFullYear() === periodStart.getFullYear() && today.getMonth() === periodStart.getMonth();
-    const targetDay = isCurrentMonth ? Math.min(today.getDate(), summary.period.daysInMonth) : 1;
+    const targetDay = isCurrentMonth ? Math.min(today.getDate(), daysInMonth) : 1;
 
     window.requestAnimationFrame(() => {
-      const daySlotWidth = scrollElement.scrollWidth / summary.period.daysInMonth;
+      const daySlotWidth = scrollElement.scrollWidth / daysInMonth;
       const targetCenter = (targetDay - 0.5) * daySlotWidth;
       const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
       scrollElement.scrollLeft = Math.min(maxScrollLeft, Math.max(0, targetCenter - scrollElement.clientWidth / 2));
     });
-  }, [summary.period.daysInMonth, summary.period.start]);
+  }, [daysInMonth, summary.period.start]);
 
   if (!hasData) return <EmptyPanel title={t("dashboard.noCashflowData") || "No cash flow data this month"} description={t("dashboard.noCashflowDesc") || "Income and expense activity will appear as a daily chart."} className="min-h-48" />;
 
@@ -693,21 +694,26 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
     );
   }
 
+  // Calculate percentage width so ~7 days fit per visible viewport on mobile
+  const mobileWidthStyle = `${(daysInMonth / 7) * 100}%`;
+
   return (
     <div className="w-full max-w-full min-w-0 overflow-hidden">
+      {/* Mobile view: Scrolls horizontally inside card with ~7 days per viewport */}
       <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto no-scrollbar sm:hidden">
         {renderChart({
           barClassName: "block h-48 max-w-none",
-          barMaxWidth: 14,
-          barMinWidth: 8,
+          barMaxWidth: 12,
+          barMinWidth: 7,
           chartPadding: mobilePadding,
-          chartWidth: mobileWidth,
+          chartWidth: mobileChartWidth,
           points: dailyPoints,
-          showGridLines: false,
+          showGridLines: true,
           showYAxisLabels: false,
-          style: { width: `${mobileWidth}px` },
+          style: { width: mobileWidthStyle, minWidth: "100%" },
         })}
       </div>
+      {/* Desktop view: Fits card width */}
       <div className="hidden w-full max-w-full min-w-0 sm:block">
         {renderChart({
           barClassName: "block h-52 w-full max-w-full",
