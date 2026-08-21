@@ -27,7 +27,7 @@ import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
-import { PageHeader } from "../components/ui/PageHeader";
+import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { SelectField } from "../components/ui/SelectField";
 import { useI18n } from "../i18n";
@@ -103,54 +103,46 @@ export function DebtsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-5">
-      <PageHeader
+    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+      {/* 1. Compact Top Bar with Title + Desktop Create Button */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <HandCoins className="text-kash-emerald shrink-0" size={22} />
+          <h1 className="text-lg font-black text-slate-900 truncate">{t("debts.title") || "Utang & Piutang"}</h1>
+        </div>
+
+        <div ref={createActionRef} className="hidden sm:block shrink-0">
+          <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+            <Plus aria-hidden="true" size={15} />
+            {t("debts.createDebt") || "Catat Utang / Piutang"}
+          </Button>
+        </div>
+      </div>
+
+      {/* 2. Unified Emerald Hero Card for Debt & Receivable Posture */}
+      <FinancialHeroCard
+        icon={<HandCoins size={22} />}
         eyebrow={t("debts.financeEyebrow") || "Keuangan"}
-        icon={HandCoins}
-        title={t("debts.title")}
-        description={t("debts.subtitle") || "Pantau kewajiban utang dan catat pelunasan tingkat kontak / pihak terkait."}
-        actions={
-          <div ref={createActionRef} className="hidden sm:block">
-            <Button onClick={() => setCreateModalOpen(true)}>
-              <Plus aria-hidden="true" size={18} />
-              {t("debts.createDebt")}
-            </Button>
+        title={t("debts.title") || "Utang & Piutang"}
+        primaryMetricLabel={t("debts.totalDebt") || "Total Kewajiban Utang"}
+        primaryMetricValue={formatCurrency(totalDebt, "IDR")}
+        supportingMetrics={
+          <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-white/90">
+            <div>
+              <span className="text-white/60 font-semibold">{t("debts.totalDebt") || "Total Utang"}</span>
+              <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                {formatCurrency(totalDebt, "IDR")}
+              </p>
+            </div>
+            <div>
+              <span className="text-white/60 font-semibold">{t("debts.totalReceivable") || "Total Piutang"}</span>
+              <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                {formatCurrency(totalReceivable, "IDR")}
+              </p>
+            </div>
           </div>
         }
       />
-
-      {/* Overview Totals (Never Netted) */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <section className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("debts.totalDebt")}</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-expense/10 text-kash-expense">
-              <ArrowUpRight aria-hidden="true" size={17} strokeWidth={2.4} />
-            </span>
-          </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
-            {formatCurrency(totalDebt, "IDR")}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-600">
-            {t("debts.remainingDebt")}
-          </p>
-        </section>
-
-        <section className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("debts.totalReceivable")}</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-emerald/10 text-kash-emerald">
-              <ArrowDownLeft aria-hidden="true" size={17} strokeWidth={2.4} />
-            </span>
-          </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
-            {formatCurrency(totalReceivable, "IDR")}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-600">
-            {t("debts.remainingReceivable")}
-          </p>
-        </section>
-      </div>
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

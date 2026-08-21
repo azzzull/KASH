@@ -35,9 +35,9 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
-import { PageHeader } from "../components/ui/PageHeader";
 import { ContributeSharedModal } from "../components/sharedSavings/ContributeSharedModal";
 import { WithdrawSharedModal } from "../components/sharedSavings/WithdrawSharedModal";
 import { SharedSpendingModal } from "../components/sharedSavings/SharedSpendingModal";
@@ -279,133 +279,105 @@ export function SharedSavingsDetailPage() {
         </Link>
       </div>
 
-      {/* Main Space Header Card */}
-      <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div className="flex items-start gap-3.5 min-w-0">
-            <span
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-xs"
-              style={{ backgroundColor: space.color || "#10B981" }}
-            >
-              <Users size={24} strokeWidth={2.2} />
-            </span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-extrabold text-slate-900">{space.name}</h1>
-                {isOwner && (
-                  <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-800">
-                    <Crown size={11} /> {t("shared.youOwner")}
-                  </span>
-                )}
-                {isAccountHolder && (
-                  <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-black text-blue-800">
-                    <Landmark size={11} /> {t("shared.accountHolder")}
-                  </span>
-                )}
-                {isApprover && !isOwner && (
-                  <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2.5 py-0.5 text-[11px] font-black text-kash-emeraldDark">
-                    <ShieldCheck size={11} /> {t("shared.approver")}
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-1.5 flex flex-wrap items-center gap-y-1 gap-x-4 text-xs font-semibold text-slate-500">
-                <span className="flex items-center gap-1">
-                  <Users size={13} className="text-slate-400" />
-                  {t("shared.activeMembers", { count: activeMembersCount })}
-                </span>
-                {space.deadline && (
-                  <span className="flex items-center gap-1 text-slate-600">
-                    <Calendar size={13} className="text-slate-400" />
-                    {t("shared.deadline")}: {formatDate(space.deadline)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Primary Actions */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              onClick={() => setShowContributeModal(true)}
-              className="min-h-9 px-3.5 text-xs"
-            >
-              <ArrowDownRight size={15} />
-              {t("shared.contribute")}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowWithdrawModal(true)}
-              disabled={myShare <= 0}
-              className="min-h-9 px-3.5 text-xs text-slate-700 hover:text-kash-emeraldDark"
-            >
-              <ArrowUpLeft size={15} />
-              {t("shared.withdraw")}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowSpendingModal(true)}
-              className="min-h-9 px-3.5 text-xs text-slate-700 hover:text-kash-emeraldDark"
-            >
-              <Receipt size={15} />
-              {t("shared.spend")}
-            </Button>
-          </div>
-        </div>
-
-        {/* Financial Highlights */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 rounded-xl bg-slate-50 p-4">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.myShareHighlight")}</p>
-            <p className="mt-0.5 text-lg font-black text-kash-emeraldDark">{formatCurrency(myShare, currency)}</p>
-            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.myShareNetWorth")}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.totalPoolBalance")}</p>
-            <p className="mt-0.5 text-lg font-black text-slate-900">{formatCurrency(balance, currency)}</p>
-            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.totalPoolDesc")}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.totalSpending")}</p>
-            <p className="mt-0.5 text-lg font-black text-slate-900">
-              {formatCurrency(toNumber(space.total_spending), currency)}
-            </p>
-            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.spendingSplitDesc")}</p>
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("shared.totalContributions")}</p>
-            <p className="mt-0.5 text-lg font-black text-slate-900">
-              {formatCurrency(toNumber(space.total_contributions), currency)}
-            </p>
-            <p className="text-[10px] text-slate-500 font-semibold">{t("shared.contributionsHistoryDesc")}</p>
-          </div>
-        </div>
-
-        {/* Optional Target Progress */}
-        {target !== null && (
-          <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span className="flex items-center gap-1.5 font-extrabold text-slate-900">
-                <Target size={15} className="text-kash-emerald" />
-                {t("shared.targetGoal")}: {formatCurrency(target, currency)}
+      {/* Main Single Emerald Hero Card */}
+      <FinancialHeroCard
+        icon={<Users size={22} />}
+        eyebrow={t("shared.title") || "Tabungan Bersama"}
+        title={space.name}
+        badge={
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isOwner && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/30 border border-amber-300/30 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                <Crown size={12} /> {t("shared.youOwner")}
               </span>
-              <span className="text-sm font-black text-slate-900">{progressPct}%</span>
-            </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${progressPct}%`,
-                  backgroundColor: space.color || "#10B981",
-                }}
-              />
-            </div>
+            )}
+            {isAccountHolder && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 border border-white/20 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                <Landmark size={12} /> {t("shared.accountHolder")}
+              </span>
+            )}
+            {isApprover && !isOwner && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 border border-white/20 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                <ShieldCheck size={12} /> {t("shared.approver")}
+              </span>
+            )}
           </div>
-        )}
-      </section>
+        }
+        primaryMetricLabel={t("shared.totalPoolBalance") || "Total Saldo Pool"}
+        primaryMetricValue={formatCurrency(balance, currency)}
+        primaryMetricSubtext={
+          target ? (
+            <span className="text-base font-semibold text-white/70">
+              / {formatCurrency(target, currency)}
+            </span>
+          ) : undefined
+        }
+        supportingMetrics={
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 text-xs font-semibold text-white/90">
+            <div>
+              <span className="text-white/60 font-semibold">{t("shared.myShareHighlight") || "Porsi Saldo Saya"}</span>
+              <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                {formatCurrency(myShare, currency)}
+              </p>
+            </div>
+            <div>
+              <span className="text-white/60 font-semibold">{t("shared.members") || "Anggota"}</span>
+              <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                {activeMembersCount} {t("shared.members") || "Anggota"}
+              </p>
+            </div>
+            {space.deadline && (
+              <div>
+                <span className="text-white/60 font-semibold">{t("shared.deadline") || "Batas Waktu"}</span>
+                <p className="mt-0.5 text-sm sm:text-base font-extrabold text-white">
+                  {formatDate(space.deadline)}
+                </p>
+              </div>
+            )}
+          </div>
+        }
+        progress={
+          target && target > 0
+            ? {
+                percent: progressPct ?? 0,
+                labelLeft: `${progressPct}% ${t("shared.targetGoal") || "terkumpul"}`,
+                labelRight: `Target: ${formatCurrency(target, currency)}`,
+                barColorClass: "bg-white",
+              }
+            : undefined
+        }
+      />
+
+      {/* Primary Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
+      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <Button
+          type="button"
+          onClick={() => setShowContributeModal(true)}
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+        >
+          <ArrowDownRight size={15} />
+          {t("shared.contribute") || "Setor Modal"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setShowWithdrawModal(true)}
+          disabled={myShare <= 0}
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-slate-700 hover:text-kash-emeraldDark"
+        >
+          <ArrowUpLeft size={15} />
+          {t("shared.withdraw") || "Tarik Porsi Saya"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setShowSpendingModal(true)}
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-slate-700 hover:text-kash-emeraldDark"
+        >
+          <Receipt size={15} />
+          {t("shared.spend") || "Catat Belanja"}
+        </Button>
+      </div>
 
       {/* Tabs Bar */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">

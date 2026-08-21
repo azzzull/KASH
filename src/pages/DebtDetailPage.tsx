@@ -29,7 +29,7 @@ import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
-import { PageHeader } from "../components/ui/PageHeader";
+import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { SelectField } from "../components/ui/SelectField";
 import { useI18n } from "../i18n";
 import { useAppEvent } from "../hooks/useAppEvent";
@@ -139,98 +139,108 @@ export function DebtDetailPage() {
   const counterpartySummaryObject = counterpartySummary;
 
   return (
-    <div className="w-full min-w-0 space-y-5">
-      {/* Navigation & Header */}
+    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+      {/* Navigation Link */}
       <div>
         <Link
           to="/debts"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 transition hover:text-slate-900"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 transition hover:text-kash-emeraldDark"
         >
-          <ArrowLeft size={15} />
+          <ArrowLeft size={14} />
           {t("debts.backToDebts") || "Kembali ke Utang & Piutang"}
         </Link>
+      </div>
 
-        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-kash-emerald100 text-kash-emeraldDark ring-1 ring-kash-emerald/30">
-              <User size={24} />
+      {/* Main Single Emerald Hero Card */}
+      <FinancialHeroCard
+        icon={<User size={22} />}
+        eyebrow={summary.totalDebtRemaining > 0 ? (t("debts.totalDebt") || "Utang") : (t("debts.totalReceivable") || "Piutang")}
+        title={counterparty.name}
+        badge={
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold ${summary.totalDebtRemaining > 0 ? "bg-red-500/30 text-white" : "bg-white/20 text-white"}`}>
+            {summary.totalDebtRemaining === 0 && summary.totalReceivableRemaining === 0 ? (
+              <>
+                <CheckCircle2 size={13} /> {t("debts.settled") || "Lunas"}
+              </>
+            ) : (
+              <>
+                <Clock size={13} /> {t("debts.active") || "Belum Lunas"}
+              </>
+            )}
+          </span>
+        }
+        primaryMetricLabel={summary.totalDebtRemaining > 0 ? (t("debts.remainingDebt") || "Sisa Utang") : (t("debts.remainingReceivable") || "Sisa Piutang")}
+        primaryMetricValue={formatCurrency(summary.totalDebtRemaining > 0 ? summary.totalDebtRemaining : summary.totalReceivableRemaining, "IDR")}
+        supportingMetrics={
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs font-semibold text-white/90">
+            <div>
+              <span className="text-white/60 font-semibold">{t("debts.totalDebt") || "Sisa Utang"}</span>
+              <p className="mt-0.5 text-sm font-extrabold text-white">
+                {formatCurrency(summary.totalDebtRemaining, "IDR")}
+              </p>
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black text-slate-900">{counterparty.name}</h1>
-                <button
-                  type="button"
-                  onClick={() => setRenameModalOpen(true)}
-                  aria-label={t("debts.renamePerson") || "Ubah nama"}
-                  className="rounded-full p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                >
-                  <Edit2 size={15} />
-                </button>
-              </div>
-              <p className="text-xs font-semibold text-slate-600">
-                {debts.length} {t("debts.totalItems") || "total item kewajiban"}
+              <span className="text-white/60 font-semibold">{t("debts.paidAmount") || "Utang Terbayar"}</span>
+              <p className="mt-0.5 text-sm font-extrabold text-white">
+                {formatCurrency(summary.totalDebtPaid, "IDR")}
+              </p>
+            </div>
+            <div>
+              <span className="text-white/60 font-semibold">{t("debts.totalReceivable") || "Sisa Piutang"}</span>
+              <p className="mt-0.5 text-sm font-extrabold text-white">
+                {formatCurrency(summary.totalReceivableRemaining, "IDR")}
+              </p>
+            </div>
+            <div>
+              <span className="text-white/60 font-semibold">{t("debts.collectedAmount") || "Piutang Diterima"}</span>
+              <p className="mt-0.5 text-sm font-extrabold text-white">
+                {formatCurrency(summary.totalReceivablePaid, "IDR")}
               </p>
             </div>
           </div>
+        }
+      />
 
-          <div className="flex flex-wrap items-center gap-2">
-            {summary.totalDebtRemaining > 0 && (
-              <Button onClick={() => setSettlementTarget("debt")}>
-                {t("debts.pay") || "Bayar Utang"}
-              </Button>
-            )}
-            {summary.totalReceivableRemaining > 0 && (
-              <Button onClick={() => setSettlementTarget("receivable")}>
-                {t("debts.collect") || "Terima Piutang"}
-              </Button>
-            )}
-            <Button onClick={() => setCreateItemModalOpen(true)} variant="secondary">
-              <Plus size={16} />
-              {t("debts.addItem") || "Tambah Item"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Debt Card */}
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-              {t("debts.youOwe") || "Anda Berutang ke"} {counterparty.name}
-            </span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-expense/10 text-kash-expense">
-              <ArrowUpRight size={17} strokeWidth={2.4} />
-            </span>
-          </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
-            {formatCurrency(summary.totalDebtRemaining, "IDR")}
-          </p>
-          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs font-semibold text-slate-600">
-            <span>{t("debts.originalAmount") || "Awal"}: {formatCurrency(summary.totalDebtOriginal, "IDR")}</span>
-            <span>{t("debts.paidAmount") || "Terbayar"}: {formatCurrency(summary.totalDebtPaid, "IDR")}</span>
-          </div>
-        </section>
-
-        {/* Receivable Card */}
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-              {counterparty.name} {t("debts.owesYou") || "Berutang ke Anda"}
-            </span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kash-emerald/10 text-kash-emerald">
-              <ArrowDownLeft size={17} strokeWidth={2.4} />
-            </span>
-          </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 md:text-3xl">
-            {formatCurrency(summary.totalReceivableRemaining, "IDR")}
-          </p>
-          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-xs font-semibold text-slate-600">
-            <span>{t("debts.originalAmount") || "Awal"}: {formatCurrency(summary.totalReceivableOriginal, "IDR")}</span>
-            <span>{t("debts.collectedAmount") || "Diterima"}: {formatCurrency(summary.totalReceivablePaid, "IDR")}</span>
-          </div>
-        </section>
+      {/* Primary Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
+      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        {summary.totalDebtRemaining > 0 && (
+          <Button
+            type="button"
+            onClick={() => setSettlementTarget("debt")}
+            className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+          >
+            <ArrowUpRight size={15} />
+            {t("debts.pay") || "Bayar Utang"}
+          </Button>
+        )}
+        {summary.totalReceivableRemaining > 0 && (
+          <Button
+            type="button"
+            onClick={() => setSettlementTarget("receivable")}
+            className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+          >
+            <ArrowDownLeft size={15} />
+            {t("debts.collect") || "Terima Piutang"}
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setCreateItemModalOpen(true)}
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-slate-700"
+        >
+          <Plus size={15} />
+          {t("debts.addItem") || "Tambah Item"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setRenameModalOpen(true)}
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-slate-600 hover:text-slate-900"
+        >
+          <Edit2 size={14} />
+          {t("debts.renamePerson") || "Ubah Nama"}
+        </Button>
       </div>
 
       {/* Tabs Bar */}

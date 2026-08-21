@@ -24,7 +24,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
-import { PageHeader } from "../components/ui/PageHeader";
 import { CreateSharedSavingsModal } from "../components/sharedSavings/CreateSharedSavingsModal";
 import {
   getPendingSharedSavingsInvites,
@@ -106,38 +105,29 @@ export function SharedSavingsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-5">
-      <PageHeader
-        eyebrow="Finance"
-        icon={UsersRound}
-        title={t("shared.title")}
-        description={t("shared.subtitle")}
-      />
+    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+      {/* 1. Compact Top Bar with Title + Filter Tabs in SAME ROW */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <UsersRound className="text-kash-emerald shrink-0" size={22} />
+          <h1 className="text-lg font-black text-slate-900 truncate">{t("shared.title") || "Tabungan Bersama"}</h1>
+        </div>
 
-      {error && (
-        <section className="rounded-xl border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h3 className="text-base font-extrabold text-slate-900">{t("common.error")}</h3>
-          <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
-          <Button className="mt-4" onClick={() => void loadData()}>
-            {t("common.retry")}
+        <div ref={createActionRef} className="hidden sm:block shrink-0">
+          <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+            <Plus aria-hidden="true" size={15} />
+            {t("shared.createSpace") || "Buat Space Baru"}
           </Button>
-        </section>
-      )}
+        </div>
+      </div>
 
-      {/* Header Toolbar: Left Tabs & Right Create Button */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Filter Tabs Row */}
+      <div className="flex items-center justify-between gap-3">
         <FilterTabs
           options={tabOptions}
           value={activeTab}
           onChange={(val) => setActiveTab(val as "spaces" | "invites")}
         />
-
-        <div ref={createActionRef} className="hidden sm:block">
-          <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
-            <Plus aria-hidden="true" size={18} />
-            {t("shared.createSpace")}
-          </Button>
-        </div>
       </div>
 
       {/* Loading Skeleton */}
