@@ -121,6 +121,7 @@ function MetricComparisonLine({ change, metric }: { change: DashboardMetricChang
   const tone = isPositive ? "text-emerald-300" : "text-red-300";
 
   if (change.state === "new") {
+    if (metric === "expense") return null;
     return <p className={`text-xs font-bold ${tone}`}>{t("dashboard.newThisMonth") || "New this month"}</p>;
   }
 
@@ -159,6 +160,7 @@ function MetricComparisonLineStandard({ change, metric }: { change: DashboardMet
   const tone = isPositive ? "text-kash-emerald" : "text-[#E50914]";
 
   if (change.state === "new") {
+    if (metric === "expense") return null;
     return <p className={`text-[11px] font-bold ${tone}`}>{t("dashboard.newThisMonth") || "New this month"}</p>;
   }
 
