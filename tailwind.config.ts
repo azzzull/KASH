@@ -14,6 +14,8 @@ const config: Config = {
           emerald100: "#D1FAE5",
           emeraldDark: "#059669",
           emeraldPressed: "#047857",
+          heroDark: "#064E3B",
+          heroLight: "#059669",
           gold: "#FBBF24",
           selected: "#ECFDF5",
           income: "#10B981",
@@ -24,6 +26,7 @@ const config: Config = {
           debt: "#F28C45",
           receivable: "#22B8A7",
         },
+        surface: "#FAFBFC",
         slate: {
           50: "#F8FAFC",
           100: "#F1F5F9",
@@ -34,8 +37,15 @@ const config: Config = {
           900: "#0F172A",
         },
       },
+      borderRadius: {
+        "2xl": "1rem",
+        "3xl": "1.25rem",
+      },
       boxShadow: {
         soft: "0 18px 50px rgba(15, 23, 42, 0.08)",
+        card: "0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03)",
+        hero: "0 8px 32px rgba(6, 78, 59, 0.25), 0 2px 8px rgba(6, 78, 59, 0.1)",
+        "card-hover": "0 2px 6px rgba(15, 23, 42, 0.06), 0 8px 20px rgba(15, 23, 42, 0.05)",
       },
     },
   },

@@ -3,11 +3,16 @@ import { ReactNode } from "react";
 type PageCardProps = {
   children: ReactNode;
   className?: string;
+  hover?: boolean;
 };
 
-export function PageCard({ children, className = "" }: PageCardProps) {
+export function PageCard({ children, className = "", hover = false }: PageCardProps) {
   return (
-    <section className={`rounded-lg border border-kash-emerald/10 bg-white/95 p-5 shadow-sm ${className}`}>
+    <section
+      className={`rounded-2xl border border-slate-200/60 bg-white shadow-card ${
+        hover ? "transition-shadow duration-150 hover:shadow-card-hover" : ""
+      } ${className}`}
+    >
       {children}
     </section>
   );

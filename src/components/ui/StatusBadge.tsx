@@ -16,12 +16,12 @@ export type StatusBadgeProps = {
 };
 
 const toneStyles: Record<StatusBadgeTone, string> = {
-  emerald: "bg-kash-selected text-kash-emeraldDark ring-kash-emerald/30",
-  warning: "bg-amber-50 text-amber-800 ring-amber-200",
-  danger: "bg-kash-expense/10 text-kash-expense ring-kash-expense/20",
-  info: "bg-blue-50 text-blue-700 ring-blue-200",
-  neutral: "bg-slate-100 text-slate-700 ring-slate-200",
-  purple: "bg-purple-50 text-purple-700 ring-purple-200",
+  emerald: "bg-kash-emerald/10 text-kash-emeraldDark",
+  warning: "bg-amber-50 text-amber-700",
+  danger: "bg-kash-expense/10 text-kash-expense",
+  info: "bg-blue-50 text-blue-700",
+  neutral: "bg-slate-100 text-slate-600",
+  purple: "bg-purple-50 text-purple-700",
 };
 
 export function StatusBadge({
@@ -34,10 +34,10 @@ export function StatusBadge({
 
   return (
     <span
-      className={`inline-flex items-center justify-center font-black rounded-full ring-1 select-none ${
+      className={`inline-flex items-center justify-center font-bold rounded-full select-none ${
         toneStyles[tone]
       } ${
-        isSm ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs"
+        isSm ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-[11px]"
       } ${className}`}
     >
       {label}

@@ -9,10 +9,10 @@ export type ProgressBarProps = {
 };
 
 const heightClasses = {
-  xs: "h-1.5",
-  sm: "h-2",
-  md: "h-2.5",
-  lg: "h-3.5",
+  xs: "h-1",
+  sm: "h-1.5",
+  md: "h-2",
+  lg: "h-3",
 };
 
 export function ProgressBar({
@@ -48,11 +48,11 @@ export function ProgressBar({
           aria-valuemin={0}
           aria-valuemax={100}
           style={{ width: `${clamped}%` }}
-          className={`h-full rounded-full transition-all duration-300 ${fillTone}`}
+          className={`h-full rounded-full transition-all duration-500 ease-out ${fillTone}`}
         />
       </div>
       {showLabel ? (
-        <span className="mt-1 block text-right text-[11px] font-extrabold text-slate-600">
+        <span className="mt-1 block text-right text-[11px] font-bold text-slate-600">
           {clamped.toFixed(1)}%
         </span>
       ) : null}

@@ -20,23 +20,23 @@ export function EmptyState({
 }: EmptyStateProps) {
   const toneIconStyles =
     tone === "emerald"
-      ? "bg-kash-selected text-kash-emeraldDark ring-1 ring-kash-emerald/20"
+      ? "bg-kash-emerald/10 text-kash-emeraldDark"
       : tone === "expense"
-        ? "bg-kash-expense/10 text-kash-expense ring-1 ring-kash-expense/20"
-        : "bg-slate-100 text-slate-600 ring-1 ring-slate-200";
+        ? "bg-kash-expense/10 text-kash-expense"
+        : "bg-slate-100 text-slate-500";
 
   return (
-    <div className={`flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white/60 ${className}`}>
-      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${toneIconStyles}`}>
-        <Icon size={28} strokeWidth={2.3} />
+    <div className={`flex flex-col items-center justify-center px-6 py-10 text-center ${className}`}>
+      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${toneIconStyles}`}>
+        <Icon size={24} strokeWidth={1.8} />
       </div>
-      <h3 className="mt-4 text-base font-extrabold text-slate-900 md:text-lg">{title}</h3>
+      <h3 className="mt-4 text-sm font-bold text-slate-800">{title}</h3>
       {description ? (
-        <p className="mt-1.5 max-w-sm text-xs font-semibold leading-relaxed text-slate-600 md:text-sm">
+        <p className="mt-1 max-w-xs text-xs font-medium leading-relaxed text-slate-500">
           {description}
         </p>
       ) : null}
-      {action ? <div className="mt-5">{action}</div> : null}
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }

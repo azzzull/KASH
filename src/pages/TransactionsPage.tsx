@@ -52,34 +52,6 @@ type EditMode = "duplicate" | "edit";
 
 const PAGE_SIZE = 30;
 
-const typeOptions: Array<{ label: string; value: TransactionTypeFilter }> = [
-  { label: "All", value: "all" },
-  { label: "Income", value: "income" },
-  { label: "Expense", value: "expense" },
-  { label: "Transfer", value: "transfer" },
-  { label: "Adjustment", value: "adjustment" },
-];
-
-const periodOptions: Array<{ label: string; value: TransactionPeriodFilter }> = [
-  { label: "All Time", value: "all" },
-  { label: "This Month", value: "this_month" },
-  { label: "Last Month", value: "last_month" },
-  { label: "This Year", value: "this_year" },
-];
-
-const statusOptions: Array<{ label: string; value: "all" | TransactionStatus }> = [
-  { label: "All Status", value: "all" },
-  { label: "Completed", value: "completed" },
-  { label: "Voided", value: "void" },
-];
-
-const sortOptions: Array<{ label: string; value: TransactionSort }> = [
-  { label: "Latest", value: "latest" },
-  { label: "Oldest", value: "oldest" },
-  { label: "Amount High", value: "amount_high" },
-  { label: "Amount Low", value: "amount_low" },
-];
-
 const transactionTone: Record<TransactionType, string> = {
   adjustment: "text-slate-700",
   expense: "text-[#E50914]",
@@ -181,23 +153,6 @@ function displayAmount(transaction: TransactionWithMeta, currency = "IDR") {
   return formatCurrency(signedAmount(transaction), currency);
 }
 
-function groupTransactions(transactions: TransactionWithMeta[]) {
-  const formatter = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" });
-  const todayKey = formatter.format(new Date());
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayKey = formatter.format(yesterday);
-  const groups = new Map<string, TransactionWithMeta[]>();
-
-  transactions.forEach((transaction) => {
-    const key = formatter.format(new Date(transaction.transaction_date));
-    const label = key === todayKey ? "Today" : key === yesterdayKey ? "Yesterday" : key;
-    groups.set(label, [...(groups.get(label) ?? []), transaction]);
-  });
-
-  return Array.from(groups.entries()).map(([label, items]) => ({ items, label }));
-}
-
 function clearableFilters(filters: TransactionFilters) {
   return Boolean(filters.query || filters.type !== "all" || filters.dateKey || filters.period !== "this_month" || filters.status !== "all" || filters.walletId || filters.categoryId || filters.sort !== "latest");
 }
@@ -208,15 +163,15 @@ function advancedFilterCount(filters: TransactionFilters) {
 
 function TransactionsSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {[0, 1, 2, 3, 4].map((item) => (
-        <div key={item} className="grid grid-cols-[auto_1fr_auto] gap-3 rounded-lg border border-slate-200 bg-white p-4">
-          <div className="h-10 w-10 animate-pulse rounded-lg bg-slate-100" />
-          <div className="min-w-0">
-            <div className="h-4 w-40 animate-pulse rounded-full bg-slate-200" />
-            <div className="mt-3 h-3 w-64 max-w-full animate-pulse rounded-full bg-slate-100" />
+        <div key={item} className="flex items-center gap-3 rounded-xl p-3">
+          <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-100" />
+          <div className="min-w-0 flex-1">
+            <div className="h-3.5 w-36 animate-pulse rounded-full bg-slate-200" />
+            <div className="mt-2 h-3 w-52 max-w-full animate-pulse rounded-full bg-slate-100" />
           </div>
-          <div className="h-4 w-24 animate-pulse rounded-full bg-slate-100" />
+          <div className="h-3.5 w-20 animate-pulse rounded-full bg-slate-100" />
         </div>
       ))}
     </div>
@@ -281,57 +236,58 @@ function TransactionRow({
     <button
       type="button"
       onClick={onSelect}
-      className={`block w-full border-b border-slate-100 text-left transition last:border-b-0 hover:bg-slate-50 md:border-b-0 ${
-        isSelected ? "bg-kash-selected/70" : "bg-white"
-      } ${isVoid ? "opacity-65" : ""}`}
+      className={`kash-activity-row block w-full text-left transition ${
+        isSelected ? "bg-kash-selected/60" : ""
+      } ${isVoid ? "opacity-60" : ""}`}
     >
-      <span className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-3 md:hidden">
-        <span className={`flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
-          <Icon aria-hidden="true" size={18} strokeWidth={2.2} />
+      {/* Mobile layout */}
+      <span className="flex items-center gap-3 px-1 py-2.5 md:hidden">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${transactionTone[transaction.type]}`}>
+          <Icon aria-hidden="true" size={16} strokeWidth={2} />
         </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-extrabold text-slate-900">{getTranslatedTitle()}</span>
-          <span className="mt-1 block truncate text-xs font-semibold text-slate-600">
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold text-slate-900">{getTranslatedTitle()}</span>
+          <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">
             {getTranslatedCategoryLabel()} • {transactionWalletLabel(transaction)}
           </span>
-          {isVoid ? <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-extrabold text-slate-600">{t("transactions.voided") || "Dibatalkan"}</span> : null}
+          {isVoid ? <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{t("transactions.voided") || "Dibatalkan"}</span> : null}
         </span>
-        <span className="text-right">
-          <span className={`block text-sm font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
+        <span className="shrink-0 text-right">
+          <span className={`block text-sm font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>
             {displayAmount(transaction, currency)}
           </span>
           {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
-            <span className="block text-[11px] font-bold text-kash-expense">
+            <span className="block text-[10px] font-bold text-kash-expense">
               + {t("transactions.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
             </span>
           ) : null}
-          <span className="mt-1 block text-xs font-bold text-slate-600">{timeLabel}</span>
+          <span className="mt-0.5 block text-[11px] font-medium text-slate-500">{timeLabel}</span>
         </span>
       </span>
 
+      {/* Desktop layout */}
       <span
-        className="hidden items-center gap-4 px-3 py-2.5 text-sm md:grid"
-        style={{ gridTemplateColumns: "40px minmax(0, 1fr) minmax(120px, 180px) 140px 64px 16px" }}
+        className="hidden items-center gap-4 px-2 py-2.5 text-sm md:flex"
+        style={{ gridTemplateColumns: "36px minmax(0, 1fr) minmax(100px, 160px) 130px 56px" }}
       >
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
-          <Icon aria-hidden="true" size={17} strokeWidth={2.2} />
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${transactionTone[transaction.type]}`}>
+          <Icon aria-hidden="true" size={16} strokeWidth={2} />
         </span>
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
           <span className="block truncate font-bold text-slate-900">{getTranslatedTitle()}</span>
-          <span className="mt-0.5 block truncate text-xs font-semibold text-slate-600">{getTranslatedCategoryLabel()}</span>
-          {isVoid ? <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase text-slate-600">{t("transactions.voided") || "Dibatalkan"}</span> : null}
+          <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{getTranslatedCategoryLabel()}</span>
+          {isVoid ? <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">{t("transactions.voided") || "Dibatalkan"}</span> : null}
         </span>
-        <span className="min-w-0 truncate font-semibold text-slate-600">{transactionWalletLabel(transaction)}</span>
-        <span className={`text-right font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
+        <span className="min-w-0 truncate font-medium text-slate-500">{transactionWalletLabel(transaction)}</span>
+        <span className={`text-right font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>
           <span>{displayAmount(transaction, currency)}</span>
           {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
-            <span className="block text-[11px] font-bold text-kash-expense">
+            <span className="block text-[10px] font-bold text-kash-expense">
               + {t("transactions.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
             </span>
           ) : null}
         </span>
-        <span className="text-right font-semibold text-slate-600">{timeLabel}</span>
-        <ArrowRight aria-hidden="true" className="justify-self-end text-slate-600" size={16} />
+        <span className="text-right text-xs font-medium text-slate-500">{timeLabel}</span>
       </span>
     </button>
   );
@@ -507,7 +463,7 @@ function TransactionFormModal({
       description={`${t("transactions.type") || "Tipe"}: ${transaction.type}`}
     >
       <div>
-        {error ? <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</div> : null}
+        {error ? <div className="mb-4 rounded-xl border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</div> : null}
 
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <FormField
@@ -612,8 +568,8 @@ function TransactionFormModal({
           <FormField id="transaction-edit-note" label={transaction.type === "adjustment" ? (t("transactions.reasonOrNote") || "Alasan / Catatan") : (t("transactions.note") || "Catatan")} value={note} onChange={(event) => setNote(event.target.value)} />
 
           {transaction.type === "transfer" ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
-              <p className="font-extrabold text-slate-900">{t("transactions.transferSummary") || "Ringkasan Transfer"}</p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+              <p className="font-bold text-slate-900">{t("transactions.transferSummary") || "Ringkasan Transfer"}</p>
               <div className="mt-3 flex justify-between gap-4"><span>{t("transactions.totalDeducted") || "Total Terpotong"}</span><span>{formatCurrency(toNumber(amountValue) + toNumber(feeValue), "IDR")}</span></div>
               <div className="mt-2 flex justify-between gap-4"><span>{t("transactions.destinationReceives") || "Tujuan Menerima"}</span><span>{formatCurrency(toNumber(amountValue), "IDR")}</span></div>
             </div>
@@ -675,7 +631,7 @@ function AdvancedFilterPanel({
           <AdvancedFilterContent categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
         </Modal>
       </div>
-      <div className="absolute right-[calc(100%+4px)] top-[calc(100%+4px)] z-40 hidden w-80 rounded-lg border border-slate-200 bg-white p-4 shadow-soft md:block">
+      <div className="absolute right-[calc(100%+4px)] top-[calc(100%+4px)] z-40 hidden w-72 rounded-xl border border-slate-200/60 bg-white p-4 shadow-soft md:block">
         <AdvancedFilterContent categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
       </div>
     </>
@@ -716,8 +672,8 @@ function AdvancedFilterContent({
     <div>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900">{t("transactions.filterTitle") || "Filter Transaksi"}</h2>
-          <p className="mt-1 text-xs font-semibold text-slate-600">{t("transactions.filterSubtitle") || "Persempit buku kas berdasarkan tanggal, dompet, kategori, atau status."}</p>
+          <h2 className="text-sm font-extrabold text-slate-900">{t("transactions.filterTitle") || "Filter Transaksi"}</h2>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">{t("transactions.filterSubtitle") || "Persempit berdasarkan tanggal, dompet, kategori, atau status."}</p>
         </div>
         <IconButton icon={X} label="Close filters" onClick={onClose} />
       </div>
@@ -887,7 +843,7 @@ export function TransactionsPage() {
   };
 
   return (
-    <div className="relative w-full min-w-0 space-y-5 md:min-h-[calc(100dvh-3rem)]">
+    <div className="relative w-full min-w-0 space-y-4 md:min-h-[calc(100dvh-3rem)]">
       <div>
         <PageHeader
           eyebrow={t("transactions.eyebrow") || "Buku Kas"}
@@ -895,53 +851,55 @@ export function TransactionsPage() {
           title={t("transactions.title")}
           description={t("transactions.subtitle")}
           actions={
-            <label className="hidden h-11 w-full min-w-80 max-w-sm items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 focus-within:border-kash-emerald focus-within:ring-4 focus-within:ring-kash-emerald/20 md:flex">
-              <Search aria-hidden="true" size={17} />
+            <label className="hidden h-10 w-full min-w-72 max-w-sm items-center gap-2 rounded-xl bg-slate-100/60 px-3 text-sm font-medium text-slate-700 focus-within:bg-white focus-within:ring-2 focus-within:ring-kash-emerald/30 focus-within:shadow-card md:flex">
+              <Search aria-hidden="true" size={16} className="text-slate-500" />
               <input
                 value={filters.query ?? ""}
                 onChange={(event) => updateFilter("query", event.target.value)}
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-600"
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-500"
                 placeholder={t("transactions.searchPlaceholder") || "Cari transaksi..."}
               />
             </label>
           }
         />
 
-        <div className="mt-4 md:hidden">
-          <label className="flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 focus-within:border-kash-emerald focus-within:ring-4 focus-within:ring-kash-emerald/20">
-            <Search aria-hidden="true" size={17} />
+        {/* Mobile search */}
+        <div className="mt-3 md:hidden">
+          <label className="flex h-10 items-center gap-2 rounded-xl bg-slate-100/60 px-3 text-sm font-medium text-slate-700 focus-within:bg-white focus-within:ring-2 focus-within:ring-kash-emerald/30 focus-within:shadow-card">
+            <Search aria-hidden="true" size={16} className="text-slate-500" />
             <input
               value={filters.query ?? ""}
               onChange={(event) => updateFilter("query", event.target.value)}
-              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-600"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-500"
               placeholder={t("transactions.searchPlaceholder") || "Cari transaksi..."}
             />
           </label>
         </div>
 
-        <section className="relative mt-5 pb-2">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        {/* Filters */}
+        <section className="relative mt-4 pb-1">
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
             <FilterTabs
               options={typeOptions}
               value={filters.type ?? "all"}
               onChange={(val) => updateFilter("type", val as TransactionTypeFilter)}
             />
 
-            <div className="flex items-center justify-between gap-3 md:justify-end">
+            <div className="flex items-center justify-between gap-2.5 md:justify-end">
               <div ref={filterMenuRef} className="relative">
                 <button
                   type="button"
                   onClick={() => setFilterPanelOpen((current) => !current)}
-                  className={`inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-extrabold transition ${
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition ${
                     activeAdvancedFilters > 0
                       ? "border-kash-emerald bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-                      : "border-slate-200 bg-white text-slate-900 hover:border-kash-emerald/40 hover:bg-kash-selected"
+                      : "border-slate-200/60 bg-white text-slate-700 hover:border-kash-emerald/40 hover:bg-kash-selected"
                   }`}
                 >
-                  <Filter aria-hidden="true" size={16} />
+                  <Filter aria-hidden="true" size={14} />
                   {t("common.filter") || "Filter"}
                   {activeAdvancedFilters > 0 ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-[11px] text-kash-emeraldDark">{activeAdvancedFilters}</span>
+                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/25 px-1 text-[10px] text-white">{activeAdvancedFilters}</span>
                   ) : null}
                 </button>
                 {filterPanelOpen ? (
@@ -956,10 +914,10 @@ export function TransactionsPage() {
                 ) : null}
               </div>
 
-              <div className="w-40">
+              <div className="w-36">
                 <SelectField
                   aria-label="Sort transactions"
-                  className="[&>button]:mt-0 [&>button]:h-10"
+                  className="[&>button]:mt-0 [&>button]:h-8 [&>button]:text-xs"
                   id="transaction-sort"
                   label={`${t("transactions.sort") || "Urutkan"}:`}
                   value={filters.sort}
@@ -972,36 +930,41 @@ export function TransactionsPage() {
           </div>
 
           {clearableFilters(filters) ? (
-            <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-2 text-sm font-extrabold text-kash-emerald">
-              <SlidersHorizontal size={16} />
+            <button type="button" onClick={clearFilters} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-kash-emerald">
+              <SlidersHorizontal size={14} />
               {filters.dateKey ? `${t("transactions.clearDateFilter") || "Hapus filter tanggal"} (${filters.dateKey})` : (t("transactions.clearFilters") || "Hapus Filter")}
             </button>
           ) : null}
         </section>
 
-        <section className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          {isLoading && transactions.length === 0 ? <div className="p-4"><TransactionsSkeleton /></div> : null}
+        {/* Transaction List — Activity Feed */}
+        <section className="mt-1">
+          {isLoading && transactions.length === 0 ? <TransactionsSkeleton /> : null}
           {error ? (
-            <div className="m-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-4 text-sm font-bold text-slate-900">
+            <div className="rounded-xl border border-kash-expense/20 bg-kash-expense/5 p-4 text-sm font-bold text-slate-900">
               {error}
               <button type="button" onClick={() => void loadTransactions(filters)} className="ml-3 text-kash-emerald">{t("common.retry") || "Coba Lagi"}</button>
             </div>
           ) : null}
           {!isLoading && !error && transactions.length === 0 ? (
-            <div className="p-8 text-center">
-              <ReceiptText className="mx-auto text-slate-600" size={34} />
-              <p className="mt-3 text-lg font-extrabold text-slate-900">{clearableFilters(filters) ? (t("transactions.noMatching") || "Tidak ada transaksi yang cocok.") : (t("transactions.emptyStateTitle") || "Belum ada transaksi.")}</p>
-              <p className="mt-2 text-sm font-semibold text-slate-600">
-                {clearableFilters(filters) ? (t("transactions.noMatchingDesc") || "Coba ubah kata kunci pencarian atau filter Anda.") : (t("transactions.emptyStateDesc") || "Tambah pemasukan atau pengeluaran pertama Anda untuk mulai mencatat keuangan.")}
+            <div className="px-4 py-12 text-center">
+              <ReceiptText className="mx-auto text-slate-400" size={32} strokeWidth={1.5} />
+              <p className="mt-3 text-sm font-bold text-slate-800">{clearableFilters(filters) ? (t("transactions.noMatching") || "Tidak ada transaksi yang cocok.") : (t("transactions.emptyStateTitle") || "Belum ada transaksi.")}</p>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                {clearableFilters(filters) ? (t("transactions.noMatchingDesc") || "Coba ubah kata kunci pencarian atau filter Anda.") : (t("transactions.emptyStateDesc") || "Tambah pemasukan atau pengeluaran pertama Anda.")}
               </p>
-              {clearableFilters(filters) ? <Button className="mt-4" variant="secondary" onClick={clearFilters}>{t("transactions.clearFilters") || "Hapus Filter"}</Button> : null}
+              {clearableFilters(filters) ? <Button className="mt-4" variant="secondary" size="sm" onClick={clearFilters}>{t("transactions.clearFilters") || "Hapus Filter"}</Button> : null}
             </div>
           ) : null}
 
-          {!error && groupedTransactions.map((group) => (
+          {!error && groupedTransactions.map((group, groupIndex) => (
             <div key={group.label}>
-              <div className="px-0 py-2 text-xs font-extrabold uppercase text-slate-700 md:py-3">{group.label}</div>
-              <div className="divide-y divide-slate-100 overflow-hidden">
+              {/* Date group header */}
+              <div className={`kash-date-header flex items-center gap-3 py-2 ${groupIndex > 0 ? "mt-1 border-t border-slate-100" : ""}`}>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
+              </div>
+              {/* Transactions */}
+              <div>
                 {group.items.map((transaction) => (
                   <TransactionRow
                     key={transaction.id}
@@ -1017,16 +980,16 @@ export function TransactionsPage() {
         </section>
 
         {hasMore ? (
-          <div className="mt-4 flex justify-center">
+          <div className="mt-3 flex justify-center">
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => void loadTransactions({ ...filters, page: Math.floor(transactions.length / PAGE_SIZE) }, true)}
             >
-              <Filter size={16} />
               {t("common.loadMore") || "Muat Lebih Banyak"}
             </Button>
           </div>
-        ) : transactions.length > 0 ? <p className="mt-4 text-center text-sm font-semibold text-slate-600">{t("transactions.noMore") || "Semua transaksi telah dimuat"}</p> : null}
+        ) : transactions.length > 0 ? <p className="mt-3 text-center text-xs font-medium text-slate-500">{t("transactions.noMore") || "Semua transaksi telah dimuat"}</p> : null}
 
       </div>
 
