@@ -301,28 +301,28 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
         </h3>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         {insights.map((item) => (
           <div
             key={item.label}
-            className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4.5 shadow-card hover:shadow-md transition"
+            className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4.5 sm:p-5 shadow-card hover:shadow-md transition"
           >
             <div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   {item.label}
                 </span>
-                <span className={`flex h-8 w-8 items-center justify-center rounded-xl font-extrabold text-xs ${item.accentBg}`}>
-                  <item.icon size={16} />
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-extrabold text-xs ${item.accentBg}`}>
+                  <item.icon size={18} />
                 </span>
               </div>
 
-              <p className={`mt-2.5 text-xl font-extrabold ${item.tone}`}>
+              <p className={`mt-3 text-2xl font-extrabold ${item.tone}`}>
                 {item.value}
               </p>
             </div>
 
-            <p className="mt-3 border-t border-slate-100/80 pt-2.5 text-xs font-semibold text-slate-500">
+            <p className="mt-4 border-t border-slate-100/80 pt-3 text-xs font-semibold text-slate-500 leading-relaxed">
               {item.helper}
             </p>
           </div>
@@ -505,84 +505,78 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
 
   if (categories.length === 0 || totalExpense <= 0) {
     return (
-      <div className="mt-4 grid min-h-64 items-center gap-5 sm:grid-cols-[160px_minmax(0,1fr)]">
+      <div className="mt-4 flex flex-col items-center justify-center gap-5 md:flex-row md:items-start">
         <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-slate-100">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">{t("dashboard.noData") || "No data"}</div>
         </div>
-        <EmptyPanel title={t("analytics.noExpenseCategories") || "No expense categories"} description={t("analytics.noExpenseCategoriesDesc") || "Completed expenses in this period will appear here."} className="min-h-32" />
+        <EmptyPanel title={t("analytics.noExpenseCategories") || "No expense categories"} description={t("analytics.noExpenseCategoriesDesc") || "Completed expenses in this period will appear here."} className="flex-1" />
       </div>
     );
   }
 
-  // Ring SVG Math
-  const size = 160;
-  const strokeWidth = 18;
-  const radius = (size - strokeWidth) / 2;
+  // Exact Dashboard SVG Donut System
+  const radius = 48;
   const circumference = 2 * Math.PI * radius;
-  let currentOffset = 0;
-  const totalPercent = categories.reduce((sum, c) => sum + c.percent, 0);
+  const gapDeg = 3;
+  const totalGapDeg = gapDeg * categories.length;
+  const availableDeg = 360 - totalGapDeg;
 
-  const arcs = categories.map((cat) => {
-    const fraction = totalPercent > 0 ? cat.percent / totalPercent : 0;
-    const rawDash = fraction * circumference;
-    const gapDash = categories.length > 1 ? Math.min(6, rawDash * 0.1) : 0;
-    const dashLength = Math.max(0, rawDash - gapDash);
-    const offset = currentOffset;
-    currentOffset -= rawDash;
-
+  let accumulatedOffset = 0;
+  const segments = categories.map((category) => {
+    const segDeg = (category.percent / 100) * availableDeg;
+    const segLen = (segDeg / 360) * circumference;
+    const gapLen = (gapDeg / 360) * circumference;
+    const offset = accumulatedOffset;
+    accumulatedOffset += segLen + gapLen;
     return {
-      ...cat,
-      dashLength,
-      offset,
+      ...category,
+      dasharray: `${segLen} ${circumference - segLen}`,
+      dashoffset: -offset,
     };
   });
 
   return (
-    <div className="mt-4 grid min-w-0 items-center gap-6 sm:grid-cols-[180px_minmax(0,1fr)]">
-      {/* SVG Ring Chart Centered */}
-      <div className="relative mx-auto flex items-center justify-center">
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="#F1F5F9"
-            strokeWidth={strokeWidth}
-          />
-          {arcs.map((arc) => (
+    <div className="mt-4 flex flex-col items-center justify-center gap-5 md:flex-row md:items-start">
+      {/* Donut - Centered horizontally on mobile */}
+      <div className="relative mx-auto flex h-36 w-36 sm:h-40 sm:w-40 max-w-full shrink-0 items-center justify-center md:mx-0">
+        <svg viewBox="0 0 120 120" className="kash-ring-chart h-full w-full -rotate-90">
+          {segments.map((seg) => (
             <circle
-              key={arc.id}
-              cx={size / 2}
-              cy={size / 2}
+              key={seg.id}
+              data-segment
+              cx="60"
+              cy="60"
               r={radius}
               fill="none"
-              stroke={arc.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${arc.dashLength} ${circumference - arc.dashLength}`}
-              strokeDashoffset={arc.offset}
+              stroke={seg.color}
+              strokeWidth="20"
               strokeLinecap="round"
-              className="transition-all duration-300"
+              strokeDasharray={seg.dasharray}
+              strokeDashoffset={seg.dashoffset}
             />
           ))}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
-          <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">{t("dashboard.totalExpense") || "Total Expense"}</p>
-          <p className="mt-0.5 text-xs font-black text-slate-900 max-w-[100px] truncate">{formatCurrency(totalExpense, currency)}</p>
+        <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
+          <div className="min-w-0 max-w-full">
+            <p className="text-[11px] font-bold text-slate-500">{t("dashboard.totalExpense") || "Total Spend"}</p>
+            <p className="mt-0.5 max-w-[5.5rem] truncate text-xs sm:text-sm font-extrabold leading-tight text-slate-900">
+              {formatCurrency(totalExpense, currency)}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Legend List */}
-      <div className="min-w-0 space-y-2.5">
+      {/* Legend - Responsive full width under donut on mobile */}
+      <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
         {categories.map((category) => (
-          <div key={category.id} className="flex items-center justify-between gap-3 text-xs">
+          <div key={category.id} className="flex items-center justify-between gap-2.5 text-xs sm:text-sm">
             <div className="flex min-w-0 items-center gap-2">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
-              <span className="truncate font-bold text-slate-700">{category.name}</span>
+              <span className="truncate font-semibold text-slate-700">{category.name}</span>
             </div>
-            <div className="text-right shrink-0">
-              <span className="font-extrabold text-slate-900">{formatCurrency(category.amount, currency)}</span>
-              <span className="ml-1.5 font-bold text-slate-500">({Math.round(category.percent)}%)</span>
+            <div className="shrink-0 text-right">
+              <span className="font-bold text-slate-900">{formatCurrency(category.amount, currency)}</span>
+              <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
             </div>
           </div>
         ))}
@@ -878,30 +872,45 @@ function PeriodControls({
   );
 
   return (
-    <div className="grid gap-3 sm:grid-cols-[220px_auto_auto] sm:items-end">
-      <SelectField label={t("analytics.period") || "Period"} value={period} onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}>
-        {periodOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </SelectField>
-      {period === "custom" ? (
-        <>
-          <DatePickerField
-            id="analytics-start-date"
-            label={t("analytics.startDate") || "Start Date"}
-            value={customStartDate}
-            onChange={(val) => onCustomStartDateChange(val)}
-          />
-          <DatePickerField
-            id="analytics-end-date"
-            label={t("analytics.endDate") || "End Date"}
-            value={customEndDate}
-            onChange={(val) => onCustomEndDateChange(val)}
-          />
-        </>
-      ) : null}
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3 shadow-card">
+      <div className="flex items-center gap-2">
+        <CalendarDays size={16} className="text-kash-emerald" />
+        <span className="text-xs font-extrabold text-slate-700">{t("analytics.period") || "Periode"}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="w-40 sm:w-48">
+          <SelectField
+            value={period}
+            onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}
+          >
+            {periodOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+        {period === "custom" && (
+          <div className="flex items-center gap-2">
+            <div className="w-32 sm:w-36">
+              <DatePickerField
+                id="analytics-start-date"
+                value={customStartDate}
+                onChange={(val) => onCustomStartDateChange(val)}
+              />
+            </div>
+            <span className="text-xs font-bold text-slate-400">-</span>
+            <div className="w-32 sm:w-36">
+              <DatePickerField
+                id="analytics-end-date"
+                value={customEndDate}
+                onChange={(val) => onCustomEndDateChange(val)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
