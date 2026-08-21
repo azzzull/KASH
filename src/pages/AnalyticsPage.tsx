@@ -463,7 +463,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
   });
 
   return (
-    <div className="mt-4 flex flex-col items-center justify-center gap-6 md:flex-row md:items-center">
+    <div className="my-auto flex flex-1 w-full flex-col items-center justify-center gap-6 py-4 md:flex-row md:items-center">
       {/* Donut - Larger ring & vertically centered on desktop */}
       <div className="relative mx-auto flex h-36 w-36 sm:h-44 sm:w-44 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
         <svg viewBox="0 0 120 120" className="kash-ring-chart h-full w-full -rotate-90">
@@ -977,7 +977,7 @@ export function AnalyticsPage() {
 
       {/* 3. Main Visual Charts Grid (Donut Ring + Cash Flow Line Chart in 2 Columns) */}
       <div className="grid gap-4 lg:grid-cols-2 min-w-0 max-w-full">
-        <AnalyticsCard className="p-5">
+        <AnalyticsCard className="p-5 flex flex-col justify-between h-full">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
             <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
@@ -985,7 +985,7 @@ export function AnalyticsPage() {
           <SpendingByCategory summary={summary} currency={currency} />
         </AnalyticsCard>
 
-        <AnalyticsCard className="p-5">
+        <AnalyticsCard className="p-5 flex flex-col justify-between h-full">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
