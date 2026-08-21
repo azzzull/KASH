@@ -33,7 +33,7 @@ export function FilterTabs<T extends string = string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={`inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100/60 p-1 ${className}`}
+      className={`inline-flex flex-nowrap items-center gap-1 overflow-x-auto max-w-full rounded-xl bg-slate-100/70 p-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${className}`}
     >
       {options.map((option) => {
         const isActive = option.value === value;
@@ -47,7 +47,7 @@ export function FilterTabs<T extends string = string>({
             aria-selected={isActive}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-bold transition-all duration-150 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 disabled:opacity-40 disabled:pointer-events-none ${
+            className={`inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-1.5 rounded-lg font-bold transition-all duration-150 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 disabled:opacity-40 disabled:pointer-events-none ${
               fullWidth ? "flex-1" : ""
             } ${
               isSm

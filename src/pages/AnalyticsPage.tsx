@@ -4,8 +4,11 @@ import {
   BarChart3,
   CalendarDays,
   ChevronRight,
+  PieChart,
+  Receipt,
   RefreshCw,
   Scale,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   WalletCards,
@@ -186,6 +189,50 @@ function cashFlowHealth(summary: AnalyticsSummary, t: (k: TranslationKey) => str
   return { helper: t("analytics.healthIncomeCovers") || "Income covers spending", tone: "text-kash-emerald", value: t("analytics.healthHealthy") || "Healthy" };
 }
 
+function AnalyticsHeroStory({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+  const { t, formatCurrency } = useI18n();
+  const netCashFlow = summary.netCashFlow.amount;
+  const isSurplus = netCashFlow >= 0;
+  const savingsRate = summary.income.amount > 0 ? (netCashFlow / summary.income.amount) * 100 : 0;
+  const topCategory = summary.categorySpending[0];
+
+  return (
+    <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-extrabold text-white">
+          {isSurplus ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+          {isSurplus ? (t("analytics.surplusState") || "Cash Flow Surplus") : (t("analytics.deficitState") || "Cash Flow Deficit")}
+        </span>
+        <span className="text-xs font-bold text-white/70">
+          {summary.period.label}
+        </span>
+      </div>
+
+      <div className="mt-4">
+        <h2 className="text-xl font-black text-white sm:text-2xl">
+          {isSurplus
+            ? `${t("analytics.surplusHeadline") || "Kondisi Keuangan Sehat & Surplus"}`
+            : `${t("analytics.deficitHeadline") || "Pengeluaran Melebihi Pemasukan"}`}
+        </h2>
+        <p className="mt-1 break-words text-3xl font-extrabold text-white sm:text-4xl">
+          {formatCurrency(Math.abs(netCashFlow), currency)}{" "}
+          <span className="text-xs font-semibold text-white/70">
+            {isSurplus ? (t("analytics.netSurplus") || "net surplus kas") : (t("analytics.netDeficit") || "net defisit kas")}
+          </span>
+        </p>
+      </div>
+
+      <p className="mt-3 text-xs font-medium text-white/80 max-w-xl">
+        {isSurplus
+          ? (t("analytics.surplusStoryDesc", { rate: savingsRate.toFixed(1), category: topCategory?.name || "-" }) ||
+            `Anda berhasil mempertahankan tingkat tabungan bersih sebesar ${savingsRate.toFixed(1)}%. Pengeluaran terbesar bulan ini dialokasikan untuk ${topCategory?.name || "-"}.`)
+          : (t("analytics.deficitStoryDesc", { category: topCategory?.name || "-" }) ||
+            `Arus kas keluar periode ini lebih besar dari total pemasukan. Evaluasi pengeluaran pada ${topCategory?.name || "-"} untuk menjaga keseimbangan kas.`)}
+      </p>
+    </section>
+  );
+}
+
 function AnalyticsInsights({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
   const months = monthEquivalent(summary);
@@ -193,99 +240,95 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
   const averageMonthlyIncome = summary.income.amount / months;
   const averageMonthlyCashFlow = summary.netCashFlow.amount / months;
   const savingsRate = summary.income.amount > 0 ? (summary.netCashFlow.amount / summary.income.amount) * 100 : null;
-  const expenseIncomeRatio = summary.income.amount > 0 ? (summary.expense.amount / summary.income.amount) * 100 : null;
   const topCategory = summary.categorySpending[0] ?? null;
-  const highestSpendingPeriod = summary.incomeExpenseTrend.reduce(
-    (highest, point) => (point.expense > highest.expense ? point : highest),
-    summary.incomeExpenseTrend[0] ?? { end: "", expense: 0, income: 0, key: "", label: "-", start: "" },
-  );
-  const firstNetWorth = summary.netWorthTrend[0]?.amount ?? null;
-  const lastNetWorth = summary.netWorthTrend[summary.netWorthTrend.length - 1]?.amount ?? null;
-  const netWorthDelta = firstNetWorth != null && lastNetWorth != null ? lastNetWorth - firstNetWorth : null;
-  const health = cashFlowHealth(summary, t);
-  const cashFlowTone = averageMonthlyCashFlow >= 0 ? "text-kash-emerald" : "text-[#E50914]";
 
   const insights = [
     {
-      label: t("analytics.avgMonthlyExpense") || "Avg Monthly Expense",
+      icon: TrendingDown,
+      label: t("analytics.avgMonthlyExpense") || "Rata-rata Belanja Bulanan",
       value: formatCurrency(averageMonthlyExpense, currency),
-      helper: t("analytics.avgMonthlyExpenseDesc") || "Monthly spending pace",
-      tone: "text-[#E50914]",
+      helper: t("analytics.avgMonthlyExpenseStory") || "Laju pengeluaran rutin per bulan",
+      tone: "text-slate-900",
+      accentBg: "bg-[#E50914]/10 text-[#E50914]",
     },
     {
-      label: t("analytics.avgMonthlyIncome") || "Avg Monthly Income",
+      icon: TrendingUp,
+      label: t("analytics.avgMonthlyIncome") || "Rata-rata Pemasukan Bulanan",
       value: formatCurrency(averageMonthlyIncome, currency),
-      helper: t("analytics.avgMonthlyIncomeDesc") || "Monthly income pace",
-      tone: "text-kash-emerald",
+      helper: t("analytics.avgMonthlyIncomeStory") || "Kecepatan arus masuk dana",
+      tone: "text-slate-900",
+      accentBg: "bg-kash-emerald/10 text-kash-emeraldDark",
     },
     {
-      label: t("analytics.avgMonthlyCashFlow") || "Avg Monthly Cash Flow",
-      value: formatCurrency(averageMonthlyCashFlow, currency),
-      helper: averageMonthlyCashFlow >= 0 ? (t("analytics.surplusPace") || "Surplus pace") : (t("analytics.deficitPace") || "Deficit pace"),
-      tone: cashFlowTone,
+      icon: Sparkles,
+      label: t("analytics.savingsRate") || "Rasio Tabungan Bersih",
+      value: savingsRate != null ? `${savingsRate.toFixed(1)}%` : "-",
+      helper: savingsRate != null && savingsRate >= 20 ? (t("analytics.healthySavingsPace") || "Diatas target ideal 20%") : (t("analytics.moderateSavingsPace") || "Alokasi tabungan perlu ditingkatkan"),
+      tone: savingsRate != null && savingsRate >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]",
+      accentBg: "bg-amber-500/10 text-amber-800",
     },
     {
-      label: t("analytics.savingsRate") || "Savings Rate",
-      value: formatPercent(savingsRate),
-      helper: t("analytics.savingsRateDesc") || "Net cash flow / income",
-      tone: savingsRate == null || savingsRate >= 0 ? "text-kash-emerald" : "text-[#E50914]",
+      icon: PieChart,
+      label: t("analytics.topCategoryImpact") || "Kontributor Belanja Terbesar",
+      value: topCategory ? topCategory.name : "-",
+      helper: topCategory ? `${formatCurrency(topCategory.amount, currency)} (${topCategory.percent.toFixed(0)}% dari total)` : (t("analytics.noData") || "Belum ada transaksi"),
+      tone: "text-slate-900",
+      accentBg: "bg-blue-500/10 text-blue-700",
     },
     {
-      label: t("analytics.expenseIncome") || "Expense / Income",
-      value: formatPercent(expenseIncomeRatio),
-      helper: t("analytics.expenseIncomeDesc") || "How much income was spent",
-      tone: expenseIncomeRatio == null || expenseIncomeRatio <= 80 ? "text-kash-emerald" : expenseIncomeRatio <= 100 ? "text-kash-gold" : "text-[#E50914]",
-    },
-    {
-      label: t("analytics.cashFlowHealth") || "Cash Flow Health",
-      value: health.value,
-      helper: health.helper,
-      tone: health.tone,
-    },
-    {
-      label: t("analytics.transferFees") || "Transfer Fees",
+      icon: Receipt,
+      label: t("analytics.transferFees") || "Beban Biaya Transfer",
       value: formatCurrency(summary.transferFees, currency),
-      helper: t("analytics.transferFeesDesc") || "Fees included in expense",
-      tone: summary.transferFees > 0 ? "text-[#E50914]" : "text-slate-700",
+      helper: summary.transferFees > 0 ? (t("analytics.transferFeesStory") || "Biaya administrasi terakumulasi") : (t("analytics.zeroTransferFees") || "Bebas biaya transfer pada periode ini"),
+      tone: summary.transferFees > 0 ? "text-amber-700" : "text-slate-700",
+      accentBg: "bg-slate-100 text-slate-700",
     },
     {
-      label: t("analytics.highestSpending") || "Highest Spending",
-      value: highestSpendingPeriod.expense > 0 ? formatCurrency(highestSpendingPeriod.expense, currency) : "-",
-      helper: highestSpendingPeriod.expense > 0 ? `${summary.period.aggregation === "daily" ? (t("common.date") || "Day") : (t("dashboard.thisMonth") || "Month")} ${highestSpendingPeriod.label}` : (t("analytics.noSpendingTitle") || "No spending in period"),
-      tone: highestSpendingPeriod.expense > 0 ? "text-[#E50914]" : "text-slate-700",
-    },
-    {
-      label: t("analytics.netWorthDirection") || "Net Worth Direction",
-      value: netWorthDelta == null ? "-" : formatCurrency(netWorthDelta, currency),
-      helper: netWorthDelta == null ? (t("analytics.noNetWorthTrend") || "No net worth trend yet") : netWorthDelta >= 0 ? (t("analytics.increasedOverPeriod") || "Increased over period") : (t("analytics.decreasedOverPeriod") || "Decreased over period"),
-      tone: netWorthDelta == null || netWorthDelta >= 0 ? "text-kash-emerald" : "text-[#E50914]",
+      icon: WalletCards,
+      label: t("analytics.netCashFlow") || "Net Surplus/Defisit Kas",
+      value: formatCurrency(averageMonthlyCashFlow, currency),
+      helper: averageMonthlyCashFlow >= 0 ? (t("analytics.surplusPaceStory") || "Pengakumulasian kas positif") : (t("analytics.deficitPaceStory") || "Defisit kas terakumulasi"),
+      tone: averageMonthlyCashFlow >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]",
+      accentBg: averageMonthlyCashFlow >= 0 ? "bg-kash-emerald/10 text-kash-emeraldDark" : "bg-red-500/10 text-red-700",
     },
   ];
 
   return (
-    <AnalyticsCard className="p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-base font-extrabold text-slate-900">{t("analytics.quickInsights") || "Quick Insights"}</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-600">{t("analytics.quickInsightsDesc") || "Simple interpretation from the selected period."}</p>
-        </div>
-        {topCategory ? (
-          <div className="rounded-lg bg-kash-selected px-3 py-2 text-sm font-bold text-slate-900">
-            {t("analytics.topSpending") || "Top spending:"} <span className="text-kash-emeraldDark">{topCategory.name}</span>
-          </div>
-        ) : null}
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-extrabold text-slate-900">
+          {t("analytics.editorialInsights") || "Editorial Insights & Analisis Lanjutan"}
+        </h3>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {insights.map((insight) => (
-          <div key={insight.label} className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-3.5 shadow-xs">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{insight.label}</p>
-            <p className={`mt-1.5 break-words text-base font-extrabold ${insight.tone}`}>{insight.value}</p>
-            <p className="mt-0.5 text-xs font-semibold text-slate-500">{insight.helper}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {insights.map((item) => (
+          <div
+            key={item.label}
+            className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4.5 shadow-card hover:shadow-md transition"
+          >
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  {item.label}
+                </span>
+                <span className={`flex h-8 w-8 items-center justify-center rounded-xl font-extrabold text-xs ${item.accentBg}`}>
+                  <item.icon size={16} />
+                </span>
+              </div>
+
+              <p className={`mt-2.5 text-xl font-extrabold ${item.tone}`}>
+                {item.value}
+              </p>
+            </div>
+
+            <p className="mt-3 border-t border-slate-100/80 pt-2.5 text-xs font-semibold text-slate-500">
+              {item.helper}
+            </p>
           </div>
         ))}
       </div>
-    </AnalyticsCard>
+    </section>
   );
 }
 
@@ -990,7 +1033,7 @@ export function AnalyticsPage() {
   if (!summary) return null;
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-4">
+    <div className="w-full max-w-full min-w-0 space-y-5">
       <PageHeader
         eyebrow={t("nav.analytics")}
         icon={BarChart3}
@@ -1007,50 +1050,54 @@ export function AnalyticsPage() {
         onCustomEndDateChange={setCustomEndDate}
       />
 
+      {/* Analytics Key Story Hero */}
+      <AnalyticsHeroStory summary={summary} currency={currency} />
+
+      {/* Primary KPI Metric Strip */}
       <SummaryCards summary={summary} currency={currency} />
 
-      <BudgetVsActualCard currency={currency} />
-
+      {/* Modern Editorial Insight Cards */}
       <AnalyticsInsights summary={summary} currency={currency} />
 
-      <AnalyticsCard className="p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-600">{summary.period.aggregation === "daily" ? (t("analytics.dailyAggregation") || "Daily aggregation") : (t("analytics.monthlyAggregation") || "Monthly aggregation")}</p>
-          </div>
-          <div className="flex items-center gap-5 text-xs font-bold text-slate-600">
-            <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: INCOME_COLOR }} />
-              {t("common.typeIncome") || t("dashboard.income") || "Income"}
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: EXPENSE_COLOR }} />
-              {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
-            </span>
-          </div>
-        </div>
-        <CashFlowOverview summary={summary} currency={currency} />
-      </AnalyticsCard>
-
+      {/* Main Visual Charts Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsCard className="p-5">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
-            <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />
+            <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
           </div>
           <SpendingByCategory summary={summary} currency={currency} />
         </AnalyticsCard>
 
         <AnalyticsCard className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.incomeVsExpense") || "Income vs Expense"}</h2>
-            <div className="flex items-center gap-5 text-xs font-bold text-slate-600">
-              <span className="inline-flex items-center gap-2">
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
+            <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+              <span className="inline-flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
                 {t("common.typeIncome") || t("dashboard.income") || "Income"}
               </span>
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
+                {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
+              </span>
+            </div>
+          </div>
+          <CashFlowOverview summary={summary} currency={currency} />
+        </AnalyticsCard>
+      </div>
+
+      {/* Supporting Trend Charts Grid */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalyticsCard className="p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.incomeVsExpense") || "Income vs Expense"}</h2>
+            <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
+                {t("common.typeIncome") || t("dashboard.income") || "Income"}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
                 {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
               </span>
@@ -1058,35 +1105,39 @@ export function AnalyticsPage() {
           </div>
           <IncomeExpenseLineChart summary={summary} currency={currency} />
         </AnalyticsCard>
+
+        <AnalyticsCard className="p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t("analytics.netWorthTrend") || "Net Worth Trend"}</h2>
+            </div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NET_WORTH_COLOR }} />
+              {t("dashboard.netWorth") || "Net Worth"}
+            </div>
+          </div>
+          <NetWorthTrend summary={summary} currency={currency} />
+        </AnalyticsCard>
       </div>
 
-      <AnalyticsCard className="p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.netWorthTrend") || "Net Worth Trend"}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-600">{t("analytics.netWorthTrendDesc") || "Reconstructed from wallet initial balances and completed ledger activity."}</p>
-          </div>
-          <div className="inline-flex items-center gap-2 text-xs font-bold text-slate-600">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NET_WORTH_COLOR }} />
-            {t("dashboard.netWorth") || "Net Worth"}
-          </div>
-        </div>
-        <NetWorthTrend summary={summary} currency={currency} />
-      </AnalyticsCard>
+      {/* Budget vs Actual & Wallet Distribution */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BudgetVsActualCard currency={currency} />
 
-      <AnalyticsCard className="p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <WalletCards aria-hidden="true" className="text-slate-700" size={18} />
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.walletDistribution") || "Wallet Distribution"}</h2>
+        <AnalyticsCard className="p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <WalletCards aria-hidden="true" className="text-slate-700" size={18} />
+              <h2 className="text-base font-extrabold text-slate-900">{t("analytics.walletDistribution") || "Wallet Distribution"}</h2>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+              <CalendarDays aria-hidden="true" size={15} />
+              {t("analytics.currentBalances") || "Current balances"}
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-            <CalendarDays aria-hidden="true" size={15} />
-            {t("analytics.currentBalances") || "Current balances"}
-          </div>
-        </div>
-        <WalletDistribution summary={summary} currency={currency} />
-      </AnalyticsCard>
+          <WalletDistribution summary={summary} currency={currency} />
+        </AnalyticsCard>
+      </div>
 
       <p className="text-xs font-semibold text-slate-600">
         {t("analytics.footerNote") || "Transfer fees are included in Expense. Transfer principal and balance adjustments are excluded from Income, Expense, and Cash Flow."}

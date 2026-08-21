@@ -239,8 +239,8 @@ export function BudgetDetailPage() {
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
-      {/* Top Breadcrumb, Month Selector & Actions */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Top Breadcrumb & Compact Month Selector */}
+      <div className="flex items-center justify-between gap-3">
         <Link
           to={`/budgets?month=${currentMonth}`}
           className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-600 transition hover:text-kash-emeraldDark"
@@ -250,7 +250,7 @@ export function BudgetDetailPage() {
         </Link>
 
         {/* Month Selector Bar */}
-        <div className="flex items-center justify-between gap-1.5 rounded-xl border border-slate-200/60 bg-white px-2 py-1 shadow-card">
+        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white px-2 py-1 shadow-card">
           <button
             type="button"
             onClick={handlePrevMonth}
@@ -274,36 +274,9 @@ export function BudgetDetailPage() {
             <ChevronRight size={16} />
           </button>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setShowEditModal(true)}
-            className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
-          >
-            <Edit2 size={14} />
-            {t("budgets.editBudget") || "Edit Budget"}
-          </Button>
-
-          <Button
-            variant="secondary"
-            onClick={() => setShowArchiveDialog(true)}
-            className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold text-slate-600 hover:text-amber-800"
-          >
-            <Archive size={14} />
-            {t("budgets.stopArchive") || "Hentikan / Arsipkan"}
-          </Button>
-
-          <IconButton
-            icon={Trash2}
-            label={t("common.deletePermanently") || "Hapus Permanen"}
-            onClick={() => setShowDeleteDialog(true)}
-            className="text-slate-600 hover:text-kash-expense"
-          />
-        </div>
       </div>
 
-      {/* Main Dominant Hero Progress Surface */}
+      {/* Main Dominant Hero Progress Surface (Directly below Month Picker) */}
       <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -372,6 +345,36 @@ export function BudgetDetailPage() {
           </span>
         </div>
       </section>
+
+      {/* Actions Row Below Hero */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          variant="secondary"
+          onClick={() => setShowEditModal(true)}
+          className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+        >
+          <Edit2 size={14} />
+          {t("budgets.editBudget") || "Edit Budget"}
+        </Button>
+
+        <Button
+          variant="secondary"
+          onClick={() => setShowArchiveDialog(true)}
+          className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-slate-600 hover:text-amber-800"
+        >
+          <Archive size={14} />
+          {t("budgets.stopArchive") || "Hentikan / Arsipkan"}
+        </Button>
+
+        <Button
+          variant="danger"
+          onClick={() => setShowDeleteDialog(true)}
+          className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+        >
+          <Trash2 size={14} />
+          {t("common.deletePermanently") || "Hapus Permanen"}
+        </Button>
+      </div>
 
         {/* Target Meta Pill List */}
         {targetType === "category" && budget.included_category_names && budget.included_category_names.length > 0 ? (

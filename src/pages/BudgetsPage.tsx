@@ -175,44 +175,36 @@ export function BudgetsPage() {
       />
 
       {/* Month Navigator Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3 shadow-card">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white px-2 py-1 shadow-card">
           <button
             type="button"
             onClick={handlePrevMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
           </button>
 
-          <div className="w-48 sm:w-56">
-            <DatePickerField
-              value={currentMonth}
-              onChange={(val) => {
-                if (val) {
-                  const norm = `${val.substring(0, 7)}-01`;
-                  setCurrentMonth(norm);
-                  setSearchParams({ month: norm });
-                }
-              }}
-            />
+          <div className="flex items-center gap-1.5 px-1.5 text-xs font-extrabold text-slate-800">
+            <Calendar size={14} className="text-kash-emerald" />
+            <span>{currentMonthLabel}</span>
           </div>
 
           <button
             type="button"
             onClick={handleNextMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
         </div>
 
         <button
           type="button"
           onClick={handleSetCurrentMonth}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+          className="rounded-xl border border-slate-200/60 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-card transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
         >
           {t("common.thisMonth") || "Bulan Ini"}
         </button>
