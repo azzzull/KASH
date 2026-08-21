@@ -171,25 +171,10 @@ function SelectedDatePanel({
 
   return (
     <section className="mt-5 border-t border-slate-100 pt-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-extrabold text-slate-900">{formattedDate}</h2>
           {isLoading ? <Loader2 aria-hidden="true" className="animate-spin text-slate-400" size={15} /> : null}
-        </div>
-
-        {/* Compact Inline Summary Bar */}
-        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50 px-3 py-1.5 text-xs font-bold">
-          <span className="text-kash-emerald">
-            +{formatCurrency(selectedSummary.income, currency)}
-          </span>
-          <span className="text-slate-300">•</span>
-          <span className="text-[#E50914]">
-            -{formatCurrency(selectedSummary.expense, currency)}
-          </span>
-          <span className="text-slate-300">•</span>
-          <span className={selectedSummary.net >= 0 ? "text-kash-emerald" : "text-[#E50914]"}>
-            {formatSignedCurrency(selectedSummary.net, currency, formatCurrency)}
-          </span>
         </div>
       </div>
 
