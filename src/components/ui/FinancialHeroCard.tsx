@@ -52,10 +52,10 @@ export function FinancialHeroCard({
     <section className={`kash-hero-card p-5 sm:p-6 min-w-0 max-w-full ${className}`}>
       {/* Top Header Row */}
       {hasTopRow && (
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3 min-w-0">
             {icon && (
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white font-extrabold text-sm shadow-xs">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white font-extrabold text-sm shadow-xs mt-0.5">
                 {icon}
               </span>
             )}
@@ -66,7 +66,7 @@ export function FinancialHeroCard({
                 </span>
               )}
               {title && (
-                <h1 className="text-xl font-extrabold text-white truncate mt-0.5">
+                <h1 className="text-lg sm:text-xl font-extrabold text-white break-words mt-0.5 leading-snug">
                   {title}
                 </h1>
               )}
