@@ -25,7 +25,6 @@ import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { DatePickerField } from "../components/ui/DatePickerField";
-import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 
 import { useI18n, type TranslationKey } from "../i18n";
@@ -124,19 +123,10 @@ function SummaryCards({ currency, summary }: { currency: string; summary: Analyt
       title: t("common.typeExpense") || t("dashboard.expense") || "Expense",
       value: summary.expense.amount,
     },
-    {
-      accent: summary.netCashFlow.amount >= 0 ? "text-kash-emerald" : "text-[#E50914]",
-      badge: summary.netCashFlow.amount >= 0 ? "bg-kash-emerald/10 text-kash-emerald" : "bg-kash-expense/10 text-[#E50914]",
-      change: summary.netCashFlow.change,
-      icon: summary.netCashFlow.amount >= 0 ? ArrowUpRight : ArrowDownRight,
-      metric: "netCashFlow" as const,
-      title: t("dashboard.netCashFlow") || "Cash Flow",
-      value: summary.netCashFlow.amount,
-    },
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-3 lg:gap-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:gap-4 min-w-0 max-w-full">
       {cards.map((card) => (
         <AnalyticsCard key={card.title} className="p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
@@ -196,39 +186,43 @@ function AnalyticsHeroStory({ currency, summary }: { currency: string; summary: 
   const savingsRate = summary.income.amount > 0 ? (netCashFlow / summary.income.amount) * 100 : 0;
   const topCategory = summary.categorySpending[0];
 
+  // Signed deficit formatting fix (Requirement 5)
+  const formattedNetCashFlow = netCashFlow < 0
+    ? `-${formatCurrency(Math.abs(netCashFlow), currency)}`
+    : formatCurrency(netCashFlow, currency);
+
   return (
     <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
       <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-extrabold text-white">
-          {isSurplus ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-          {isSurplus ? (t("analytics.surplusState") || "Cash Flow Surplus") : (t("analytics.deficitState") || "Cash Flow Deficit")}
+        <span className="text-xs font-bold uppercase tracking-wider text-white/70">
+          {t("dashboard.netCashFlow") || "Arus Kas Bersih"}
         </span>
-        <span className="text-xs font-bold text-white/70">
-          {summary.period.label}
+        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold ${isSurplus ? "bg-white/20 text-white" : "bg-red-500/30 text-white"}`}>
+          {isSurplus ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+          {isSurplus ? (t("analytics.surplusState") || "Surplus") : (t("analytics.deficitState") || "Defisit")}
         </span>
       </div>
 
-      <div className="mt-4">
-        <h2 className="text-xl font-black text-white sm:text-2xl">
-          {isSurplus
-            ? `${t("analytics.surplusHeadline") || "Kondisi Keuangan Sehat & Surplus"}`
-            : `${t("analytics.deficitHeadline") || "Pengeluaran Melebihi Pemasukan"}`}
-        </h2>
-        <p className="mt-1 break-words text-3xl font-extrabold text-white sm:text-4xl">
-          {formatCurrency(Math.abs(netCashFlow), currency)}{" "}
-          <span className="text-xs font-semibold text-white/70">
-            {isSurplus ? (t("analytics.netSurplus") || "net surplus kas") : (t("analytics.netDeficit") || "net defisit kas")}
-          </span>
+      <div className="mt-3">
+        <p className="break-words text-3xl font-extrabold text-white sm:text-4xl">
+          {formattedNetCashFlow}
         </p>
       </div>
 
-      <p className="mt-3 text-xs font-medium text-white/80 max-w-xl">
-        {isSurplus
-          ? (t("analytics.surplusStoryDesc", { rate: savingsRate.toFixed(1), category: topCategory?.name || "-" }) ||
-            `Anda berhasil mempertahankan tingkat tabungan bersih sebesar ${savingsRate.toFixed(1)}%. Pengeluaran terbesar bulan ini dialokasikan untuk ${topCategory?.name || "-"}.`)
-          : (t("analytics.deficitStoryDesc", { category: topCategory?.name || "-" }) ||
-            `Arus kas keluar periode ini lebih besar dari total pemasukan. Evaluasi pengeluaran pada ${topCategory?.name || "-"} untuk menjaga keseimbangan kas.`)}
-      </p>
+      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs">
+        <div>
+          <span className="text-white/60 font-semibold">{t("common.typeIncome") || "Pemasukan"}</span>
+          <p className="mt-0.5 text-sm font-extrabold text-white">
+            {formatCurrency(summary.income.amount, currency)}
+          </p>
+        </div>
+        <div>
+          <span className="text-white/60 font-semibold">{t("common.typeExpense") || "Pengeluaran"}</span>
+          <p className="mt-0.5 text-sm font-extrabold text-white">
+            {formatCurrency(summary.expense.amount, currency)}
+          </p>
+        </div>
+      </div>
     </section>
   );
 }
@@ -1042,61 +1036,66 @@ export function AnalyticsPage() {
   if (!summary) return null;
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-5">
-      <PageHeader
-        eyebrow={t("nav.analytics")}
-        icon={BarChart3}
-        title={t("nav.analytics")}
-        description={t("analytics.description") || "Comprehensive insights across cash flow, spending distribution, and net worth."}
-      />
+    <div className="w-full max-w-full min-w-0 space-y-4">
+      {/* 1. Compact Top Bar with Title + Compact Period Selector */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="text-kash-emerald" size={22} />
+          <h1 className="text-lg font-black text-slate-900">{t("nav.analytics") || "Analitik Keuangan"}</h1>
+        </div>
 
-      <PeriodControls
-        period={period}
-        customStartDate={customStartDate}
-        customEndDate={customEndDate}
-        onPeriodChange={setPeriod}
-        onCustomStartDateChange={setCustomStartDate}
-        onCustomEndDateChange={setCustomEndDate}
-      />
-
-      {/* Analytics Key Story Hero */}
-      <AnalyticsHeroStory summary={summary} currency={currency} />
-
-      {/* Primary KPI Metric Strip */}
-      <SummaryCards summary={summary} currency={currency} />
-
-      {/* Modern Editorial Insight Cards */}
-      <AnalyticsInsights summary={summary} currency={currency} />
-
-      {/* Main Visual Charts Grid */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AnalyticsCard className="p-5">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
-            <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
-          </div>
-          <SpendingByCategory summary={summary} currency={currency} />
-        </AnalyticsCard>
-
-        <AnalyticsCard className="p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
-            <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
-                {t("common.typeIncome") || t("dashboard.income") || "Income"}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
-                {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
-              </span>
-            </div>
-          </div>
-          <CashFlowOverview summary={summary} currency={currency} />
-        </AnalyticsCard>
+        <div className="w-full sm:w-auto">
+          <PeriodControls
+            period={period}
+            customStartDate={customStartDate}
+            customEndDate={customEndDate}
+            onPeriodChange={setPeriod}
+            onCustomStartDateChange={setCustomStartDate}
+            onCustomEndDateChange={setCustomEndDate}
+          />
+        </div>
       </div>
 
-      {/* Supporting Trend Charts Grid */}
+      {/* 2. Main Emerald Financial Hero */}
+      <AnalyticsHeroStory summary={summary} currency={currency} />
+
+      {/* 3. Spending Donut / Ring Visual (Appears high, directly after Hero!) */}
+      <AnalyticsCard className="p-5">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
+          <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
+        </div>
+        <SpendingByCategory summary={summary} currency={currency} />
+      </AnalyticsCard>
+
+      {/* 4. Cash Flow Trend Chart (Appears high, directly after Donut!) */}
+      <AnalyticsCard className="p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
+            <p className="mt-0.5 text-xs font-semibold text-slate-500">{summary.period.aggregation === "daily" ? (t("analytics.dailyAggregation") || "Daily aggregation") : (t("analytics.monthlyAggregation") || "Monthly aggregation")}</p>
+          </div>
+          <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
+              {t("common.typeIncome") || t("dashboard.income") || "Income"}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
+              {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
+            </span>
+          </div>
+        </div>
+        <CashFlowOverview summary={summary} currency={currency} />
+      </AnalyticsCard>
+
+      {/* 5. Compact Supporting Metric Strip (Income & Expense only) */}
+      <SummaryCards summary={summary} currency={currency} />
+
+      {/* 6. Editorial Insights Section (Moved DOWN below main charts!) */}
+      <AnalyticsInsights summary={summary} currency={currency} />
+
+      {/* 7. Remaining Secondary Analytics */}
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsCard className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1129,7 +1128,6 @@ export function AnalyticsPage() {
         </AnalyticsCard>
       </div>
 
-      {/* Budget vs Actual & Wallet Distribution */}
       <div className="grid gap-4 lg:grid-cols-2">
         <BudgetVsActualCard currency={currency} />
 
@@ -1148,7 +1146,7 @@ export function AnalyticsPage() {
         </AnalyticsCard>
       </div>
 
-      <p className="text-xs font-semibold text-slate-600">
+      <p className="text-xs font-semibold text-slate-500">
         {t("analytics.footerNote") || "Transfer fees are included in Expense. Transfer principal and balance adjustments are excluded from Income, Expense, and Cash Flow."}
       </p>
     </div>
