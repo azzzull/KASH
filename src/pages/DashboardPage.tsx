@@ -439,14 +439,14 @@ function CashFlowRow({ balancesVisible, currency, summary }: { balancesVisible: 
   ];
 
   return (
-    <DashboardCard className="grid grid-cols-3 divide-x divide-slate-100">
+    <DashboardCard className="grid grid-cols-3 divide-x divide-slate-100 min-w-0 max-w-full overflow-hidden">
       {items.map((item) => (
-        <div key={item.key} className="px-4 py-4 first:pl-5 last:pr-5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
-          <p className={`mt-1.5 text-lg font-extrabold ${item.tone} md:text-xl`}>
+        <div key={item.key} className="min-w-0 px-2 py-3 first:pl-3 last:pr-3 md:px-4 md:py-4 md:first:pl-5 md:last:pr-5">
+          <p className="truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+          <p className={`mt-1 truncate text-xs sm:text-base md:text-xl font-extrabold ${item.tone}`}>
             {formatPrivateAmount(item.value, currency, balancesVisible)}
           </p>
-          <div className="mt-1">
+          <div className="mt-1 min-w-0 truncate">
             <MetricComparisonLineStandard change={item.change} metric={item.metric} />
           </div>
         </div>
@@ -554,6 +554,20 @@ function SpendingDonut({ balancesVisible, currency, summary }: { balancesVisible
   );
 }
 
+/* ─── Greeting Helper ─── */
+function getLocalizedGreeting(locale: string, name: string) {
+  const hour = new Date().getHours();
+  if (locale === "id") {
+    if (hour >= 5 && hour < 12) return `Selamat pagi, ${name}`;
+    if (hour >= 12 && hour < 15) return `Selamat siang, ${name}`;
+    if (hour >= 15 && hour < 18) return `Selamat sore, ${name}`;
+    return `Selamat malam, ${name}`;
+  }
+  if (hour >= 5 && hour < 12) return `Good morning, ${name}`;
+  if (hour >= 12 && hour < 18) return `Good afternoon, ${name}`;
+  return `Good evening, ${name}`;
+}
+
 /* ─── Cash Flow Chart ─── */
 function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible: boolean; currency: string; summary: DashboardSummary }) {
   const { t } = useI18n();
@@ -562,7 +576,7 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
   const width = 1120;
   const height = 220;
   const padding = { bottom: 30, left: 10, right: 0, top: 10 };
-  const mobileWidth = Math.max(360, summary.period.daysInMonth * 36);
+  const mobileWidth = Math.max(330, summary.period.daysInMonth * 48);
   const mobilePadding = { bottom: 30, left: 0, right: 0, top: 10 };
   const ticks = [0, 0.25, 0.5, 0.75, 1];
   const dailyPoints = summary.cashflow.map((point) => ({
@@ -680,12 +694,12 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
   }
 
   return (
-    <div className="min-w-0 overflow-hidden">
-      <div ref={mobileScrollRef} className="-mx-5 w-[calc(100%+2.5rem)] min-w-0 overflow-x-auto sm:hidden">
+    <div className="w-full max-w-full min-w-0 overflow-hidden">
+      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto no-scrollbar sm:hidden">
         {renderChart({
           barClassName: "block h-48 max-w-none",
-          barMaxWidth: 11,
-          barMinWidth: 7,
+          barMaxWidth: 14,
+          barMinWidth: 8,
           chartPadding: mobilePadding,
           chartWidth: mobileWidth,
           points: dailyPoints,
@@ -694,7 +708,7 @@ function CashFlowChart({ balancesVisible, currency, summary }: { balancesVisible
           style: { width: `${mobileWidth}px` },
         })}
       </div>
-      <div className="hidden w-full min-w-0 sm:block">
+      <div className="hidden w-full max-w-full min-w-0 sm:block">
         {renderChart({
           barClassName: "block h-52 w-full max-w-full",
           barMaxWidth: 18,
@@ -909,10 +923,10 @@ function DebtReceivableSummary({
               <div className="min-w-0">
                 <p className="truncate font-bold text-slate-900">{cp.name}</p>
                 <p className="text-[11px] font-medium text-slate-500">
-                  {t("dashboard.activeItems", { count: cp.activeItemCount }) || `${cp.activeItemCount} active items`}
+                  {t("dashboard.activeItems", { count: cp.activeItemCount })}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 {cp.debtTotal > 0 && (
                   <p className="font-extrabold text-kash-expense">
                     -{formatPrivateAmount(cp.debtTotal, currency, balancesVisible)}
@@ -1048,7 +1062,7 @@ function DashboardSkeleton() {
 
 /* ─── Main Page ─── */
 export function DashboardPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { profile } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(new Date()));
@@ -1108,11 +1122,11 @@ export function DashboardPage() {
   if (!summary) return null;
 
   return (
-    <div className="w-full min-w-0 space-y-4">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
       {/* Greeting */}
       <div>
         <h1 className="text-xl font-extrabold text-slate-900 md:text-2xl">
-          {t("dashboard.greeting", { name: firstName }) || `Hi, ${firstName}`} 👋
+          {getLocalizedGreeting(locale, firstName)}
         </h1>
         <p className="mt-0.5 text-sm font-medium text-slate-500">
           {t("dashboard.title") || "Here's your financial overview."}

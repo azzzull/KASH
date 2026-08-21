@@ -843,7 +843,7 @@ export function TransactionsPage() {
   };
 
   return (
-    <div className="relative w-full min-w-0 space-y-4 md:min-h-[calc(100dvh-3rem)]">
+    <div className="relative w-full max-w-full min-w-0 overflow-x-hidden space-y-4 md:min-h-[calc(100dvh-3rem)]">
       <div>
         <PageHeader
           eyebrow={t("transactions.eyebrow") || "Buku Kas"}

@@ -227,7 +227,7 @@ export const id = {
   "dashboard.noObligationsDesc": "Catat kewajiban atau pinjaman untuk memantau sisa pelunasannya.",
   "dashboard.youOwe": "Anda Berutang",
   "dashboard.owedToYou": "Piutang Anda",
-  "dashboard.activeItems": "{{count}} item aktif",
+  "dashboard.activeItems": "{count} belum lunas",
   "dashboard.noBudgetsTitle": "Belum ada budget aktif",
   "dashboard.noBudgetsDesc": "Atur budget bulanan untuk mengontrol pengeluaran kategori atau amplop Anda.",
   "dashboard.viewAllBudgets": "Lihat Semua Budget",

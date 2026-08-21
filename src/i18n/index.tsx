@@ -76,7 +76,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
       if (params) {
         Object.entries(params).forEach(([paramKey, paramVal]) => {
-          text = text.replace(new RegExp(`{${paramKey}}`, "g"), String(paramVal));
+          text = text.replace(new RegExp(`\\{+${paramKey}\\}+`, "g"), String(paramVal));
         });
       }
 

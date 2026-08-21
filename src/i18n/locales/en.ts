@@ -227,7 +227,7 @@ export const en = {
   "dashboard.noObligationsDesc": "Record loans or advances to monitor remaining settlements.",
   "dashboard.youOwe": "You Owe",
   "dashboard.owedToYou": "Owed to You",
-  "dashboard.activeItems": "{{count}} active items",
+  "dashboard.activeItems": "{count} outstanding",
   "dashboard.noBudgetsTitle": "No active budgets",
   "dashboard.noBudgetsDesc": "Set monthly budgets to control category or envelope spending.",
   "dashboard.viewAllBudgets": "View All Budgets",
