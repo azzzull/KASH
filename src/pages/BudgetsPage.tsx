@@ -157,7 +157,7 @@ export function BudgetsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
       {/* Page Header */}
       <PageHeader
         eyebrow={t("budgets.planning") || "Planning"}
@@ -175,7 +175,7 @@ export function BudgetsPage() {
       />
 
       {/* Month Navigator Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3 shadow-card">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
@@ -220,7 +220,7 @@ export function BudgetsPage() {
 
       {/* Monthly Overview Progress Card */}
       {overview && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card min-w-0 max-w-full">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
             <div>
               <span className="text-xs font-extrabold uppercase text-slate-600">

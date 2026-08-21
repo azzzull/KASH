@@ -45,7 +45,7 @@ function firstDayOfCurrentMonth() {
 }
 
 function AnalyticsCard({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`min-w-0 rounded-lg border border-kash-emerald/10 bg-white/95 shadow-sm ${className}`}>{children}</section>;
+  return <section className={`min-w-0 max-w-full rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-6 shadow-card ${className}`}>{children}</section>;
 }
 
 function EmptyPanel({ description, title, className = "" }: { className?: string; description: string; title: string }) {
@@ -135,14 +135,14 @@ function SummaryCards({ currency, summary }: { currency: string; summary: Analyt
   return (
     <div className="grid gap-3 sm:grid-cols-3 lg:gap-4">
       {cards.map((card) => (
-        <AnalyticsCard key={card.title} className="p-4 lg:p-5">
+        <AnalyticsCard key={card.title} className="p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase text-slate-600">{card.title}</p>
-              <p className="mt-3 break-words text-xl font-extrabold text-slate-900 lg:text-2xl">{formatCurrency(card.value, currency)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{card.title}</p>
+              <p className="mt-1.5 break-words text-2xl font-extrabold text-slate-900">{formatCurrency(card.value, currency)}</p>
               <MetricComparison change={card.change} metric={card.metric} comparisonLabel={summary.period.comparisonLabel} />
             </div>
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.badge}`}>
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.badge}`}>
               <card.icon aria-hidden="true" size={20} strokeWidth={2.4} />
             </span>
           </div>
@@ -276,12 +276,12 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
         ) : null}
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {insights.map((insight) => (
-          <div key={insight.label} className="rounded-lg border border-slate-200 bg-white p-4">
-            <p className="text-xs font-extrabold uppercase text-slate-600">{insight.label}</p>
-            <p className={`mt-2 break-words text-lg font-extrabold ${insight.tone}`}>{insight.value}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-600">{insight.helper}</p>
+          <div key={insight.label} className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-3.5 shadow-xs">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{insight.label}</p>
+            <p className={`mt-1.5 break-words text-base font-extrabold ${insight.tone}`}>{insight.value}</p>
+            <p className="mt-0.5 text-xs font-semibold text-slate-500">{insight.helper}</p>
           </div>
         ))}
       </div>
@@ -455,16 +455,6 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
   );
 }
 
-function buildDonutSegments(categories: AnalyticsSummary["categorySpending"]) {
-  let cursor = 0;
-  return categories.map((category) => {
-    const length = Math.max(category.percent, 0);
-    const segment = `${category.color} ${cursor}% ${cursor + length}%`;
-    cursor += length;
-    return segment;
-  });
-}
-
 function SpendingByCategory({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
   const categories = summary.categorySpending.slice(0, 6);
@@ -472,8 +462,8 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
 
   if (categories.length === 0 || totalExpense <= 0) {
     return (
-      <div className="mt-4 grid min-h-64 items-center gap-5 md:grid-cols-[160px_minmax(0,1fr)]">
-        <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full bg-slate-100">
+      <div className="mt-4 grid min-h-64 items-center gap-5 sm:grid-cols-[160px_minmax(0,1fr)]">
+        <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-slate-100">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">{t("dashboard.noData") || "No data"}</div>
         </div>
         <EmptyPanel title={t("analytics.noExpenseCategories") || "No expense categories"} description={t("analytics.noExpenseCategoriesDesc") || "Completed expenses in this period will appear here."} className="min-h-32" />
@@ -481,26 +471,75 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
     );
   }
 
+  // Ring SVG Math
+  const size = 160;
+  const strokeWidth = 18;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  let currentOffset = 0;
+  const totalPercent = categories.reduce((sum, c) => sum + c.percent, 0);
+
+  const arcs = categories.map((cat) => {
+    const fraction = totalPercent > 0 ? cat.percent / totalPercent : 0;
+    const rawDash = fraction * circumference;
+    const gapDash = categories.length > 1 ? Math.min(6, rawDash * 0.1) : 0;
+    const dashLength = Math.max(0, rawDash - gapDash);
+    const offset = currentOffset;
+    currentOffset -= rawDash;
+
+    return {
+      ...cat,
+      dashLength,
+      offset,
+    };
+  });
+
   return (
-    <div className="mt-4 grid min-h-64 min-w-0 items-center gap-5 md:grid-cols-[160px_minmax(0,1fr)]">
-      <div className="relative mx-auto h-36 w-36 rounded-full" style={{ background: `conic-gradient(${buildDonutSegments(categories).join(", ")})` }}>
-        <div className="absolute inset-6 flex items-center justify-center rounded-full bg-white text-center">
-          <div>
-            <p className="text-[10px] font-bold uppercase text-slate-600">{t("dashboard.totalExpense") || "Total Expense"}</p>
-            <p className="mt-1 max-w-20 break-words text-xs font-extrabold leading-tight text-slate-900">{formatCurrency(totalExpense, currency)}</p>
-          </div>
+    <div className="mt-4 grid min-w-0 items-center gap-6 sm:grid-cols-[180px_minmax(0,1fr)]">
+      {/* SVG Ring Chart Centered */}
+      <div className="relative mx-auto flex items-center justify-center">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="#F1F5F9"
+            strokeWidth={strokeWidth}
+          />
+          {arcs.map((arc) => (
+            <circle
+              key={arc.id}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={arc.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${arc.dashLength} ${circumference - arc.dashLength}`}
+              strokeDashoffset={arc.offset}
+              strokeLinecap="round"
+              className="transition-all duration-300"
+            />
+          ))}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+          <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">{t("dashboard.totalExpense") || "Total Expense"}</p>
+          <p className="mt-0.5 text-xs font-black text-slate-900 max-w-[100px] truncate">{formatCurrency(totalExpense, currency)}</p>
         </div>
       </div>
-      <div className="min-w-0 space-y-3">
+
+      {/* Legend List */}
+      <div className="min-w-0 space-y-2.5">
         {categories.map((category) => (
-          <div key={category.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 text-sm">
+          <div key={category.id} className="flex items-center justify-between gap-3 text-xs">
             <div className="flex min-w-0 items-center gap-2">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
               <span className="truncate font-bold text-slate-700">{category.name}</span>
             </div>
-            <div className="text-right">
-              <p className="font-extrabold leading-tight text-slate-900">{formatCurrency(category.amount, currency)}</p>
-              <p className="text-xs font-semibold text-slate-600">{Math.round(category.percent)}%</p>
+            <div className="text-right shrink-0">
+              <span className="font-extrabold text-slate-900">{formatCurrency(category.amount, currency)}</span>
+              <span className="ml-1.5 font-bold text-slate-500">({Math.round(category.percent)}%)</span>
             </div>
           </div>
         ))}
@@ -951,7 +990,7 @@ export function AnalyticsPage() {
   if (!summary) return null;
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full max-w-full min-w-0 space-y-4">
       <PageHeader
         eyebrow={t("nav.analytics")}
         icon={BarChart3}

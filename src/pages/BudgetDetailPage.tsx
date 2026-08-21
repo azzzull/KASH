@@ -238,7 +238,7 @@ export function BudgetDetailPage() {
       : (t("budgets.categoryBudget") || "Budget Kategori");
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
       {/* Top Breadcrumb, Month Selector & Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link
@@ -250,7 +250,7 @@ export function BudgetDetailPage() {
         </Link>
 
         {/* Month Selector Bar */}
-        <div className="flex items-center justify-between gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-1 shadow-xs">
+        <div className="flex items-center justify-between gap-1.5 rounded-xl border border-slate-200/60 bg-white px-2 py-1 shadow-card">
           <button
             type="button"
             onClick={handlePrevMonth}
@@ -303,102 +303,75 @@ export function BudgetDetailPage() {
         </div>
       </div>
 
-      {/* Main Budget Card Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-slate-100 pb-5">
-          <div className="flex items-start gap-3.5">
+      {/* Main Dominant Hero Progress Surface */}
+      <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
             <span
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-xs font-black text-base"
-              style={{ backgroundColor: targetColor }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-extrabold text-sm shadow-xs bg-white/20 text-white"
             >
               <IconComp size={22} />
             </span>
-
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900">{budget.name}</h1>
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-extrabold text-slate-600">
+                <h1 className="text-xl font-extrabold text-white">{budget.name}</h1>
+                <span className="rounded-md bg-white/20 px-2 py-0.5 text-xs font-bold text-white/90">
                   {targetLabel}
                 </span>
               </div>
-
-              <p className="mt-1 text-xs font-semibold text-slate-600">
+              <p className="mt-0.5 text-xs font-medium text-white/70 truncate">
                 {budget.note || (targetType === "debt" ? (budget.counterparty_name ? `${t("debts.debtTo") || "Utang ke"} ${budget.counterparty_name}${budget.debt_title ? ` (${budget.debt_title})` : ""}` : budget.debt_title) : targetType === "goal" ? budget.goal_name : targetType === "envelope" ? budget.envelope_name : budget.category_name) || (t("common.noNotes") || "Tidak ada catatan.")}
               </p>
             </div>
           </div>
 
-          {/* Status Badge */}
-          <div>
-            {isOverBudget ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-kash-expense/15 px-3 py-1 text-xs font-black text-kash-expense">
-                <AlertCircle size={14} />
-                {t("budgets.overBudget") || "Over Budget"} ({budget.usage_percentage.toFixed(1)}%)
-              </span>
-            ) : isNearLimit ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">
-                <AlertCircle size={14} />
-                {t("budgets.nearLimit") || "Mendekati Batas"} ({budget.usage_percentage.toFixed(1)}%)
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-1 text-xs font-black text-kash-emeraldDark">
-                <CheckCircle2 size={14} />
-                {t("budgets.healthy") || "Aman"} ({budget.usage_percentage.toFixed(1)}%)
-              </span>
-            )}
-          </div>
+          <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-extrabold ${isOverBudget ? "bg-red-500/30 text-white" : isNearLimit ? "bg-amber-500/30 text-white" : "bg-white/20 text-white"}`}>
+            {isOverBudget || isNearLimit ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
+            {budget.usage_percentage.toFixed(1)}%
+          </span>
         </div>
 
-        {/* Financial Breakdown Grid */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
-          <div className="rounded-xl bg-slate-50 p-3">
-            <span className="font-bold text-slate-600">{t("budgets.baseBudget") || "Base Budget"}</span>
-            <p className="mt-0.5 text-sm font-black text-slate-900">
-              {formatCurrency(budget.base_amount)}
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 p-3">
-            <span className="font-bold text-slate-600">{t("budgets.incomingRollover") || "Rollover Masuk"}</span>
-            <p className="mt-0.5 text-sm font-black text-amber-800">
-              +{formatCurrency(budget.rollover_amount)}
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 p-3">
-            <span className="font-bold text-slate-600">{t("budgets.effectiveTotal") || "Total Efektif"}</span>
-            <p className="mt-0.5 text-sm font-black text-slate-900">
-              {formatCurrency(budget.effective_budget)}
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-slate-50 p-3">
-            <span className="font-bold text-slate-600">
-              {Number(budget.remaining) < 0 ? (t("budgets.overspent") || "Kelebihan") : (t("budgets.remainingAllocation") || "Sisa Alokasi")}
+        {/* Big Primary Spent Hero Value */}
+        <div className="mt-4">
+          <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+            {t("budgets.used") || "Terpakai"} / {t("budgets.effectiveTotal") || "Total Target"}
+          </p>
+          <p className="mt-1 break-words text-3xl font-extrabold text-white sm:text-4xl">
+            {formatCurrency(budget.spent)}{" "}
+            <span className="text-lg font-semibold text-white/70 sm:text-xl">
+              / {formatCurrency(budget.effective_budget)}
             </span>
-            <p
-              className={`mt-0.5 text-sm font-black ${
-                Number(budget.remaining) < 0 ? "text-kash-expense" : "text-kash-emeraldDark"
-              }`}
-            >
-              {formatCurrency(Math.abs(Number(budget.remaining)))}
-            </p>
-          </div>
+          </p>
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-5">
-          <div className="h-3.5 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="mt-4">
+          <div className="h-3 w-full overflow-hidden rounded-full bg-black/20">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${progressBarColor}`}
+              className={`h-full rounded-full transition-all duration-300 ${
+                isOverBudget ? "bg-red-400" : isNearLimit ? "bg-amber-300" : "bg-white"
+              }`}
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs font-bold text-slate-600">
-            <span>{t("budgets.fulfilled") || "Terpenuhi"}: {formatCurrency(budget.spent)}</span>
-            <span>{budget.usage_percentage.toFixed(1)}%</span>
-          </div>
         </div>
+
+        {/* Compact Inline Supporting Stats */}
+        <div className="mt-4 flex flex-wrap items-center gap-2 pt-3 border-t border-white/15 text-xs font-semibold text-white/90">
+          <span className="rounded-lg bg-white/15 px-2.5 py-1">
+            {t("budgets.baseBudget") || "Base"}: {formatCurrency(budget.base_amount)}
+          </span>
+          {Number(budget.rollover_amount) > 0 ? (
+            <span className="rounded-lg bg-white/15 px-2.5 py-1">
+              {t("budgets.incomingRollover") || "Rollover"}: +{formatCurrency(budget.rollover_amount)}
+            </span>
+          ) : null}
+          <span className="rounded-lg bg-white/15 px-2.5 py-1">
+            {Number(budget.remaining) < 0 ? (t("budgets.overspent") || "Kelebihan") : (t("budgets.remainingAllocation") || "Sisa")}:{" "}
+            {formatCurrency(Math.abs(Number(budget.remaining)))}
+          </span>
+        </div>
+      </section>
 
         {/* Target Meta Pill List */}
         {targetType === "category" && budget.included_category_names && budget.included_category_names.length > 0 ? (
@@ -420,78 +393,77 @@ export function BudgetDetailPage() {
           </div>
         ) : null}
 
-        {/* Category Breakdown for Envelope Budgets */}
-        {targetType === "envelope" ? (
-          <div className="mt-5 border-t border-slate-100 pt-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <PieChart size={16} className="text-kash-emerald" />
-                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
-                  {t("budgets.envelopeCategoryDistribution") || "Rincian Distribusi Kategori Amplop"}
-                </span>
-              </div>
-              {budget.envelope_id && (
-                <Link
-                  to={`/envelopes/${budget.envelope_id}?month=${currentMonth}`}
-                  className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark"
-                >
-                  {t("budgets.openEnvelopePage") || "Buka Halaman Amplop →"}
-                </Link>
-              )}
+      {/* Category Breakdown for Envelope Budgets */}
+      {targetType === "envelope" ? (
+        <section className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-6 shadow-card space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PieChart size={17} className="text-kash-emerald" />
+              <h3 className="text-sm font-extrabold text-slate-900">
+                {t("budgets.envelopeCategoryDistribution") || "Rincian Distribusi Kategori Amplop"}
+              </h3>
             </div>
-
-            {envelopeCategoryBreakdown.length > 0 ? (
-              <>
-                {/* Stacked Multi-color Bar */}
-                <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
-                  {envelopeCategoryBreakdown.map((item) => (
-                    <div
-                      key={item.id}
-                      style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
-                      className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
-                      title={`${item.name}: ${formatCurrency(item.total)} (${item.percentage.toFixed(1)}%)`}
-                    />
-                  ))}
-                </div>
-
-                {/* Breakdown List */}
-                <div className="grid gap-2 sm:grid-cols-2 pt-1">
-                  {envelopeCategoryBreakdown.map((item) => {
-                    const CatIcon = getCategoryIcon(item.icon);
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white text-[11px]"
-                            style={{ backgroundColor: item.color }}
-                          >
-                            <CatIcon size={14} />
-                          </span>
-                          <span className="font-bold text-slate-800 truncate">{item.name}</span>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="font-black text-slate-900">{formatCurrency(item.total)}</span>
-                          <span className="ml-1.5 font-bold text-slate-500">({item.percentage.toFixed(1)}%)</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <p className="text-xs font-semibold text-slate-500 bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
-                {t("budgets.noEnvelopeTransactionsInMonth", { month: currentMonthLabel }) || `Belum ada transaksi pengeluaran di amplop ini pada ${currentMonthLabel}.`}
-              </p>
+            {budget.envelope_id && (
+              <Link
+                to={`/envelopes/${budget.envelope_id}?month=${currentMonth}`}
+                className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark"
+              >
+                {t("budgets.openEnvelopePage") || "Buka Halaman Amplop →"}
+              </Link>
             )}
           </div>
-        ) : null}
-      </div>
+
+          {envelopeCategoryBreakdown.length > 0 ? (
+            <>
+              {/* Stacked Multi-color Bar */}
+              <div className="flex h-3.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
+                {envelopeCategoryBreakdown.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
+                    className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                    title={`${item.name}: ${formatCurrency(item.total)} (${item.percentage.toFixed(1)}%)`}
+                  />
+                ))}
+              </div>
+
+              {/* Breakdown List */}
+              <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                {envelopeCategoryBreakdown.map((item) => {
+                  const CatIcon = getCategoryIcon(item.icon);
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white text-[11px]"
+                          style={{ backgroundColor: item.color }}
+                        >
+                          <CatIcon size={14} />
+                        </span>
+                        <span className="font-bold text-slate-800 truncate">{item.name}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="font-extrabold text-slate-900">{formatCurrency(item.total)}</span>
+                        <span className="ml-1.5 font-bold text-slate-500">({item.percentage.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs font-semibold text-slate-500 bg-slate-50 rounded-xl p-3 text-center border border-slate-100">
+              {t("budgets.noEnvelopeTransactionsInMonth", { month: currentMonthLabel }) || `Belum ada transaksi pengeluaran di amplop ini pada ${currentMonthLabel}.`}
+            </p>
+          )}
+        </section>
+      ) : null}
 
       {/* Matching Transactions Section */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200/60 bg-white p-5 sm:p-6 shadow-card">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2">
             <ReceiptText size={18} className="text-kash-emerald" />
@@ -540,7 +512,7 @@ export function BudgetDetailPage() {
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Edit Budget Modal */}
       {showEditModal && (
