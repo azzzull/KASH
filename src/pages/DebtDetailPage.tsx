@@ -164,7 +164,7 @@ export function DebtDetailPage() {
               </>
             ) : (
               <>
-                <Clock size={13} /> {t("debts.active") || "Belum Lunas"}
+                <Clock size={13} /> {t("common.active") || "Belum Lunas"}
               </>
             )}
           </span>
