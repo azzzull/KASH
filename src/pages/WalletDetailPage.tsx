@@ -806,9 +806,9 @@ export function WalletDetailPage() {
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
 
   return (
-    <div className="w-full min-w-0 space-y-5">
-      <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/wallets">
-        <ArrowLeft aria-hidden="true" size={17} />
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
+      <Link className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-kash-emerald" to="/wallets">
+        <ArrowLeft aria-hidden="true" size={15} />
         {t("wallets.title") || "Dompet"}
       </Link>
 
@@ -823,7 +823,7 @@ export function WalletDetailPage() {
               <>
                 <Button onClick={() => setShowValuation(true)}>
                   <LineChart aria-hidden="true" size={17} />
-                  {t("wallets.updateInvestmentValuation") || "Update Nilai Investasi"}
+                  {t("wallets.updateInvestmentValuation") || "Update Nilai"}
                 </Button>
                 <Button onClick={() => setShowActivityModal(true)} variant="secondary">
                   <TrendingUp aria-hidden="true" size={17} />
@@ -850,7 +850,7 @@ export function WalletDetailPage() {
       />
 
       {wallet.goal_id ? (
-        <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4 shadow-xs">
+        <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-4 shadow-card">
           <div className="flex items-center gap-3">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
@@ -863,136 +863,105 @@ export function WalletDetailPage() {
           </div>
           <Link
             to={`/goals/${wallet.goal_id}`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 self-start sm:self-center"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-card transition hover:bg-amber-700 self-start sm:self-center"
           >
             {t("wallets.viewGoalTarget") || "Lihat Target Goal"}
           </Link>
         </section>
       ) : null}
 
+      {/* Hero Performance/Balance Card */}
       {isInvestment ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <LineChart className="text-kash-emerald" size={18} />
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">{t("wallets.investmentPerformance") || "Performa Investasi"}</h3>
-            </div>
-            {lastValuationAt ? (
-              <span className="text-xs font-semibold text-slate-500">
-                {t("wallets.lastValuation") || "Valuasi Terakhir"}: {formatDate(new Date(lastValuationAt))}
+        <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+              {t("wallets.currentEquity") || "Nilai Investasi Saat Ini"}
+            </p>
+            {totalReturnPct !== null ? (
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold ${totalReturnPct >= 0 ? "bg-white/20 text-white" : "bg-red-500/30 text-white"}`}>
+                {totalReturnPct >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(2)}%
               </span>
             ) : null}
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {/* 1. Current Equity */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.currentEquity") || "Nilai Investasi Saat Ini"}</p>
-              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(currentEquity, wallet.currency)}</p>
-            </div>
+          <p className="mt-2 break-words text-3xl font-extrabold text-white md:text-4xl">
+            {formatCurrency(currentEquity, wallet.currency)}
+          </p>
 
-            {/* 2. Net Contributions */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.netContributions") || "Modal Bersih"}</p>
-              <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(netContributions, wallet.currency)}</p>
-            </div>
-
-            {/* 3. Total P/L */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.totalPnL") || "Total Untung / Rugi"}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <p className={`text-xl font-extrabold ${totalPnL >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-                  {totalPnL === 0 ? formatCurrency(0, wallet.currency) : `${totalPnL > 0 ? "+" : "-"}${formatCurrency(Math.abs(totalPnL), wallet.currency)}`}
-                </p>
-              </div>
-            </div>
-
-            {/* 4. Realized P/L */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.realizedPnL") || "Untung/Rugi Terealisasi"}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <p className={`text-xl font-extrabold ${realizedPnL >= 0 ? (realizedPnL === 0 ? "text-slate-900" : "text-kash-emerald") : "text-kash-expense"}`}>
-                  {realizedPnL === 0 ? formatCurrency(0, wallet.currency) : `${realizedPnL > 0 ? "+" : "-"}${formatCurrency(Math.abs(realizedPnL), wallet.currency)}`}
-                </p>
-              </div>
-            </div>
-
-            {/* 5. Unrealized P/L */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.unrealizedPnL") || "Untung/Rugi Belum Terealisasi"}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <p className={`text-xl font-extrabold ${unrealizedPnL >= 0 ? (unrealizedPnL === 0 ? "text-slate-900" : "text-kash-emerald") : "text-kash-expense"}`}>
-                  {unrealizedPnL === 0 ? formatCurrency(0, wallet.currency) : `${unrealizedPnL > 0 ? "+" : "-"}${formatCurrency(Math.abs(unrealizedPnL), wallet.currency)}`}
-                </p>
-              </div>
-            </div>
-
-            {/* 6. Total Return */}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.totalReturn") || "Total Return"}</p>
-              <div className="mt-2 flex items-center gap-1.5">
-                {totalReturnPct !== null ? (
-                  <>
-                    {totalReturnPct >= 0 ? (
-                      <TrendingUp className="text-kash-emerald" size={18} />
-                    ) : (
-                      <TrendingDown className="text-kash-expense" size={18} />
-                    )}
-                    <p className={`text-xl font-extrabold ${totalReturnPct >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-                      {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(2)}%
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-xl font-extrabold text-slate-400">—</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 text-xs font-semibold text-emerald-950">
-            {t("wallets.activityHelpNote") || "Aktivitas trading hanya mempengaruhi pembagian performa (realized vs unrealized) dan tidak mengubah saldo dompet maupun kekayaan bersih secara ganda."}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
+              {t("wallets.netContributions") || "Modal Bersih"}: {formatCurrency(netContributions, wallet.currency)}
+            </span>
+            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
+              {t("wallets.totalPnL") || "Total P/L"}: {totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL, wallet.currency)}
+            </span>
+            {realizedPnL !== 0 ? (
+              <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
+                {t("wallets.realizedPnL") || "Terealisasi"}: {realizedPnL >= 0 ? "+" : ""}{formatCurrency(realizedPnL, wallet.currency)}
+              </span>
+            ) : null}
           </div>
         </section>
       ) : (
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="grid gap-3 md:grid-cols-4">
-            <DetailMetric label={t("wallets.currentBalance") || "Saldo Saat Ini"} value={formatCurrency(currentBalance, wallet.currency)} />
-            <DetailMetric label={t("wallets.availableBalance") || "Saldo Tersedia"} value={formatCurrency(availableBalance, wallet.currency)} />
-            <DetailMetric label={t("wallets.initialBalance") || "Saldo Awal"} value={formatCurrency(wallet.initial_balance, wallet.currency)} />
-            <DetailMetric label={t("wallets.type") || "Tipe Dompet"} value={typeOption.label} />
+        <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
+          <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+            {t("wallets.currentBalance") || "Saldo Saat Ini"}
+          </p>
+          <p className="mt-2 break-words text-3xl font-extrabold text-white md:text-4xl">
+            {formatCurrency(currentBalance, wallet.currency)}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
+              {t("wallets.availableBalance") || "Tersedia"}: {formatCurrency(availableBalance, wallet.currency)}
+            </span>
+            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
+              {t("wallets.initialBalance") || "Saldo Awal"}: {formatCurrency(wallet.initial_balance, wallet.currency)}
+            </span>
           </div>
         </section>
       )}
 
-      <section className="grid gap-3 md:grid-cols-2">
-        <DetailMetric label={t("wallets.currency") || "Mata Uang"} value={wallet.currency} />
-        <DetailMetric label={t("wallets.includeInNetWorth") || "Sertakan dalam Kekayaan Bersih"} value={wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")} />
+      {/* Supporting details grid */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.type") || "Tipe Dompet"}</p>
+          <p className="mt-1 text-sm font-extrabold text-slate-900">{typeOption.label}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.currency") || "Mata Uang"}</p>
+          <p className="mt-1 text-sm font-extrabold text-slate-900">{wallet.currency}</p>
+        </div>
+        <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.includeInNetWorth") || "Kekayaan Bersih"}</p>
+          <p className="mt-1 text-sm font-extrabold text-slate-900">{wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")}</p>
+        </div>
       </section>
 
       {/* Investment Activity Ledger */}
       {isInvestment ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
+        <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <TrendingUp aria-hidden="true" className="text-slate-600" size={18} />
-              <h3 className="text-base font-extrabold text-slate-900">{t("wallets.activityHistory") || "Riwayat Aktivitas Investasi"}</h3>
+              <TrendingUp aria-hidden="true" className="text-slate-500" size={17} />
+              <h3 className="text-sm font-extrabold text-slate-900">{t("wallets.activityHistory") || "Riwayat Aktivitas Investasi"}</h3>
             </div>
             <Button onClick={() => setShowActivityModal(true)} size="sm" variant="secondary">
-              <TrendingUp size={15} />
+              <TrendingUp size={14} />
               {t("wallets.recordActivity") || "Catat Aktivitas"}
             </Button>
           </div>
 
           {activities.length > 0 ? (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-slate-200/60 text-[11px] font-bold uppercase text-slate-500">
                   <tr>
-                    <th className="pb-3">{t("common.date") || "Tanggal"}</th>
-                    <th className="pb-3">{t("common.type") || "Tipe"}</th>
-                    <th className="pb-3 text-right">{t("common.amount") || "Nominal"}</th>
-                    <th className="pb-3 pl-4">{t("common.note") || "Catatan"}</th>
-                    <th className="pb-3 text-right">{t("common.actions") || "Aksi"}</th>
+                    <th className="pb-2.5">{t("common.date") || "Tanggal"}</th>
+                    <th className="pb-2.5">{t("common.type") || "Tipe"}</th>
+                    <th className="pb-2.5 text-right">{t("common.amount") || "Nominal"}</th>
+                    <th className="pb-2.5 pl-3">{t("common.note") || "Catatan"}</th>
+                    <th className="pb-2.5 text-right">{t("common.actions") || "Aksi"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
@@ -1001,28 +970,28 @@ export function WalletDetailPage() {
                     const amountNum = toNumber(act.amount);
                     return (
                       <tr key={act.id} className="hover:bg-slate-50/80">
-                        <td className="py-3">
+                        <td className="py-2.5">
                           {formatDate(new Date(act.activity_date))}
                         </td>
-                        <td className="py-3">
+                        <td className="py-2.5">
                           <span
-                            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-extrabold ${
+                            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold ${
                               isGain
-                                ? "bg-emerald-50 text-kash-emerald border border-emerald-200"
-                                : "bg-red-50 text-kash-expense border border-red-200"
+                                ? "bg-emerald-50 text-kash-emerald border border-emerald-200/50"
+                                : "bg-red-50 text-kash-expense border border-red-200/50"
                             }`}
                           >
-                            {isGain ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                            {isGain ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                             {isGain ? (t("wallets.realizedGain") || "Gain") : (t("wallets.realizedLoss") || "Loss")}
                           </span>
                         </td>
-                        <td className={`py-3 text-right font-extrabold ${isGain ? "text-kash-emerald" : "text-kash-expense"}`}>
+                        <td className={`py-2.5 text-right font-extrabold ${isGain ? "text-kash-emerald" : "text-kash-expense"}`}>
                           {isGain ? "+" : "-"}{formatCurrency(amountNum, wallet.currency)}
                         </td>
-                        <td className="py-3 pl-4 text-xs text-slate-600">
+                        <td className="py-2.5 pl-3 text-xs text-slate-500">
                           {act.note || "-"}
                         </td>
-                        <td className="py-3 text-right">
+                        <td className="py-2.5 text-right">
                           <IconButton
                             icon={Trash2}
                             label={t("common.delete") || "Hapus"}
@@ -1037,8 +1006,8 @@ export function WalletDetailPage() {
               </table>
             </div>
           ) : (
-            <div className="mt-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
-              <p className="text-sm font-semibold text-slate-600">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+              <p className="text-xs font-semibold text-slate-500">
                 {t("wallets.noActivities") || "Belum ada aktivitas investasi yang dicatat."}
               </p>
             </div>
@@ -1048,40 +1017,40 @@ export function WalletDetailPage() {
 
       {/* Valuation History */}
       {isInvestment && valuations.length > 0 ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <History aria-hidden="true" className="text-slate-600" size={18} />
-            <h3 className="text-base font-extrabold text-slate-900">{t("wallets.valuationHistory") || "Riwayat Valuasi Nilai Pasar"}</h3>
+        <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
+          <div className="flex items-center gap-2 mb-3">
+            <History aria-hidden="true" className="text-slate-500" size={17} />
+            <h3 className="text-sm font-extrabold text-slate-900">{t("wallets.valuationHistory") || "Riwayat Valuasi Nilai Pasar"}</h3>
           </div>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-200/60 text-[11px] font-bold uppercase text-slate-500">
                 <tr>
-                  <th className="pb-3">{t("wallets.valuationDate") || "Tanggal Valuasi"}</th>
-                  <th className="pb-3 text-right">{t("wallets.currentEquity") || "Nilai Investasi"}</th>
-                  <th className="pb-3 text-right">{t("wallets.netContributions") || "Modal Bersih"}</th>
-                  <th className="pb-3 text-right">{t("wallets.totalPnL") || "Total P/L"}</th>
-                  <th className="pb-3 pl-4">{t("transactions.note") || "Catatan"}</th>
+                  <th className="pb-2.5">{t("wallets.valuationDate") || "Tanggal Valuasi"}</th>
+                  <th className="pb-2.5 text-right">{t("wallets.currentEquity") || "Nilai Investasi"}</th>
+                  <th className="pb-2.5 text-right">{t("wallets.netContributions") || "Modal Bersih"}</th>
+                  <th className="pb-2.5 text-right">{t("wallets.totalPnL") || "Total P/L"}</th>
+                  <th className="pb-2.5 pl-3">{t("transactions.note") || "Catatan"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
                 {valuations.map((v) => {
-                  const totalPnL = toNumber(v.market_value) - toNumber(v.cost_basis_at_valuation);
+                  const valPnL = toNumber(v.market_value) - toNumber(v.cost_basis_at_valuation);
                   return (
                     <tr key={v.id} className="hover:bg-slate-50/80">
-                      <td className="py-3">
+                      <td className="py-2.5">
                         {formatDate(new Date(v.valuation_date))}
                       </td>
-                      <td className="py-3 text-right font-extrabold text-slate-900">
+                      <td className="py-2.5 text-right font-extrabold text-slate-900">
                         {formatCurrency(v.market_value, wallet.currency)}
                       </td>
-                      <td className="py-3 text-right text-slate-600">
+                      <td className="py-2.5 text-right text-slate-500">
                         {formatCurrency(v.cost_basis_at_valuation, wallet.currency)}
                       </td>
-                      <td className={`py-3 text-right font-extrabold ${totalPnL >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
-                        {totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL, wallet.currency)}
+                      <td className={`py-2.5 text-right font-extrabold ${valPnL >= 0 ? "text-kash-emerald" : "text-kash-expense"}`}>
+                        {valPnL >= 0 ? "+" : ""}{formatCurrency(valPnL, wallet.currency)}
                       </td>
-                      <td className="py-3 pl-4 text-xs text-slate-600">
+                      <td className="py-2.5 pl-3 text-xs text-slate-500">
                         {v.note || "-"}
                       </td>
                     </tr>
@@ -1093,14 +1062,15 @@ export function WalletDetailPage() {
         </section>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2">
-          <WalletCards aria-hidden="true" className="text-slate-600" size={18} />
-          <h3 className="text-base font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Transaksi Terbaru"}</h3>
+      {/* Recent Transactions placeholder container */}
+      <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
+        <div className="flex items-center gap-2 mb-3">
+          <WalletCards aria-hidden="true" className="text-slate-500" size={17} />
+          <h3 className="text-sm font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Transaksi Terbaru"}</h3>
         </div>
-        <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-          <h4 className="text-base font-extrabold text-slate-900">{t("transactions.emptyStateTitle") || "Belum ada transaksi."}</h4>
-          <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-700">
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+          <h4 className="text-sm font-extrabold text-slate-900">{t("transactions.emptyStateTitle") || "Belum ada transaksi."}</h4>
+          <p className="mx-auto mt-1 max-w-sm text-xs font-semibold leading-5 text-slate-500">
             {t("wallets.transactionHistoryDesc") || "Riwayat transaksi untuk dompet ini akan muncul di sini."}
           </p>
         </div>

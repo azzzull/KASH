@@ -10,7 +10,6 @@ import {
     Plus,
     Sparkles,
     Trophy,
-    X,
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,7 +18,6 @@ import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
-import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
@@ -79,15 +77,6 @@ function goalProgress(goal: GoalWithProgress) {
     };
 }
 
-function formatDate(value: string | null) {
-    if (!value) return "No deadline";
-    return new Intl.DateTimeFormat("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-    }).format(new Date(`${value}T00:00:00`));
-}
-
 function GoalCard({ goal }: { goal: GoalWithProgress }) {
     const { t, formatDate, formatCurrency } = useI18n();
     const Icon = getGoalIcon(goal.icon);
@@ -97,52 +86,56 @@ function GoalCard({ goal }: { goal: GoalWithProgress }) {
 
     return (
         <Link
-            className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
+            className="kash-activity-row block rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md active:bg-slate-50 min-w-0 max-w-full"
             to={`/goals/${goal.id}`}
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-kash-emerald100 text-kash-emeraldDark ring-1 ring-kash-emerald/30">
-                        <Icon aria-hidden="true" size={21} strokeWidth={2.3} />
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald">
+                        <Icon aria-hidden="true" size={21} strokeWidth={2.2} />
                     </span>
-                    <span className="min-w-0">
-                        <span className="block truncate text-base font-extrabold text-slate-900">
+                    <div className="min-w-0">
+                        <p className="truncate text-base font-extrabold text-slate-900">
                             {goal.name}
-                        </span>
-                        <span className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                            <CalendarDays aria-hidden="true" size={14} />
+                        </p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                            <CalendarDays aria-hidden="true" size={13} />
                             {goal.deadline
                                 ? formatDate(new Date(`${goal.deadline}T00:00:00`))
                                 : (t("goals.noDeadline") || "Tanpa tenggat")}
-                        </span>
-                    </span>
+                        </p>
+                    </div>
                 </div>
                 {isCompleted ? (
-                    <span className="rounded-full bg-kash-selected px-2.5 py-1 text-xs font-extrabold text-kash-emeraldDark">
+                    <span className="shrink-0 rounded-full bg-kash-emerald/10 px-2.5 py-1 text-xs font-extrabold text-kash-emeraldDark">
                         {t("goals.completed") || "Tercapai"}
                     </span>
                 ) : null}
             </div>
 
-            <div>
-                <div className="flex items-end justify-between gap-3">
-                    <p className="text-sm font-extrabold text-slate-900">
-                        {formatCurrency(progress.current, "IDR")}{" "}
-                        <span className="text-slate-600">
+            <div className="mt-4">
+                <div className="flex items-baseline justify-between gap-3">
+                    <div>
+                        <p className="text-lg font-extrabold text-slate-900">
+                            {formatCurrency(progress.current, "IDR")}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-500">
                             {t("common.of") || "dari"} {formatCurrency(progress.target, "IDR")}
-                        </span>
-                    </p>
-                    <p className="text-sm font-extrabold text-kash-emerald">
+                        </p>
+                    </div>
+                    <span className="rounded-md bg-kash-emerald/10 px-2 py-0.5 text-xs font-extrabold text-kash-emerald">
                         {progress.percentage.toFixed(0)}%
-                    </p>
+                    </span>
                 </div>
-                <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
+
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
-                        className="h-full rounded-full bg-kash-emerald"
+                        className="h-full rounded-full bg-kash-emerald transition-all duration-500"
                         style={{ width: `${progress.percentage}%` }}
                     />
                 </div>
-                <p className="mt-2 text-xs font-semibold text-slate-600">
+
+                <p className="mt-2 text-xs font-semibold text-slate-500">
                     {t("debts.remaining") || "Sisa"} {formatCurrency(progress.remaining, "IDR")}
                 </p>
             </div>
@@ -230,7 +223,7 @@ function CreateGoalModal({
         >
             <div>
                 {error ? (
-                    <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+                    <div className="mb-4 rounded-xl border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
                         {error}
                     </div>
                 ) : null}
@@ -346,13 +339,9 @@ function GoalsSkeleton() {
         <div className="grid gap-3 md:grid-cols-2">
             {[0, 1, 2, 3].map((item) => (
                 <div
-                    className="h-36 rounded-lg border border-slate-200 bg-white p-4"
+                    className="h-36 animate-pulse rounded-2xl bg-slate-100 p-4"
                     key={item}
-                >
-                    <div className="h-4 w-1/2 rounded-full bg-slate-100" />
-                    <div className="mt-8 h-3 rounded-full bg-slate-100" />
-                    <div className="mt-4 h-3 w-1/3 rounded-full bg-slate-100" />
-                </div>
+                />
             ))}
         </div>
     );
@@ -405,7 +394,7 @@ export function GoalsPage() {
     const createActionRef = useRef<HTMLDivElement>(null);
 
     return (
-        <div className="w-full min-w-0 space-y-5">
+        <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
             <PageHeader
                 eyebrow={t("goals.title")}
                 icon={Crosshair}
@@ -421,40 +410,29 @@ export function GoalsPage() {
                 }
             />
 
-            <section className="grid gap-3 md:grid-cols-3">
-                <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        {t("wallets.allocatedToGoals")}
-                    </p>
-                    <p className="mt-2 text-xl font-extrabold text-slate-900">
-                        {formatCurrency(summary.allocated, "IDR")}
-                    </p>
-                </article>
-                <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        {t("goals.activeGoals") || "Target Aktif"}
-                    </p>
-                    <p className="mt-2 text-xl font-extrabold text-slate-900">
-                        {summary.active}
-                    </p>
-                </article>
-                <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-bold uppercase tracking-normal text-slate-600">
-                        {t("goals.completedGoals") || "Tercapai"}
-                    </p>
-                    <p className="mt-2 flex items-center gap-2 text-xl font-extrabold text-slate-900">
-                        <Trophy
-                            aria-hidden="true"
-                            className="text-kash-emerald"
-                            size={21}
-                        />
-                        {summary.completed}
-                    </p>
-                </article>
+            {/* Hero Summary Surface */}
+            <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
+                <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                    {t("wallets.allocatedToGoals") || "Total Dialokasikan ke Target"}
+                </p>
+                <p className="mt-2 break-words text-3xl font-extrabold text-white md:text-4xl">
+                    {formatCurrency(summary.allocated, "IDR")}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
+                        {summary.active} {t("goals.activeGoals") || "Target Aktif"}
+                    </span>
+                    {summary.completed > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-emerald-200">
+                            <Trophy size={13} />
+                            {summary.completed} {t("goals.completedGoals") || "Tercapai"}
+                        </span>
+                    ) : null}
+                </div>
             </section>
 
             {error ? (
-                <section className="rounded-lg border border-kash-expense/30 bg-white p-5 shadow-sm">
+                <section className="rounded-2xl border border-kash-expense/30 bg-white p-5 shadow-card">
                     <h3 className="text-base font-extrabold text-slate-900">
                         {t("common.error")}
                     </h3>
@@ -470,8 +448,8 @@ export function GoalsPage() {
             {loading ? <GoalsSkeleton /> : null}
 
             {!loading && goals.length === 0 ? (
-                <section className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-kash-emerald100 text-kash-emeraldDark ring-1 ring-kash-emerald/30">
+                <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-card">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald">
                         <BadgeDollarSign
                             aria-hidden="true"
                             size={26}
@@ -481,7 +459,7 @@ export function GoalsPage() {
                     <h3 className="mt-4 text-lg font-extrabold text-slate-900">
                         {t("goals.emptyTitle")}
                     </h3>
-                    <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-slate-700">
+                    <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-slate-600">
                         {t("goals.emptyDesc")}
                     </p>
                     <Button
@@ -495,7 +473,7 @@ export function GoalsPage() {
             ) : null}
 
             {!loading && goals.length > 0 ? (
-                <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {goals.map((goal) => (
                         <GoalCard goal={goal} key={goal.id} />
                     ))}

@@ -1,5 +1,4 @@
 import {
-  Archive,
   ArrowLeft,
   CalendarDays,
   Car,
@@ -13,7 +12,7 @@ import {
   Sparkles,
   Trash2,
   WalletCards,
-  X,
+  CheckCircle2,
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -22,12 +21,10 @@ import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
-import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import {
-  archiveGoal,
   closeGoal,
   createGoalContribution,
   getGoalById,
@@ -79,21 +76,6 @@ function progressOf(goal: GoalDetail) {
   };
 }
 
-function formatDate(value: string | null) {
-  if (!value) return "No deadline";
-  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(`${value}T00:00:00`));
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
 function currentLocalDateTimeValue() {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
@@ -108,15 +90,6 @@ function toEditState(goal: GoalDetail): GoalFormState {
     icon: goal.icon ?? "piggy-bank",
     note: goal.note ?? "",
   };
-}
-
-function DetailMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{label}</p>
-      <p className="mt-2 text-lg font-extrabold text-slate-900">{value}</p>
-    </article>
-  );
 }
 
 function GoalEditModal({
@@ -191,7 +164,7 @@ function GoalEditModal({
     >
       <div>
         {error ? (
-          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-xl border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
@@ -329,7 +302,7 @@ function ContributionModal({
     >
       <div>
         {error ? (
-          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+          <div className="mb-4 rounded-xl border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
             {error}
           </div>
         ) : null}
@@ -343,12 +316,12 @@ function ContributionModal({
               </option>
             ))}
           </SelectField>
-          <div className="rounded-lg border border-kash-emerald/20 bg-kash-selected p-4">
-            <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("goals.sourceWalletBalance") || "Saldo Dompet Asal"}</p>
-            <p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(sourceBalance, selectedWallet?.currency ?? "IDR")}</p>
-            {amount > 0 ? <p className="mt-1 text-xs font-bold text-slate-700">{t("goals.afterTransfer") || "Setelah transfer"}: {formatCurrency(sourceBalance - amount, selectedWallet?.currency ?? "IDR")}</p> : null}
+          <div className="rounded-xl border border-kash-emerald/20 bg-kash-selected/60 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{t("goals.sourceWalletBalance") || "Saldo Dompet Asal"}</p>
+            <p className="mt-1.5 text-xl font-extrabold text-slate-900">{formatCurrency(sourceBalance, selectedWallet?.currency ?? "IDR")}</p>
+            {amount > 0 ? <p className="mt-1 text-xs font-bold text-slate-600">{t("goals.afterTransfer") || "Setelah transfer"}: {formatCurrency(sourceBalance - amount, selectedWallet?.currency ?? "IDR")}</p> : null}
           </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
             <p className="font-extrabold text-slate-900">{t("goals.destination") || "Tujuan"}</p>
             <p className="mt-1">{goal.wallet?.name ?? (t("goals.goalPocket") || "Kantong Target")}</p>
           </div>
@@ -381,12 +354,9 @@ function ContributionModal({
 
 function DetailSkeleton() {
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-4 p-4 md:p-6">
-      <div className="h-8 w-32 rounded-lg bg-slate-100" />
-      <div className="h-56 rounded-lg border border-slate-200 bg-white p-5">
-        <div className="h-4 w-1/3 rounded-full bg-slate-100" />
-        <div className="mt-8 h-8 w-2/3 rounded-lg bg-slate-100" />
-      </div>
+    <div className="space-y-4">
+      <div className="h-8 w-32 animate-pulse rounded-xl bg-slate-100" />
+      <div className="h-48 animate-pulse rounded-2xl bg-gradient-to-br from-kash-emerald/20 to-kash-heroDark/10" />
     </div>
   );
 }
@@ -478,14 +448,14 @@ export function GoalDetailPage() {
 
   if (error || !goal || !progress) {
     return (
-      <div className="mx-auto grid w-full max-w-4xl gap-4 p-4 md:p-6">
-        <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/goals">
-          <ArrowLeft aria-hidden="true" size={17} />
+      <div className="w-full max-w-full min-w-0 space-y-4">
+        <Link className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-kash-emerald" to="/goals">
+          <ArrowLeft aria-hidden="true" size={15} />
           {t("goals.title") || "Target"}
         </Link>
-        <section className="rounded-lg border border-kash-expense/30 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-extrabold text-slate-900">{t("common.error")}</h2>
-          <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
+        <section className="rounded-2xl border border-kash-expense/30 bg-white p-5 shadow-card">
+          <h2 className="text-base font-extrabold text-slate-900">{t("common.error")}</h2>
+          <p className="mt-2 text-sm font-semibold text-slate-600">{error}</p>
           <Button className="mt-4" onClick={() => void loadGoal()}>
             {t("common.retry")}
           </Button>
@@ -499,9 +469,9 @@ export function GoalDetailPage() {
   const isCompleted = goal.status === "completed" || progress.percentage >= 100;
 
   return (
-    <div className="w-full min-w-0 space-y-5">
-      <Link className="inline-flex items-center gap-2 text-sm font-bold text-slate-700 hover:text-kash-emerald" to="/goals">
-        <ArrowLeft aria-hidden="true" size={17} />
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
+      <Link className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-kash-emerald" to="/goals">
+        <ArrowLeft aria-hidden="true" size={15} />
         {t("goals.title") || "Target"}
       </Link>
 
@@ -537,82 +507,101 @@ export function GoalDetailPage() {
       />
 
       {isCancelled ? (
-        <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700">
+        <section className="rounded-2xl border border-slate-200/60 bg-slate-50 p-4 text-xs font-semibold text-slate-600">
           {t("goals.closedGoalBanner") || "Target ini sudah ditutup. Riwayat alokasi dan catatan transaksi tetap tersimpan dalam riwayat Anda."}
         </section>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-kash-emerald100 text-kash-emeraldDark ring-1 ring-kash-emerald/30">
-                <Icon aria-hidden="true" size={24} strokeWidth={2.4} />
-              </span>
-              <div>
-                <p className="text-sm font-bold text-slate-600">{t("goals.progress") || "Kemajuan"}</p>
-                <p className="text-2xl font-extrabold text-slate-900">{progress.percentage.toFixed(0)}%</p>
-              </div>
-            </div>
-          </div>
-          <div className="grid min-w-0 flex-1 gap-3 md:grid-cols-3">
-            <DetailMetric label={t("goals.current") || "Terkumpul"} value={formatCurrency(progress.current, "IDR")} />
-            <DetailMetric label={t("goals.target") || "Target"} value={formatCurrency(progress.target, "IDR")} />
-            <DetailMetric label={t("debts.remaining") || "Sisa"} value={formatCurrency(progress.remaining, "IDR")} />
-          </div>
-        </div>
-        <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-kash-emerald" style={{ width: `${progress.percentage}%` }} />
-        </div>
-      </section>
-
-      <section className="grid gap-3 md:grid-cols-3">
-        <DetailMetric
-          label={t("goals.targetDate") || "Tenggat Waktu"}
-          value={goal.deadline ? formatI18nDate(new Date(`${goal.deadline}T00:00:00`)) : (t("goals.noDeadline") || "Tanpa tenggat")}
-        />
-        <DetailMetric label={t("goals.pocketWallet") || "Dompet Kantong"} value={goal.wallet?.name ?? (t("goals.goalPocket") || "Kantong Target")} />
-        <DetailMetric
-          label={t("common.status") || "Status"}
-          value={isCancelled ? (t("goals.statusClosed") || "Ditutup") : isCompleted ? (t("goals.completed") || "Tercapai") : (t("common.active") || "Aktif")}
-        />
-      </section>
-
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      {/* Progress Hero Surface */}
+      <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <WalletCards aria-hidden="true" className="text-slate-600" size={18} />
-            <h3 className="text-base font-extrabold text-slate-900">{t("goals.contributionHistory") || "Riwayat Alokasi Tabungan"}</h3>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
+              <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-white/60">{t("goals.progress") || "Kemajuan Target"}</p>
+              <p className="text-sm font-extrabold text-white">{goal.name}</p>
+            </div>
           </div>
-          <span className="text-xs font-bold text-slate-600">{goal.contributions.length} {t("goals.entries") || "catatan"}</span>
+          <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-extrabold text-white">
+            {progress.percentage.toFixed(0)}%
+          </span>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
-          {goal.contributions.length === 0 ? (
-            <div className="bg-slate-50 p-6 text-center">
-              <h4 className="text-base font-extrabold text-slate-900">{t("goals.noContributionsYet") || "Belum ada alokasi dana."}</h4>
-              <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-700">
-                {t("goals.noContributionsDesc") || "Tambahkan alokasi saat Anda ingin memindahkan uang dari dompet ke kantong tabungan target ini."}
-              </p>
-            </div>
-          ) : (
-            goal.contributions.map((contribution) => (
-              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-slate-100 bg-white p-3 last:border-b-0" key={contribution.id}>
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-kash-selected text-kash-emerald">
-                  <WalletCards aria-hidden="true" size={18} strokeWidth={2.3} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-extrabold text-slate-900">{contribution.wallet?.name ?? (t("wallets.walletFallback") || "Dompet")}</span>
-                  <span className="mt-1 block truncate text-xs font-semibold text-slate-600">
-                    {formatI18nDate(new Date(contribution.contribution_date))}
-                    {contribution.note ? ` - ${contribution.note}` : ""}
-                  </span>
-                </span>
-                <span className="text-right text-sm font-extrabold text-kash-emerald">+{formatCurrency(contribution.amount, contribution.wallet?.currency ?? "IDR")}</span>
-              </div>
-            ))
-          )}
+        {/* Amount Hero */}
+        <p className="mt-4 break-words text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+          {formatCurrency(progress.current, "IDR")}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-white/70">
+          {t("common.of") || "dari"} target {formatCurrency(progress.target, "IDR")} • {t("debts.remaining") || "Sisa"} {formatCurrency(progress.remaining, "IDR")}
+        </p>
+
+        {/* Progress Bar */}
+        <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-white/20">
+          <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${progress.percentage}%` }} />
         </div>
+      </section>
+
+      {/* Details Row */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("goals.targetDate") || "Tenggat Waktu"}</p>
+          <p className="mt-1 text-sm font-extrabold text-slate-900">
+            {goal.deadline ? formatI18nDate(new Date(`${goal.deadline}T00:00:00`)) : (t("goals.noDeadline") || "Tanpa tenggat")}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("goals.pocketWallet") || "Dompet Kantong"}</p>
+          <p className="mt-1 truncate text-sm font-extrabold text-slate-900">{goal.wallet?.name ?? (t("goals.goalPocket") || "Kantong Target")}</p>
+        </div>
+        <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("common.status") || "Status"}</p>
+          <p className="mt-1 text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+            {isCompleted ? <CheckCircle2 size={16} className="text-kash-emerald" /> : null}
+            {isCancelled ? (t("goals.statusClosed") || "Ditutup") : isCompleted ? (t("goals.completed") || "Tercapai") : (t("common.active") || "Aktif")}
+          </p>
+        </div>
+      </section>
+
+      {/* Contribution History */}
+      <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <WalletCards aria-hidden="true" className="text-slate-500" size={17} />
+            <h3 className="text-sm font-extrabold text-slate-900">{t("goals.contributionHistory") || "Riwayat Alokasi Tabungan"}</h3>
+          </div>
+          <span className="text-xs font-bold text-slate-500">{goal.contributions.length} {t("goals.entries") || "catatan"}</span>
+        </div>
+
+        {goal.contributions.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+            <h4 className="text-sm font-extrabold text-slate-900">{t("goals.noContributionsYet") || "Belum ada alokasi dana."}</h4>
+            <p className="mx-auto mt-1 max-w-sm text-xs font-semibold leading-5 text-slate-500">
+              {t("goals.noContributionsDesc") || "Tambahkan alokasi saat Anda ingin memindahkan uang dari dompet ke kantong tabungan target ini."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-0.5">
+            {goal.contributions.map((contribution) => (
+              <div className="kash-activity-row flex items-center gap-3 rounded-xl px-1 py-2.5" key={contribution.id}>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald">
+                  <WalletCards aria-hidden="true" size={16} strokeWidth={2} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-slate-900">{contribution.wallet?.name ?? (t("wallets.walletFallback") || "Dompet")}</p>
+                  <p className="truncate text-xs font-medium text-slate-500">
+                    {formatI18nDate(new Date(contribution.contribution_date))}
+                    {contribution.note ? ` • ${contribution.note}` : ""}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-extrabold text-kash-emerald">
+                  +{formatCurrency(contribution.amount, contribution.wallet?.currency ?? "IDR")}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {showEdit ? (
