@@ -988,40 +988,41 @@ export function AnalyticsPage() {
       {/* 2. Main Emerald Financial Hero */}
       <AnalyticsHeroStory summary={summary} currency={currency} />
 
-      {/* 3. Spending Donut / Ring Visual (Appears high, directly after Hero!) */}
-      <AnalyticsCard className="p-5">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
-          <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
-        </div>
-        <SpendingByCategory summary={summary} currency={currency} />
-      </AnalyticsCard>
-
-      {/* 4. Cash Flow Trend Chart (Appears high, directly after Donut!) */}
-      <AnalyticsCard className="p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
-            <p className="mt-0.5 text-xs font-semibold text-slate-500">{summary.period.aggregation === "daily" ? (t("analytics.dailyAggregation") || "Daily aggregation") : (t("analytics.monthlyAggregation") || "Monthly aggregation")}</p>
+      {/* 3. Main Visual Charts Grid (Donut Ring + Cash Flow Line Chart in 2 Columns) */}
+      <div className="grid gap-4 lg:grid-cols-2 min-w-0 max-w-full">
+        <AnalyticsCard className="p-5">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
+            <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
           </div>
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
-              {t("common.typeIncome") || t("dashboard.income") || "Income"}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
-              {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
-            </span>
-          </div>
-        </div>
-        <CashFlowOverview summary={summary} currency={currency} />
-      </AnalyticsCard>
+          <SpendingByCategory summary={summary} currency={currency} />
+        </AnalyticsCard>
 
-      {/* 5. Editorial Insights Section (Moved DOWN below main charts!) */}
+        <AnalyticsCard className="p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
+              <p className="mt-0.5 text-xs font-semibold text-slate-500">{summary.period.aggregation === "daily" ? (t("analytics.dailyAggregation") || "Daily aggregation") : (t("analytics.monthlyAggregation") || "Monthly aggregation")}</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
+                {t("common.typeIncome") || t("dashboard.income") || "Income"}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
+                {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
+              </span>
+            </div>
+          </div>
+          <CashFlowOverview summary={summary} currency={currency} />
+        </AnalyticsCard>
+      </div>
+
+      {/* 4. Editorial Insights Section */}
       <AnalyticsInsights summary={summary} currency={currency} />
 
-      {/* 7. Remaining Secondary Analytics */}
+      {/* 5. Supporting Trend Charts Grid */}
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsCard className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1054,23 +1055,22 @@ export function AnalyticsPage() {
         </AnalyticsCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <BudgetVsActualCard currency={currency} />
+      {/* 6. Budget vs Actual & Wallet Distribution (Full Width) */}
+      <BudgetVsActualCard currency={currency} />
 
-        <AnalyticsCard className="p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <WalletCards aria-hidden="true" className="text-slate-700" size={18} />
-              <h2 className="text-base font-extrabold text-slate-900">{t("analytics.walletDistribution") || "Wallet Distribution"}</h2>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-              <CalendarDays aria-hidden="true" size={15} />
-              {t("analytics.currentBalances") || "Current balances"}
-            </div>
+      <AnalyticsCard className="p-5 w-full min-w-0 max-w-full">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <WalletCards aria-hidden="true" className="text-slate-700" size={18} />
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.walletDistribution") || "Wallet Distribution"}</h2>
           </div>
-          <WalletDistribution summary={summary} currency={currency} />
-        </AnalyticsCard>
-      </div>
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+            <CalendarDays aria-hidden="true" size={15} />
+            {t("analytics.currentBalances") || "Current balances"}
+          </div>
+        </div>
+        <WalletDistribution summary={summary} currency={currency} />
+      </AnalyticsCard>
 
       <p className="text-xs font-semibold text-slate-500">
         {t("analytics.footerNote") || "Transfer fees are included in Expense. Transfer principal and balance adjustments are excluded from Income, Expense, and Cash Flow."}
