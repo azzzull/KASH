@@ -80,6 +80,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      // Safeguard: Strip any unpopulated placeholders (e.g. {{count}} or {var}) so raw braces never leak
+      text = text.replace(/\{+[^}]+\}+/g, "").trim();
+
       return text;
     };
   }, [locale]);

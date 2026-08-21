@@ -124,8 +124,8 @@ export function DebtsPage() {
         icon={<HandCoins size={22} />}
         eyebrow={t("debts.financeEyebrow") || "Keuangan"}
         title={t("debts.title") || "Utang & Piutang"}
-        primaryMetricLabel={t("debts.totalDebt") || "Total Kewajiban Utang"}
-        primaryMetricValue={formatCurrency(totalDebt, "IDR")}
+        primaryMetricLabel={t("debts.netObligation") || "Sisa Kewajiban Bersih"}
+        primaryMetricValue={formatCurrency(totalDebt - totalReceivable, "IDR")}
         supportingMetrics={
           <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-white/90">
             <div>
@@ -244,7 +244,9 @@ export function DebtsPage() {
                         {cp.name}
                       </h3>
                       <p className="mt-0.5 text-xs font-semibold text-slate-600">
-                        {cp.totalItemCount} {t("debts.totalItems") || "total item"}
+                        {cp.activeDebtCount + cp.activeReceivableCount > 0
+                          ? t("debts.outstandingCount", { count: cp.activeDebtCount + cp.activeReceivableCount })
+                          : t("debts.totalItems", { count: cp.totalItemCount })}
                       </p>
                     </div>
                     {isAllSettled && (

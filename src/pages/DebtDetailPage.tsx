@@ -138,6 +138,17 @@ export function DebtDetailPage() {
   };
   const counterpartySummaryObject = counterpartySummary;
 
+  const activeDebtOriginal = debts
+    .filter((d) => d.type === "debt" && d.status !== "settled" && d.status !== "cancelled")
+    .reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
+
+  const activeReceivableOriginal = debts
+    .filter((d) => d.type === "receivable" && d.status !== "settled" && d.status !== "cancelled")
+    .reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
+
+  const displayTotalDebtOriginal = activeDebtOriginal > 0 ? activeDebtOriginal : summary.totalDebtOriginal;
+  const displayTotalReceivableOriginal = activeReceivableOriginal > 0 ? activeReceivableOriginal : summary.totalReceivableOriginal;
+
   return (
     <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
       {/* Navigation Link */}
@@ -174,9 +185,9 @@ export function DebtDetailPage() {
         supportingMetrics={
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs font-semibold text-white/90">
             <div>
-              <span className="text-white/60 font-semibold">{t("debts.totalDebt") || "Sisa Utang"}</span>
+              <span className="text-white/60 font-semibold">{t("debts.totalOriginalDebt") || "Total Utang Awal"}</span>
               <p className="mt-0.5 text-sm font-extrabold text-white">
-                {formatCurrency(summary.totalDebtRemaining, "IDR")}
+                {formatCurrency(displayTotalDebtOriginal, "IDR")}
               </p>
             </div>
             <div>
@@ -186,9 +197,9 @@ export function DebtDetailPage() {
               </p>
             </div>
             <div>
-              <span className="text-white/60 font-semibold">{t("debts.totalReceivable") || "Sisa Piutang"}</span>
+              <span className="text-white/60 font-semibold">{t("debts.totalOriginalReceivable") || "Total Piutang Awal"}</span>
               <p className="mt-0.5 text-sm font-extrabold text-white">
-                {formatCurrency(summary.totalReceivableRemaining, "IDR")}
+                {formatCurrency(displayTotalReceivableOriginal, "IDR")}
               </p>
             </div>
             <div>
