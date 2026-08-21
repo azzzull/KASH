@@ -325,22 +325,24 @@ function HeroCard({
             selectedMonth={selectedMonth}
             onSelectPeriod={onSelectPeriod}
           />
-          <button
-            type="button"
-            aria-pressed={balancesVisible}
-            aria-label={balancesVisible ? (t("dashboard.hideBalances") || "Hide dashboard balances") : (t("dashboard.showBalances") || "Show dashboard balances")}
-            onClick={onToggleBalances}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
-          >
-            {balancesVisible ? <EyeOff aria-hidden="true" size={16} strokeWidth={2.2} /> : <Eye aria-hidden="true" size={16} strokeWidth={2.2} />}
-          </button>
         </div>
       </div>
 
-      {/* Net Worth amount */}
-      <p className="mt-3 break-words text-3xl font-extrabold tracking-tight text-white md:text-4xl">
-        {formatPrivateAmount(summary.netWorth.amount, currency, balancesVisible)}
-      </p>
+      {/* Net Worth amount + inline eye toggle */}
+      <div className="mt-3 flex flex-wrap items-center gap-2.5">
+        <p className="break-words text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+          {formatPrivateAmount(summary.netWorth.amount, currency, balancesVisible)}
+        </p>
+        <button
+          type="button"
+          aria-pressed={balancesVisible}
+          aria-label={balancesVisible ? (t("dashboard.hideBalances") || "Hide dashboard balances") : (t("dashboard.showBalances") || "Show dashboard balances")}
+          onClick={onToggleBalances}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+        >
+          {balancesVisible ? <EyeOff aria-hidden="true" size={18} strokeWidth={2.2} /> : <Eye aria-hidden="true" size={18} strokeWidth={2.2} />}
+        </button>
+      </div>
 
       {/* Available Balance inline */}
       <p className="mt-1 text-sm font-semibold text-white/60">
