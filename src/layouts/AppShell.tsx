@@ -43,7 +43,7 @@ export function AppShell() {
       const maxScrollableDistance = scrollHeight - innerHeight;
 
       // 1. Short page protection: If page cannot meaningfully scroll, keep header visible
-      if (maxScrollableDistance < 120) {
+      if (maxScrollableDistance < 100) {
         setMobileHeaderVisible(true);
         previousScrollY = Math.max(0, currentScrollY);
         accumulatedDelta = 0;
@@ -51,8 +51,8 @@ export function AppShell() {
         return;
       }
 
-      // 2. Top boundary / overscroll protection
-      if (currentScrollY <= 16) {
+      // 2. Near top boundary: always keep header visible
+      if (currentScrollY <= 20) {
         setMobileHeaderVisible(true);
         previousScrollY = Math.max(0, currentScrollY);
         accumulatedDelta = 0;
@@ -61,7 +61,7 @@ export function AppShell() {
       }
 
       // 3. Bottom boundary / rubber-band bounce protection
-      if (currentScrollY >= maxScrollableDistance - 16) {
+      if (currentScrollY >= maxScrollableDistance - 20) {
         previousScrollY = currentScrollY;
         ticking = false;
         return;
@@ -69,21 +69,19 @@ export function AppShell() {
 
       const delta = currentScrollY - previousScrollY;
 
-      // Direction changed: reset accumulated delta
-      if ((delta > 0 && accumulatedDelta < 0) || (delta < 0 && accumulatedDelta > 0)) {
-        accumulatedDelta = 0;
-      }
-
-      accumulatedDelta += delta;
-
-      // Downward intentional scroll: hide header
-      if (accumulatedDelta >= 35) {
-        setMobileHeaderVisible(false);
-        accumulatedDelta = 0;
-      } else if (accumulatedDelta <= -25) {
-        // Upward intentional scroll: show header
+      // Immediately reveal header on ANY upward scroll gesture
+      if (delta < -3) {
         setMobileHeaderVisible(true);
         accumulatedDelta = 0;
+      } else if (delta > 3) {
+        // Downward intentional scroll: hide header after 25px threshold
+        if (accumulatedDelta < 0) accumulatedDelta = 0;
+        accumulatedDelta += delta;
+
+        if (accumulatedDelta >= 25 && currentScrollY > 60) {
+          setMobileHeaderVisible(false);
+          accumulatedDelta = 0;
+        }
       }
 
       previousScrollY = currentScrollY;
