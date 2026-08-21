@@ -110,7 +110,7 @@ export function DebtsPage() {
         title={t("debts.title")}
         description={t("debts.subtitle") || "Pantau kewajiban utang dan catat pelunasan tingkat kontak / pihak terkait."}
         actions={
-          <div ref={createActionRef}>
+          <div ref={createActionRef} className="hidden sm:block">
             <Button onClick={() => setCreateModalOpen(true)}>
               <Plus aria-hidden="true" size={18} />
               {t("debts.createDebt")}

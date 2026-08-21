@@ -165,7 +165,7 @@ export function BudgetsPage() {
         title={t("nav.budgets")}
         description={t("budgets.description") || "Kendalikan rencana keuangan bulanan: belanja, amplop, cicilan utang, dan tabungan."}
         actions={
-          <div ref={createActionRef}>
+          <div ref={createActionRef} className="hidden sm:block">
             <Button onClick={() => setShowCreateModal(true)} className="gap-2">
               <Plus size={16} />
               {t("budgets.createTargetBudget") || "Buat Target Budget"}

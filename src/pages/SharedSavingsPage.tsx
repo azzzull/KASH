@@ -132,7 +132,7 @@ export function SharedSavingsPage() {
           onChange={(val) => setActiveTab(val as "spaces" | "invites")}
         />
 
-        <div ref={createActionRef}>
+        <div ref={createActionRef} className="hidden sm:block">
           <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
             <Plus aria-hidden="true" size={18} />
             {t("shared.createSpace")}

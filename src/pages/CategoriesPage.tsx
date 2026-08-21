@@ -641,7 +641,7 @@ export function CategoriesPage() {
             : (t("categories.envelopesDesc") || "Kelola amplop alokasi tujuan khusus (seperti Date, Liburan, Proyek Rumah).")
         }
         actions={
-          <div ref={createActionRef}>
+          <div ref={createActionRef} className="hidden sm:block">
             {activeTab === "categories" ? (
               <Button onClick={() => setShowCategoryForm(true)} className="w-full sm:w-auto">
                 <Plus aria-hidden="true" size={18} />

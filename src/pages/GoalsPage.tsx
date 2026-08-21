@@ -401,7 +401,7 @@ export function GoalsPage() {
                 title={t("goals.title")}
                 description={t("goals.subtitle")}
                 actions={
-                    <div ref={createActionRef}>
+                    <div ref={createActionRef} className="hidden sm:block">
                         <Button onClick={() => setShowCreateGoal(true)}>
                             <Plus aria-hidden="true" size={18} />
                             {t("goals.create")}

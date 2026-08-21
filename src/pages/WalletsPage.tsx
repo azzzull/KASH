@@ -375,7 +375,7 @@ export function WalletsPage() {
         title={t("wallets.title")}
         description={t("wallets.subtitle")}
         actions={
-          <div ref={createActionRef}>
+          <div ref={createActionRef} className="hidden sm:block">
             <Button onClick={() => setShowAddWallet(true)}>
               <Plus aria-hidden="true" size={18} />
               {t("wallets.create")}

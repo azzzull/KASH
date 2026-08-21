@@ -53,7 +53,7 @@ export function ContextualCreateAction({
 
   return (
     <div
-      className={`fixed z-30 transition-all duration-200 ease-out right-4 bottom-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))] lg:bottom-8 lg:right-8 ${
+      className={`fixed z-30 transition-all duration-200 ease-out right-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 ${
         isVisible
           ? "translate-y-0 opacity-100 pointer-events-auto scale-100"
           : "translate-y-4 opacity-0 pointer-events-none scale-95"
@@ -62,7 +62,7 @@ export function ContextualCreateAction({
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex items-center gap-2 rounded-full bg-kash-emerald px-4 py-2.5 text-sm font-extrabold text-white shadow-lg transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed active:scale-95 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+        className="inline-flex items-center gap-2 rounded-xl bg-kash-emerald px-4 py-2.5 text-sm font-extrabold text-white shadow-lg transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed active:scale-95 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
       >
         <Icon aria-hidden="true" size={18} strokeWidth={2.4} />
         <span>{label}</span>

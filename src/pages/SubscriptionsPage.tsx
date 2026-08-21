@@ -168,7 +168,7 @@ export function SubscriptionsPage() {
         title={t("subscriptions.title") || "Tagihan & Langganan"}
         description={t("subscriptions.subtitle") || "Kelola tagihan rutin, langganan, PayLater, dan cicilan bulanan."}
         actions={
-          <div ref={createActionRef}>
+          <div ref={createActionRef} className="hidden sm:block">
             <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
               <Plus size={18} strokeWidth={2.4} />
               {t("subscriptions.addObligation") || "Tambah Tagihan"}
