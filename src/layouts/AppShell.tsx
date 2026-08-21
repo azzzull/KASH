@@ -32,40 +32,71 @@ export function AppShell() {
   }, [location.pathname]);
 
   useEffect(() => {
-    const getScrollTop = () => {
-      const winScroll = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-      const mainScroll = contentRef.current?.scrollTop || 0;
-      return Math.max(winScroll, mainScroll);
-    };
-
-    let previousScrollY = getScrollTop();
+    let previousScrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    let accumulatedDelta = 0;
     let ticking = false;
 
     const updateHeaderVisibility = () => {
-      const currentScrollY = getScrollTop();
-      const delta = currentScrollY - previousScrollY;
+      const currentScrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+      const scrollHeight = document.documentElement.scrollHeight;
+      const innerHeight = window.innerHeight;
+      const maxScrollableDistance = scrollHeight - innerHeight;
 
-      // 1. Always keep header visible when near the top of the page
-      if (currentScrollY <= 15) {
+      // 1. Top boundary: Always keep navbar visible when near top of page
+      if (currentScrollY <= 16) {
         setMobileHeaderVisible(true);
-        previousScrollY = Math.max(0, currentScrollY);
+        window.dispatchEvent(new CustomEvent("kash:mobile-nav-visible", { detail: { visible: true } }));
+        previousScrollY = currentScrollY;
+        accumulatedDelta = 0;
         ticking = false;
         return;
       }
 
-      // 2. Instant reveal on ANY upward scroll gesture (delta < 0)
-      if (delta < 0) {
+      // 2. iOS Safari overscroll / bounce protection
+      if (maxScrollableDistance > 0 && currentScrollY >= maxScrollableDistance - 10) {
+        previousScrollY = currentScrollY;
+        ticking = false;
+        return;
+      }
+
+      const delta = currentScrollY - previousScrollY;
+
+      // Reset accumulation when scroll direction reverses
+      if ((delta > 0 && accumulatedDelta < 0) || (delta < 0 && accumulatedDelta > 0)) {
+        accumulatedDelta = 0;
+      }
+
+      accumulatedDelta += delta;
+
+      // 3. Scroll UP: Small intentional upward scroll (-6px) immediately reveals navbar
+      if (accumulatedDelta <= -6) {
         setMobileHeaderVisible(true);
-      } else if (delta > 5 && currentScrollY > 45) {
-        // Hide header when scrolling DOWN intentionally (> 5px)
+        window.dispatchEvent(new CustomEvent("kash:mobile-nav-visible", { detail: { visible: true } }));
+        accumulatedDelta = 0;
+      } else if (accumulatedDelta >= 20 && currentScrollY > 50) {
+        // 4. Scroll DOWN: Hide navbar after 20px intentional downward scroll
         setMobileHeaderVisible(false);
+        window.dispatchEvent(new CustomEvent("kash:mobile-nav-visible", { detail: { visible: false } }));
+        accumulatedDelta = 0;
       }
 
       previousScrollY = currentScrollY;
       ticking = false;
     };
 
-    const handleScroll = () => {
+    const handleScroll = (event: Event) => {
+      // REQUIREMENT 7: Only react to main page / document / window scroll!
+      // Ignore scroll events originating from inner scroll containers (bottom sheets, modals, charts, filter tabs)
+      const target = event.target;
+      if (
+        target !== window &&
+        target !== document &&
+        target !== document.documentElement &&
+        target !== document.body
+      ) {
+        return;
+      }
+
       if (!ticking) {
         window.requestAnimationFrame(updateHeaderVisibility);
         ticking = true;
@@ -73,16 +104,9 @@ export function AppShell() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
-    const mainEl = contentRef.current;
-    if (mainEl) {
-      mainEl.addEventListener("scroll", handleScroll, { passive: true });
-    }
 
     return () => {
       window.removeEventListener("scroll", handleScroll, { capture: true } as EventListenerOptions);
-      if (mainEl) {
-        mainEl.removeEventListener("scroll", handleScroll);
-      }
     };
   }, []);
 
@@ -124,7 +148,7 @@ export function AppShell() {
           </div>
         </div>
 
-        <MobileBottomNav onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
+        <MobileBottomNav visible={mobileHeaderVisible} onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
         {transactionMode === "reimbursable_expense" ? (

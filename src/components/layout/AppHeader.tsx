@@ -70,10 +70,10 @@ export function AppHeader({ visible }: AppHeaderProps) {
 
     return (
         <header
-            className={`sticky top-0 z-20 shrink-0 border-b border-kash-emerald/15 bg-white/90 backdrop-blur transition-[transform,margin] duration-200 lg:hidden ${
+            className={`sticky top-0 z-20 shrink-0 border-b border-kash-emerald/15 bg-white/90 backdrop-blur transition-transform duration-200 ease-out lg:hidden ${
                 visible
                     ? "translate-y-0"
-                    : "pointer-events-none -mb-16 -translate-y-full"
+                    : "pointer-events-none -translate-y-full"
             }`}
         >
             <div className="flex min-h-16 items-center justify-between gap-4 px-4">

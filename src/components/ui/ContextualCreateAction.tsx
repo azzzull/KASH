@@ -13,6 +13,8 @@ export type ContextualCreateActionProps = {
   icon?: LucideIcon;
   /** Optional additional class names */
   className?: string;
+  /** Optional explicit navbar visibility override */
+  navVisible?: boolean;
 };
 
 /**
@@ -26,8 +28,24 @@ export function ContextualCreateAction({
   label,
   icon: Icon = Plus,
   className = "",
+  navVisible: propNavVisible,
 }: ContextualCreateActionProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
+
+  useEffect(() => {
+    const handleNavVisible = (event: Event) => {
+      const customEvent = event as CustomEvent<{ visible: boolean }>;
+      if (typeof customEvent.detail?.visible === "boolean") {
+        setNavVisible(customEvent.detail.visible);
+      }
+    };
+
+    window.addEventListener("kash:mobile-nav-visible", handleNavVisible);
+    return () => window.removeEventListener("kash:mobile-nav-visible", handleNavVisible);
+  }, []);
+
+  const effectiveNavVisible = propNavVisible ?? navVisible;
 
   useEffect(() => {
     const target = targetRef.current;
@@ -51,9 +69,13 @@ export function ContextualCreateAction({
     };
   }, [targetRef]);
 
+  const bottomPositionClass = effectiveNavVisible
+    ? "bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] sm:bottom-6 lg:bottom-8"
+    : "bottom-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] sm:bottom-6 lg:bottom-8";
+
   return (
     <div
-      className={`fixed z-30 transition-all duration-200 ease-out right-4 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:bottom-6 sm:right-6 lg:bottom-8 lg:right-8 ${
+      className={`fixed z-30 transition-all duration-200 ease-out right-4 ${bottomPositionClass} sm:right-6 lg:right-8 ${
         isVisible
           ? "translate-y-0 opacity-100 pointer-events-auto scale-100"
           : "translate-y-4 opacity-0 pointer-events-none scale-95"
