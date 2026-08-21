@@ -61,7 +61,7 @@ export function OnboardingPage() {
   const progressPercent = isFinish ? 100 : ((step + 1) / steps.length) * 100;
 
   const persistDisplayName = async () => {
-    if (!user) return;
+    if (!user || loading) return;
     const trimmed = displayName.trim();
 
     if (!trimmed) {
@@ -80,13 +80,13 @@ export function OnboardingPage() {
       return;
     }
 
-    await refreshProfile();
-    setLoading(false);
     setStep(2);
+    setLoading(false);
+    void refreshProfile();
   };
 
   const persistCurrency = async () => {
-    if (!user) return;
+    if (!user || loading) return;
     setLoading(true);
     setError(null);
 
@@ -98,9 +98,9 @@ export function OnboardingPage() {
       return;
     }
 
-    await refreshProfile();
-    setLoading(false);
     setStep(3);
+    setLoading(false);
+    void refreshProfile();
   };
 
   const validateWalletInfo = () => {
@@ -119,7 +119,7 @@ export function OnboardingPage() {
   };
 
   const createWalletAndComplete = async () => {
-    if (!user) return;
+    if (!user || loading) return;
 
     const effectiveName = displayName.trim() || profile?.full_name?.trim();
     if (!effectiveName) {
@@ -175,15 +175,16 @@ export function OnboardingPage() {
       return;
     }
 
-    setStep(steps.length);
-    navigate("/onboarding", { replace: true, state: { showFinish: true } });
-    await refreshProfile();
     setCreatedWallet(wallet);
+    setStep(steps.length);
     setLoading(false);
+    navigate("/onboarding", { replace: true, state: { showFinish: true } });
+    void refreshProfile();
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (loading) return;
 
     if (step === 1) {
       void persistDisplayName();
@@ -266,7 +267,7 @@ export function OnboardingPage() {
         ) : null}
 
         {step > 0 && step < steps.length ? (
-          <form className="mt-8 grid gap-5" onSubmit={handleSubmit}>
+          <form key={step} className="mt-8 grid gap-5" onSubmit={handleSubmit}>
             {step === 1 ? (
               <>
                 <div>
@@ -372,7 +373,7 @@ export function OnboardingPage() {
             ) : null}
 
             <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-between">
-              <Button disabled={loading} onClick={() => setStep((current) => Math.max(0, current - 1))} variant="secondary">
+              <Button type="button" disabled={loading} onClick={() => setStep((current) => Math.max(0, current - 1))} variant="secondary">
                 {t("common.back") || "Kembali"}
               </Button>
               <Button disabled={loading} type="submit">
