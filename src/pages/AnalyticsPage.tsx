@@ -1,6 +1,4 @@
 import {
-  ArrowDownRight,
-  ArrowUpRight,
   BarChart3,
   CalendarDays,
   ChevronRight,
@@ -16,7 +14,7 @@ import {
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAnalyticsSummary, type AnalyticsMetricChange, type AnalyticsPeriodKey, type AnalyticsSummary } from "../lib/analytics";
+import { getAnalyticsSummary, type AnalyticsPeriodKey, type AnalyticsSummary } from "../lib/analytics";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type { BudgetWithProgress } from "../types/domain";
 import { formatCurrency } from "../lib/money";
@@ -57,90 +55,6 @@ function EmptyPanel({ description, title, className = "" }: { className?: string
         <p className="text-sm font-extrabold text-slate-900">{title}</p>
         <p className="mt-1 text-sm font-semibold text-slate-600">{description}</p>
       </div>
-    </div>
-  );
-}
-
-function MetricComparison({
-  change,
-  comparisonLabel,
-  metric,
-}: {
-  change: AnalyticsMetricChange;
-  comparisonLabel: string;
-  metric: "income" | "expense" | "netCashFlow";
-}) {
-  const { t } = useI18n();
-  if (change.state === "none") return null;
-
-  if (change.state === "flat") {
-    return (
-      <p className="mt-2 text-xs font-bold">
-        <span className="text-slate-700">0.0%</span>
-        <span className="ml-1 font-semibold text-slate-600">{comparisonLabel}</span>
-      </p>
-    );
-  }
-
-  if (change.state === "new") {
-    const tone = metric === "expense" ? "text-[#E50914]" : "text-kash-emerald";
-    return <p className={`mt-2 text-xs font-bold ${tone}`}>{t("analytics.newInPeriod") || "New in this period"}</p>;
-  }
-
-  const increased = change.state === "increase";
-  const positive = metric === "expense" ? !increased : increased;
-  const Icon = increased ? TrendingUp : TrendingDown;
-
-  return (
-    <p className="mt-2 flex items-center gap-1 text-xs font-bold">
-      <span className={`inline-flex items-center gap-1 ${positive ? "text-kash-emerald" : "text-[#E50914]"}`}>
-        <Icon aria-hidden="true" size={13} strokeWidth={2.4} />
-        {Math.abs(change.percent ?? 0).toFixed(1)}%
-      </span>
-      <span className="font-semibold text-slate-600">{comparisonLabel}</span>
-    </p>
-  );
-}
-
-function SummaryCards({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
-  const { t, formatCurrency } = useI18n();
-  const cards = [
-    {
-      accent: "text-kash-emerald",
-      badge: "bg-kash-emerald/10 text-kash-emerald",
-      change: summary.income.change,
-      icon: ArrowUpRight,
-      metric: "income" as const,
-      title: t("common.typeIncome") || t("dashboard.income") || "Income",
-      value: summary.income.amount,
-    },
-    {
-      accent: "text-[#E50914]",
-      badge: "bg-kash-expense/10 text-[#E50914]",
-      change: summary.expense.change,
-      icon: ArrowDownRight,
-      metric: "expense" as const,
-      title: t("common.typeExpense") || t("dashboard.expense") || "Expense",
-      value: summary.expense.amount,
-    },
-  ];
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:gap-4 min-w-0 max-w-full">
-      {cards.map((card) => (
-        <AnalyticsCard key={card.title} className="p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{card.title}</p>
-              <p className="mt-1.5 break-words text-2xl font-extrabold text-slate-900">{formatCurrency(card.value, currency)}</p>
-              <MetricComparison change={card.change} metric={card.metric} comparisonLabel={summary.period.comparisonLabel} />
-            </div>
-            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.badge}`}>
-              <card.icon aria-hidden="true" size={20} strokeWidth={2.4} />
-            </span>
-          </div>
-        </AnalyticsCard>
-      ))}
     </div>
   );
 }
@@ -197,15 +111,26 @@ function AnalyticsHeroStory({ currency, summary }: { currency: string; summary: 
         <span className="text-xs font-bold uppercase tracking-wider text-white/70">
           {t("dashboard.netCashFlow") || "Arus Kas Bersih"}
         </span>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold ${isSurplus ? "bg-white/20 text-white" : "bg-red-500/30 text-white"}`}>
+        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
           {isSurplus ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
           {isSurplus ? (t("analytics.surplusState") || "Surplus") : (t("analytics.deficitState") || "Defisit")}
         </span>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2.5">
         <p className="break-words text-3xl font-extrabold text-white sm:text-4xl">
           {formattedNetCashFlow}
+        </p>
+      </div>
+
+      <div className="mt-3 text-xs font-medium text-white/80">
+        <span className="font-extrabold text-white/90">{summary.period.label}</span>
+        <p className="mt-1 text-xs text-white/75 leading-relaxed max-w-xl">
+          {isSurplus
+            ? (t("analytics.surplusStoryDesc", { rate: savingsRate.toFixed(1), category: topCategory?.name || "-" }) ||
+              `Anda berhasil mempertahankan tingkat tabungan bersih sebesar ${savingsRate.toFixed(1)}%. Pengeluaran terbesar dialokasikan untuk ${topCategory?.name || "-"}.`)
+            : (t("analytics.deficitStoryDesc", { category: topCategory?.name || "-" }) ||
+              `Arus kas keluar periode ini lebih besar dari total pemasukan. Evaluasi pengeluaran pada ${topCategory?.name || "-"} untuk menjaga keseimbangan kas.`)}
         </p>
       </div>
 
@@ -866,45 +791,40 @@ function PeriodControls({
   );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3 shadow-card">
-      <div className="flex items-center gap-2">
-        <CalendarDays size={16} className="text-kash-emerald" />
-        <span className="text-xs font-extrabold text-slate-700">{t("analytics.period") || "Periode"}</span>
+    <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
+      <div className="w-36 sm:w-44 shrink-0">
+        <SelectField
+          value={period}
+          onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}
+          className="py-1 px-2.5 text-xs font-extrabold"
+        >
+          {periodOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </SelectField>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="w-40 sm:w-48">
-          <SelectField
-            value={period}
-            onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}
-          >
-            {periodOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </SelectField>
-        </div>
-        {period === "custom" && (
-          <div className="flex items-center gap-2">
-            <div className="w-32 sm:w-36">
-              <DatePickerField
-                id="analytics-start-date"
-                value={customStartDate}
-                onChange={(val) => onCustomStartDateChange(val)}
-              />
-            </div>
-            <span className="text-xs font-bold text-slate-400">-</span>
-            <div className="w-32 sm:w-36">
-              <DatePickerField
-                id="analytics-end-date"
-                value={customEndDate}
-                onChange={(val) => onCustomEndDateChange(val)}
-              />
-            </div>
+      {period === "custom" && (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="w-28 sm:w-32">
+            <DatePickerField
+              id="analytics-start-date"
+              value={customStartDate}
+              onChange={(val) => onCustomStartDateChange(val)}
+            />
           </div>
-        )}
-      </div>
+          <span className="text-xs font-bold text-slate-400">-</span>
+          <div className="w-28 sm:w-32">
+            <DatePickerField
+              id="analytics-end-date"
+              value={customEndDate}
+              onChange={(val) => onCustomEndDateChange(val)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1037,14 +957,14 @@ export function AnalyticsPage() {
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-4">
-      {/* 1. Compact Top Bar with Title + Compact Period Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="text-kash-emerald" size={22} />
-          <h1 className="text-lg font-black text-slate-900">{t("nav.analytics") || "Analitik Keuangan"}</h1>
+      {/* 1. Compact Top Bar with Title + Compact Period Selector in SAME ROW */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <BarChart3 className="text-kash-emerald shrink-0" size={22} />
+          <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.analytics") || "Analitik Keuangan"}</h1>
         </div>
 
-        <div className="w-full sm:w-auto">
+        <div className="shrink-0">
           <PeriodControls
             period={period}
             customStartDate={customStartDate}
@@ -1089,10 +1009,7 @@ export function AnalyticsPage() {
         <CashFlowOverview summary={summary} currency={currency} />
       </AnalyticsCard>
 
-      {/* 5. Compact Supporting Metric Strip (Income & Expense only) */}
-      <SummaryCards summary={summary} currency={currency} />
-
-      {/* 6. Editorial Insights Section (Moved DOWN below main charts!) */}
+      {/* 5. Editorial Insights Section (Moved DOWN below main charts!) */}
       <AnalyticsInsights summary={summary} currency={currency} />
 
       {/* 7. Remaining Secondary Analytics */}
