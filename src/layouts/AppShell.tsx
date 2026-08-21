@@ -42,10 +42,9 @@ export function AppShell() {
       const innerHeight = window.innerHeight;
       const maxScrollableDistance = scrollHeight - innerHeight;
 
-      // 1. Top boundary: Always keep navbar visible when near top of page
+      // 1. Top boundary: Always keep top header visible when near top of page
       if (currentScrollY <= 16) {
         setMobileHeaderVisible(true);
-        window.dispatchEvent(new CustomEvent("kash:mobile-nav-visible", { detail: { visible: true } }));
         previousScrollY = currentScrollY;
         accumulatedDelta = 0;
         ticking = false;
@@ -61,22 +60,20 @@ export function AppShell() {
 
       const delta = currentScrollY - previousScrollY;
 
-      // Reset accumulation when scroll direction reverses
+      // Reset directional accumulation if scroll direction reverses
       if ((delta > 0 && accumulatedDelta < 0) || (delta < 0 && accumulatedDelta > 0)) {
         accumulatedDelta = 0;
       }
 
       accumulatedDelta += delta;
 
-      // 3. Scroll UP: Small intentional upward scroll (-6px) immediately reveals navbar
+      // 3. Scroll UP: Small intentional upward scroll (-6px) immediately reveals top header
       if (accumulatedDelta <= -6) {
         setMobileHeaderVisible(true);
-        window.dispatchEvent(new CustomEvent("kash:mobile-nav-visible", { detail: { visible: true } }));
         accumulatedDelta = 0;
       } else if (accumulatedDelta >= 20 && currentScrollY > 50) {
-        // 4. Scroll DOWN: Hide navbar after 20px intentional downward scroll
+        // 4. Scroll DOWN: Hide top header after 20px intentional downward scroll
         setMobileHeaderVisible(false);
-        window.dispatchEvent(new CustomEvent("kash:mobile-nav-visible", { detail: { visible: false } }));
         accumulatedDelta = 0;
       }
 
@@ -85,7 +82,7 @@ export function AppShell() {
     };
 
     const handleScroll = (event: Event) => {
-      // REQUIREMENT 7: Only react to main page / document / window scroll!
+      // RULE 4: Only react to main page / document / window scroll!
       // Ignore scroll events originating from inner scroll containers (bottom sheets, modals, charts, filter tabs)
       const target = event.target;
       if (
@@ -148,7 +145,7 @@ export function AppShell() {
           </div>
         </div>
 
-        <MobileBottomNav visible={mobileHeaderVisible} onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
+        <MobileBottomNav onMore={() => setMoreOpen(true)} onQuickAdd={() => setQuickAddOpen(true)} />
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
         {transactionMode === "reimbursable_expense" ? (

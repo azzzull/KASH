@@ -76,7 +76,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                     : "pointer-events-none -translate-y-full"
             }`}
         >
-            <div className="flex min-h-16 items-center justify-between gap-4 px-4">
+            <div className="flex min-h-16 items-center justify-between gap-4 px-4 pt-[env(safe-area-inset-top,0px)]">
                 <Link
                     to="/dashboard"
                     aria-label="KASH Dashboard"
