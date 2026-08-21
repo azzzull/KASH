@@ -20,7 +20,6 @@ import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FilterTabs } from "../components/ui/FilterTabs";
-import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
@@ -157,57 +156,47 @@ export function BudgetsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
-      {/* Page Header */}
-      <PageHeader
-        eyebrow={t("budgets.planning") || "Planning"}
-        icon={Scale}
-        title={t("nav.budgets")}
-        description={t("budgets.description") || "Kendalikan rencana keuangan bulanan: belanja, amplop, cicilan utang, dan tabungan."}
-        actions={
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4 -mt-2 sm:mt-0">
+      {/* 1. Compact Top Bar with Title + Month Picker in SAME ROW */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Scale className="text-kash-emerald shrink-0" size={22} />
+          <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.budgets") || "Target & Budget"}</h1>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 rounded-xl border border-slate-200/60 bg-white p-1 shadow-card">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+              aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="flex items-center gap-1.5 px-1.5 text-xs font-extrabold text-slate-800">
+              <Calendar size={14} className="text-kash-emerald" />
+              <span>{currentMonthLabel}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+              aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
           <div ref={createActionRef} className="hidden sm:block">
-            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-              <Plus size={16} />
+            <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold">
+              <Plus size={15} />
               {t("budgets.createTargetBudget") || "Buat Target Budget"}
             </Button>
           </div>
-        }
-      />
-
-      {/* Month Navigator Toolbar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white px-2 py-1 shadow-card">
-          <button
-            type="button"
-            onClick={handlePrevMonth}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-            aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          <div className="flex items-center gap-1.5 px-1.5 text-xs font-extrabold text-slate-800">
-            <Calendar size={14} className="text-kash-emerald" />
-            <span>{currentMonthLabel}</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleNextMonth}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-            aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
-          >
-            <ChevronRight size={16} />
-          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={handleSetCurrentMonth}
-          className="rounded-xl border border-slate-200/60 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-card transition hover:border-kash-emerald hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
-        >
-          {t("common.thisMonth") || "Bulan Ini"}
-        </button>
       </div>
 
       {/* Monthly Overview Progress Card - Unified Emerald Hero */}
@@ -260,40 +249,22 @@ export function BudgetsPage() {
             </div>
           </div>
 
-          {/* Compact Inline Key Stats */}
-          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 border-t border-white/15 pt-3 text-xs">
-            <div>
-              <span className="text-white/60 font-semibold">{t("budgets.totalAllocated") || "Total Dialokasikan"}</span>
-              <p className="mt-0.5 text-sm font-extrabold text-white">
-                {formatCurrency(overview.total_allocated)}
-              </p>
-            </div>
-
-            <div>
-              <span className="text-white/60 font-semibold">{t("budgets.actualCashOutflow") || "Realisasi Kas Keluar"}</span>
-              <p className="mt-0.5 text-sm font-extrabold text-white">
-                {formatCurrency(overview.total_actual_cash_outflow)}
-              </p>
-            </div>
-
-            <div>
-              <span className="text-white/60 font-semibold">{t("budgets.netRemainingAllocation") || "Sisa Alokasi Bersih"}</span>
-              <p className="mt-0.5 text-sm font-extrabold text-white">
-                {formatCurrency(overview.remaining_allocation)}
-              </p>
-            </div>
+          {/* Sisa Alokasi Bersih */}
+          <div className="mt-3 flex items-center justify-between text-xs border-t border-white/15 pt-2.5">
+            <span className="text-white/70 font-semibold">{t("budgets.netRemainingAllocation") || "Sisa Alokasi Bersih"}</span>
+            <span className="text-sm sm:text-base font-extrabold text-white">{formatCurrency(overview.remaining_allocation)}</span>
           </div>
 
-          {/* Cash Outflow Breakdown Chips */}
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-white/15 text-xs font-semibold text-white/90">
-            <span className="text-white/60 font-medium">{t("budgets.actualCashBreakdown") || "Rincian Realisasi:"}</span>
-            <span className="rounded-lg bg-white/15 px-2 py-0.5">
+          {/* Cash Outflow Breakdown Chips - Horizontally Scrollable Inline Bar */}
+          <div className="mt-2.5 flex flex-nowrap items-center gap-2 overflow-x-auto max-w-full py-0.5 text-xs font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <span className="text-white/60 font-medium shrink-0 whitespace-nowrap">{t("budgets.actualCashBreakdown") || "Rincian Realisasi:"}</span>
+            <span className="rounded-lg bg-white/15 px-2.5 py-1 shrink-0 whitespace-nowrap">
               {t("common.typeExpense") || "Belanja"}: {formatCurrency(overview.actual_expenses)}
             </span>
-            <span className="rounded-lg bg-white/15 px-2 py-0.5">
+            <span className="rounded-lg bg-white/15 px-2.5 py-1 shrink-0 whitespace-nowrap">
               {t("budgets.debtPayment") || "Cicil Utang"}: {formatCurrency(overview.actual_debt_payments)}
             </span>
-            <span className="rounded-lg bg-white/15 px-2 py-0.5">
+            <span className="rounded-lg bg-white/15 px-2.5 py-1 shrink-0 whitespace-nowrap">
               {t("budgets.savingsGoal") || "Tabungan"}: {formatCurrency(overview.actual_goal_contributions)}
             </span>
           </div>
