@@ -210,38 +210,49 @@ export function BudgetsPage() {
         </button>
       </div>
 
-      {/* Monthly Overview Progress Card */}
+      {/* Monthly Overview Progress Card - Unified Emerald Hero */}
       {overview && (
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card min-w-0 max-w-full">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+        <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
+          {/* Top Row: Title Left + Month Badge Right */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-white/70">
+              {t("budgets.unifiedFinancialPlan") || "Rencana Keuangan Terpadu"}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 px-2.5 py-0.5 text-xs font-bold text-white/90 shrink-0">
+              <Calendar size={13} />
+              {currentMonthLabel}
+            </span>
+          </div>
+
+          {/* Primary Metric & Health Badges */}
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <span className="text-xs font-extrabold uppercase text-slate-600">
-                {t("budgets.unifiedFinancialPlan") || "Unified Financial Plan"} ({currentMonthLabel})
-              </span>
-              <h2 className="mt-0.5 text-xl font-black text-slate-900">
+              <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wide">
+                {t("budgets.actualCashOutflow") || "Realisasi Kas Keluar"} / {t("budgets.totalAllocated") || "Total Dialokasikan"}
+              </p>
+              <p className="mt-0.5 break-words text-2xl font-extrabold text-white sm:text-3xl">
                 {formatCurrency(overview.total_actual_cash_outflow)}{" "}
-                <span className="text-sm font-semibold text-slate-600">
+                <span className="text-lg font-semibold text-white/70">
                   / {formatCurrency(overview.total_allocated)}
                 </span>
-              </h2>
+              </p>
             </div>
 
-            {/* Health Badges Counter */}
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-              <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2.5 py-1 text-kash-emeraldDark">
+            <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 <CheckCircle2 size={13} />
                 {overview.healthy_count} {t("budgets.healthy") || "Aman"}
               </span>
 
               {overview.near_limit_count > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/30 border border-amber-300/30 px-2.5 py-0.5 text-xs font-extrabold text-white">
                   <AlertCircle size={13} />
                   {overview.near_limit_count} {t("budgets.nearLimit") || "Hampir Batas"}
                 </span>
               )}
 
               {overview.over_budget_count > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-kash-expense/15 px-2.5 py-1 text-kash-expense">
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/30 border border-red-300/30 px-2.5 py-0.5 text-xs font-extrabold text-white">
                   <AlertCircle size={13} />
                   {overview.over_budget_count} {t("budgets.overBudget") || "Over Budget"}
                 </span>
@@ -249,64 +260,64 @@ export function BudgetsPage() {
             </div>
           </div>
 
-          {/* Numbers Grid */}
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
-            <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">{t("budgets.totalAllocated") || "Total Alokasi Rencana"}</span>
-              <p className="mt-0.5 text-base font-black text-slate-900">
+          {/* Compact Inline Key Stats */}
+          <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 border-t border-white/15 pt-3 text-xs">
+            <div>
+              <span className="text-white/60 font-semibold">{t("budgets.totalAllocated") || "Total Dialokasikan"}</span>
+              <p className="mt-0.5 text-sm font-extrabold text-white">
                 {formatCurrency(overview.total_allocated)}
               </p>
             </div>
 
-            <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">{t("budgets.actualCashOutflow") || "Arus Kas Keluar Riil"}</span>
-              <p className="mt-0.5 text-base font-black text-slate-900">
+            <div>
+              <span className="text-white/60 font-semibold">{t("budgets.actualCashOutflow") || "Realisasi Kas Keluar"}</span>
+              <p className="mt-0.5 text-sm font-extrabold text-white">
                 {formatCurrency(overview.total_actual_cash_outflow)}
               </p>
             </div>
 
-            <div className="rounded-xl bg-slate-50 p-3">
-              <span className="font-bold text-slate-600">{t("budgets.netRemainingAllocation") || "Sisa Alokasi Bersih"}</span>
-              <p className="mt-0.5 text-base font-black text-kash-emeraldDark">
+            <div>
+              <span className="text-white/60 font-semibold">{t("budgets.netRemainingAllocation") || "Sisa Alokasi Bersih"}</span>
+              <p className="mt-0.5 text-sm font-extrabold text-white">
                 {formatCurrency(overview.remaining_allocation)}
               </p>
             </div>
           </div>
 
-          {/* Cashflow Breakdown Pill Chips */}
-          <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-[11px] font-bold">
-            <span className="text-slate-500">{t("budgets.actualCashBreakdown") || "Breakdown Kas Riil:"}</span>
-            <span className="rounded-lg bg-red-50 text-red-700 px-2 py-0.5">
+          {/* Cash Outflow Breakdown Chips */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2.5 border-t border-white/15 text-xs font-semibold text-white/90">
+            <span className="text-white/60 font-medium">{t("budgets.actualCashBreakdown") || "Rincian Realisasi:"}</span>
+            <span className="rounded-lg bg-white/15 px-2 py-0.5">
               {t("common.typeExpense") || "Belanja"}: {formatCurrency(overview.actual_expenses)}
             </span>
-            <span className="rounded-lg bg-orange-50 text-orange-700 px-2 py-0.5">
+            <span className="rounded-lg bg-white/15 px-2 py-0.5">
               {t("budgets.debtPayment") || "Cicil Utang"}: {formatCurrency(overview.actual_debt_payments)}
             </span>
-            <span className="rounded-lg bg-amber-50 text-amber-800 px-2 py-0.5">
-              {t("budgets.savingsGoal") || "Tabungan/Goal"}: {formatCurrency(overview.actual_goal_contributions)}
+            <span className="rounded-lg bg-white/15 px-2 py-0.5">
+              {t("budgets.savingsGoal") || "Tabungan"}: {formatCurrency(overview.actual_goal_contributions)}
             </span>
           </div>
 
           {/* Progress Bar */}
           <div className="mt-4">
-            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-black/20">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
                   overview.over_budget_count > 0
-                    ? "bg-kash-expense"
+                    ? "bg-red-400"
                     : overview.near_limit_count > 0
-                    ? "bg-amber-500"
-                    : "bg-kash-emerald"
+                    ? "bg-amber-300"
+                    : "bg-white"
                 }`}
                 style={{ width: `${overallProgressPercent}%` }}
               />
             </div>
-            <div className="mt-1.5 flex items-center justify-between text-xs font-bold text-slate-600">
+            <div className="mt-2 flex items-center justify-between text-xs font-bold text-white/80">
               <span>{t("budgets.budgetUsedPercent", { percent: overview.overall_usage_percentage.toFixed(1) }) || `${overview.overall_usage_percentage.toFixed(1)}% anggaran terpakai`}</span>
               <span>{t("budgets.activeAllocationsCount", { count: overview.total_budgets_count ?? 0 }) || `${overview.total_budgets_count ?? 0} alokasi aktif`}</span>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Filter Tabs */}
