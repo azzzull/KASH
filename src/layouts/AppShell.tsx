@@ -67,12 +67,12 @@ export function AppShell() {
 
       accumulatedDelta += delta;
 
-      // 3. Scroll UP: Small intentional upward scroll (-6px) immediately reveals top header
-      if (accumulatedDelta <= -6) {
+      // 3. Scroll UP: Small intentional upward scroll immediately reveals global top header
+      if (accumulatedDelta <= -4 || delta < -2) {
         setMobileHeaderVisible(true);
         accumulatedDelta = 0;
-      } else if (accumulatedDelta >= 20 && currentScrollY > 50) {
-        // 4. Scroll DOWN: Hide top header after 20px intentional downward scroll
+      } else if (accumulatedDelta >= 18 && currentScrollY > 40) {
+        // 4. Scroll DOWN: Hide global top header after 18px intentional downward scroll
         setMobileHeaderVisible(false);
         accumulatedDelta = 0;
       }
