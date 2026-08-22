@@ -577,7 +577,7 @@ function HeroCard({
             {/* Net Worth breakdown flat metrics */}
             {breakdownTiles.length > 0 ? (
                 <div className="mt-3 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex min-w-max flex-nowrap px-1">
+                    <div className="flex min-w-max flex-nowrap divide-x divide-white/15 px-1">
                         {breakdownTiles.map((item) => {
                             const percent =
                                 item.percentBase > 0
@@ -591,7 +591,7 @@ function HeroCard({
                             return (
                                 <div
                                     key={item.key}
-                                    className="w-[6.7rem] shrink-0 border-r border-white/15 px-3 py-1.5 first:pl-0 last:border-r-0 snap-start"
+                                    className="w-[6.1rem] shrink-0 px-2 py-1.5 snap-start"
                                 >
                                     <p className="truncate text-[11px] font-extrabold text-white/60">
                                         {item.label}
