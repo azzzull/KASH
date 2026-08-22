@@ -224,20 +224,6 @@ export function BudgetsPage() {
             <span className="text-sm sm:text-base font-extrabold text-white">{formatCurrency(overview.remaining_allocation)}</span>
           </div>
 
-          {/* Cash Outflow Breakdown Chips - Horizontally Scrollable Inline Bar */}
-          <div className="mt-2.5 flex flex-nowrap items-center gap-2 overflow-x-auto max-w-full py-0.5 text-xs font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <span className="text-white/60 font-medium shrink-0 whitespace-nowrap">{t("budgets.actualCashBreakdown") || "Rincian Realisasi:"}</span>
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 shrink-0 whitespace-nowrap">
-              {t("common.typeExpense") || "Belanja"}: {formatCurrency(overview.actual_expenses)}
-            </span>
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 shrink-0 whitespace-nowrap">
-              {t("budgets.debtPayment") || "Cicil Utang"}: {formatCurrency(overview.actual_debt_payments)}
-            </span>
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 shrink-0 whitespace-nowrap">
-              {t("budgets.savingsGoal") || "Tabungan"}: {formatCurrency(overview.actual_goal_contributions)}
-            </span>
-          </div>
-
           {/* Progress Bar */}
           <div className="mt-4">
             <div className="h-2.5 w-full overflow-hidden rounded-full bg-black/20">

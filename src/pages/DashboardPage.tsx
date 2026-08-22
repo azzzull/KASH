@@ -578,7 +578,7 @@ function HeroCard({
 
             {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
-                <div className="mt-2.5 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div className="mt-6 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         {breakdownTiles.map((item) => {
                             const percent =
                                 item.percentBase > 0
