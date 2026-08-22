@@ -576,10 +576,10 @@ function HeroCard({
                 />
             </div>
 
-            {/* Net Worth breakdown compact metrics */}
+            {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
-                <div className="mt-4 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex min-w-max flex-nowrap divide-x divide-white/15 px-1">
+                <div className="mt-6 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex min-w-max flex-nowrap gap-1.5 px-1">
                         {breakdownTiles.map((item) => {
                             const percent =
                                 item.percentBase > 0
@@ -593,21 +593,23 @@ function HeroCard({
                             return (
                                 <div
                                     key={item.key}
-                                    className="w-[5.9rem] shrink-0 snap-start px-2 py-1 text-left"
+                                    className="shrink-0 snap-start rounded-full bg-white/10 px-2.5 py-1.5 text-left ring-1 ring-white/10"
                                 >
-                                    <p className="truncate text-[9px] font-extrabold text-white/55">
-                                        {item.label}
-                                    </p>
-                                    <p className="mt-0.5 truncate text-[11px] font-black text-white">
-                                        {formatPrivateAmount(
-                                            item.value,
-                                            currency,
-                                            balancesVisible,
-                                        )}
-                                    </p>
-                                    <p className="mt-0.5 text-[9px] font-extrabold text-white/45">
-                                        {percent}%
-                                    </p>
+                                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                                        <span className="text-[9px] font-extrabold text-white/55">
+                                            {item.label}
+                                        </span>
+                                        <span className="text-[11px] font-black text-white">
+                                            {formatPrivateAmount(
+                                                item.value,
+                                                currency,
+                                                balancesVisible,
+                                            )}
+                                        </span>
+                                        <span className="text-[9px] font-extrabold text-white/45">
+                                            {percent}%
+                                        </span>
+                                    </div>
                                 </div>
                             );
                         })}
