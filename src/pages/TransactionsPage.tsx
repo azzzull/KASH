@@ -171,6 +171,7 @@ function clearableFilters(filters: TransactionFilters) {
 
 function signedAccountingAmount(transaction: TransactionWithMeta) {
   if (transaction.status === "void") return 0;
+  if (transaction.type === "transfer") return 0;
   return signedTransactionAmount(transaction);
 }
 
@@ -849,7 +850,7 @@ function AdvancedFilterContent({
   ];
 
   return (
-    <div>
+    <div data-transaction-filter-panel="true">
       {!hideHeader && (
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -1004,6 +1005,7 @@ export function TransactionsPage() {
 
     const closeOnOutsideClick = (event: PointerEvent) => {
       if (filterMenuRef.current?.contains(event.target as Node)) return;
+      if ((event.target as Element | null)?.closest('[data-transaction-filter-panel="true"]')) return;
       setFilterPanelOpen(false);
     };
 
