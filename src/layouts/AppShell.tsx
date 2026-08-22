@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigation } from "react-router-dom";
 import { NotificationProvider } from "../context/NotificationContext";
 import { StaleSessionReset } from "../components/app/StaleSessionReset";
+import { useAppLaunchSplash } from "../components/app/AppLaunchSplash";
 import { ServiceWorkerNavigationBridge } from "../components/pwa/ServiceWorkerNavigationBridge";
 import { AppHeader } from "../components/layout/AppHeader";
 import { DesktopSidebar } from "../components/layout/DesktopSidebar";
@@ -18,6 +19,7 @@ import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpens
 export function AppShell() {
   const location = useLocation();
   const navigation = useNavigation();
+  const { showStaleResetSplash } = useAppLaunchSplash();
   const contentRef = useRef<HTMLElement | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -160,7 +162,7 @@ export function AppShell() {
   return (
     <NotificationProvider>
       <ServiceWorkerNavigationBridge />
-      <StaleSessionReset onResetTransientUi={resetTransientUi} />
+      <StaleSessionReset onResetTransientUi={resetTransientUi} onStaleResetStart={showStaleResetSplash} />
       <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
         <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
           <DesktopSidebar onNavigateIntent={setPendingPath} pendingPath={activePendingPath} />
