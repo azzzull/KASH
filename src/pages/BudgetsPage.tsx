@@ -57,7 +57,18 @@ export function BudgetsPage() {
         getMonthlyBudgetOverview(currentMonth),
         getMonthlyBudgets(currentMonth),
       ]);
-      setOverview(overviewData);
+      const healthyCount = budgetList.filter((budget) => budget.status === "healthy").length;
+      const nearLimitCount = budgetList.filter((budget) => budget.status === "near_limit").length;
+      const overBudgetCount = budgetList.filter((budget) => budget.status === "over_budget").length;
+
+      setOverview({
+        ...overviewData,
+        budget_count: budgetList.length,
+        healthy_count: healthyCount,
+        near_limit_count: nearLimitCount,
+        over_budget_count: overBudgetCount,
+        total_budgets_count: budgetList.length,
+      });
       setBudgets(budgetList);
     } catch (err) {
       console.error("Error loading budgets:", err);
@@ -197,21 +208,21 @@ export function BudgetsPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
+            <div className="flex max-w-full flex-nowrap items-center gap-1.5 self-start overflow-x-auto py-0.5 sm:self-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 <CheckCircle2 size={13} />
                 {overview.healthy_count} {t("budgets.healthy") || "Aman"}
               </span>
 
               {overview.near_limit_count > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                   <AlertCircle size={13} />
                   {overview.near_limit_count} {t("budgets.nearLimit") || "Hampir Batas"}
                 </span>
               )}
 
               {overview.over_budget_count > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                   <AlertCircle size={13} />
                   {overview.over_budget_count} {t("budgets.overBudget") || "Over Budget"}
                 </span>
