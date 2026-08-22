@@ -162,7 +162,7 @@ function ComparisonLine({
       return (
         <div className={`min-w-0 max-w-full text-[10px] font-bold ${mutedTone} ${className}`}>
           <p>0</p>
-          <p className="mt-0.5 text-[9px]">{comparisonText}</p>
+          <p className="text-[9px] leading-none">{comparisonText}</p>
         </div>
       );
     }
@@ -184,7 +184,7 @@ function ComparisonLine({
             {percentText}
           </span>
         </p>
-        <p className={`mt-0.5 text-[9px] font-bold ${mutedTone}`}>{comparisonText}</p>
+        <p className={`text-[9px] font-bold leading-none ${mutedTone}`}>{comparisonText}</p>
       </div>
     );
   }
