@@ -600,7 +600,7 @@ function HeroCard({
                                             {item.label}
                                         </span>
                                         <span className="text-[11px] font-black text-white">
-                                            {formatPrivateCompactAmount(
+                                            {formatPrivateAmount(
                                                 item.value,
                                                 currency,
                                                 balancesVisible,
