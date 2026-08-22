@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Profile } from "../types/domain";
@@ -110,12 +111,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const profileRequestIdRef = useRef(0);
 
   const loadProfile = async (userId: string) => {
+    const requestId = profileRequestIdRef.current + 1;
+    profileRequestIdRef.current = requestId;
     setProfileLoading(true);
 
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const { data, error } = await getCurrentProfile(userId);
+
+      if (profileRequestIdRef.current !== requestId) {
+        return;
+      }
 
       if (error) {
         console.error("Failed to load profile", error);
@@ -133,6 +141,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await new Promise((resolve) => {
         window.setTimeout(resolve, 300);
       });
+
+      if (profileRequestIdRef.current !== requestId) {
+        return;
+      }
     }
 
     setProfile(null);
@@ -156,31 +168,56 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     let mounted = true;
+    let initialSessionResolved = false;
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    const clearProfile = () => {
+      profileRequestIdRef.current += 1;
+      setProfile(null);
+      setProfileLoading(false);
+    };
+
+    const applySession = (nextSession: Session | null) => {
       if (!mounted) {
         return;
       }
 
-      setSession(data.session);
-      setStatus(data.session ? "authenticated" : "unauthenticated");
-
-      if (data.session?.user.id) {
-        await loadProfile(data.session.user.id);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       setStatus(nextSession ? "authenticated" : "unauthenticated");
 
       if (nextSession?.user.id) {
         void loadProfile(nextSession.user.id);
       } else {
-        setProfile(null);
+        clearProfile();
       }
+    };
+
+    const resolveInitialSession = (nextSession: Session | null) => {
+      if (initialSessionResolved) {
+        return;
+      }
+
+      initialSessionResolved = true;
+      applySession(nextSession);
+    };
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      resolveInitialSession(data.session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "INITIAL_SESSION") {
+        resolveInitialSession(nextSession);
+        return;
+      }
+
+      if (!initialSessionResolved && !nextSession && event !== "SIGNED_OUT") {
+        return;
+      }
+
+      initialSessionResolved = true;
+      applySession(nextSession);
     });
 
     return () => {
@@ -307,8 +344,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signOut: async () => {
         await signOutRequest();
 
+        profileRequestIdRef.current += 1;
         setSession(null);
         setProfile(null);
+        setProfileLoading(false);
         setStatus("unauthenticated");
       },
     }),
