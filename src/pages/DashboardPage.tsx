@@ -566,7 +566,7 @@ function HeroCard({
 
             {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
-                <div className="mt-3 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div className="mt-4 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     <div className="flex min-w-max flex-nowrap gap-1.5 px-1">
                         {breakdownTiles.map((item) => {
                             const percent =
@@ -584,17 +584,17 @@ function HeroCard({
                                     className="shrink-0 snap-start rounded-full bg-white/10 px-2.5 py-1.5 text-left ring-1 ring-white/10"
                                 >
                                     <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                                        <span className="text-[10px] font-extrabold text-white/55">
+                                        <span className="text-[9px] font-extrabold text-white/55">
                                             {item.label}
                                         </span>
-                                        <span className="text-[12px] font-black text-white">
+                                        <span className="text-[11px] font-black text-white">
                                             {formatPrivateCompactAmount(
                                                 item.value,
                                                 currency,
                                                 balancesVisible,
                                             )}
                                         </span>
-                                        <span className="text-[10px] font-extrabold text-white/45">
+                                        <span className="text-[9px] font-extrabold text-white/45">
                                             {percent}%
                                         </span>
                                     </div>
