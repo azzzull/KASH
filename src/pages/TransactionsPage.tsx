@@ -628,7 +628,7 @@ function AdvancedFilterPanel({
           title={t("transactions.filterTitle") || "Filter Transaksi"}
           description={t("transactions.filterSubtitle") || "Persempit buku kas berdasarkan tanggal, dompet, kategori, atau status."}
         >
-          <AdvancedFilterContent categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
+          <AdvancedFilterContent hideHeader categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
         </Modal>
       </div>
       <div className="absolute right-[calc(100%+4px)] top-[calc(100%+4px)] z-40 hidden w-72 rounded-xl border border-slate-200/60 bg-white p-4 shadow-soft md:block">
@@ -641,6 +641,7 @@ function AdvancedFilterPanel({
 function AdvancedFilterContent({
   categories,
   filters,
+  hideHeader = false,
   onClose,
   onReset,
   onUpdate,
@@ -648,6 +649,7 @@ function AdvancedFilterContent({
 }: {
   categories: Category[];
   filters: TransactionFilters;
+  hideHeader?: boolean;
   onClose: () => void;
   onReset: () => void;
   onUpdate: <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) => void;
@@ -670,13 +672,15 @@ function AdvancedFilterContent({
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-sm font-extrabold text-slate-900">{t("transactions.filterTitle") || "Filter Transaksi"}</h2>
-          <p className="mt-0.5 text-xs font-medium text-slate-500">{t("transactions.filterSubtitle") || "Persempit berdasarkan tanggal, dompet, kategori, atau status."}</p>
+      {!hideHeader && (
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-extrabold text-slate-900">{t("transactions.filterTitle") || "Filter Transaksi"}</h2>
+            <p className="mt-0.5 text-xs font-medium text-slate-500">{t("transactions.filterSubtitle") || "Persempit berdasarkan tanggal, dompet, kategori, atau status."}</p>
+          </div>
+          <IconButton icon={X} label="Close filters" onClick={onClose} />
         </div>
-        <IconButton icon={X} label="Close filters" onClick={onClose} />
-      </div>
+      )}
 
       <div className="mt-4 grid gap-3">
         <SelectField id="transaction-period-filter" label={t("analytics.period") || "Periode"} value={filters.period} onChange={(event) => onUpdate("period", event.target.value as TransactionPeriodFilter)}>

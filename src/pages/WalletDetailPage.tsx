@@ -14,7 +14,8 @@ import { useI18n } from "../i18n";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
-import { createAdjustment } from "../lib/transactions";
+import { createAdjustment, getTransactions, type TransactionWithMeta } from "../lib/transactions";
+import { TransactionDetailPanel, transactionIcon, transactionTitle, transactionTone } from "../components/transactions/TransactionDetailPanel";
 import { getCurrentLocalDatetimeString } from "../lib/datetime";
 import {
   getWalletIcon,
@@ -428,19 +429,8 @@ function UpdateValuationModal({
       isOpen
       onClose={onClose}
       maxWidth="md"
-      title={
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-kash-emerald">
-            <LineChart aria-hidden="true" size={20} />
-          </span>
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">{t("wallets.updateInvestmentValuation") || "Update Nilai Investasi"}</h2>
-            <p className="mt-0.5 text-xs font-semibold text-slate-600">
-              {t("wallets.updateValuationDesc") || "Pembaruan nilai pasar tidak mengubah arus kas riil (pemasukan/pengeluaran)."}
-            </p>
-          </div>
-        </div>
-      }
+      title={t("wallets.updateInvestmentValuation") || "Update Nilai Investasi"}
+      description={t("wallets.updateValuationDesc") || "Pembaruan nilai pasar tidak mengubah arus kas riil (pemasukan/pengeluaran)."}
     >
       <div>
         {error ? (
@@ -568,19 +558,8 @@ function RecordInvestmentActivityModal({
       isOpen
       onClose={onClose}
       maxWidth="md"
-      title={
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-kash-emerald">
-            <TrendingUp aria-hidden="true" size={20} />
-          </span>
-          <div>
-            <h2 className="text-xl font-extrabold text-slate-900">{t("wallets.recordInvestmentActivity") || "Catat Aktivitas Investasi"}</h2>
-            <p className="mt-0.5 text-xs font-semibold text-slate-600">
-              {t("wallets.recordActivityDesc") || "Catat hasil take profit atau cut loss. Aktivitas ini hanya membagi performa (realized vs unrealized) dan tidak mengubah saldo dompet secara ganda."}
-            </p>
-          </div>
-        </div>
-      }
+      title={t("wallets.recordInvestmentActivity") || "Catat Aktivitas Investasi"}
+      description={t("wallets.recordActivityDesc") || "Catat hasil take profit atau cut loss. Aktivitas ini hanya membagi performa (realized vs unrealized) dan tidak mengubah saldo dompet secara ganda."}
     >
       <div>
         {error ? (
@@ -664,6 +643,8 @@ export function WalletDetailPage() {
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
   const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
   const [activities, setActivities] = useState<InvestmentActivity[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<TransactionWithMeta[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithMeta | null>(null);
   const [linkedGoalCount, setLinkedGoalCount] = useState(0);
   const [transactionCount, setTransactionCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -682,36 +663,42 @@ export function WalletDetailPage() {
     setLoading(true);
     setError(null);
 
-    const [{ data, error: walletError }, { count, error: countError }, { count: goalCount, error: goalCountError }] = await Promise.all([
-      getWalletById(id),
-      getWalletTransactionCount(id),
-      getWalletLinkedGoalCount(id),
-    ]);
+    try {
+      const [{ data, error: walletError }, { count, error: countError }, { count: goalCount, error: goalCountError }, txResult] = await Promise.all([
+        getWalletById(id),
+        getWalletTransactionCount(id),
+        getWalletLinkedGoalCount(id),
+        getTransactions({ walletId: id, pageSize: 30 }),
+      ]);
 
-    if (walletError || countError || goalCountError || !data) {
-      setError(t("wallets.loadDetailError") || "Gagal memuat dompet ini. Dompet mungkin tidak ada atau Anda tidak memiliki akses.");
-      setLoading(false);
-      return;
-    }
-
-    setWallet(data);
-    setTransactionCount(count);
-    setLinkedGoalCount(goalCount);
-
-    if (data.wallet_type === "investment") {
-      try {
-        const [valHistory, actHistory] = await Promise.all([
-          getInvestmentValuationHistory(id),
-          getInvestmentActivities(id),
-        ]);
-        setValuations((valHistory.data as any) ?? []);
-        setActivities(actHistory.data ?? []);
-      } catch (err) {
-        console.warn("Failed to load investment history", err);
+      if (walletError || countError || goalCountError || !data) {
+        setError(t("wallets.loadDetailError") || "Gagal memuat dompet ini. Dompet mungkin tidak ada atau Anda tidak memiliki akses.");
+        setLoading(false);
+        return;
       }
-    }
 
-    setLoading(false);
+      setWallet(data);
+      setTransactionCount(count);
+      setLinkedGoalCount(goalCount);
+      setRecentTransactions(txResult.transactions ?? []);
+
+      if (data.wallet_type === "investment") {
+        try {
+          const [valHistory, actHistory] = await Promise.all([
+            getInvestmentValuationHistory(id),
+            getInvestmentActivities(id),
+          ]);
+          setValuations((valHistory.data as any) ?? []);
+          setActivities(actHistory.data ?? []);
+        } catch (err) {
+          console.warn("Failed to load investment history", err);
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || (t("wallets.loadDetailError") || "Gagal memuat dompet ini."));
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -817,36 +804,6 @@ export function WalletDetailPage() {
         icon={Icon}
         title={wallet.name}
         description={wallet.institution_name ?? (t("wallets.detailSubtitle") || "Rincian dompet dan kontrol saldo.")}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {isInvestment ? (
-              <>
-                <Button onClick={() => setShowValuation(true)}>
-                  <LineChart aria-hidden="true" size={17} />
-                  {t("wallets.updateInvestmentValuation") || "Update Nilai"}
-                </Button>
-                <Button onClick={() => setShowActivityModal(true)} variant="secondary">
-                  <TrendingUp aria-hidden="true" size={17} />
-                  {t("wallets.recordActivity") || "Catat Aktivitas"}
-                </Button>
-              </>
-            ) : null}
-            <Button onClick={() => setShowEdit(true)} variant="secondary">
-              <Edit3 aria-hidden="true" size={17} />
-              {t("common.edit") || "Edit"}
-            </Button>
-            {!isInvestment ? (
-              <Button onClick={() => setShowAdjustment(true)} variant="secondary">
-                <SlidersHorizontal aria-hidden="true" size={17} />
-                {t("wallets.adjustBalance") || "Sesuaikan Saldo"}
-              </Button>
-            ) : null}
-            <Button onClick={() => setShowDelete(true)} variant="danger">
-              <Trash2 aria-hidden="true" size={17} />
-              {canHardDelete ? (t("common.delete") || "Hapus") : (t("common.archive") || "Arsipkan")}
-            </Button>
-          </div>
-        }
       />
 
       {wallet.goal_id ? (
@@ -921,6 +878,60 @@ export function WalletDetailPage() {
           </div>
         </section>
       )}
+
+      {/* Action Bar Directly BELOW Hero Card */}
+      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        {isInvestment ? (
+          <>
+            <Button
+              type="button"
+              onClick={() => setShowValuation(true)}
+              className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+            >
+              <LineChart aria-hidden="true" size={15} />
+              {t("wallets.updateInvestmentValuation") || "Update Nilai"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowActivityModal(true)}
+              className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+            >
+              <TrendingUp aria-hidden="true" size={15} />
+              {t("wallets.recordActivity") || "Catat Aktivitas"}
+            </Button>
+          </>
+        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setShowEdit(true)}
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+        >
+          <Edit3 aria-hidden="true" size={15} />
+          {t("common.edit") || "Edit"}
+        </Button>
+        {!isInvestment ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setShowAdjustment(true)}
+            className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+          >
+            <SlidersHorizontal aria-hidden="true" size={15} />
+            {t("wallets.adjustBalance") || "Sesuaikan Saldo"}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="danger"
+          onClick={() => setShowDelete(true)}
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+        >
+          <Trash2 aria-hidden="true" size={15} />
+          {canHardDelete ? (t("common.delete") || "Hapus") : (t("common.archive") || "Arsipkan")}
+        </Button>
+      </div>
 
       {/* Supporting details grid */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -1062,19 +1073,89 @@ export function WalletDetailPage() {
         </section>
       ) : null}
 
-      {/* Recent Transactions placeholder container */}
-      <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
-        <div className="flex items-center gap-2 mb-3">
-          <WalletCards aria-hidden="true" className="text-slate-500" size={17} />
-          <h3 className="text-sm font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Transaksi Terbaru"}</h3>
+      {/* Recent Transactions List */}
+      <section className="rounded-2xl border border-slate-200/60 bg-white p-4 sm:p-5 shadow-card">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <WalletCards aria-hidden="true" className="text-slate-500" size={17} />
+            <h3 className="text-sm font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Transaksi Terbaru"}</h3>
+          </div>
+          {recentTransactions.length > 0 && (
+            <span className="text-xs font-bold text-slate-500">
+              {recentTransactions.length} {t("nav.transactions") || "transaksi"}
+            </span>
+          )}
         </div>
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
-          <h4 className="text-sm font-extrabold text-slate-900">{t("transactions.emptyStateTitle") || "Belum ada transaksi."}</h4>
-          <p className="mx-auto mt-1 max-w-sm text-xs font-semibold leading-5 text-slate-500">
-            {t("wallets.transactionHistoryDesc") || "Riwayat transaksi untuk dompet ini akan muncul di sini."}
-          </p>
-        </div>
+
+        {recentTransactions.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+            <h4 className="text-sm font-extrabold text-slate-900">{t("transactions.emptyStateTitle") || "Belum ada transaksi."}</h4>
+            <p className="mx-auto mt-1 max-w-sm text-xs font-semibold leading-5 text-slate-500">
+              {t("wallets.transactionHistoryDesc") || "Riwayat transaksi untuk dompet ini akan muncul di sini."}
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white">
+            {recentTransactions.map((tx) => {
+              const IconComp = transactionIcon(tx.type);
+              const title = transactionTitle(tx);
+              const tone = transactionTone[tx.type];
+              const formattedDate = formatDate(new Date(tx.transaction_date));
+              const isSourceWallet = tx.wallet_id === wallet.id;
+              const isDestinationWallet = tx.destination_wallet_id === wallet.id;
+
+              let displayAmountPrefix = tx.type === "income" ? "+" : tx.type === "expense" ? "-" : "";
+              if (tx.type === "transfer") {
+                if (isDestinationWallet && !isSourceWallet) displayAmountPrefix = "+";
+                else if (isSourceWallet && !isDestinationWallet) displayAmountPrefix = "-";
+              }
+
+              return (
+                <button
+                  key={tx.id}
+                  type="button"
+                  onClick={() => setSelectedTransaction(tx)}
+                  className="block w-full border-b border-slate-100 py-3 text-left transition last:border-b-0 hover:bg-slate-50 px-3"
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${tone}`}>
+                        <IconComp aria-hidden="true" size={17} strokeWidth={2.2} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-extrabold text-slate-900">{title}</span>
+                        <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500">
+                          {formattedDate} {tx.category?.name ? `• ${tx.category.name}` : ""}
+                        </span>
+                      </span>
+                    </span>
+
+                    <span className="text-right shrink-0">
+                      <span className={`block text-sm font-extrabold ${tone}`}>
+                        {displayAmountPrefix}{formatCurrency(tx.amount, wallet.currency)}
+                      </span>
+                      {tx.type === "transfer" ? (
+                        <span className="block text-[11px] font-bold text-slate-500">
+                          {isDestinationWallet ? (t("transactions.transferIn") || "Masuk") : (t("transactions.transferOut") || "Keluar")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
+
+      {selectedTransaction && (
+        <TransactionDetailPanel
+          currency={wallet.currency}
+          isOpen={Boolean(selectedTransaction)}
+          transaction={selectedTransaction}
+          onClose={() => setSelectedTransaction(null)}
+        />
+      )}
 
       {showEdit ? (
         <EditWalletModal

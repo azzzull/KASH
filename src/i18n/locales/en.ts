@@ -106,6 +106,8 @@ export const en = {
   "transactions.income": "Income",
   "transactions.expense": "Expense",
   "transactions.transfer": "Transfer",
+  "transactions.transferIn": "Transfer In",
+  "transactions.transferOut": "Transfer Out",
   "transactions.latest": "Latest",
   "transactions.oldest": "Oldest",
   "transactions.amountHigh": "Highest Amount",

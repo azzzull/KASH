@@ -106,6 +106,8 @@ export const id = {
   "transactions.income": "Pemasukan",
   "transactions.expense": "Pengeluaran",
   "transactions.transfer": "Transfer",
+  "transactions.transferIn": "Transfer Masuk",
+  "transactions.transferOut": "Transfer Keluar",
   "transactions.latest": "Terbaru",
   "transactions.oldest": "Terlama",
   "transactions.amountHigh": "Nominal Terbesar",
