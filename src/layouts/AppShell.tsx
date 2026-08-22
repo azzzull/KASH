@@ -1,9 +1,8 @@
 import { Plus, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Outlet, useLocation, useNavigation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { NotificationProvider } from "../context/NotificationContext";
 import { StaleSessionReset } from "../components/app/StaleSessionReset";
-import { useAppLaunchSplash } from "../components/app/AppLaunchSplash";
 import { ServiceWorkerNavigationBridge } from "../components/pwa/ServiceWorkerNavigationBridge";
 import { AppHeader } from "../components/layout/AppHeader";
 import { DesktopSidebar } from "../components/layout/DesktopSidebar";
@@ -18,8 +17,6 @@ import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpens
 
 export function AppShell() {
   const location = useLocation();
-  const navigation = useNavigation();
-  const { showStaleResetSplash } = useAppLaunchSplash();
   const contentRef = useRef<HTMLElement | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -27,19 +24,13 @@ export function AppShell() {
     useState<QuickAddMode | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
-  const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
-  const currentPath = `${location.pathname}${location.search}`;
-  const navigationTargetPath = navigation.location ? `${navigation.location.pathname}${navigation.location.search}` : null;
-  const activePendingPath = navigationTargetPath ?? pendingPath;
-  const isRoutePending = Boolean(activePendingPath && activePendingPath !== currentPath);
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0 });
     window.scrollTo({ top: 0 });
     setMobileHeaderVisible(true);
-    setPendingPath(null);
-  }, [currentPath]);
+  }, [location.pathname]);
 
   useEffect(() => {
     const getScrollTop = () => {
@@ -162,18 +153,12 @@ export function AppShell() {
   return (
     <NotificationProvider>
       <ServiceWorkerNavigationBridge />
-      <StaleSessionReset onResetTransientUi={resetTransientUi} onStaleResetStart={showStaleResetSplash} />
+      <StaleSessionReset onResetTransientUi={resetTransientUi} />
       <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
         <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
-          <DesktopSidebar onNavigateIntent={setPendingPath} pendingPath={activePendingPath} />
+          <DesktopSidebar />
           <div className="flex min-w-0 flex-1 flex-col lg:h-[100dvh] lg:min-h-0">
             <AppHeader visible={mobileHeaderVisible} />
-            <div
-              aria-hidden="true"
-              className={`fixed left-0 right-0 top-0 z-50 h-0.5 origin-left bg-kash-emerald shadow-[0_0_12px_rgba(16,185,129,0.55)] transition-all duration-300 lg:left-64 ${
-                isRoutePending ? "scale-x-100 opacity-100" : "scale-x-0 opacity-0"
-              }`}
-            />
             <main ref={contentRef} className="flex-1 px-4 pt-20 pb-28 md:px-6 md:pt-6 lg:min-h-0 lg:overflow-y-auto lg:pb-8 lg:pt-8">
               <Outlet />
             </main>
@@ -182,16 +167,9 @@ export function AppShell() {
 
         <MobileBottomNav
           onMore={() => setMoreOpen(true)}
-          onNavigateIntent={setPendingPath}
           onQuickAdd={() => setQuickAddOpen(true)}
-          pendingPath={activePendingPath}
         />
-        <MobileMoreSheet
-          onClose={() => setMoreOpen(false)}
-          onNavigateIntent={setPendingPath}
-          open={moreOpen}
-          pendingPath={activePendingPath}
-        />
+        <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
         {transactionMode === "reimbursable_expense" ? (
           <ReimbursableExpenseModal isOpen={true} onClose={() => setTransactionMode(null)} />

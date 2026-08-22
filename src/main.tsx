@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import { registerServiceWorker } from "./app/registerServiceWorker";
 import { router } from "./app/router";
-import { AppLaunchSplashProvider } from "./components/app/AppLaunchSplash";
 import { AuthProvider } from "./context/AuthContext";
 import "./styles/index.css";
 
@@ -13,9 +12,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
       <I18nProvider>
-        <AppLaunchSplashProvider>
-          <RouterProvider router={router} />
-        </AppLaunchSplashProvider>
+        <RouterProvider router={router} />
       </I18nProvider>
     </AuthProvider>
   </React.StrictMode>,

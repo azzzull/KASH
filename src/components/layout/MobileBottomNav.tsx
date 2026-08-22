@@ -5,15 +5,12 @@ import { useI18n } from "../../i18n";
 
 type MobileBottomNavProps = {
   onMore: () => void;
-  onNavigateIntent?: (path: string) => void;
   onQuickAdd: () => void;
-  pendingPath?: string | null;
 };
 
-export function MobileBottomNav({ onMore, onNavigateIntent, onQuickAdd, pendingPath }: MobileBottomNavProps) {
+export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
   const { t } = useI18n();
   const [home, transactions, analytics] = mobilePrimaryItems;
-  const pendingBasePath = pendingPath?.split("?")[0] ?? null;
 
   const getLocalizedNavLabel = (path: string, defaultLabel: string) => {
     switch (path) {
@@ -34,14 +31,9 @@ export function MobileBottomNav({ onMore, onNavigateIntent, onQuickAdd, pendingP
           <NavLink
             key={item.path}
             to={item.path}
-            onPointerDown={() => onNavigateIntent?.(item.path)}
-            onClick={(event) => {
-              if (pendingBasePath === item.path) event.preventDefault();
-              onNavigateIntent?.(item.path);
-            }}
             className={({ isActive }) =>
               `flex h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold transition active:scale-[0.98] active:bg-kash-selected/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${
-                isActive || pendingBasePath === item.path ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
+                isActive ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
               }`
             }
           >
@@ -61,14 +53,9 @@ export function MobileBottomNav({ onMore, onNavigateIntent, onQuickAdd, pendingP
 
         <NavLink
           to={analytics.path}
-          onPointerDown={() => onNavigateIntent?.(analytics.path)}
-          onClick={(event) => {
-            if (pendingBasePath === analytics.path) event.preventDefault();
-            onNavigateIntent?.(analytics.path);
-          }}
           className={({ isActive }) =>
             `flex h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold transition active:scale-[0.98] active:bg-kash-selected/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${
-              isActive || pendingBasePath === analytics.path ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
+              isActive ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
             }`
           }
         >

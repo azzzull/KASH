@@ -4,15 +4,12 @@ import { Modal } from "../ui/Modal";
 import { useI18n } from "../../i18n";
 
 type MobileMoreSheetProps = {
-  onNavigateIntent?: (path: string) => void;
   open: boolean;
   onClose: () => void;
-  pendingPath?: string | null;
 };
 
-export function MobileMoreSheet({ onNavigateIntent, open, onClose, pendingPath }: MobileMoreSheetProps) {
+export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
   const { t } = useI18n();
-  const pendingBasePath = pendingPath?.split("?")[0] ?? null;
 
   const getLocalizedLabel = (path: string, defaultLabel: string) => {
     switch (path) {
@@ -42,15 +39,12 @@ export function MobileMoreSheet({ onNavigateIntent, open, onClose, pendingPath }
           <NavLink
             key={item.path}
             to={item.path}
-            onPointerDown={() => onNavigateIntent?.(item.path)}
-            onClick={(event) => {
-              if (pendingBasePath === item.path) event.preventDefault();
-              onNavigateIntent?.(item.path);
+            onClick={() => {
               onClose();
             }}
             className={({ isActive }) =>
               `flex touch-manipulation items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-bold transition active:scale-[0.99] active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${
-                isActive || pendingBasePath === item.path
+                isActive
                   ? "bg-kash-selected/70 text-kash-emeraldDark"
                   : "text-slate-800 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
               }`

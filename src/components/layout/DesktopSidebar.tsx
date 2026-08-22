@@ -10,12 +10,7 @@ import { KashLogo } from "../brand/KashLogo";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
 
-type DesktopSidebarProps = {
-  onNavigateIntent?: (path: string) => void;
-  pendingPath?: string | null;
-};
-
-export function DesktopSidebar({ onNavigateIntent, pendingPath }: DesktopSidebarProps) {
+export function DesktopSidebar() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const { unreadCount } = useNotifications();
@@ -27,7 +22,6 @@ export function DesktopSidebar({ onNavigateIntent, pendingPath }: DesktopSidebar
   const displayName = profile?.full_name || profile?.email || "Account";
   const subtitle = profile?.email ?? "View Profile";
   const initial = displayName.charAt(0).toUpperCase();
-  const pendingBasePath = pendingPath?.split("?")[0] ?? null;
 
   const handleSignOut = async () => {
     await signOut();
@@ -141,14 +135,9 @@ export function DesktopSidebar({ onNavigateIntent, pendingPath }: DesktopSidebar
                   <NavLink
                     key={item.path}
                     to={item.path}
-                    onPointerDown={() => onNavigateIntent?.(item.path)}
-                    onClick={(event) => {
-                      if (pendingBasePath === item.path) event.preventDefault();
-                      onNavigateIntent?.(item.path);
-                    }}
                     className={({ isActive }) =>
                       `group/nav flex touch-manipulation items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition active:scale-[0.99] ${
-                        isActive || pendingBasePath === item.path
+                        isActive
                           ? "bg-kash-selected/70 text-kash-emeraldDark"
                           : "text-slate-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
                       }`
