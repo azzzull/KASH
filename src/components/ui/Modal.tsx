@@ -46,6 +46,7 @@ const MEDIUM_DETENT_DVH = 62;
 const LARGE_DETENT_DVH = 90;
 const LARGE_TOP_GAP_PX = 28;
 const KEYBOARD_FIELD_GAP_PX = 18;
+const KEYBOARD_TRACKING_FRAME_LIMIT = 36;
 const MODAL_LAYER_BASE = 1000;
 const MODAL_LAYER_STEP = 20;
 
@@ -239,8 +240,10 @@ export function Modal({
   const closeTimeoutRef = useRef<number | null>(null);
   const focusedEditableRef = useRef<HTMLElement | null>(null);
   const keyboardFrameRef = useRef<number | null>(null);
+  const keyboardTrackingFrameRef = useRef<number | null>(null);
   const keyboardFallbackTimeoutRef = useRef<number | null>(null);
   const keyboardDetentExpansionPendingRef = useRef(false);
+  const viewportHeightBeforeFocusRef = useRef<number | null>(null);
   const sheetDetentRef = useRef<SheetDetent>("medium");
   const isTopModalRef = useRef(false);
   const modalId = modalIdRef.current;
@@ -262,6 +265,9 @@ export function Modal({
       }
       if (keyboardFrameRef.current !== null) {
         window.cancelAnimationFrame(keyboardFrameRef.current);
+      }
+      if (keyboardTrackingFrameRef.current !== null) {
+        window.cancelAnimationFrame(keyboardTrackingFrameRef.current);
       }
       if (keyboardFallbackTimeoutRef.current !== null) {
         window.clearTimeout(keyboardFallbackTimeoutRef.current);
@@ -448,24 +454,69 @@ export function Modal({
       });
     };
 
+    const stopKeyboardTracking = () => {
+      if (keyboardTrackingFrameRef.current !== null) {
+        window.cancelAnimationFrame(keyboardTrackingFrameRef.current);
+        keyboardTrackingFrameRef.current = null;
+      }
+    };
+
+    const startKeyboardTracking = () => {
+      stopKeyboardTracking();
+
+      let frameCount = 0;
+      let lastViewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      let stableFrames = 0;
+
+      const trackKeyboardFrame = () => {
+        const focusedElement = focusedEditableRef.current;
+        if (!focusedElement || !isTopModalRef.current) {
+          keyboardTrackingFrameRef.current = null;
+          return;
+        }
+
+        const nextViewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        const viewportChanged = Math.abs(nextViewportHeight - lastViewportHeight) > 1;
+        stableFrames = viewportChanged ? 0 : stableFrames + 1;
+        lastViewportHeight = nextViewportHeight;
+
+        adjustFocusedField(viewportChanged ? "auto" : "smooth");
+
+        frameCount += 1;
+        if (frameCount >= KEYBOARD_TRACKING_FRAME_LIMIT || stableFrames >= 8) {
+          keyboardTrackingFrameRef.current = null;
+          return;
+        }
+
+        keyboardTrackingFrameRef.current = window.requestAnimationFrame(trackKeyboardFrame);
+      };
+
+      keyboardTrackingFrameRef.current = window.requestAnimationFrame(trackKeyboardFrame);
+    };
+
     const handleFocusIn = (event: FocusEvent) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
       if (!isKeyboardEditableElement(target)) return;
       if (!panelRef.current?.contains(target)) return;
 
       focusedEditableRef.current = target;
+      viewportHeightBeforeFocusRef.current = window.visualViewport?.height ?? window.innerHeight;
       scheduleFocusedFieldAdjustment("smooth");
+      startKeyboardTracking();
     };
 
     const handleFocusOut = (event: FocusEvent) => {
       if (event.target === focusedEditableRef.current) {
         focusedEditableRef.current = null;
+        viewportHeightBeforeFocusRef.current = null;
+        stopKeyboardTracking();
       }
     };
 
     const handleViewportChange = () => {
       if (!focusedEditableRef.current) return;
       scheduleFocusedFieldAdjustment("smooth");
+      startKeyboardTracking();
     };
 
     const panel = panelRef.current;
@@ -485,6 +536,7 @@ export function Modal({
         window.cancelAnimationFrame(keyboardFrameRef.current);
         keyboardFrameRef.current = null;
       }
+      stopKeyboardTracking();
       if (keyboardFallbackTimeoutRef.current !== null) {
         window.clearTimeout(keyboardFallbackTimeoutRef.current);
         keyboardFallbackTimeoutRef.current = null;
