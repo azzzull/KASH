@@ -1,4 +1,4 @@
-import { ArrowLeft, Archive, Edit3, History, LineChart, Loader2, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Archive, Edit3, History, LineChart, Loader2, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
@@ -668,7 +668,7 @@ export function WalletDetailPage() {
         getWalletById(id),
         getWalletTransactionCount(id),
         getWalletLinkedGoalCount(id),
-        getTransactions({ walletId: id, pageSize: 30 }),
+        getTransactions({ walletId: id, pageSize: 10 }),
       ]);
 
       if (walletError || countError || goalCountError || !data) {
@@ -1144,6 +1144,18 @@ export function WalletDetailPage() {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {recentTransactions.length > 0 && (
+          <div className="mt-3.5 text-center">
+            <Link
+              to={`/transactions?wallet=${wallet.id}`}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2 text-xs font-extrabold text-slate-700 shadow-xs transition hover:border-kash-emerald hover:bg-kash-selected hover:text-kash-emeraldDark"
+            >
+              {t("wallets.viewAllTransactions") || "Lihat Semua Transaksi"}
+              <ArrowRight aria-hidden="true" size={14} />
+            </Link>
           </div>
         )}
       </section>

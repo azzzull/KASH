@@ -36,6 +36,7 @@ export type TransactionFilters = {
   categoryId?: string;
   envelopeId?: string;
   dateKey?: string;
+  monthDate?: Date | string;
   page?: number;
   pageSize?: number;
   period?: TransactionPeriodFilter;
@@ -287,13 +288,21 @@ export async function getTransactionSupportData() {
   };
 }
 
+function monthRange(monthInput: Date | string) {
+  const date = typeof monthInput === "string" ? new Date(monthInput) : monthInput;
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+
+  return { end: end.toISOString(), start: start.toISOString() };
+}
+
 export async function getTransactions(filters: TransactionFilters = {}) {
   const userId = await getAuthenticatedUserId();
   const page = filters.page ?? 0;
   const pageSize = filters.pageSize ?? 30;
   const sort = filters.sort ?? "latest";
   const exactDayRange = filters.dateKey ? localDayRange(filters.dateKey) : null;
-  const range = exactDayRange ?? periodRange(filters.period);
+  const range = exactDayRange ?? (filters.monthDate ? monthRange(filters.monthDate) : periodRange(filters.period));
   const supportData = await getTransactionSupportData();
 
   let query = supabase.from("transactions").select("*", { count: "exact" }).eq("user_id", userId);

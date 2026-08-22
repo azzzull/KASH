@@ -418,6 +418,7 @@ export const id = {
   "wallets.valuationHistory": "Riwayat Valuasi Nilai Pasar",
   "wallets.marketValue": "Nilai Pasar",
   "wallets.transactionHistoryDesc": "Riwayat transaksi untuk dompet ini akan muncul di sini.",
+  "wallets.viewAllTransactions": "Lihat Semua Transaksi",
   "wallets.deleteWallet": "Hapus Dompet",
   "wallets.archiveWallet": "Arsipkan Dompet",
   "wallets.linkedGoalDeletePrevented": "Dompet ini terhubung ke target tabungan, sehingga tidak dapat dihapus langsung dari sini.",

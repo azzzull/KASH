@@ -418,6 +418,7 @@ export const en = {
   "wallets.valuationHistory": "Market Valuation History",
   "wallets.marketValue": "Market Value",
   "wallets.transactionHistoryDesc": "Transaction history for this wallet will appear here.",
+  "wallets.viewAllTransactions": "View All Transactions",
   "wallets.deleteWallet": "Delete Wallet",
   "wallets.archiveWallet": "Archive Wallet",
   "wallets.linkedGoalDeletePrevented": "This wallet is linked to a goal target and cannot be deleted directly.",

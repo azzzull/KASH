@@ -6,6 +6,8 @@ import {
   ArrowUp,
   ArrowUpRight,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   Loader2,
   Plus,
@@ -17,6 +19,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { addMonths, startOfLocalMonth } from "../lib/calendar";
 import { QuickCreateCategoryModal } from "../components/categories/QuickCreateCategoryModal";
 import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
 import { Button } from "../components/ui/Button";
@@ -707,18 +710,25 @@ function AdvancedFilterContent({
 }
 
 export function TransactionsPage() {
-  const { t, formatDate } = useI18n();
+  const { t, formatDate, formatMonthYear } = useI18n();
   const [searchParams] = useSearchParams();
-  const [filters, setFilters] = useState<TransactionFilters>(() => ({
-    dateKey: searchParams.get("date") ?? undefined,
-    page: 0,
-    pageSize: PAGE_SIZE,
-    period: searchParams.get("date") ? "all" : "this_month",
-    query: "",
-    sort: "latest",
-    status: "all",
-    type: "all",
-  }));
+
+  const [activeMonth, setActiveMonth] = useState(() => startOfLocalMonth(new Date()));
+  const [filters, setFilters] = useState<TransactionFilters>(() => {
+    const initialDateKey = searchParams.get("date") ?? undefined;
+    const initialWalletId = searchParams.get("wallet") ?? undefined;
+    return {
+      dateKey: initialDateKey,
+      monthDate: activeMonth,
+      page: 0,
+      pageSize: PAGE_SIZE,
+      query: "",
+      sort: "latest",
+      status: "all",
+      type: "all",
+      walletId: initialWalletId,
+    };
+  });
   const [transactions, setTransactions] = useState<TransactionWithMeta[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -772,11 +782,27 @@ export function TransactionsPage() {
 
   useEffect(() => {
     const dateKey = searchParams.get("date") ?? undefined;
+    const walletId = searchParams.get("wallet") ?? undefined;
     setFilters((current) => {
-      if (current.dateKey === dateKey) return current;
-      return { ...current, dateKey, page: 0, period: dateKey ? "all" : "this_month" };
+      if (current.dateKey === dateKey && current.walletId === walletId) return current;
+      return {
+        ...current,
+        dateKey,
+        page: 0,
+        walletId: walletId ?? current.walletId,
+      };
     });
   }, [searchParams]);
+
+  const goToMonth = (nextMonth: Date) => {
+    const normalized = startOfLocalMonth(nextMonth);
+    setActiveMonth(normalized);
+    setFilters((current) => ({
+      ...current,
+      monthDate: normalized,
+      page: 0,
+    }));
+  };
 
   useAppEvent(appEvents.transactionSaved, () => void loadTransactions(filters));
 
@@ -878,6 +904,44 @@ export function TransactionsPage() {
             />
           </label>
         </div>
+
+        {/* Compact Month Navigator Bar */}
+        <div className="mt-3 flex items-center justify-between sm:justify-center gap-3 rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-xs">
+          <button
+            type="button"
+            aria-label="Previous month"
+            onClick={() => goToMonth(addMonths(activeMonth, -1))}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20 shrink-0"
+          >
+            <ChevronLeft aria-hidden="true" size={17} />
+          </button>
+          <h2 className="min-w-36 text-center text-sm font-extrabold text-slate-900">{formatMonthYear(activeMonth)}</h2>
+          <button
+            type="button"
+            aria-label="Next month"
+            onClick={() => goToMonth(addMonths(activeMonth, 1))}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20 shrink-0"
+          >
+            <ChevronRight aria-hidden="true" size={17} />
+          </button>
+        </div>
+
+        {filters.walletId && (
+          <div className="mt-2.5 flex items-center gap-2 px-1">
+            <span className="text-xs font-semibold text-slate-500">{t("wallets.title") || "Dompet"}:</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-0.5 text-xs font-extrabold text-kash-emeraldDark border border-kash-emerald/20">
+              {wallets.find((w) => w.id === filters.walletId)?.name || filters.walletId}
+              <button
+                type="button"
+                aria-label="Clear wallet filter"
+                onClick={() => updateFilter("walletId", undefined)}
+                className="ml-0.5 text-kash-emeraldDark hover:text-kash-expense transition"
+              >
+                <X size={13} />
+              </button>
+            </span>
+          </div>
+        )}
 
         {/* Filters */}
         <section className="relative mt-4 pb-1">
