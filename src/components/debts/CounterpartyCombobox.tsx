@@ -8,7 +8,7 @@ import {
 import { Check, ChevronDown, User, UserPlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Counterparty } from "../../types/domain";
-import { useI18n } from "../../i18n";
+import { useI18n, type TranslationKey } from "../../i18n";
 import { autoScrollFieldIntoContainer } from "../ui/SelectField";
 
 export type CounterpartyComboboxProps = {
@@ -34,7 +34,7 @@ export function CounterpartyCombobox({
 }: CounterpartyComboboxProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null!);
 
   const effectiveLabel = label ?? (`${t("debts.personOrBusiness") || "Orang / Kontak"} *`);
   const effectivePlaceholder = placeholder ?? (t("debts.searchOrAddPerson") || "Pilih atau ketik nama orang / kontak...");
@@ -129,11 +129,11 @@ function CounterpartyComboboxInner({
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   hasExactMatch: boolean;
   id: string;
-  inputRef: React.RefObject<HTMLInputElement | null>;
+  inputRef: React.RefObject<HTMLInputElement>;
   open: boolean;
   query: string;
   required: boolean;
-  t: (key: string, options?: any) => string;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }) {
   useEffect(() => {
     if (open && inputRef.current) {

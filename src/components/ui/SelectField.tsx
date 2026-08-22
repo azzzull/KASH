@@ -97,7 +97,7 @@ export function SelectField({ "aria-label": ariaLabel, action, children, classNa
   const [internalValue, setInternalValue] = useState(fallbackValue);
   const selectedValue = value ?? internalValue;
   const selectedOption = options.find((option) => option.value === selectedValue) ?? options.find((option) => !option.disabled);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null!);
 
   const handleChange = (nextValue: string) => {
     setInternalValue(nextValue);
@@ -144,7 +144,7 @@ function SelectFieldContent({
 }: {
   action?: ReactNode;
   ariaLabel?: string;
-  buttonRef: React.RefObject<HTMLButtonElement | null>;
+  buttonRef: React.RefObject<HTMLButtonElement>;
   className: string;
   disabled?: boolean;
   id?: string;
