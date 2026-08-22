@@ -52,30 +52,32 @@ export function FinancialHeroCard({
     <section className={`kash-hero-card p-5 sm:p-6 min-w-0 max-w-full ${className}`}>
       {/* Top Header Row */}
       {hasTopRow && (
-        <div className="flex items-center justify-between gap-3 min-w-0">
-          <div className="flex items-center gap-3 min-w-0">
-            {icon && (
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white font-extrabold text-sm shadow-xs">
-                {icon}
-              </span>
-            )}
-            <div className="min-w-0">
-              {eyebrow && (
-                <span className="text-xs font-bold uppercase tracking-wider text-white/70 block truncate">
-                  {eyebrow}
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {icon && (
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white font-extrabold text-sm shadow-xs">
+                  {icon}
                 </span>
               )}
-              {title && (
-                <h1 className="text-lg sm:text-xl font-extrabold text-white break-words mt-0.5 leading-snug">
-                  {title}
-                </h1>
-              )}
-              {statusBadges && (
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  {statusBadges}
-                </div>
-              )}
+              <div className="min-w-0">
+                {eyebrow && (
+                  <span className="text-xs font-bold uppercase tracking-wider text-white/70 block truncate">
+                    {eyebrow}
+                  </span>
+                )}
+                {title && (
+                  <h1 className="text-lg sm:text-xl font-extrabold text-white break-words mt-0.5 leading-snug">
+                    {title}
+                  </h1>
+                )}
+              </div>
             </div>
+            {statusBadges && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {statusBadges}
+              </div>
+            )}
           </div>
 
           {badge && (

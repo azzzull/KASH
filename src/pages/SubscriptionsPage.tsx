@@ -178,9 +178,6 @@ export function SubscriptionsPage() {
 
       {/* 2. Unified Emerald Hero Card */}
       <FinancialHeroCard
-        icon={<Repeat size={22} />}
-        eyebrow={t("subscriptions.eyebrow") || "Keuangan"}
-        title={t("subscriptions.title") || "Tagihan & Langganan"}
         primaryMetricLabel={t("subscriptions.estMonthlyCost") || "Estimasi Biaya Bulanan"}
         primaryMetricValue={formatCurrency(summaryMetrics.monthlyRecurringTotal, "IDR")}
         supportingMetrics={

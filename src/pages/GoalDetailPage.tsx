@@ -12,7 +12,6 @@ import {
   Sparkles,
   Trash2,
   WalletCards,
-  CheckCircle2,
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -22,7 +21,6 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { Modal } from "../components/ui/Modal";
-import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import {
   closeGoal,
@@ -466,7 +464,6 @@ export function GoalDetailPage() {
 
   const Icon = getGoalIcon(goal.icon);
   const isCancelled = goal.status === "cancelled";
-  const isCompleted = goal.status === "completed" || progress.percentage >= 100;
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
@@ -474,37 +471,6 @@ export function GoalDetailPage() {
         <ArrowLeft aria-hidden="true" size={15} />
         {t("goals.title") || "Target"}
       </Link>
-
-      <PageHeader
-        eyebrow={isCompleted ? (t("goals.goalCompleted") || "Target Tercapai") : (t("goals.title") || "Target Impian")}
-        icon={Icon}
-        title={goal.name}
-        description={goal.note || (t("goals.pocketWalletDesc") || "Pantau dana yang dialokasikan ke kantong tabungan ini.")}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button disabled={isCancelled} onClick={() => setShowContribution(true)}>
-              <Plus aria-hidden="true" size={17} />
-              {t("goals.addContribution") || "Tambah Tabungan"}
-            </Button>
-            <Button disabled={isCancelled} onClick={() => setShowEdit(true)} variant="secondary">
-              <Edit3 aria-hidden="true" size={17} />
-              {t("common.edit")}
-            </Button>
-            <Button
-              disabled={closingGoal || isCancelled}
-              onClick={() => {
-                setCloseError(null);
-                setCloseDestinationWalletId(availableDestinationWallets[0]?.id ?? "");
-                setShowCloseDialog(true);
-              }}
-              variant="secondary"
-            >
-              <Trash2 aria-hidden="true" size={17} />
-              {t("goals.deleteGoal") || "Hapus Target"}
-            </Button>
-          </div>
-        }
-      />
 
       {isCancelled ? (
         <section className="rounded-2xl border border-slate-200/60 bg-slate-50 p-4 text-xs font-semibold text-slate-600">
@@ -541,28 +507,46 @@ export function GoalDetailPage() {
         <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-white/20">
           <div className="h-full rounded-full bg-white transition-all duration-500" style={{ width: `${progress.percentage}%` }} />
         </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs font-semibold text-white/90">
+          <div>
+            <span className="text-white/60 font-semibold">{t("goals.targetDate") || "Tenggat Waktu"}</span>
+            <p className="mt-0.5 text-sm font-extrabold text-white">
+              {goal.deadline ? formatI18nDate(new Date(`${goal.deadline}T00:00:00`)) : (t("goals.noDeadline") || "Tanpa tenggat")}
+            </p>
+          </div>
+          <div>
+            <span className="text-white/60 font-semibold">{t("goals.pocketWallet") || "Dompet Kantong"}</span>
+            <p className="mt-0.5 truncate text-sm font-extrabold text-white">
+              {goal.wallet?.name ?? (t("goals.goalPocket") || "Kantong Target")}
+            </p>
+          </div>
+        </div>
       </section>
 
-      {/* Details Row */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("goals.targetDate") || "Tenggat Waktu"}</p>
-          <p className="mt-1 text-sm font-extrabold text-slate-900">
-            {goal.deadline ? formatI18nDate(new Date(`${goal.deadline}T00:00:00`)) : (t("goals.noDeadline") || "Tanpa tenggat")}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("goals.pocketWallet") || "Dompet Kantong"}</p>
-          <p className="mt-1 truncate text-sm font-extrabold text-slate-900">{goal.wallet?.name ?? (t("goals.goalPocket") || "Kantong Target")}</p>
-        </div>
-        <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("common.status") || "Status"}</p>
-          <p className="mt-1 text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-            {isCompleted ? <CheckCircle2 size={16} className="text-kash-emerald" /> : null}
-            {isCancelled ? (t("goals.statusClosed") || "Ditutup") : isCompleted ? (t("goals.completed") || "Tercapai") : (t("common.active") || "Aktif")}
-          </p>
-        </div>
-      </section>
+      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <Button disabled={isCancelled} onClick={() => setShowContribution(true)} className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+          <Plus aria-hidden="true" size={15} />
+          {t("goals.addContribution") || "Tambah Tabungan"}
+        </Button>
+        <Button disabled={isCancelled} onClick={() => setShowEdit(true)} variant="secondary" className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+          <Edit3 aria-hidden="true" size={15} />
+          {t("common.edit")}
+        </Button>
+        <Button
+          disabled={closingGoal || isCancelled}
+          onClick={() => {
+            setCloseError(null);
+            setCloseDestinationWalletId(availableDestinationWallets[0]?.id ?? "");
+            setShowCloseDialog(true);
+          }}
+          variant="secondary"
+          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+        >
+          <Trash2 aria-hidden="true" size={15} />
+          {t("goals.deleteGoal") || "Hapus Target"}
+        </Button>
+      </div>
 
       {/* Contribution History */}
       <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
