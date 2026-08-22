@@ -7,7 +7,6 @@ import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
-import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import { useI18n } from "../i18n";
@@ -816,17 +815,25 @@ export function WalletDetailPage() {
         {t("wallets.title") || "Dompet"}
       </Link>
 
-      <PageHeader
-        eyebrow={wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
-        icon={Icon}
-        title={wallet.name}
-        description={wallet.institution_name ?? (t("wallets.detailSubtitle") || "Rincian dompet dan kontrol saldo.")}
-      />
-
       {/* Hero Performance/Balance Card */}
       {isInvestment ? (
         <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
+              <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
+              </p>
+              <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
+              {wallet.institution_name ? (
+                <p className="truncate text-xs font-semibold text-white/65">{wallet.institution_name}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-5 flex items-center justify-between gap-2">
             <p className="text-xs font-bold uppercase tracking-wide text-white/60">
               {t("wallets.currentEquity") || "Nilai Investasi Saat Ini"}
             </p>
@@ -862,7 +869,22 @@ export function WalletDetailPage() {
         </section>
       ) : (
         <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
-          <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
+              <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
+              </p>
+              <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
+              {wallet.institution_name ? (
+                <p className="truncate text-xs font-semibold text-white/65">{wallet.institution_name}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <p className="mt-5 text-xs font-bold uppercase tracking-wide text-white/60">
             {t("wallets.currentBalance") || "Saldo Saat Ini"}
           </p>
           <p className="mt-2 break-words text-3xl font-extrabold text-white md:text-4xl">
