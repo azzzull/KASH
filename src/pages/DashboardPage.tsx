@@ -150,8 +150,12 @@ function formatSignedCurrencyDelta(amount: number, currency: string) {
     return `${sign}${formatAmount(Math.abs(amount), currency)}`;
 }
 
-function formatCompactPercentageValue(value: number | null | undefined, locale: string) {
-    if (value === null || value === undefined || !Number.isFinite(value)) return null;
+function formatCompactPercentageValue(
+    value: number | null | undefined,
+    locale: string,
+) {
+    if (value === null || value === undefined || !Number.isFinite(value))
+        return null;
     const formatted = Math.abs(value).toFixed(1).replace(/\.0$/, "");
     return locale === "id" ? formatted.replace(".", ",") : formatted;
 }
@@ -160,7 +164,9 @@ function getPreviousMonthLabel(selectedMonth: Date, locale: string) {
     return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
         month: "long",
         year: "numeric",
-    }).format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1));
+    }).format(
+        new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1),
+    );
 }
 
 function CompactComparisonLine({
@@ -201,7 +207,9 @@ function CompactComparisonLine({
               : isPositive
                 ? "text-kash-emerald"
                 : "text-[#E50914]";
-    const percentText = percentage ? ` (${delta > 0 ? "+" : delta < 0 ? "-" : ""}${percentage}%)` : "";
+    const percentText = percentage
+        ? ` (${delta > 0 ? "+" : delta < 0 ? "-" : ""}${percentage}%)`
+        : "";
 
     const previousText = withPreviousLabel
         ? t("dashboard.vsPeriod", { period: withPreviousLabel }) ||
@@ -299,7 +307,9 @@ function PeriodPicker({
     const buttonRef = useRef<HTMLButtonElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
     const [isOpen, setIsOpen] = useState(false);
-    const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
+    const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(
+        null,
+    );
     const [pickerYear, setPickerYear] = useState(selectedMonth.getFullYear());
     const monthOptions = useMemo(() => {
         return Array.from({ length: 12 }, (_, index) => {
@@ -374,60 +384,62 @@ function PeriodPicker({
 
             {isOpen && popoverStyle
                 ? createPortal(
-                <div
-                    ref={popoverRef}
-                    style={popoverStyle}
-                    className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-soft"
-                >
-                    <label
-                        className="block text-[11px] font-bold uppercase tracking-wide text-slate-500"
-                        htmlFor="dashboard-period-year"
-                    >
-                        {t("dashboard.year") || "Year"}
-                    </label>
-                    <input
-                        id="dashboard-period-year"
-                        type="number"
-                        min="1970"
-                        max={new Date().getFullYear()}
-                        value={pickerYear}
-                        onChange={(event) => {
-                            const year = Number(event.target.value);
-                            if (Number.isFinite(year)) setPickerYear(year);
-                        }}
-                        className="mt-1.5 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-                    />
+                      <div
+                          ref={popoverRef}
+                          style={popoverStyle}
+                          className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-soft"
+                      >
+                          <label
+                              className="block text-[11px] font-bold uppercase tracking-wide text-slate-500"
+                              htmlFor="dashboard-period-year"
+                          >
+                              {t("dashboard.year") || "Year"}
+                          </label>
+                          <input
+                              id="dashboard-period-year"
+                              type="number"
+                              min="1970"
+                              max={new Date().getFullYear()}
+                              value={pickerYear}
+                              onChange={(event) => {
+                                  const year = Number(event.target.value);
+                                  if (Number.isFinite(year))
+                                      setPickerYear(year);
+                              }}
+                              className="mt-1.5 h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+                          />
 
-                    <div
-                        className="mt-2.5 grid grid-cols-3 gap-1.5"
-                        role="menu"
-                    >
-                        {monthOptions.map((option) => {
-                            const isSelected = option.key === selectedPeriodKey;
+                          <div
+                              className="mt-2.5 grid grid-cols-3 gap-1.5"
+                              role="menu"
+                          >
+                              {monthOptions.map((option) => {
+                                  const isSelected =
+                                      option.key === selectedPeriodKey;
 
-                            return (
-                                <button
-                                    key={option.key}
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                        onSelectPeriod(option.date);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
-                                        isSelected
-                                            ? "bg-kash-emerald text-white"
-                                            : "text-slate-700 hover:bg-slate-50"
-                                    }`}
-                                >
-                                    {option.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>,
-                document.body,
-              )
+                                  return (
+                                      <button
+                                          key={option.key}
+                                          type="button"
+                                          role="menuitem"
+                                          onClick={() => {
+                                              onSelectPeriod(option.date);
+                                              setIsOpen(false);
+                                          }}
+                                          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
+                                              isSelected
+                                                  ? "bg-kash-emerald text-white"
+                                                  : "text-slate-700 hover:bg-slate-50"
+                                          }`}
+                                      >
+                                          {option.label}
+                                      </button>
+                                  );
+                              })}
+                          </div>
+                      </div>,
+                      document.body,
+                  )
                 : null}
         </div>
     );
@@ -566,7 +578,7 @@ function HeroCard({
 
             {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
-                <div className="mt-4 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                <div className="mt-6 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     <div className="flex min-w-max flex-nowrap gap-1.5 px-1">
                         {breakdownTiles.map((item) => {
                             const percent =
