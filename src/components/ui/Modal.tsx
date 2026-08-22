@@ -6,6 +6,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { IconButton } from "./IconButton";
 
 export type ModalProps = {
@@ -44,6 +45,8 @@ let savedScrollY = 0;
 const MEDIUM_DETENT_DVH = 62;
 const LARGE_DETENT_DVH = 90;
 const LARGE_TOP_GAP_PX = 28;
+const MODAL_LAYER_BASE = 1000;
+const MODAL_LAYER_STEP = 20;
 
 type SheetDetent = "medium" | "large";
 type ModalStackEntry = {
@@ -486,17 +489,22 @@ export function Modal({
       : `min(${LARGE_DETENT_DVH}dvh, calc(100dvh - env(safe-area-inset-top) - ${LARGE_TOP_GAP_PX}px))`
     : `${MEDIUM_DETENT_DVH}dvh`;
 
-  const backdropClassName = isTopModal
-    ? `fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-240 ${backdropOpacity}`
+  const isBaseModal = stackIndex === 0;
+  const backdropClassName = isBaseModal
+    ? `fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-240 ${modalStack.length > 0 ? "opacity-100" : backdropOpacity}`
+    : isTopModal
+    ? "fixed inset-0 bg-transparent opacity-0"
     : "fixed inset-0 bg-transparent opacity-0 pointer-events-none";
 
-  return (
+  const modalElement = (
     <div
       role="dialog"
       aria-modal={isTopModal ? "true" : undefined}
       aria-hidden={isTopModal ? undefined : "true"}
       className={`fixed inset-0 overflow-hidden ${isTopModal ? "" : "pointer-events-none"}`}
-      style={{ zIndex: 50 + stackIndex * 2 }}
+      data-modal-portal-root="true"
+      data-modal-stack-index={stackIndex}
+      style={{ zIndex: MODAL_LAYER_BASE + stackIndex * MODAL_LAYER_STEP }}
     >
       {/* Backdrop */}
       <div
@@ -581,4 +589,6 @@ export function Modal({
       </div>
     </div>
   );
+
+  return createPortal(modalElement, document.body);
 }
