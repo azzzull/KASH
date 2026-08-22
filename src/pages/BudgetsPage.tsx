@@ -7,7 +7,6 @@ import {
   Layers,
   PieChart,
   Plus,
-  RotateCcw,
   Scale,
   Sparkles,
   Tag,
@@ -18,35 +17,12 @@ import { BudgetCard } from "../components/budgets/BudgetCard";
 import { CreateBudgetModal } from "../components/budgets/CreateBudgetModal";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
-import { DatePickerField } from "../components/ui/DatePickerField";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
 import { getMonthlyBudgetOverview, getMonthlyBudgets } from "../lib/budgets";
-import { formatCurrency } from "../lib/money";
 import type { BudgetWithProgress, MonthlyBudgetOverview } from "../types/domain";
-
-const MONTH_NAMES = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-function formatMonthYearLabel(dateStr: string): string {
-  if (!dateStr) return "";
-  const [year, month] = dateStr.split("-").map(Number);
-  return `${MONTH_NAMES[month - 1]} ${year}`;
-}
 
 export function BudgetsPage() {
   const { t, formatMonthYear, formatCurrency } = useI18n();
@@ -157,60 +133,53 @@ export function BudgetsPage() {
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar with Title + Month Picker in SAME ROW */}
+      {/* 1. Compact Top Bar */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Scale className="text-kash-emerald shrink-0" size={22} />
           <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.budgets") || "Target & Budget"}</h1>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200/60 bg-white p-1 shadow-card">
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-              aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <div className="flex items-center gap-1.5 px-1.5 text-xs font-extrabold text-slate-800">
-              <Calendar size={14} className="text-kash-emerald" />
-              <span>{currentMonthLabel}</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-              aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-
-          <div ref={createActionRef} className="hidden sm:block">
-            <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold">
-              <Plus size={15} />
-              {t("budgets.createTargetBudget") || "Buat Target Budget"}
-            </Button>
-          </div>
+        <div ref={createActionRef} className="hidden shrink-0 sm:block">
+          <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold">
+            <Plus size={15} />
+            {t("budgets.createTargetBudget") || "Buat Target Budget"}
+          </Button>
         </div>
       </div>
 
       {/* Monthly Overview Progress Card - Unified Emerald Hero */}
       {overview && (
         <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
-          {/* Top Row: Title Left + Month Badge Right */}
+          {/* Top Row: Title Left + Month Picker Right */}
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-bold uppercase tracking-wider text-white/70">
               {t("budgets.unifiedFinancialPlan") || "Rencana Keuangan Terpadu"}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 px-2.5 py-0.5 text-xs font-bold text-white/90 shrink-0">
-              <Calendar size={13} />
-              {currentMonthLabel}
-            </span>
+            <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/15 bg-white/10 p-0.5 text-white shadow-sm">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
+              >
+                <ChevronLeft size={15} />
+              </button>
+
+              <div className="flex min-w-0 items-center gap-1.5 px-1.5 text-xs font-extrabold text-white/95">
+                <Calendar size={13} className="shrink-0 text-white/85" />
+                <span className="max-w-[7.5rem] truncate">{currentMonthLabel}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
           </div>
 
           {/* Primary Metric & Health Badges */}
