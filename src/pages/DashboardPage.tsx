@@ -30,7 +30,7 @@ import {
     type DashboardMetricChange,
     type DashboardSummary,
 } from "../lib/dashboard";
-import { getMonthlyBudgetOverview, getMonthlyBudgets } from "../lib/budgets";
+import { getMonthlyBudgets } from "../lib/budgets";
 import type {
     BudgetWithProgress,
     MonthlyBudgetOverview,
@@ -574,10 +574,10 @@ function HeroCard({
                 )}
             </p>
 
-            {/* Net Worth breakdown flat metrics */}
+            {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
-                <div className="mt-3 -mx-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex min-w-max flex-nowrap divide-x divide-white/15 px-2">
+                <div className="mt-3 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex min-w-max flex-nowrap gap-1.5 px-1">
                         {breakdownTiles.map((item) => {
                             const percent =
                                 item.percentBase > 0
@@ -591,21 +591,23 @@ function HeroCard({
                             return (
                                 <div
                                     key={item.key}
-                                    className="w-[5.9rem] shrink-0 px-2 py-1.5 text-left snap-start"
+                                    className="shrink-0 snap-start rounded-full bg-white/10 px-2.5 py-1.5 text-left ring-1 ring-white/10"
                                 >
-                                    <p className="truncate text-[11px] font-extrabold text-white/60">
-                                        {item.label}
-                                    </p>
-                                    <p className="mt-1 truncate text-[13px] font-black text-white">
-                                        {formatPrivateCompactAmount(
-                                            item.value,
-                                            currency,
-                                            balancesVisible,
-                                        )}
-                                    </p>
-                                    <p className="mt-0.5 text-[11px] font-extrabold text-white/45">
-                                        {percent}%
-                                    </p>
+                                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+                                        <span className="text-[10px] font-extrabold text-white/55">
+                                            {item.label}
+                                        </span>
+                                        <span className="text-[12px] font-black text-white">
+                                            {formatPrivateCompactAmount(
+                                                item.value,
+                                                currency,
+                                                balancesVisible,
+                                            )}
+                                        </span>
+                                        <span className="text-[10px] font-extrabold text-white/45">
+                                            {percent}%
+                                        </span>
+                                    </div>
                                 </div>
                             );
                         })}
@@ -1563,24 +1565,31 @@ function DebtReceivableSummary({
 function BudgetDashboardSummary({
     balancesVisible,
     currency,
+    selectedMonth,
 }: {
     balancesVisible: boolean;
     currency: string;
+    selectedMonth: Date;
 }) {
     const { t } = useI18n();
     const [budgets, setBudgets] = useState<BudgetWithProgress[]>([]);
     const [loading, setLoading] = useState(true);
+    const budgetPeriodStart = useMemo(
+        () => localDateKey(startOfMonth(selectedMonth)),
+        [selectedMonth],
+    );
 
     const loadBudgets = useCallback(async () => {
+        setLoading(true);
         try {
-            const data = await getMonthlyBudgets();
+            const data = await getMonthlyBudgets(budgetPeriodStart);
             setBudgets(data);
         } catch {
             // safe fallback
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [budgetPeriodStart]);
 
     useEffect(() => {
         void loadBudgets();
@@ -1911,6 +1920,7 @@ export function DashboardPage() {
                     <BudgetDashboardSummary
                         balancesVisible={balancesVisible}
                         currency={currency}
+                        selectedMonth={selectedMonth}
                     />
                 </DashboardCard>
 
