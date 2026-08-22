@@ -2,6 +2,7 @@ import { Plus, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { NotificationProvider } from "../context/NotificationContext";
+import { useAppLaunchSplash } from "../components/app/AppLaunchSplash";
 import { StaleSessionReset } from "../components/app/StaleSessionReset";
 import { ServiceWorkerNavigationBridge } from "../components/pwa/ServiceWorkerNavigationBridge";
 import { AppHeader } from "../components/layout/AppHeader";
@@ -17,6 +18,7 @@ import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpens
 
 export function AppShell() {
   const location = useLocation();
+  const { showStaleResetSplash } = useAppLaunchSplash();
   const contentRef = useRef<HTMLElement | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -153,7 +155,7 @@ export function AppShell() {
   return (
     <NotificationProvider>
       <ServiceWorkerNavigationBridge />
-      <StaleSessionReset onResetTransientUi={resetTransientUi} />
+      <StaleSessionReset onResetTransientUi={resetTransientUi} onStaleResetStart={showStaleResetSplash} />
       <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
         <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
           <DesktopSidebar />

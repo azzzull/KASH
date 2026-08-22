@@ -31,7 +31,13 @@ export function markNotificationNavigationActive() {
   sessionStorage.setItem(NOTIFICATION_NAVIGATION_ACTIVE_KEY, String(Date.now()));
 }
 
-export function StaleSessionReset({ onResetTransientUi }: { onResetTransientUi: () => void }) {
+export function StaleSessionReset({
+  onResetTransientUi,
+  onStaleResetStart,
+}: {
+  onResetTransientUi: () => void;
+  onStaleResetStart?: () => void;
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const locationRef = useRef(location);
@@ -62,6 +68,7 @@ export function StaleSessionReset({ onResetTransientUi }: { onResetTransientUi: 
       if (elapsed <= STALE_SESSION_THRESHOLD_MS) return;
 
       localStorage.removeItem(STALE_SESSION_INACTIVE_AT_KEY);
+      onStaleResetStart?.();
       onResetTransientUi();
 
       if (currentLocation.pathname !== "/dashboard" || currentLocation.search || currentLocation.hash) {
@@ -88,7 +95,7 @@ export function StaleSessionReset({ onResetTransientUi }: { onResetTransientUi: 
       window.removeEventListener("pageshow", evaluateResume);
       window.removeEventListener("focus", evaluateResume);
     };
-  }, [navigate, onResetTransientUi]);
+  }, [navigate, onResetTransientUi, onStaleResetStart]);
 
   return null;
 }
