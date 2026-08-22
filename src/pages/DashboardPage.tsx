@@ -578,8 +578,7 @@ function HeroCard({
 
             {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
-                <div className="mt-6 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex min-w-max flex-nowrap gap-1.5 px-1">
+                <div className="mt-2.5 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         {breakdownTiles.map((item) => {
                             const percent =
                                 item.percentBase > 0
@@ -591,29 +590,27 @@ function HeroCard({
                                     : 0;
 
                             return (
-                                <div
+                                <span
                                     key={item.key}
-                                    className="shrink-0 snap-start rounded-full bg-white/10 px-2.5 py-1.5 text-left ring-1 ring-white/10"
+                                    className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1"
                                 >
-                                    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-                                        <span className="text-[9px] font-extrabold text-white/55">
-                                            {item.label}
-                                        </span>
-                                        <span className="text-[11px] font-black text-white">
-                                            {formatPrivateAmount(
-                                                item.value,
-                                                currency,
-                                                balancesVisible,
-                                            )}
-                                        </span>
-                                        <span className="text-[9px] font-extrabold text-white/45">
-                                            {percent}%
-                                        </span>
-                                    </div>
-                                </div>
+                                    <span className="font-medium text-white/65">
+                                        {item.label}:{" "}
+                                    </span>
+                                    <span className="font-extrabold text-white">
+                                        {formatPrivateAmount(
+                                            item.value,
+                                            currency,
+                                            balancesVisible,
+                                        )}
+                                    </span>
+                                    <span className="font-semibold text-white/55">
+                                        {" "}
+                                        {percent}%
+                                    </span>
+                                </span>
                             );
                         })}
-                    </div>
                 </div>
             ) : null}
         </div>
