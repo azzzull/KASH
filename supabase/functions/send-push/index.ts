@@ -186,9 +186,7 @@ serve(async (req: Request) => {
     // 2. INTERNAL AUTH
     // ============================================================
 
-    const requestSecret =
-      req.headers.get("x-kash-push-secret") ??
-      req.headers.get("apikey");
+    const requestSecret = req.headers.get("x-kash-push-secret");
 
     if (
       !requestSecret ||

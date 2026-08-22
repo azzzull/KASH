@@ -146,8 +146,7 @@ serve(async (req: Request) => {
     const requestSecret =
       req.headers.get(
         "x-kash-cron-secret",
-      ) ??
-      req.headers.get("apikey");
+      );
 
     if (
       !requestSecret ||
