@@ -234,7 +234,7 @@ export function Modal({
     const [entered, setEntered] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
     const [sheetDetent, setSheetDetent] = useState<SheetDetent>("medium");
-    const [visualViewportHeight, setVisualViewportHeight] = useState<
+    const [baseViewportHeight, setBaseViewportHeight] = useState<
         number | null
     >(null);
     const [, setStackVersion] = useState(0);
@@ -256,6 +256,7 @@ export function Modal({
     const keyboardFallbackTimeoutRef = useRef<number | null>(null);
     const keyboardDetentExpansionPendingRef = useRef(false);
     const viewportHeightBeforeFocusRef = useRef<number | null>(null);
+    const baseViewportWidthRef = useRef<number | null>(null);
     const sheetDetentRef = useRef<SheetDetent>("medium");
     const isTopModalRef = useRef(false);
     const modalId = modalIdRef.current;
@@ -356,25 +357,49 @@ export function Modal({
     useEffect(() => {
         if (!mounted || typeof window === "undefined") return;
 
-        const updateVisualViewportHeight = () => {
-            setVisualViewportHeight(
-                window.visualViewport?.height ?? window.innerHeight,
-            );
+        const updateBaseViewportHeight = () => {
+            const viewport = window.visualViewport;
+            const viewportHeight = viewport?.height ?? window.innerHeight;
+            const viewportWidth = viewport?.width ?? window.innerWidth;
+            const candidateHeight = Math.max(viewportHeight, window.innerHeight);
+
+            setBaseViewportHeight((currentHeight) => {
+                const previousWidth = baseViewportWidthRef.current;
+                const widthChanged =
+                    previousWidth !== null &&
+                    Math.abs(viewportWidth - previousWidth) > 24;
+
+                baseViewportWidthRef.current = viewportWidth;
+
+                if (currentHeight === null || widthChanged) {
+                    return candidateHeight;
+                }
+
+                const isKeyboardDrivenShrink =
+                    focusedEditableRef.current !== null &&
+                    candidateHeight < currentHeight - 80;
+
+                if (isKeyboardDrivenShrink) {
+                    return currentHeight;
+                }
+
+                return candidateHeight;
+            });
         };
 
-        updateVisualViewportHeight();
+        updateBaseViewportHeight();
         window.visualViewport?.addEventListener(
             "resize",
-            updateVisualViewportHeight,
+            updateBaseViewportHeight,
         );
-        window.addEventListener("resize", updateVisualViewportHeight);
+        window.addEventListener("resize", updateBaseViewportHeight);
 
         return () => {
             window.visualViewport?.removeEventListener(
                 "resize",
-                updateVisualViewportHeight,
+                updateBaseViewportHeight,
             );
-            window.removeEventListener("resize", updateVisualViewportHeight);
+            window.removeEventListener("resize", updateBaseViewportHeight);
         };
     }, [mounted]);
 
@@ -824,12 +849,12 @@ export function Modal({
               ? `opacity-${Math.max(20, Math.round(100 - (dragY / 300) * 80))}`
               : "opacity-100";
 
-    const largeDetentPx = visualViewportHeight
+    const largeDetentPx = baseViewportHeight
         ? Math.max(
               320,
               Math.min(
-                  visualViewportHeight * (LARGE_DETENT_DVH / 100),
-                  visualViewportHeight - LARGE_TOP_GAP_PX,
+                  baseViewportHeight * (LARGE_DETENT_DVH / 100),
+                  baseViewportHeight - LARGE_TOP_GAP_PX,
               ),
           )
         : undefined;
