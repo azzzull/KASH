@@ -221,7 +221,7 @@ export const id = {
         "Catat talangan kantor / orang lain yang akan diganti",
 
     // Dashboard
-    "dashboard.title": "Dasbor Keuangan",
+    "dashboard.title": "Ringkasan keuangan Anda hari ini",
     "dashboard.netWorth": "Kekayaan Bersih (Net Worth)",
     "dashboard.availableBalance": "Saldo Tersedia",
     "dashboard.monthlyIncome": "Pemasukan Bulan Ini",
@@ -240,6 +240,12 @@ export const id = {
     "dashboard.receivables": "Piutang",
     "dashboard.debt": "Utang",
     "dashboard.quickActions": "Aksi Cepat",
+    "dashboard.walletCount": "{count} Dompet",
+    "dashboard.manageWallets": "Kelola dompet",
+    "dashboard.manageTransactions": "Tambah & kelola",
+    "dashboard.seeInsights": "Lihat insight",
+    "dashboard.viewSchedule": "Lihat jadwal",
+    "dashboard.viewAllCategories": "Lihat Semua Kategori",
     "dashboard.myWallets": "Dompet Saya",
     "dashboard.noObligationsTitle": "Tidak ada catatan utang/piutang",
     "dashboard.noObligationsDesc":

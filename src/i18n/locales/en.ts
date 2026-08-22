@@ -218,7 +218,7 @@ export const en = {
     "quickAdd.reimbursableHelper": "Record advance expense to be reimbursed",
 
     // Dashboard
-    "dashboard.title": "Financial Dashboard",
+    "dashboard.title": "Here's your financial overview",
     "dashboard.netWorth": "Net Worth",
     "dashboard.availableBalance": "Available Balance",
     "dashboard.monthlyIncome": "Monthly Income",
@@ -237,6 +237,12 @@ export const en = {
     "dashboard.receivables": "Receivables",
     "dashboard.debt": "Debts",
     "dashboard.quickActions": "Quick Actions",
+    "dashboard.walletCount": "{count} Wallets",
+    "dashboard.manageWallets": "Manage wallets",
+    "dashboard.manageTransactions": "Add & Manage",
+    "dashboard.seeInsights": "See Insights",
+    "dashboard.viewSchedule": "View Schedule",
+    "dashboard.viewAllCategories": "View All Categories",
     "dashboard.myWallets": "My Wallets",
     "dashboard.noObligationsTitle": "No debt or receivable records",
     "dashboard.noObligationsDesc":

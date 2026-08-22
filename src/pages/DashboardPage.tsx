@@ -395,13 +395,55 @@ function HeroCard({
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
+    const breakdown = summary.netWorthBreakdown
+        ? [
+              {
+                  key: "cash",
+                  label: t("dashboard.cash") || "Cash",
+                  value: summary.netWorthBreakdown.availableCash,
+                  icon: Wallet,
+                  tone: "text-white",
+              },
+              {
+                  key: "savings",
+                  label: t("dashboard.savings") || "Savings",
+                  value: summary.netWorthBreakdown.savings,
+                  icon: PiggyBank,
+                  tone: "text-white",
+              },
+              {
+                  key: "investments",
+                  label: t("dashboard.investments") || "Investments",
+                  value: summary.netWorthBreakdown.investments,
+                  icon: TrendingUp,
+                  tone: "text-white",
+              },
+              {
+                  key: "receivables",
+                  label: t("dashboard.receivables") || "Receivables",
+                  value: summary.netWorthBreakdown.receivables,
+                  icon: HandCoins,
+                  tone: "text-white",
+              },
+              {
+                  key: "debt",
+                  label: t("dashboard.debt") || "Debts",
+                  value: -summary.netWorthBreakdown.debt,
+                  icon: CreditCard,
+                  tone:
+                      summary.netWorthBreakdown.debt > 0
+                          ? "text-red-200"
+                          : "text-white",
+              },
+          ]
+        : [];
 
     return (
-        <div className="kash-hero-card p-5 md:p-6">
+        <div className="kash-hero-card p-4 shadow-hero md:p-6">
             {/* Top row: label + controls */}
             <div className="relative flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wide text-white/75">
                         {t("dashboard.netWorth") || "Net Worth"}
                     </p>
                     <Info
@@ -420,8 +462,8 @@ function HeroCard({
             </div>
 
             {/* Net Worth amount + inline eye toggle */}
-            <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                <p className="break-words text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                <p className="break-words text-[2rem] font-extrabold leading-none tracking-tight text-white md:text-4xl">
                     {formatPrivateAmount(
                         summary.netWorth.amount,
                         currency,
@@ -439,7 +481,7 @@ function HeroCard({
                               "Show dashboard balances"
                     }
                     onClick={onToggleBalances}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/12 text-white/85 transition hover:bg-white/18 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
                 >
                     {balancesVisible ? (
                         <EyeOff
@@ -454,7 +496,7 @@ function HeroCard({
             </div>
 
             {/* Available Balance inline */}
-            <p className="mt-1 text-sm font-semibold text-white/60">
+            <p className="mt-2 text-xs font-bold text-white/65">
                 {t("dashboard.availableBalance") || "Available Balance"}:{" "}
                 {formatPrivateAmount(
                     summary.availableBalance.amount,
@@ -463,55 +505,37 @@ function HeroCard({
                 )}
             </p>
 
-            {/* Net Worth breakdown badges */}
-            {summary.netWorthBreakdown ? (
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                        {t("dashboard.cash") || "Kas"}:{" "}
-                        {formatPrivateAmount(
-                            summary.netWorthBreakdown.availableCash,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </span>
-                    <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                        {t("dashboard.savings") || "Tabungan"}:{" "}
-                        {formatPrivateAmount(
-                            summary.netWorthBreakdown.savings,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </span>
-                    {summary.netWorthBreakdown.investments > 0 ? (
-                        <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                            {t("dashboard.investments") || "Investasi"}:{" "}
-                            {formatPrivateAmount(
-                                summary.netWorthBreakdown.investments,
-                                currency,
-                                balancesVisible,
-                            )}
-                        </span>
-                    ) : null}
-                    {summary.netWorthBreakdown.receivables > 0 ? (
-                        <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                            {t("dashboard.receivables") || "Piutang"}:{" "}
-                            {formatPrivateAmount(
-                                summary.netWorthBreakdown.receivables,
-                                currency,
-                                balancesVisible,
-                            )}
-                        </span>
-                    ) : null}
-                    {summary.netWorthBreakdown.debt > 0 ? (
-                        <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                            {t("dashboard.debt") || "Utang"}: -
-                            {formatPrivateAmount(
-                                summary.netWorthBreakdown.debt,
-                                currency,
-                                balancesVisible,
-                            )}
-                        </span>
-                    ) : null}
+            {/* Net Worth breakdown metrics */}
+            {breakdown.length > 0 ? (
+                <div className="mt-4 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex min-w-max items-stretch divide-x divide-white/14">
+                        {breakdown.map((item) => (
+                            <div
+                                key={item.key}
+                                className="flex w-[5.7rem] shrink-0 flex-col items-center px-2 text-center"
+                            >
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/13 text-white ring-1 ring-white/10">
+                                    <item.icon
+                                        aria-hidden="true"
+                                        size={17}
+                                        strokeWidth={2.2}
+                                    />
+                                </span>
+                                <span className="mt-1.5 max-w-full truncate text-[11px] font-extrabold text-white/88">
+                                    {item.label}
+                                </span>
+                                <span
+                                    className={`mt-0.5 max-w-full truncate text-[11px] font-black ${item.tone}`}
+                                >
+                                    {formatPrivateCompactAmount(
+                                        item.value,
+                                        currency,
+                                        balancesVisible,
+                                    )}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             ) : null}
         </div>
@@ -519,41 +543,59 @@ function HeroCard({
 }
 
 /* ─── Quick Actions ─── */
-function QuickActions() {
+function QuickActions({ summary }: { summary: DashboardSummary }) {
     const { t } = useI18n();
     const actions = [
-        { icon: Wallet, label: t("nav.wallets") || "Wallets", to: "/wallets" },
+        {
+            icon: Wallet,
+            label: t("nav.wallets") || "Wallets",
+            helper:
+                summary.walletCount > 0
+                    ? t("dashboard.walletCount", {
+                          count: summary.walletCount,
+                      }) || `${summary.walletCount} Wallets`
+                    : t("dashboard.manageWallets") || "Manage wallets",
+            to: "/wallets",
+        },
         {
             icon: Send,
             label: t("transactions.transfer") || "Transaction",
+            helper: t("dashboard.manageTransactions") || "Add & Manage",
             to: "/transactions",
         },
         {
             icon: BarChart3,
             label: t("nav.analytics") || "Analytics",
+            helper: t("dashboard.seeInsights") || "See Insights",
             to: "/analytics",
         },
         {
             icon: CalendarDays,
             label: t("nav.calendar") || "Calendar",
+            helper: t("dashboard.viewSchedule") || "View Schedule",
             to: "/calendar",
         },
     ];
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-4 gap-2 md:flex md:items-center">
             {actions.map((action) => (
                 <Link
                     key={action.to}
                     to={action.to}
-                    className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-3 text-center transition hover:bg-white/80 active:bg-white md:flex-none md:px-5"
+                    className="group min-w-0 rounded-2xl border border-slate-200/60 bg-white px-2 py-3 text-center shadow-card transition hover:border-kash-emerald/35 hover:shadow-card-hover active:bg-kash-selected/35 md:flex md:flex-none md:items-center md:gap-3 md:px-5"
                 >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald">
-                        <action.icon size={20} strokeWidth={2} />
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark ring-1 ring-kash-emerald/10 transition group-hover:bg-kash-emerald group-hover:text-white md:mx-0">
+                        <action.icon size={20} strokeWidth={2.2} />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-600">
-                        {action.label}
-                    </span>
+                    <div className="mt-2 min-w-0 md:mt-0 md:text-left">
+                        <span className="block truncate text-[12px] font-extrabold text-slate-900 md:text-sm">
+                            {action.label}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[10px] font-bold text-slate-500 md:text-xs">
+                            {action.helper}
+                        </span>
+                    </div>
                 </Link>
             ))}
         </div>
@@ -611,13 +653,13 @@ function CashFlowRow({
             {items.map((item) => (
                 <div
                     key={item.key}
-                    className="min-w-0 px-2 py-3 first:pl-3 last:pr-3 md:px-4 md:py-4 md:first:pl-5 md:last:pr-5"
+                    className="min-w-0 px-3 py-4 first:pl-4 last:pr-4 md:px-4 md:py-4 md:first:pl-5 md:last:pr-5"
                 >
-                    <p className="truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                    <p className={`truncate text-[10px] font-extrabold uppercase tracking-wide ${item.tone}`}>
                         {item.label}
                     </p>
                     <p
-                        className={`mt-1 truncate text-xs sm:text-base md:text-xl font-extrabold ${item.tone}`}
+                        className="mt-2 truncate text-[1.05rem] font-black leading-none text-slate-900 md:text-xl"
                     >
                         {formatPrivateAmount(
                             item.value,
@@ -717,13 +759,19 @@ function SpendingDonut({
     });
 
     return (
-        <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
-            <h2 className="text-sm font-extrabold text-slate-900">
-                {t("dashboard.spendingByCategory") || "Spending by Category"}
-            </h2>
-            <div className="mt-4 flex flex-col items-center justify-center gap-6 md:flex-row md:items-center">
-                {/* Donut - Larger ring & vertically centered on desktop */}
-                <div className="relative mx-auto flex h-36 w-36 sm:h-44 sm:w-44 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
+        <DashboardCard className="p-4 max-w-full min-w-0 overflow-hidden md:p-5">
+            <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-extrabold text-slate-900 md:text-sm">
+                    {t("dashboard.spendingByCategory") ||
+                        "Spending by Category"}
+                </h2>
+                <span className="rounded-full bg-slate-50 px-3 py-1 text-[11px] font-extrabold text-slate-500 ring-1 ring-slate-200/70">
+                    {t("dashboard.thisMonth") || "This Month"}
+                </span>
+            </div>
+            <div className="mt-4 grid items-center gap-5 min-[430px]:grid-cols-[9.25rem_1fr] md:flex md:flex-row md:items-center">
+                {/* Donut - compact on mobile, larger on desktop */}
+                <div className="relative mx-auto flex h-36 w-36 max-w-full shrink-0 items-center justify-center min-[430px]:mx-0 md:h-52 md:w-52 lg:h-56 lg:w-56">
                     <svg
                         viewBox="0 0 120 120"
                         className="kash-ring-chart h-full w-full -rotate-90"
@@ -749,7 +797,7 @@ function SpendingDonut({
                             <p className="text-[11px] font-bold text-slate-500">
                                 {t("dashboard.totalExpense") || "Total Spend"}
                             </p>
-                            <p className="mt-0.5 max-w-[7rem] truncate text-xs sm:text-sm md:text-base font-extrabold leading-tight text-slate-900">
+                            <p className="mt-1 max-w-[7rem] truncate text-sm font-extrabold leading-tight text-slate-900 md:text-base">
                                 {formatPrivateAmount(
                                     totalExpense,
                                     currency,
@@ -760,12 +808,12 @@ function SpendingDonut({
                     </div>
                 </div>
 
-                {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
-                <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
+                {/* Legend - Responsive full width under donut on narrow mobile */}
+                <div className="w-full min-w-0 max-w-full space-y-2 md:flex-1">
                     {categories.map((category) => (
                         <div
                             key={category.id}
-                            className="flex items-center justify-between gap-2.5 text-xs sm:text-sm"
+                            className="grid grid-cols-[minmax(0,1fr)_auto_2.7rem] items-center gap-2 text-xs sm:text-sm"
                         >
                             <div className="flex min-w-0 items-center gap-2">
                                 <span
@@ -776,20 +824,26 @@ function SpendingDonut({
                                     {category.name}
                                 </span>
                             </div>
-                            <div className="shrink-0 text-right">
-                                <span className="font-bold text-slate-900">
-                                    {formatPrivateAmount(
-                                        category.amount,
-                                        currency,
-                                        balancesVisible,
-                                    )}
-                                </span>
-                                <span className="ml-1.5 text-xs font-semibold text-slate-500">
-                                    {Math.round(category.percent)}%
-                                </span>
-                            </div>
+                            <span className="text-right font-extrabold text-slate-900">
+                                {formatPrivateAmount(
+                                    category.amount,
+                                    currency,
+                                    balancesVisible,
+                                )}
+                            </span>
+                            <span className="text-right text-xs font-bold text-slate-500">
+                                {Math.round(category.percent)}%
+                            </span>
                         </div>
                     ))}
+                    <Link
+                        to="/categories"
+                        className="mt-3 flex h-10 items-center justify-center gap-2 rounded-xl bg-kash-selected text-xs font-extrabold text-kash-emeraldDark transition hover:bg-kash-emerald hover:text-white"
+                    >
+                        {t("dashboard.viewAllCategories") ||
+                            "View All Categories"}
+                        <ArrowRight aria-hidden="true" size={15} />
+                    </Link>
                 </div>
             </div>
         </DashboardCard>
@@ -1072,7 +1126,7 @@ function RecentTransactions({
         );
 
     return (
-        <div className="space-y-0.5">
+        <div className="divide-y divide-slate-100">
             {summary.recentTransactions.slice(0, 5).map((transaction) => {
                 const Icon = transactionIcon(transaction.type);
                 const transactionDate = new Date(transaction.date);
@@ -1086,29 +1140,29 @@ function RecentTransactions({
                 return (
                     <div
                         key={transaction.id}
-                        className="kash-activity-row flex items-center gap-3 rounded-xl px-1 py-2.5"
+                        className="kash-activity-row flex items-center gap-3 rounded-xl px-1 py-3 first:pt-1 last:pb-1"
                     >
                         <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${transactionTone[transaction.type]}`}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 ${transactionTone[transaction.type]}`}
                         >
                             <Icon
                                 aria-hidden="true"
-                                size={16}
-                                strokeWidth={2}
+                                size={17}
+                                strokeWidth={2.2}
                             />
                         </span>
                         <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-slate-900">
+                            <p className="truncate text-sm font-extrabold text-slate-900">
                                 {transaction.title}
                             </p>
-                            <p className="truncate text-xs font-medium text-slate-500">
+                            <p className="mt-0.5 truncate text-xs font-bold text-slate-500">
                                 {transaction.categoryName} •{" "}
                                 {transaction.walletName}
                             </p>
                         </div>
                         <div className="shrink-0 text-right">
                             <p
-                                className={`text-sm font-extrabold ${transactionTone[transaction.type]}`}
+                                className={`text-sm font-black ${transactionTone[transaction.type]}`}
                             >
                                 {transaction.type === "transfer"
                                     ? formatPrivateAmount(
@@ -1122,7 +1176,7 @@ function RecentTransactions({
                                           balancesVisible,
                                       )}
                             </p>
-                            <p className="text-[11px] font-medium text-slate-500">
+                            <p className="mt-0.5 text-[11px] font-bold text-slate-500">
                                 {new Intl.DateTimeFormat(
                                     locale === "id" ? "id-ID" : "en-US",
                                     { hour: "2-digit", minute: "2-digit" },
@@ -1678,13 +1732,14 @@ export function DashboardPage() {
     if (!summary) return null;
 
     return (
-        <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
+        <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-3.5 md:space-y-4">
             {/* Greeting */}
             <div>
-                <h1 className="text-xl font-extrabold text-slate-900 md:text-2xl">
-                    {getLocalizedGreeting(locale, firstName)}
+                <h1 className="text-[1.35rem] font-extrabold leading-tight text-slate-900 md:text-2xl">
+                    {getLocalizedGreeting(locale, firstName)}{" "}
+                    <span aria-hidden="true">👋</span>
                 </h1>
-                <p className="mt-0.5 text-sm font-medium text-slate-500">
+                <p className="mt-1 text-sm font-semibold text-slate-500">
                     {t("dashboard.title") || "Here's your financial overview."}
                 </p>
             </div>
@@ -1702,7 +1757,7 @@ export function DashboardPage() {
             />
 
             {/* Quick Actions */}
-            <QuickActions />
+            <QuickActions summary={summary} />
 
             {/* Monthly Cash Flow — compact row */}
             <CashFlowRow
@@ -1712,14 +1767,14 @@ export function DashboardPage() {
             />
 
             {/* Middle: Spending Donut + Cash Flow Chart */}
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-3.5 lg:grid-cols-2 lg:gap-4">
                 <SpendingDonut
                     balancesVisible={balancesVisible}
                     summary={summary}
                     currency={currency}
                 />
 
-                <DashboardCard className="p-5">
+                <DashboardCard className="p-4 md:p-5">
                     <div className="mb-3 flex items-center justify-between gap-4">
                         <h2 className="text-sm font-extrabold text-slate-900">
                             {t("dashboard.cashflow") || "Cash Flow"}{" "}
@@ -1757,9 +1812,9 @@ export function DashboardPage() {
             </div>
 
             {/* Recent Transactions */}
-            <DashboardCard className="p-5">
+            <DashboardCard className="p-4 md:p-5">
                 <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-sm font-extrabold text-slate-900">
+                    <h2 className="text-base font-extrabold text-slate-900 md:text-sm">
                         {t("dashboard.recentTransactions") ||
                             "Recent Transactions"}
                     </h2>
