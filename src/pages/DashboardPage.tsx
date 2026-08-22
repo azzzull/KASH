@@ -173,7 +173,7 @@ function CompactComparisonLine({
     change: DashboardMetricChange;
     currency: string;
     metric: "income" | "expense" | "netCashFlow" | "netWorth";
-    variant?: "hero" | "standard";
+    variant?: "hero" | "standard" | "cashflow";
     withPreviousLabel?: string;
 }) {
     const { t, locale } = useI18n();
@@ -205,6 +205,25 @@ function CompactComparisonLine({
         ? t("dashboard.vsPeriod", { period: withPreviousLabel }) ||
           `vs ${withPreviousLabel}`
         : null;
+
+    if (variant === "cashflow") {
+        return (
+            <div className={`min-w-0 ${tone}`}>
+                <p className="flex min-w-0 max-w-full items-center gap-1 text-[10px] font-extrabold leading-tight md:text-[11px]">
+                    <Icon aria-hidden="true" size={11} strokeWidth={2.4} />
+                    <span className="min-w-0 truncate">
+                        {formatSignedCurrencyDelta(delta, currency)}
+                        {percentText}
+                    </span>
+                </p>
+                {previousText ? (
+                    <p className="mt-0.5 truncate text-[9px] font-bold leading-tight text-slate-400 md:text-[10px]">
+                        {previousText}
+                    </p>
+                ) : null}
+            </div>
+        );
+    }
 
     return (
         <p
@@ -570,7 +589,7 @@ function HeroCard({
                                     <p className="truncate text-[11px] font-extrabold text-white/60">
                                         {item.label}
                                     </p>
-                                    <p className="mt-1 truncate text-sm font-black text-white">
+                                    <p className="mt-1 truncate text-[13px] font-black text-white">
                                         {formatPrivateCompactAmount(
                                             item.value,
                                             currency,
@@ -709,6 +728,7 @@ function CashFlowRow({
                             change={item.change}
                             currency={currency}
                             metric={item.metric}
+                            variant="cashflow"
                             withPreviousLabel={previousMonthLabel}
                         />
                     </div>
