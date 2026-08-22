@@ -792,15 +792,15 @@ export function WalletDetailPage() {
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
   const heroMetadata = (
     <div className="mt-4 flex max-w-full flex-nowrap gap-2 overflow-x-auto border-t border-white/15 pt-3 text-xs font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-      <div className="min-w-[8.5rem] shrink-0">
+      <div className="w-[9rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.type") || "Tipe Dompet"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">{typeOption.label}</p>
       </div>
-      <div className="min-w-[6rem] shrink-0">
+      <div className="w-[9rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.currency") || "Mata Uang"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">{wallet.currency}</p>
       </div>
-      <div className="min-w-[10.5rem] shrink-0">
+      <div className="w-[9rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.includeInNetWorth") || "Kekayaan Bersih"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">
           {wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")}
@@ -822,27 +822,6 @@ export function WalletDetailPage() {
         title={wallet.name}
         description={wallet.institution_name ?? (t("wallets.detailSubtitle") || "Rincian dompet dan kontrol saldo.")}
       />
-
-      {wallet.goal_id ? (
-        <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-4 shadow-card">
-          <div className="flex items-center gap-3">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-wider text-amber-800">
-                {t("wallets.pocketLinkedToGoal") || "Kantong Terhubung ke Target Tabungan (Goal)"}
-              </p>
-              <p className="text-sm font-bold text-slate-900">
-                {wallet.goal_name} {wallet.goal_target_amount ? `(${t("goals.target") || "Target"}: ${formatCurrency(Number(wallet.goal_target_amount), wallet.currency)})` : ""}
-              </p>
-            </div>
-          </div>
-          <Link
-            to={`/goals/${wallet.goal_id}`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-card transition hover:bg-amber-700 self-start sm:self-center"
-          >
-            {t("wallets.viewGoalTarget") || "Lihat Target Goal"}
-          </Link>
-        </section>
-      ) : null}
 
       {/* Hero Performance/Balance Card */}
       {isInvestment ? (
@@ -892,6 +871,21 @@ export function WalletDetailPage() {
           {heroMetadata}
         </section>
       )}
+
+      {wallet.goal_id ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-0.5 text-xs font-semibold text-slate-500">
+          <p className="min-w-0">
+            <span className="font-extrabold text-slate-700">{t("wallets.pocketLinkedToGoal") || "Kantong Terhubung ke Target Tabungan (Goal)"}</span>
+            <span className="text-slate-400"> · </span>
+            <span className="font-bold text-slate-600">
+              {wallet.goal_name} {wallet.goal_target_amount ? `(${t("goals.target") || "Target"}: ${formatCurrency(Number(wallet.goal_target_amount), wallet.currency)})` : ""}
+            </span>
+          </p>
+          <Link to={`/goals/${wallet.goal_id}`} className="shrink-0 font-extrabold text-kash-emerald hover:text-kash-emeraldDark">
+            {t("wallets.viewGoalTarget") || "Lihat Target Goal"}
+          </Link>
+        </div>
+      ) : null}
 
       {/* Action Bar Directly BELOW Hero Card */}
       <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -955,10 +949,6 @@ export function WalletDetailPage() {
               <TrendingUp aria-hidden="true" className="text-slate-500" size={17} />
               <h3 className="text-sm font-extrabold text-slate-900">{t("wallets.activityHistory") || "Riwayat Aktivitas Investasi"}</h3>
             </div>
-            <Button onClick={() => setShowActivityModal(true)} size="sm" variant="secondary">
-              <TrendingUp size={14} />
-              {t("wallets.recordActivity") || "Catat Aktivitas"}
-            </Button>
           </div>
 
           {activities.length > 0 ? (
