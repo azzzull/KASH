@@ -792,11 +792,11 @@ export function WalletDetailPage() {
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
   const heroMetadata = (
     <div className="mt-4 flex max-w-full flex-nowrap gap-2 overflow-x-auto border-t border-white/15 pt-3 text-xs font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-      <div className="w-[9rem] shrink-0">
+      <div className="w-[7rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.type") || "Tipe Dompet"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">{typeOption.label}</p>
       </div>
-      <div className="w-[9rem] shrink-0">
+      <div className="w-[5.5rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.currency") || "Mata Uang"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">{wallet.currency}</p>
       </div>
