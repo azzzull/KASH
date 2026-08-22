@@ -268,10 +268,7 @@ export function Modal({
     const elapsed = Math.max(1, Date.now() - startTimeRef.current);
     const velocity = deltaY / elapsed; // px per ms
 
-    if (sheetDetent === "large" && deltaY > 48) {
-      setSheetDetent("medium");
-      setDragY(0);
-    } else if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
+    if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
       // Threshold passed -> Dismiss with animated exit
       setDragY(400);
       handleRequestClose();
@@ -371,7 +368,7 @@ export function Modal({
 
   const mobileTransition = isDragging
     ? "none"
-    : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.26s cubic-bezier(0.32, 0.72, 0, 1)";
+    : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.38s cubic-bezier(0.22, 1, 0.36, 1)";
 
   // Backdrop opacity calculation
   const backdropOpacity = isClosing || !entered
