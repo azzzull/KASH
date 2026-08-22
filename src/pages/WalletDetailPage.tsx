@@ -787,10 +787,27 @@ export function WalletDetailPage() {
   const totalReturnPct = netContributions > 0 ? (totalPnL / netContributions) * 100 : null;
 
   const currentBalance = currentEquity;
-  const availableBalance = wallet.balance?.available_balance ?? currentBalance;
   const lastValuationAt = wallet.balance?.last_valuation_at;
   const canEditInitialBalance = transactionCount === 0;
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
+  const heroMetadata = (
+    <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs font-semibold text-white/90 sm:grid-cols-3">
+      <div>
+        <span className="text-white/60 font-semibold">{t("wallets.type") || "Tipe Dompet"}</span>
+        <p className="mt-0.5 text-sm font-extrabold text-white">{typeOption.label}</p>
+      </div>
+      <div>
+        <span className="text-white/60 font-semibold">{t("wallets.currency") || "Mata Uang"}</span>
+        <p className="mt-0.5 text-sm font-extrabold text-white">{wallet.currency}</p>
+      </div>
+      <div className="col-span-2 sm:col-span-1">
+        <span className="text-white/60 font-semibold">{t("wallets.includeInNetWorth") || "Kekayaan Bersih"}</span>
+        <p className="mt-0.5 text-sm font-extrabold text-white">
+          {wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")}
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
@@ -859,6 +876,7 @@ export function WalletDetailPage() {
               </span>
             ) : null}
           </div>
+          {heroMetadata}
         </section>
       ) : (
         <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
@@ -868,14 +886,7 @@ export function WalletDetailPage() {
           <p className="mt-2 break-words text-3xl font-extrabold text-white md:text-4xl">
             {formatCurrency(currentBalance, wallet.currency)}
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-              {t("wallets.availableBalance") || "Tersedia"}: {formatCurrency(availableBalance, wallet.currency)}
-            </span>
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-              {t("wallets.initialBalance") || "Saldo Awal"}: {formatCurrency(wallet.initial_balance, wallet.currency)}
-            </span>
-          </div>
+          {heroMetadata}
         </section>
       )}
 
@@ -932,22 +943,6 @@ export function WalletDetailPage() {
           {canHardDelete ? (t("common.delete") || "Hapus") : (t("common.archive") || "Arsipkan")}
         </Button>
       </div>
-
-      {/* Supporting details grid */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.type") || "Tipe Dompet"}</p>
-          <p className="mt-1 text-sm font-extrabold text-slate-900">{typeOption.label}</p>
-        </div>
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.currency") || "Mata Uang"}</p>
-          <p className="mt-1 text-sm font-extrabold text-slate-900">{wallet.currency}</p>
-        </div>
-        <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.includeInNetWorth") || "Kekayaan Bersih"}</p>
-          <p className="mt-1 text-sm font-extrabold text-slate-900">{wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")}</p>
-        </div>
-      </section>
 
       {/* Investment Activity Ledger */}
       {isInvestment ? (
