@@ -827,9 +827,6 @@ export function WalletDetailPage() {
                 {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
               </p>
               <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
-              {wallet.institution_name ? (
-                <p className="truncate text-xs font-semibold text-white/65">{wallet.institution_name}</p>
-              ) : null}
             </div>
           </div>
 
@@ -878,9 +875,6 @@ export function WalletDetailPage() {
                 {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
               </p>
               <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
-              {wallet.institution_name ? (
-                <p className="truncate text-xs font-semibold text-white/65">{wallet.institution_name}</p>
-              ) : null}
             </div>
           </div>
 
