@@ -78,6 +78,8 @@ export const en = {
     "common.reset": "Reset",
     "common.apply": "Apply",
     "common.today": "Today",
+    "common.prevYear": "Previous year",
+    "common.nextYear": "Next year",
 
     // Transaction types & modes
     "tx.income": "Income",

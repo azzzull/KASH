@@ -78,6 +78,8 @@ export const id = {
     "common.reset": "Reset",
     "common.apply": "Terapkan",
     "common.today": "Hari Ini",
+    "common.prevYear": "Tahun sebelumnya",
+    "common.nextYear": "Tahun berikutnya",
 
     // Transaction types & modes
     "tx.income": "Pemasukan",

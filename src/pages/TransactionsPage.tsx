@@ -1,14 +1,13 @@
 import {
-  ArrowDown,
   ArrowDownLeft,
-  ArrowRight,
   ArrowRightLeft,
-  ArrowUp,
   ArrowUpRight,
   CalendarDays,
+  Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Filter,
+  ListFilter,
   Loader2,
   Plus,
   ReceiptText,
@@ -17,11 +16,12 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { addMonths, startOfLocalMonth } from "../lib/calendar";
+import { startOfLocalMonth } from "../lib/calendar";
 import { QuickCreateCategoryModal } from "../components/categories/QuickCreateCategoryModal";
-import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
+import { TransactionDetailPanel, signedTransactionAmount } from "../components/transactions/TransactionDetailPanel";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
@@ -29,9 +29,9 @@ import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
-import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { useI18n } from "../i18n";
+import { getCategoryIcon } from "../lib/categoryMeta";
 import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../lib/transactions";
 import {
   createAdjustment,
@@ -169,6 +169,21 @@ function clearableFilters(filters: TransactionFilters) {
   );
 }
 
+function signedAccountingAmount(transaction: TransactionWithMeta) {
+  if (transaction.status === "void") return 0;
+  return signedTransactionAmount(transaction);
+}
+
+function iconSurfaceStyle(transaction: TransactionWithMeta): CSSProperties | undefined {
+  const color = transaction.category?.color;
+  if (!color) return undefined;
+
+  return {
+    backgroundColor: `${color}18`,
+    color,
+  };
+}
+
 function advancedFilterCount(filters: TransactionFilters) {
   return (
     Number(Boolean(filters.dateKey)) +
@@ -176,6 +191,149 @@ function advancedFilterCount(filters: TransactionFilters) {
     Number(Boolean(filters.walletId)) +
     Number(Boolean(filters.categoryId)) +
     Number(Boolean(filters.envelopeId))
+  );
+}
+
+function MonthPicker({
+  activeMonth,
+  onChange,
+}: {
+  activeMonth: Date;
+  onChange: (month: Date) => void;
+}) {
+  const { t, formatMonthYear } = useI18n();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(activeMonth.getFullYear());
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
+
+  useEffect(() => {
+    setViewYear(activeMonth.getFullYear());
+  }, [activeMonth]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePopoverPosition = () => {
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(304, window.innerWidth - 24);
+      const left = Math.min(Math.max(12, rect.right - width), window.innerWidth - width - 12);
+      const top = Math.min(rect.bottom + 8, window.innerHeight - 292);
+
+      setPopoverStyle({
+        left,
+        position: "fixed",
+        top: Math.max(12, top),
+        width,
+        zIndex: 1200,
+      });
+    };
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (buttonRef.current?.contains(event.target as Node)) return;
+      if (popoverRef.current?.contains(event.target as Node)) return;
+      setIsOpen(false);
+    };
+
+    updatePopoverPosition();
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [isOpen]);
+
+  const monthOptions = useMemo(
+    () => Array.from({ length: 12 }, (_, monthIndex) => new Date(viewYear, monthIndex, 1)),
+    [viewYear],
+  );
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        onClick={() => setIsOpen((current) => !current)}
+        className={`inline-flex h-8 max-w-[10rem] shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-extrabold transition focus:outline-none focus:ring-2 focus:ring-kash-emerald/25 ${
+          isOpen
+            ? "border-kash-emerald bg-kash-selected text-kash-emeraldDark"
+            : "border-slate-200/80 bg-white text-slate-800 hover:border-kash-emerald/40 hover:bg-kash-selected/60"
+        }`}
+      >
+        <CalendarDays aria-hidden="true" className="shrink-0 text-kash-emerald" size={13} />
+        <span className="truncate">{formatMonthYear(activeMonth)}</span>
+        <ChevronDown aria-hidden="true" className={`shrink-0 text-slate-500 transition ${isOpen ? "rotate-180" : ""}`} size={13} />
+      </button>
+
+      {isOpen && popoverStyle
+        ? createPortal(
+            <div
+              ref={popoverRef}
+              style={popoverStyle}
+              className="rounded-xl border border-slate-200 bg-white p-3 shadow-soft"
+              role="menu"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  aria-label={t("common.prevYear") || "Previous year"}
+                  onClick={() => setViewYear((year) => year - 1)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+                >
+                  <ChevronLeft size={17} />
+                </button>
+                <span className="text-sm font-extrabold text-slate-900">{viewYear}</span>
+                <button
+                  type="button"
+                  aria-label={t("common.nextYear") || "Next year"}
+                  onClick={() => setViewYear((year) => year + 1)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+                >
+                  <ChevronRight size={17} />
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-1.5">
+                {monthOptions.map((month) => {
+                  const isSelected =
+                    activeMonth.getFullYear() === month.getFullYear() &&
+                    activeMonth.getMonth() === month.getMonth();
+
+                  return (
+                    <button
+                      key={month.toISOString()}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onChange(month);
+                        setIsOpen(false);
+                      }}
+                      className={`flex h-9 items-center justify-center gap-1 rounded-lg px-2 text-xs font-extrabold transition ${
+                        isSelected
+                          ? "bg-kash-emerald text-white"
+                          : "text-slate-700 hover:bg-kash-selected hover:text-kash-emeraldDark"
+                      }`}
+                    >
+                      <span className="truncate">{formatMonthYear(month).replace(String(viewYear), "").trim()}</span>
+                      {isSelected ? <Check aria-hidden="true" className="shrink-0" size={13} /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 
@@ -208,10 +366,12 @@ function TransactionRow({
   transaction: TransactionWithMeta;
 }) {
   const { t, formatCurrency } = useI18n();
-  const Icon = transactionIcon(transaction.type);
+  const Icon = transaction.category?.icon ? getCategoryIcon(transaction.category.icon) : transactionIcon(transaction.type);
   const date = new Date(transaction.transaction_date);
   const isVoid = transaction.status === "void";
   const timeLabel = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(date);
+  const iconClass = transaction.category?.color ? "" : transactionTone[transaction.type];
+  const iconStyle = iconSurfaceStyle(transaction);
 
   const getTranslatedTitle = () => {
     if (transaction.title) return transaction.title;
@@ -259,7 +419,7 @@ function TransactionRow({
     >
       {/* Mobile layout */}
       <span className="flex items-center gap-3 px-1 py-2.5 md:hidden">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${transactionTone[transaction.type]}`}>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${iconClass}`} style={iconStyle}>
           <Icon aria-hidden="true" size={16} strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
@@ -287,7 +447,7 @@ function TransactionRow({
         className="hidden items-center gap-4 px-2 py-2.5 text-sm md:flex"
         style={{ gridTemplateColumns: "36px minmax(0, 1fr) minmax(100px, 160px) 130px 56px" }}
       >
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${transactionTone[transaction.type]}`}>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${iconClass}`} style={iconStyle}>
           <Icon aria-hidden="true" size={16} strokeWidth={2} />
         </span>
         <span className="min-w-0 flex-1">
@@ -625,6 +785,7 @@ function AdvancedFilterPanel({
   onClose,
   onReset,
   onUpdate,
+  sortOptions,
   wallets,
 }: {
   categories: Category[];
@@ -633,6 +794,7 @@ function AdvancedFilterPanel({
   onClose: () => void;
   onReset: () => void;
   onUpdate: <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) => void;
+  sortOptions: Array<{ label: string; value: TransactionSort }>;
   wallets: Wallet[];
 }) {
   const { t } = useI18n();
@@ -647,11 +809,11 @@ function AdvancedFilterPanel({
           title={t("transactions.filterTitle") || "Filter Transaksi"}
           description={t("transactions.filterSubtitle") || "Persempit buku kas berdasarkan dompet, kategori, pos anggaran, atau status."}
         >
-          <AdvancedFilterContent hideHeader categories={categories} envelopes={envelopes} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
+          <AdvancedFilterContent hideHeader categories={categories} envelopes={envelopes} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} sortOptions={sortOptions} wallets={wallets} />
         </Modal>
       </div>
       <div className="absolute right-[calc(100%+4px)] top-[calc(100%+4px)] z-40 hidden w-72 rounded-xl border border-slate-200/60 bg-white p-4 shadow-soft md:block">
-        <AdvancedFilterContent categories={categories} envelopes={envelopes} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
+        <AdvancedFilterContent categories={categories} envelopes={envelopes} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} sortOptions={sortOptions} wallets={wallets} />
       </div>
     </>
   );
@@ -665,6 +827,7 @@ function AdvancedFilterContent({
   onClose,
   onReset,
   onUpdate,
+  sortOptions,
   wallets,
 }: {
   categories: Category[];
@@ -674,6 +837,7 @@ function AdvancedFilterContent({
   onClose: () => void;
   onReset: () => void;
   onUpdate: <K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) => void;
+  sortOptions: Array<{ label: string; value: TransactionSort }>;
   wallets: Wallet[];
 }) {
   const { t } = useI18n();
@@ -718,6 +882,14 @@ function AdvancedFilterContent({
         <SelectField id="transaction-status-filter" label={t("common.status") || "Status"} value={filters.status} onChange={(event) => onUpdate("status", event.target.value as "all" | TransactionStatus)}>
           {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </SelectField>
+        <SelectField
+          id="transaction-sort-filter"
+          label={t("transactions.sort") || "Urutkan"}
+          value={filters.sort}
+          onChange={(event) => onUpdate("sort", event.target.value as TransactionSort)}
+        >
+          {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </SelectField>
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
@@ -729,7 +901,7 @@ function AdvancedFilterContent({
 }
 
 export function TransactionsPage() {
-  const { t, formatDate, formatMonthYear } = useI18n();
+  const { t, formatDate, formatCurrency: formatLocalizedCurrency } = useI18n();
   const [searchParams] = useSearchParams();
 
   const [activeMonth, setActiveMonth] = useState(() => startOfLocalMonth(new Date()));
@@ -855,7 +1027,11 @@ export function TransactionsPage() {
       groups.set(label, [...(groups.get(label) ?? []), transaction]);
     });
 
-    return Array.from(groups.entries()).map(([label, items]) => ({ items, label }));
+    return Array.from(groups.entries()).map(([label, items]) => ({
+      dailyNet: items.reduce((total, transaction) => total + signedAccountingAmount(transaction), 0),
+      items,
+      label,
+    }));
   };
 
   const groupedTransactions = useMemo(() => groupTransactionsLocalized(transactions), [transactions, t]);
@@ -889,9 +1065,22 @@ export function TransactionsPage() {
       dateKey: undefined,
       envelopeId: undefined,
       page: 0,
+      sort: "latest",
       status: "all",
       walletId: undefined,
     }));
+  };
+
+  const formatDailyNet = (amount: number) => {
+    if (amount === 0) return formatLocalizedCurrency(0, currency);
+    const formatted = formatLocalizedCurrency(Math.abs(amount), currency);
+    return `${amount > 0 ? "+" : "-"}${formatted}`;
+  };
+
+  const dailyNetTone = (amount: number) => {
+    if (amount > 0) return "text-kash-emerald";
+    if (amount < 0) return "text-kash-expense";
+    return "text-slate-500";
   };
 
   const handleVoid = async () => {
@@ -912,29 +1101,15 @@ export function TransactionsPage() {
   };
 
   return (
-    <div className="relative w-full max-w-full min-w-0 overflow-x-hidden space-y-4 md:min-h-[calc(100dvh-3rem)]">
+    <div className="relative w-full max-w-full min-w-0 space-y-3 overflow-x-hidden md:min-h-[calc(100dvh-3rem)]">
       <div>
-        <PageHeader
-          eyebrow={t("transactions.eyebrow") || "Buku Kas"}
-          icon={ReceiptText}
-          title={t("transactions.title")}
-          description={t("transactions.subtitle")}
-          actions={
-            <label className="hidden h-10 w-full min-w-72 max-w-sm items-center gap-2 rounded-xl bg-slate-100/60 px-3 text-sm font-medium text-slate-700 focus-within:bg-white focus-within:ring-2 focus-within:ring-kash-emerald/30 focus-within:shadow-card md:flex">
-              <Search aria-hidden="true" size={16} className="text-slate-500" />
-              <input
-                value={filters.query ?? ""}
-                onChange={(event) => updateFilter("query", event.target.value)}
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-500"
-                placeholder={t("transactions.searchPlaceholder") || "Cari transaksi..."}
-              />
-            </label>
-          }
-        />
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <h1 className="min-w-0 truncate text-xl font-extrabold text-slate-950 md:text-2xl">{t("transactions.title")}</h1>
+          <MonthPicker activeMonth={activeMonth} onChange={goToMonth} />
+        </div>
 
-        {/* Mobile search */}
-        <div className="mt-3 md:hidden">
-          <label className="flex h-10 items-center gap-2 rounded-xl bg-slate-100/60 px-3 text-sm font-medium text-slate-700 focus-within:bg-white focus-within:ring-2 focus-within:ring-kash-emerald/30 focus-within:shadow-card">
+        <div className="mt-3 flex min-w-0 items-center gap-2">
+          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl bg-slate-100/70 px-3 text-sm font-medium text-slate-700 transition focus-within:bg-white focus-within:shadow-card focus-within:ring-2 focus-within:ring-kash-emerald/30">
             <Search aria-hidden="true" size={16} className="text-slate-500" />
             <input
               value={filters.query ?? ""}
@@ -943,27 +1118,37 @@ export function TransactionsPage() {
               placeholder={t("transactions.searchPlaceholder") || "Cari transaksi..."}
             />
           </label>
-        </div>
-
-        {/* Compact Month Navigator Bar */}
-        <div className="mt-3 flex items-center justify-between sm:justify-center gap-3 rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-xs">
-          <button
-            type="button"
-            aria-label="Previous month"
-            onClick={() => goToMonth(addMonths(activeMonth, -1))}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20 shrink-0"
-          >
-            <ChevronLeft aria-hidden="true" size={17} />
-          </button>
-          <h2 className="min-w-36 text-center text-sm font-extrabold text-slate-900">{formatMonthYear(activeMonth)}</h2>
-          <button
-            type="button"
-            aria-label="Next month"
-            onClick={() => goToMonth(addMonths(activeMonth, 1))}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-kash-selected hover:text-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20 shrink-0"
-          >
-            <ChevronRight aria-hidden="true" size={17} />
-          </button>
+          <div ref={filterMenuRef} className="relative shrink-0">
+            <button
+              type="button"
+              aria-label={t("common.filter") || "Filter"}
+              onClick={() => setFilterPanelOpen((current) => !current)}
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-kash-emerald/25 ${
+                activeAdvancedFilters > 0
+                  ? "border-kash-emerald bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
+                  : "border-slate-200/70 bg-white text-slate-700 hover:border-kash-emerald/40 hover:bg-kash-selected"
+              }`}
+            >
+              <ListFilter aria-hidden="true" size={17} />
+              {activeAdvancedFilters > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-kash-emeraldDark px-1 text-[10px] font-black text-white ring-2 ring-white">
+                  {activeAdvancedFilters}
+                </span>
+              ) : null}
+            </button>
+            {filterPanelOpen ? (
+              <AdvancedFilterPanel
+                categories={activeCategories}
+                envelopes={envelopes}
+                filters={filters}
+                onClose={() => setFilterPanelOpen(false)}
+                onReset={resetAdvancedFilters}
+                onUpdate={updateFilter}
+                sortOptions={sortOptions}
+                wallets={wallets}
+              />
+            ) : null}
+          </div>
         </div>
 
         {filters.walletId && (
@@ -983,44 +1168,17 @@ export function TransactionsPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <section className="relative mt-4 pb-1">
-          <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
+        <section className="relative mt-3 pb-1">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <FilterTabs
+              className="w-full bg-transparent p-0 md:w-auto [&>button[aria-selected=false]]:bg-slate-100/70 [&>button[aria-selected=false]]:hover:bg-slate-100"
               options={typeOptions}
+              size="sm"
               value={filters.type ?? "all"}
               onChange={(val) => updateFilter("type", val as TransactionTypeFilter)}
             />
 
-            <div className="flex items-center justify-between gap-2.5 md:justify-end">
-              <div ref={filterMenuRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => setFilterPanelOpen((current) => !current)}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition ${activeAdvancedFilters > 0
-                      ? "border-kash-emerald bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-                      : "border-slate-200/60 bg-white text-slate-700 hover:border-kash-emerald/40 hover:bg-kash-selected"
-                    }`}
-                >
-                  <Filter aria-hidden="true" size={14} />
-                  {t("common.filter") || "Filter"}
-                  {activeAdvancedFilters > 0 ? (
-                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white/25 px-1 text-[10px] text-white">{activeAdvancedFilters}</span>
-                  ) : null}
-                </button>
-                {filterPanelOpen ? (
-                  <AdvancedFilterPanel
-                    categories={activeCategories}
-                    envelopes={envelopes}
-                    filters={filters}
-                    onClose={() => setFilterPanelOpen(false)}
-                    onReset={resetAdvancedFilters}
-                    onUpdate={updateFilter}
-                    wallets={wallets}
-                  />
-                ) : null}
-              </div>
-
+            <div className="hidden items-center justify-end gap-2.5 md:flex">
               <div className="w-36">
                 <SelectField
                   aria-label="Sort transactions"
@@ -1067,8 +1225,9 @@ export function TransactionsPage() {
           {!error && groupedTransactions.map((group, groupIndex) => (
             <div key={group.label}>
               {/* Date group header */}
-              <div className={`kash-date-header flex items-center gap-3 py-2 ${groupIndex > 0 ? "mt-1 border-t border-slate-100" : ""}`}>
-                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
+              <div className={`kash-date-header flex items-center justify-between gap-3 border-b border-slate-100 pb-1.5 pt-2 ${groupIndex > 0 ? "mt-3" : ""}`}>
+                <span className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-slate-500">{group.label}</span>
+                <span className={`shrink-0 text-xs font-extrabold ${dailyNetTone(group.dailyNet)}`}>{formatDailyNet(group.dailyNet)}</span>
               </div>
               {/* Transactions */}
               <div>
