@@ -41,6 +41,7 @@ export type AnalyticsTrendPoint = {
 
 export type AnalyticsCategorySpend = {
   amount: number;
+  change: AnalyticsMetricChange;
   color: string;
   id: string;
   name: string;
@@ -70,8 +71,10 @@ export type AnalyticsSummary = {
   netWorthTrend: AnalyticsNetWorthPoint[];
   period: AnalyticsPeriod;
   transferFees: number;
+  transferFeesChange: AnalyticsMetricChange;
   walletDistribution: AnalyticsWalletDistribution[];
   walletNetWorth: number;
+  walletNetWorthChange: AnalyticsMetricChange;
 };
 
 export type AnalyticsSummaryOptions = {
@@ -303,10 +306,11 @@ function buildIncomeExpenseTrend(period: AnalyticsPeriod, transactions: Transact
   });
 }
 
-function buildSpendingByCategory(transactions: Transaction[], categories: Category[]): AnalyticsCategorySpend[] {
+function buildSpendingByCategory(transactions: Transaction[], categories: Category[], previousTransactions: Transaction[] = []): AnalyticsCategorySpend[] {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
   const resolveCategoryColor = createCategoryColorResolver(categories);
   const totals = new Map<string, { amount: number; color: string; name: string }>();
+  const previousTotals = new Map<string, number>();
 
   transactions
     .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
@@ -322,11 +326,20 @@ function buildSpendingByCategory(transactions: Transaction[], categories: Catego
       });
     });
 
+  previousTransactions
+    .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
+    .forEach((transaction) => {
+      const category = transaction.category_id ? categoryById.get(transaction.category_id) : null;
+      const id = category?.id ?? "uncategorized";
+      previousTotals.set(id, (previousTotals.get(id) ?? 0) + moneyValue(transaction.amount));
+    });
+
   const totalAmount = Array.from(totals.values()).reduce((sum, item) => sum + item.amount, 0);
 
   return Array.from(totals.entries())
     .map(([id, item]) => ({
       amount: item.amount,
+      change: calculateMetricChange(item.amount, previousTotals.get(id) ?? 0),
       color: item.color,
       id,
       name: item.name,
@@ -459,8 +472,10 @@ export function getEmptyAnalyticsSummary(options: AnalyticsSummaryOptions): Anal
     })),
     period,
     transferFees: 0,
+    transferFeesChange: calculateMetricChange(0, 0),
     walletDistribution: [],
     walletNetWorth: 0,
+    walletNetWorthChange: calculateMetricChange(0, 0),
   };
 }
 
@@ -531,9 +546,10 @@ export async function getAnalyticsSummary(options: AnalyticsSummaryOptions): Pro
   const previousMetrics = calculateCashFlowMetrics(previousTransactions);
   const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions);
   const walletNetWorth = netWorthTrend.length > 0 ? netWorthTrend[netWorthTrend.length - 1].amount : 0;
+  const previousWalletNetWorth = netWorthAtCutoff(wallets, historicalTransactions, new Date(period.previousEnd));
 
   return {
-    categorySpending: buildSpendingByCategory(currentTransactions, categories),
+    categorySpending: buildSpendingByCategory(currentTransactions, categories, previousTransactions),
     income: {
       amount: currentMetrics.income,
       change: calculateMetricChange(currentMetrics.income, previousMetrics.income),
@@ -546,8 +562,10 @@ export async function getAnalyticsSummary(options: AnalyticsSummaryOptions): Pro
     netWorthTrend,
     period,
     transferFees: currentMetrics.transferFees,
+    transferFeesChange: calculateMetricChange(currentMetrics.transferFees, previousMetrics.transferFees),
     walletDistribution: buildWalletDistribution(wallets),
     walletNetWorth,
+    walletNetWorthChange: calculateMetricChange(walletNetWorth, previousWalletNetWorth),
     expense: {
       amount: currentMetrics.expense,
       change: calculateMetricChange(currentMetrics.expense, previousMetrics.expense),

@@ -14,7 +14,13 @@ import {
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAnalyticsSummary, getEmptyAnalyticsSummary, type AnalyticsPeriodKey, type AnalyticsSummary } from "../lib/analytics";
+import {
+  getAnalyticsSummary,
+  getEmptyAnalyticsSummary,
+  type AnalyticsMetricChange,
+  type AnalyticsPeriodKey,
+  type AnalyticsSummary,
+} from "../lib/analytics";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type { BudgetWithProgress } from "../types/domain";
 import { formatCurrency } from "../lib/money";
@@ -73,6 +79,100 @@ function monthEquivalent(summary: AnalyticsSummary) {
 function formatPercent(value: number | null) {
   if (value == null || !Number.isFinite(value)) return "-";
   return `${value.toFixed(1)}%`;
+}
+
+function buildMetricChange(current: number, previous: number): AnalyticsMetricChange {
+  if (previous > 0) {
+    const percent = ((current - previous) / previous) * 100;
+    return {
+      current,
+      percent,
+      previous,
+      state: percent > 0 ? "increase" : percent < 0 ? "decrease" : "flat",
+    };
+  }
+
+  if (current > 0) {
+    return { current, percent: null, previous, state: "new" };
+  }
+
+  return { current, percent: null, previous, state: "none" };
+}
+
+function averageMetricChange(change: AnalyticsMetricChange, divisor: number): AnalyticsMetricChange {
+  return buildMetricChange(change.current / divisor, change.previous / divisor);
+}
+
+function ComparisonLine({
+  change,
+  className = "",
+  comparisonLabel,
+  currency,
+  mode = "money",
+  positiveWhen = "increase",
+  surface = "default",
+}: {
+  change: AnalyticsMetricChange;
+  className?: string;
+  comparisonLabel: string;
+  currency: string;
+  mode?: "money" | "percentPoint";
+  positiveWhen?: "decrease" | "increase";
+  surface?: "default" | "hero";
+}) {
+  const { formatCurrency, t } = useI18n();
+  const delta = change.current - change.previous;
+  const increased = delta > 0;
+  const decreased = delta < 0;
+  const isNeutral = !increased && !decreased;
+  const isPositive = positiveWhen === "decrease" ? decreased : increased;
+  const Icon = isNeutral ? null : increased ? TrendingUp : TrendingDown;
+  const tone =
+    surface === "hero"
+      ? isNeutral
+        ? "text-white/65"
+        : isPositive
+          ? "text-emerald-100"
+          : "text-red-200"
+      : isNeutral
+        ? "text-slate-500"
+        : isPositive
+          ? "text-kash-emerald"
+          : "text-[#E50914]";
+  const mutedTone = surface === "hero" ? "text-white/50" : "text-slate-400";
+  const formattedDelta =
+    mode === "percentPoint"
+      ? `${delta > 0 ? "+" : delta < 0 ? "-" : ""}${Math.abs(delta).toFixed(1)}pp`
+      : `${delta > 0 ? "+" : delta < 0 ? "-" : ""}${formatCurrency(Math.abs(delta), currency)}`;
+  const percentText =
+    mode === "money" && change.percent != null
+      ? ` (${delta > 0 ? "+" : delta < 0 ? "-" : ""}${Math.abs(change.percent).toFixed(1)}%)`
+      : "";
+  const normalizedComparisonLabel = comparisonLabel.replace(/^vs\s+/i, "");
+  const comparisonText =
+    t("dashboard.vsPeriod", { period: normalizedComparisonLabel }) ||
+    `vs ${normalizedComparisonLabel}`;
+
+  if (change.state === "none") {
+    return (
+      <p className={`text-[11px] font-bold ${mutedTone} ${className}`}>
+        0 {comparisonText}
+      </p>
+    );
+  }
+
+  return (
+    <p className={`inline-flex min-w-0 max-w-full items-center gap-1 text-[11px] font-extrabold ${tone} ${className}`}>
+      {Icon ? <Icon aria-hidden="true" size={12} strokeWidth={2.4} /> : null}
+      <span className="min-w-0 truncate">
+        {formattedDelta}
+        {percentText}
+      </span>
+      <span className={`shrink-0 font-bold ${mutedTone}`}>
+        {comparisonText}
+      </span>
+    </p>
+  );
 }
 
 function cashFlowHealth(summary: AnalyticsSummary, t: (k: TranslationKey) => string) {
@@ -140,6 +240,13 @@ function AnalyticsHeroStory({
         <p className="break-words text-3xl font-extrabold text-white sm:text-4xl">
           {formattedNetCashFlow}
         </p>
+        <ComparisonLine
+          change={summary.netCashFlow.change}
+          className="mt-1 text-xs"
+          comparisonLabel={summary.period.comparisonLabel}
+          currency={currency}
+          surface="hero"
+        />
       </div>
 
       {/* Short Contextual Explanation */}
@@ -158,12 +265,27 @@ function AnalyticsHeroStory({
           <p className="mt-0.5 text-sm font-extrabold text-white">
             {formatCurrency(summary.income.amount, currency)}
           </p>
+          <ComparisonLine
+            change={summary.income.change}
+            className="mt-1"
+            comparisonLabel={summary.period.comparisonLabel}
+            currency={currency}
+            surface="hero"
+          />
         </div>
         <div>
           <span className="text-white/60 font-semibold">{t("common.typeExpense") || "Pengeluaran"}</span>
           <p className="mt-0.5 text-sm font-extrabold text-white">
             {formatCurrency(summary.expense.amount, currency)}
           </p>
+          <ComparisonLine
+            change={summary.expense.change}
+            className="mt-1"
+            comparisonLabel={summary.period.comparisonLabel}
+            currency={currency}
+            positiveWhen="decrease"
+            surface="hero"
+          />
         </div>
       </div>
     </section>
@@ -177,54 +299,75 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
   const averageMonthlyIncome = summary.income.amount / months;
   const averageMonthlyCashFlow = summary.netCashFlow.amount / months;
   const savingsRate = summary.income.amount > 0 ? (summary.netCashFlow.amount / summary.income.amount) * 100 : null;
+  const previousSavingsRate =
+    summary.income.change.previous > 0
+      ? (summary.netCashFlow.change.previous / summary.income.change.previous) * 100
+      : null;
+  const savingsRateChange =
+    savingsRate != null && previousSavingsRate != null
+      ? buildMetricChange(savingsRate, previousSavingsRate)
+      : buildMetricChange(savingsRate ?? 0, 0);
   const topCategory = summary.categorySpending[0] ?? null;
 
   const insights = [
     {
+      change: averageMetricChange(summary.expense.change, months),
       icon: TrendingDown,
       label: t("analytics.avgMonthlyExpense") || "Rata-rata Belanja Bulanan",
       value: formatCurrency(averageMonthlyExpense, currency),
       helper: t("analytics.avgMonthlyExpenseStory") || "Laju pengeluaran rutin per bulan",
+      positiveWhen: "decrease" as const,
       tone: "text-slate-900",
       accentBg: "bg-[#E50914]/10 text-[#E50914]",
     },
     {
+      change: averageMetricChange(summary.income.change, months),
       icon: TrendingUp,
       label: t("analytics.avgMonthlyIncome") || "Rata-rata Pemasukan Bulanan",
       value: formatCurrency(averageMonthlyIncome, currency),
       helper: t("analytics.avgMonthlyIncomeStory") || "Kecepatan arus masuk dana",
+      positiveWhen: "increase" as const,
       tone: "text-slate-900",
       accentBg: "bg-kash-emerald/10 text-kash-emeraldDark",
     },
     {
+      change: savingsRateChange,
       icon: Sparkles,
       label: t("analytics.savingsRate") || "Rasio Tabungan Bersih",
       value: savingsRate != null ? `${savingsRate.toFixed(1)}%` : "-",
       helper: savingsRate != null && savingsRate >= 20 ? (t("analytics.healthySavingsPace") || "Diatas target ideal 20%") : (t("analytics.moderateSavingsPace") || "Alokasi tabungan perlu ditingkatkan"),
+      mode: "percentPoint" as const,
+      positiveWhen: "increase" as const,
       tone: savingsRate != null && savingsRate >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]",
       accentBg: "bg-amber-500/10 text-amber-800",
     },
     {
+      change: topCategory?.change ?? buildMetricChange(0, 0),
       icon: PieChart,
       label: t("analytics.topCategoryImpact") || "Kontributor Belanja Terbesar",
       value: topCategory ? topCategory.name : "-",
       helper: topCategory ? `${formatCurrency(topCategory.amount, currency)} (${topCategory.percent.toFixed(0)}% dari total)` : (t("analytics.noData") || "Belum ada transaksi"),
+      positiveWhen: "decrease" as const,
       tone: "text-slate-900",
       accentBg: "bg-blue-500/10 text-blue-700",
     },
     {
+      change: summary.transferFeesChange,
       icon: Receipt,
       label: t("analytics.transferFees") || "Beban Biaya Transfer",
       value: formatCurrency(summary.transferFees, currency),
       helper: summary.transferFees > 0 ? (t("analytics.transferFeesStory") || "Biaya administrasi terakumulasi") : (t("analytics.zeroTransferFees") || "Bebas biaya transfer pada periode ini"),
+      positiveWhen: "decrease" as const,
       tone: summary.transferFees > 0 ? "text-amber-700" : "text-slate-700",
       accentBg: "bg-slate-100 text-slate-700",
     },
     {
+      change: averageMetricChange(summary.netCashFlow.change, months),
       icon: WalletCards,
       label: t("analytics.netCashFlow") || "Net Surplus/Defisit Kas",
       value: formatCurrency(averageMonthlyCashFlow, currency),
       helper: averageMonthlyCashFlow >= 0 ? (t("analytics.surplusPaceStory") || "Pengakumulasian kas positif") : (t("analytics.deficitPaceStory") || "Defisit kas terakumulasi"),
+      positiveWhen: "increase" as const,
       tone: averageMonthlyCashFlow >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]",
       accentBg: averageMonthlyCashFlow >= 0 ? "bg-kash-emerald/10 text-kash-emeraldDark" : "bg-red-500/10 text-red-700",
     },
@@ -257,6 +400,14 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
               <p className={`mt-3 text-xl sm:text-2xl font-extrabold truncate ${item.tone}`}>
                 {item.value}
               </p>
+              <ComparisonLine
+                change={item.change}
+                className="mt-1.5"
+                comparisonLabel={summary.period.comparisonLabel}
+                currency={currency}
+                mode={item.mode}
+                positiveWhen={item.positiveWhen}
+              />
             </div>
 
             <p className="mt-4 border-t border-slate-100/80 pt-3 text-xs font-semibold text-slate-500 leading-relaxed">
@@ -513,6 +664,13 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
             <div className="shrink-0 text-right">
               <span className="font-bold text-slate-900">{formatCurrency(category.amount, currency)}</span>
               <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
+              <ComparisonLine
+                change={category.change}
+                className="mt-0.5 justify-end"
+                comparisonLabel={summary.period.comparisonLabel}
+                currency={currency}
+                positiveWhen="decrease"
+              />
             </div>
           </div>
         ))}
@@ -532,6 +690,13 @@ function IncomeExpenseLineChart({ currency, summary }: { currency: string; summa
   const hasData = summary.incomeExpenseTrend.some((point) => point.income > 0 || point.expense > 0);
   const points = summary.incomeExpenseTrend;
 
+  useEffect(() => {
+    const scrollElement = mobileScrollRef.current;
+    if (!scrollElement || points.length === 0) return;
+
+    scrollChartToIndex(scrollElement, points.length, currentTrendIndex(points));
+  }, [points]);
+
   if (!hasData) {
     return <EmptyPanel title={t("analytics.noTrendData") || "No trend data"} description={t("analytics.noTrendDataDesc") || "Income and expense trend will appear after activity exists."} className="mt-4 min-h-64" />;
   }
@@ -539,13 +704,6 @@ function IncomeExpenseLineChart({ currency, summary }: { currency: string; summa
   const desktopWidth = 560;
   const mobileWidth = Math.max(560, points.length * 48);
   const height = 260;
-
-  useEffect(() => {
-    const scrollElement = mobileScrollRef.current;
-    if (!scrollElement || points.length === 0) return;
-
-    scrollChartToIndex(scrollElement, points.length, currentTrendIndex(points));
-  }, [points]);
 
   function renderChart({
     className,
@@ -623,6 +781,13 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
   const hasData = summary.netWorthTrend.some((point) => point.amount !== 0);
   const pointsData = summary.netWorthTrend;
 
+  useEffect(() => {
+    const scrollElement = mobileScrollRef.current;
+    if (!scrollElement || pointsData.length === 0) return;
+
+    scrollChartToIndex(scrollElement, pointsData.length, currentTrendIndex(pointsData));
+  }, [pointsData]);
+
   if (!hasData) {
     return <EmptyPanel title={t("analytics.noNetWorthTrend") || "No net worth trend yet"} description={t("analytics.noNetWorthTrendDesc") || "Wallet balances and ledger activity will build this trend."} className="mt-4 min-h-56" />;
   }
@@ -630,13 +795,6 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
   const desktopWidth = 1040;
   const mobileWidth = Math.max(560, pointsData.length * 52);
   const height = 250;
-
-  useEffect(() => {
-    const scrollElement = mobileScrollRef.current;
-    if (!scrollElement || pointsData.length === 0) return;
-
-    scrollChartToIndex(scrollElement, pointsData.length, currentTrendIndex(pointsData));
-  }, [pointsData]);
 
   function renderChart({
     chartPadding,
@@ -742,7 +900,15 @@ function WalletDistribution({ currency, summary }: { currency: string; summary: 
         ))}
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-slate-200 pt-3 text-sm">
           <p className="font-extrabold text-slate-900">{t("dashboard.netWorth") || "Net Worth"}</p>
-          <p className="text-right font-extrabold text-slate-900">{formatCurrency(summary.walletNetWorth, currency)}</p>
+          <div className="min-w-0 text-right">
+            <p className="font-extrabold text-slate-900">{formatCurrency(summary.walletNetWorth, currency)}</p>
+            <ComparisonLine
+              change={summary.walletNetWorthChange}
+              className="mt-0.5 justify-end"
+              comparisonLabel={summary.period.comparisonLabel}
+              currency={currency}
+            />
+          </div>
         </div>
       </div>
     </div>
