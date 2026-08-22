@@ -104,6 +104,7 @@ function averageMetricChange(change: AnalyticsMetricChange, divisor: number): An
 }
 
 function ComparisonLine({
+  allowWrap = false,
   change,
   className = "",
   comparisonLabel,
@@ -112,6 +113,7 @@ function ComparisonLine({
   positiveWhen = "increase",
   surface = "default",
 }: {
+  allowWrap?: boolean;
   change: AnalyticsMetricChange;
   className?: string;
   comparisonLabel: string;
@@ -162,13 +164,13 @@ function ComparisonLine({
   }
 
   return (
-    <p className={`inline-flex min-w-0 max-w-full items-center gap-1 text-[11px] font-extrabold ${tone} ${className}`}>
+    <p className={`inline-flex min-w-0 max-w-full items-center gap-1 text-[11px] font-extrabold ${allowWrap ? "flex-wrap" : ""} ${tone} ${className}`}>
       {Icon ? <Icon aria-hidden="true" size={12} strokeWidth={2.4} /> : null}
-      <span className="min-w-0 truncate">
+      <span className={allowWrap ? "min-w-0" : "min-w-0 truncate"}>
         {formattedDelta}
         {percentText}
       </span>
-      <span className={`shrink-0 font-bold ${mutedTone}`}>
+      <span className={`${allowWrap ? "" : "shrink-0"} font-bold ${mutedTone}`}>
         {comparisonText}
       </span>
     </p>
@@ -656,17 +658,22 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
       {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
       <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
         {categories.map((category) => (
-          <div key={category.id} className="flex items-center justify-between gap-2.5 text-xs sm:text-sm">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
-              <span className="truncate font-semibold text-slate-700">{category.name}</span>
+          <div key={category.id} className="min-w-0 text-xs sm:text-sm">
+            <div className="flex items-center justify-between gap-2.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
+                <span className="truncate font-semibold text-slate-700">{category.name}</span>
+              </div>
+              <div className="shrink-0 text-right">
+                <span className="font-bold text-slate-900">{formatCurrency(category.amount, currency)}</span>
+                <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
+              </div>
             </div>
-            <div className="shrink-0 text-right">
-              <span className="font-bold text-slate-900">{formatCurrency(category.amount, currency)}</span>
-              <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
+            <div className="mt-0.5 pl-4">
               <ComparisonLine
+                allowWrap
                 change={category.change}
-                className="mt-0.5 justify-end"
+                className="leading-tight"
                 comparisonLabel={summary.period.comparisonLabel}
                 currency={currency}
                 positiveWhen="decrease"
