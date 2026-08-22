@@ -9,7 +9,7 @@ type ToggleFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
 export function ToggleField({ description, id, label, checked, ...props }: ToggleFieldProps) {
   return (
     <label
-      className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-slate-300"
+      className="flex cursor-pointer touch-manipulation items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white p-3 transition [@media(hover:hover)_and_(pointer:fine)]:hover:border-slate-300 active:border-kash-emerald/40"
       htmlFor={id}
     >
       <span>

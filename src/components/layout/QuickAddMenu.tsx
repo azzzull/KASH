@@ -73,7 +73,7 @@ export function QuickAddMenu({
         {actions.map((action) => (
           <button
             key={action.mode}
-            className="flex items-center justify-between rounded-xl p-3 text-left transition hover:bg-kash-selected/70 active:bg-kash-selected"
+            className="flex touch-manipulation items-center justify-between rounded-xl p-3 text-left transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 active:scale-[0.99] active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
             onClick={() => {
               onClose();
               onSelect(action.mode);

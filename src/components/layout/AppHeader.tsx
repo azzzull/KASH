@@ -114,7 +114,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                             onClick={() =>
                                 setProfileMenuOpen((current) => !current)
                             }
-                            className="flex h-10 w-10 items-center justify-center rounded-full bg-kash-emerald text-sm font-extrabold text-white transition hover:bg-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+                            className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-full bg-kash-emerald text-sm font-extrabold text-white transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:scale-95 active:bg-kash-emeraldPressed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
                         >
                             {initial.toUpperCase()}
                         </button>
@@ -134,7 +134,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                                         setProfileMenuOpen(false);
                                         navigate("/settings");
                                     }}
-                                    className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition hover:bg-kash-selected hover:text-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+                                    className="mt-2 flex w-full touch-manipulation items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
                                 >
                                     <Settings aria-hidden="true" size={17} />
                                     {t("nav.settings")}
@@ -142,7 +142,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                                 <button
                                     type="button"
                                     onClick={() => void handleSignOut()}
-                                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-kash-expense transition hover:bg-kash-expense/10 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+                                    className="flex w-full touch-manipulation items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-kash-expense transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-expense/10 active:bg-kash-expense/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
                                 >
                                     <LogOut aria-hidden="true" size={17} />
                                     {t("nav.signOut")}

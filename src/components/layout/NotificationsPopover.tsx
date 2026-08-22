@@ -109,7 +109,7 @@ export function NotificationsPopover({
           aria-label={t("notifications.markAllRead")}
           disabled={unreadCount === 0}
           onClick={() => void handleMarkAllRead()}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-extrabold text-kash-emerald transition hover:bg-kash-selected disabled:text-slate-600 disabled:hover:bg-transparent"
+          className="inline-flex touch-manipulation items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-extrabold text-kash-emerald transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected active:bg-kash-selected disabled:text-slate-600 disabled:active:bg-transparent focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
         >
           <CheckCheck aria-hidden="true" size={15} />
           {t("notifications.markAllRead")}
@@ -119,7 +119,7 @@ export function NotificationsPopover({
           aria-label={t("notifications.clearRead")}
           disabled={!hasReadNotifications}
           onClick={() => void handleClearRead()}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-extrabold text-kash-expense transition hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent"
+          className="inline-flex touch-manipulation items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-extrabold text-kash-expense transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-expense/10 active:bg-kash-expense/10 disabled:text-slate-600 disabled:active:bg-transparent focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
         >
           <Trash2 aria-hidden="true" size={15} />
           {t("notifications.clearRead")}
@@ -137,7 +137,7 @@ export function NotificationsPopover({
               <button
                 type="button"
                 onClick={() => void refresh()}
-                className="mt-3 text-sm font-extrabold text-kash-emerald hover:underline"
+                className="mt-3 touch-manipulation text-sm font-extrabold text-kash-emerald [@media(hover:hover)_and_(pointer:fine)]:hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
               >
                 {t("common.retry")}
               </button>
@@ -171,7 +171,7 @@ export function NotificationsPopover({
                   key={notification.id}
                   type="button"
                   onClick={() => void handleNotificationClick(notification)}
-                  className={`grid w-full grid-cols-[auto_1fr] items-start gap-3.5 p-4 text-left transition hover:bg-slate-50 ${
+                  className={`grid w-full touch-manipulation grid-cols-[auto_1fr] items-start gap-3.5 p-4 text-left transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-50 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-kash-emerald/20 ${
                     isUnread ? "bg-kash-selected/30" : "bg-white"
                   }`}
                 >

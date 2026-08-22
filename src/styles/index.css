@@ -154,14 +154,16 @@ a:focus-visible {
   transition: opacity var(--kash-transition), stroke-dashoffset 500ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.kash-ring-chart:hover circle[data-segment],
-.kash-ring-chart:hover path[data-segment] {
-  opacity: 0.7;
-}
+@media (hover: hover) and (pointer: fine) {
+  .kash-ring-chart:hover circle[data-segment],
+  .kash-ring-chart:hover path[data-segment] {
+    opacity: 0.7;
+  }
 
-.kash-ring-chart:hover circle[data-segment]:hover,
-.kash-ring-chart:hover path[data-segment]:hover {
-  opacity: 1;
+  .kash-ring-chart:hover circle[data-segment]:hover,
+  .kash-ring-chart:hover path[data-segment]:hover {
+    opacity: 1;
+  }
 }
 
 /* ─── Activity Row ─── */
@@ -169,8 +171,10 @@ a:focus-visible {
   transition: background-color var(--kash-transition);
 }
 
-.kash-activity-row:hover {
-  background-color: rgba(241, 245, 249, 0.6);
+@media (hover: hover) and (pointer: fine) {
+  .kash-activity-row:hover {
+    background-color: rgba(241, 245, 249, 0.6);
+  }
 }
 
 .kash-activity-row:active {

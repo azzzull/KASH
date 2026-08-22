@@ -919,7 +919,7 @@ export function Modal({
                         className="flex h-11 w-full items-center justify-center touch-none select-none cursor-grab active:cursor-grabbing md:hidden"
                         aria-label="Drag down to close"
                     >
-                        <div className="h-1.5 w-12 rounded-full bg-slate-300 transition-colors hover:bg-slate-400 active:bg-kash-emerald" />
+                        <div className="h-1.5 w-12 rounded-full bg-slate-300 transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-400 active:bg-kash-emerald" />
                     </div>
 
                     {/* Header Region */}
@@ -943,7 +943,7 @@ export function Modal({
                                     icon={X}
                                     label="Close"
                                     onClick={handleRequestClose}
-                                    className="shrink-0 text-slate-600 hover:text-slate-900"
+                                    className="shrink-0 text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:text-slate-900"
                                 />
                             ) : null}
                         </div>

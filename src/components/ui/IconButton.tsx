@@ -10,7 +10,7 @@ export function IconButton({ icon: Icon, label, className = "", ...props }: Icon
   return (
     <button
       aria-label={label}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-kash-emerald/40 ${className}`}
+      className={`inline-flex h-9 w-9 touch-manipulation shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition [@media(hover:hover)_and_(pointer:fine)]:hover:border-slate-300 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-50 [@media(hover:hover)_and_(pointer:fine)]:hover:text-slate-900 active:scale-95 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kash-emerald/40 ${className}`}
       title={label}
       type="button"
       {...props}

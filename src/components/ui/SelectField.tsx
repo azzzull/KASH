@@ -205,7 +205,7 @@ function SelectFieldContent({
         ref={buttonRef}
         aria-label={ariaLabel}
         id={id}
-        className="group mt-2 flex h-12 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-base font-semibold text-slate-900 transition hover:border-kash-emerald/50 hover:bg-kash-selected/40 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 md:text-sm"
+        className="group mt-2 flex h-12 w-full touch-manipulation items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-base font-semibold text-slate-900 transition [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emerald/50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/40 focus:border-kash-emerald focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(16,185,129,0.20)] disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 md:text-sm"
       >
         <span className="min-w-0 truncate text-slate-900 group-disabled:text-slate-600">
           {selectedOption?.label ?? "Select"}

@@ -62,7 +62,7 @@ export function ContextualCreateAction({
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex items-center gap-2 rounded-xl bg-kash-emerald px-4 py-2.5 text-sm font-extrabold text-white shadow-lg transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed active:scale-95 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+        className="inline-flex touch-manipulation items-center gap-2 rounded-xl bg-kash-emerald px-4 py-2.5 text-sm font-extrabold text-white shadow-lg transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:scale-95 active:bg-kash-emeraldPressed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
       >
         <Icon aria-hidden="true" size={18} strokeWidth={2.4} />
         <span>{label}</span>

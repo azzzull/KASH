@@ -5,12 +5,15 @@ import { useI18n } from "../../i18n";
 
 type MobileBottomNavProps = {
   onMore: () => void;
+  onNavigateIntent?: (path: string) => void;
   onQuickAdd: () => void;
+  pendingPath?: string | null;
 };
 
-export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
+export function MobileBottomNav({ onMore, onNavigateIntent, onQuickAdd, pendingPath }: MobileBottomNavProps) {
   const { t } = useI18n();
   const [home, transactions, analytics] = mobilePrimaryItems;
+  const pendingBasePath = pendingPath?.split("?")[0] ?? null;
 
   const getLocalizedNavLabel = (path: string, defaultLabel: string) => {
     switch (path) {
@@ -31,9 +34,14 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
           <NavLink
             key={item.path}
             to={item.path}
+            onPointerDown={() => onNavigateIntent?.(item.path)}
+            onClick={(event) => {
+              if (pendingBasePath === item.path) event.preventDefault();
+              onNavigateIntent?.(item.path);
+            }}
             className={({ isActive }) =>
-              `flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold transition ${
-                isActive ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 hover:bg-kash-selected/60 hover:text-kash-emeraldDark"
+              `flex h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold transition active:scale-[0.98] active:bg-kash-selected/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${
+                isActive || pendingBasePath === item.path ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
               }`
             }
           >
@@ -44,7 +52,7 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
 
         <button
           aria-label="Add transaction"
-          className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-kash-emerald text-white shadow-soft transition hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+          className="mx-auto flex h-12 w-12 touch-manipulation items-center justify-center rounded-full bg-kash-emerald text-white shadow-soft transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:scale-95 active:bg-kash-emeraldPressed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
           onClick={onQuickAdd}
           type="button"
         >
@@ -53,9 +61,14 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
 
         <NavLink
           to={analytics.path}
+          onPointerDown={() => onNavigateIntent?.(analytics.path)}
+          onClick={(event) => {
+            if (pendingBasePath === analytics.path) event.preventDefault();
+            onNavigateIntent?.(analytics.path);
+          }}
           className={({ isActive }) =>
-            `flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold transition ${
-              isActive ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 hover:bg-kash-selected/60 hover:text-kash-emeraldDark"
+            `flex h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold transition active:scale-[0.98] active:bg-kash-selected/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${
+              isActive || pendingBasePath === analytics.path ? "bg-kash-selected/60 text-kash-emeraldDark" : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
             }`
           }
         >
@@ -64,7 +77,7 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
         </NavLink>
 
         <button
-          className="flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold text-slate-600 transition hover:bg-kash-selected/60 hover:text-kash-emeraldDark"
+          className="flex h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-bold text-slate-600 transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:scale-[0.98] active:bg-kash-selected/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
           onClick={onMore}
           type="button"
         >

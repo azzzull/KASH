@@ -24,16 +24,16 @@ export function Button({
 
   if (variant === "primary") {
     styles =
-      "border-kash-emerald bg-kash-emerald text-white hover:border-kash-emeraldDark hover:bg-kash-emeraldDark active:border-kash-emeraldPressed active:bg-kash-emeraldPressed shadow-sm";
+      "border-kash-emerald bg-kash-emerald text-white [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emeraldDark [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:scale-[0.98] active:border-kash-emeraldPressed active:bg-kash-emeraldPressed shadow-sm";
   } else if (variant === "secondary") {
     styles =
-      "border-slate-200/80 bg-white text-slate-800 hover:border-kash-emerald/40 hover:bg-kash-selected/60 hover:text-kash-emeraldDark active:bg-kash-selected shadow-sm";
+      "border-slate-200/80 bg-white text-slate-800 [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emerald/40 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/60 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:scale-[0.98] active:bg-kash-selected shadow-sm";
   } else if (variant === "ghost") {
     styles =
-      "border-transparent bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200";
+      "border-transparent bg-transparent text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-100 [@media(hover:hover)_and_(pointer:fine)]:hover:text-slate-900 active:scale-[0.98] active:bg-slate-200";
   } else if (variant === "danger") {
     styles =
-      "border-kash-expense bg-kash-expense text-white hover:bg-red-700 active:bg-red-800 shadow-sm";
+      "border-kash-expense bg-kash-expense text-white [@media(hover:hover)_and_(pointer:fine)]:hover:bg-red-700 active:scale-[0.98] active:bg-red-800 shadow-sm";
   }
 
   const sizeStyles =
@@ -45,7 +45,7 @@ export function Button({
 
   return (
     <button
-      className={`inline-flex items-center justify-center font-bold border transition-all duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(16,185,129,0.20)] disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed ${sizeStyles} ${styles} ${className}`}
+      className={`inline-flex touch-manipulation items-center justify-center font-bold border transition-all duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(16,185,129,0.20)] disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed disabled:active:scale-100 ${sizeStyles} ${styles} ${className}`}
       disabled={disabled || isLoading}
       type={type}
       {...props}

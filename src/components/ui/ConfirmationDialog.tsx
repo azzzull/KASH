@@ -25,7 +25,7 @@ type ConfirmationDialogProps = {
 
 const toneStyles: Record<ConfirmationTone, { icon: string; confirm: string }> = {
   danger: {
-    confirm: "border-kash-expense bg-kash-expense hover:border-kash-expense hover:bg-kash-expense text-white",
+    confirm: "border-kash-expense bg-kash-expense [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-expense [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-expense text-white",
     icon: "bg-kash-expense/10 text-kash-expense ring-kash-expense/20",
   },
   neutral: {

@@ -115,7 +115,7 @@ function TimeDropdown({
       <div className="relative">
         <ListboxButton
           aria-label={ariaLabel}
-          className="group flex h-8 items-center justify-between gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 transition hover:border-kash-emerald/50 hover:bg-kash-selected/40 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-[rgba(16,185,129,0.20)]"
+          className="group flex h-8 touch-manipulation items-center justify-between gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-900 transition [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emerald/50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/40 focus:border-kash-emerald focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(16,185,129,0.20)]"
         >
           <span>{value}</span>
           <ChevronDown size={13} className="text-slate-600 transition group-data-[open]:rotate-180" />
@@ -343,14 +343,14 @@ export function DatePickerField({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`group mt-2 flex h-12 w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-base font-semibold text-slate-900 transition hover:border-kash-emerald/50 hover:bg-kash-selected/40 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 md:text-sm ${
+        className={`group mt-2 flex h-12 w-full touch-manipulation items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-base font-semibold text-slate-900 transition [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emerald/50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/40 focus:border-kash-emerald focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(16,185,129,0.20)] disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 md:text-sm ${
           isOpen ? "border-kash-emerald ring-4 ring-[rgba(16,185,129,0.20)]" : ""
         }`}
       >
         <span className={`truncate ${value ? "text-slate-900" : "text-slate-600"}`}>
           {value ? formatDisplayString(value, enableTime, locale) : (placeholder || defaultPlaceholder)}
         </span>
-        <div className="flex items-center gap-1.5 shrink-0 text-slate-600 group-hover:text-kash-emerald">
+        <div className="flex items-center gap-1.5 shrink-0 text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:group-hover:text-kash-emerald">
           {enableTime && <Clock size={16} className={isOpen ? "text-kash-emerald" : ""} />}
           <CalendarIcon size={18} className={isOpen ? "text-kash-emerald" : ""} />
         </div>
@@ -367,7 +367,7 @@ export function DatePickerField({
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+              className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-lg text-slate-600 transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-100 [@media(hover:hover)_and_(pointer:fine)]:hover:text-slate-900 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kash-emerald/30"
               aria-label="Previous Month"
             >
               <ChevronLeft size={18} />
@@ -380,7 +380,7 @@ export function DatePickerField({
             <button
               type="button"
               onClick={handleNextMonth}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+              className="flex h-8 w-8 touch-manipulation items-center justify-center rounded-lg text-slate-600 transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-100 [@media(hover:hover)_and_(pointer:fine)]:hover:text-slate-900 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kash-emerald/30"
               aria-label="Next Month"
             >
               <ChevronRight size={18} />
@@ -414,8 +414,8 @@ export function DatePickerField({
                     isSelected
                       ? "bg-kash-emerald text-white shadow-sm font-black"
                       : isCurrent
-                      ? "text-slate-800 hover:bg-kash-selected hover:text-kash-emeraldDark"
-                      : "text-slate-600 hover:bg-slate-50"
+                      ? "text-slate-800 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:bg-kash-selected"
+                      : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-slate-50 active:bg-slate-50"
                   } ${cell.isDisabled ? "opacity-30 cursor-not-allowed" : ""}`}
                 >
                   {cell.day}
@@ -464,14 +464,14 @@ export function DatePickerField({
             <button
               type="button"
               onClick={handleSetNow}
-              className="font-bold text-kash-emerald hover:text-kash-emeraldDark transition"
+              className="touch-manipulation font-bold text-kash-emerald transition [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kash-emerald/30"
             >
               {enableTime ? (locale === "id" ? "Sekarang" : "Now") : (locale === "id" ? "Hari Ini" : "Today")}
             </button>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-1 rounded-md bg-kash-emerald px-2.5 py-1 font-bold text-white shadow-sm hover:bg-kash-emeraldDark transition"
+              className="flex touch-manipulation items-center gap-1 rounded-md bg-kash-emerald px-2.5 py-1 font-bold text-white shadow-sm transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:bg-kash-emeraldPressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kash-emerald/30"
             >
               <Check size={13} />
               {locale === "id" ? "Selesai" : "Done"}

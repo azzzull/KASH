@@ -4,12 +4,15 @@ import { Modal } from "../ui/Modal";
 import { useI18n } from "../../i18n";
 
 type MobileMoreSheetProps = {
+  onNavigateIntent?: (path: string) => void;
   open: boolean;
   onClose: () => void;
+  pendingPath?: string | null;
 };
 
-export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
+export function MobileMoreSheet({ onNavigateIntent, open, onClose, pendingPath }: MobileMoreSheetProps) {
   const { t } = useI18n();
+  const pendingBasePath = pendingPath?.split("?")[0] ?? null;
 
   const getLocalizedLabel = (path: string, defaultLabel: string) => {
     switch (path) {
@@ -39,8 +42,19 @@ export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
           <NavLink
             key={item.path}
             to={item.path}
-            onClick={onClose}
-            className="flex items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-bold text-slate-800 transition hover:bg-kash-selected/70 hover:text-kash-emeraldDark active:bg-kash-selected"
+            onPointerDown={() => onNavigateIntent?.(item.path)}
+            onClick={(event) => {
+              if (pendingBasePath === item.path) event.preventDefault();
+              onNavigateIntent?.(item.path);
+              onClose();
+            }}
+            className={({ isActive }) =>
+              `flex touch-manipulation items-center gap-3.5 rounded-xl px-3.5 py-3 text-sm font-bold transition active:scale-[0.99] active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${
+                isActive || pendingBasePath === item.path
+                  ? "bg-kash-selected/70 text-kash-emeraldDark"
+                  : "text-slate-800 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
+              }`
+            }
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark">
               <item.icon aria-hidden="true" size={19} strokeWidth={2.2} />

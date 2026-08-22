@@ -10,7 +10,12 @@ import { KashLogo } from "../brand/KashLogo";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
 
-export function DesktopSidebar() {
+type DesktopSidebarProps = {
+  onNavigateIntent?: (path: string) => void;
+  pendingPath?: string | null;
+};
+
+export function DesktopSidebar({ onNavigateIntent, pendingPath }: DesktopSidebarProps) {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
   const { unreadCount } = useNotifications();
@@ -22,6 +27,7 @@ export function DesktopSidebar() {
   const displayName = profile?.full_name || profile?.email || "Account";
   const subtitle = profile?.email ?? "View Profile";
   const initial = displayName.charAt(0).toUpperCase();
+  const pendingBasePath = pendingPath?.split("?")[0] ?? null;
 
   const handleSignOut = async () => {
     await signOut();
@@ -106,7 +112,7 @@ export function DesktopSidebar() {
             type="button"
             onClick={() => setNotificationsOpen((current) => !current)}
             aria-label="Open notifications"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-kash-emerald/15 bg-white text-slate-700 transition hover:border-kash-emeraldDark hover:bg-kash-selected hover:text-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+            className="inline-flex h-10 w-10 touch-manipulation shrink-0 items-center justify-center rounded-full border border-kash-emerald/15 bg-white text-slate-700 transition [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emeraldDark [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:scale-95 active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
             title="Notifications"
           >
             <Bell aria-hidden="true" size={18} strokeWidth={2} />
@@ -135,11 +141,16 @@ export function DesktopSidebar() {
                   <NavLink
                     key={item.path}
                     to={item.path}
+                    onPointerDown={() => onNavigateIntent?.(item.path)}
+                    onClick={(event) => {
+                      if (pendingBasePath === item.path) event.preventDefault();
+                      onNavigateIntent?.(item.path);
+                    }}
                     className={({ isActive }) =>
-                      `group/nav flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
-                        isActive
+                      `group/nav flex touch-manipulation items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition active:scale-[0.99] ${
+                        isActive || pendingBasePath === item.path
                           ? "bg-kash-selected/70 text-kash-emeraldDark"
-                          : "text-slate-700 hover:bg-kash-selected/70 hover:text-kash-emeraldDark"
+                          : "text-slate-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
                       }`
                     }
                   >
@@ -158,7 +169,7 @@ export function DesktopSidebar() {
           type="button"
           onClick={() => setProfileMenuOpen((current) => !current)}
           aria-expanded={profileMenuOpen}
-          className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition hover:bg-kash-selected/70 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+          className="flex w-full touch-manipulation items-center gap-3 rounded-lg p-2 text-left transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 active:bg-kash-selected/70 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-kash-emerald text-sm font-extrabold text-white">
             {initial}
@@ -176,7 +187,7 @@ export function DesktopSidebar() {
                 setProfileMenuOpen(false);
                 navigate("/settings");
               }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition hover:bg-kash-selected hover:text-kash-emeraldDark focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+              className="flex w-full touch-manipulation items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
             >
               <Settings aria-hidden="true" size={17} />
               Profile settings
@@ -187,7 +198,7 @@ export function DesktopSidebar() {
                 setProfileMenuOpen(false);
                 setLogoutOpen(true);
               }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-kash-expense transition hover:bg-kash-expense/10 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
+              className="flex w-full touch-manipulation items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-kash-expense transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-expense/10 active:bg-kash-expense/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
             >
               <LogOut aria-hidden="true" size={17} />
               Sign out

@@ -47,7 +47,7 @@ export function FilterTabs<T extends string = string>({
             aria-selected={isActive}
             disabled={option.disabled}
             onClick={() => onChange(option.value)}
-            className={`inline-flex shrink-0 whitespace-nowrap items-center justify-center gap-1.5 rounded-lg font-bold transition-all duration-150 focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 disabled:opacity-40 disabled:pointer-events-none ${
+            className={`inline-flex shrink-0 touch-manipulation whitespace-nowrap items-center justify-center gap-1.5 rounded-lg font-bold transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 disabled:opacity-40 disabled:pointer-events-none disabled:active:scale-100 ${
               fullWidth ? "flex-1" : ""
             } ${
               isSm
@@ -56,7 +56,7 @@ export function FilterTabs<T extends string = string>({
             } ${
               isActive
                 ? "bg-kash-emerald text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white/70"
+                : "text-slate-600 [@media(hover:hover)_and_(pointer:fine)]:hover:text-slate-900 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/70"
             }`}
           >
             {Icon ? <Icon size={isSm ? 13 : 14} strokeWidth={2.4} className={isActive ? "text-white" : "text-slate-600"} /> : null}
