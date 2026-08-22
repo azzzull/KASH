@@ -630,7 +630,7 @@ export function CategoriesPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full min-w-0 space-y-4">
       <PageHeader
         eyebrow={t("categories.manageBudget") || "Kelola Anggaran"}
         icon={activeTab === "categories" ? Tags : Layers}

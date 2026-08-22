@@ -24,6 +24,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
+import { PageHeader } from "../components/ui/PageHeader";
 import { CreateSharedSavingsModal } from "../components/sharedSavings/CreateSharedSavingsModal";
 import {
   getPendingSharedSavingsInvites,
@@ -105,21 +106,21 @@ export function SharedSavingsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar with Title + Filter Tabs in SAME ROW */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <UsersRound className="text-kash-emerald shrink-0" size={22} />
-          <h1 className="text-lg font-black text-slate-900 truncate">{t("shared.title") || "Tabungan Bersama"}</h1>
-        </div>
-
-        <div ref={createActionRef} className="hidden sm:block shrink-0">
-          <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
-            <Plus aria-hidden="true" size={15} />
-            {t("shared.createSpace") || "Buat Space Baru"}
-          </Button>
-        </div>
-      </div>
+    <div className="w-full min-w-0 space-y-4">
+      <PageHeader
+        eyebrow={t("shared.title") || "Kolaborasi"}
+        icon={UsersRound}
+        title={t("shared.title") || "Tabungan Bersama"}
+        description={t("shared.subtitle") || "Kelola ruang tabungan bersama, undangan, kontribusi, dan permintaan persetujuan."}
+        actions={
+          <div ref={createActionRef} className="hidden sm:block shrink-0">
+            <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+              <Plus aria-hidden="true" size={15} />
+              {t("shared.createSpace") || "Buat Space Baru"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Filter Tabs Row */}
       <div className="flex items-center justify-between gap-3">

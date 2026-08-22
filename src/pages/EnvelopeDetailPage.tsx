@@ -200,7 +200,7 @@ export function EnvelopeDetailPage() {
   const topCategory = categoryBreakdown[0] || null;
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full min-w-0 space-y-4">
       {/* Top Breadcrumb, Month Selector & Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link

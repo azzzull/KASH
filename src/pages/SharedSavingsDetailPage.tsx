@@ -268,7 +268,7 @@ export function SharedSavingsDetailPage() {
   });
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full min-w-0 space-y-4">
       {/* Back Navigation */}
       <div>
         <Link

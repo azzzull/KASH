@@ -18,6 +18,7 @@ import { CreateBudgetModal } from "../components/budgets/CreateBudgetModal";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
+import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
@@ -132,21 +133,21 @@ export function BudgetsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Scale className="text-kash-emerald shrink-0" size={22} />
-          <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.budgets") || "Target & Budget"}</h1>
-        </div>
-
-        <div ref={createActionRef} className="hidden shrink-0 sm:block">
-          <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold">
-            <Plus size={15} />
-            {t("budgets.createTargetBudget") || "Buat Target Budget"}
-          </Button>
-        </div>
-      </div>
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
+      <PageHeader
+        eyebrow={t("budgets.unifiedFinancialPlan") || "Rencana Keuangan"}
+        icon={Scale}
+        title={t("nav.budgets") || "Target & Budget"}
+        description={t("budgets.noBudgetsInMonthDesc") || "Kelola batas anggaran, amplop, cicilan, dan target tabungan per bulan."}
+        actions={
+          <div ref={createActionRef} className="hidden shrink-0 sm:block">
+            <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold">
+              <Plus size={15} />
+              {t("budgets.createTargetBudget") || "Buat Target Budget"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Monthly Overview Progress Card - Unified Emerald Hero */}
       {overview && (

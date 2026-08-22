@@ -154,7 +154,7 @@ export function DebtDetailPage() {
   const displayTotalReceivablePaid = activeReceivableItems.length > 0 ? activeReceivablePaid : summary.totalReceivablePaid;
 
   return (
-    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+    <div className="w-full min-w-0 space-y-4">
       {/* Navigation Link */}
       <div>
         <Link

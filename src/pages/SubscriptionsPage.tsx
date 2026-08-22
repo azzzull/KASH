@@ -160,21 +160,21 @@ export function SubscriptionsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar with Title + Desktop Add Button */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <Repeat className="text-kash-emerald shrink-0" size={22} />
-          <h1 className="text-lg font-black text-slate-900 truncate">{t("subscriptions.title") || "Tagihan & Langganan"}</h1>
-        </div>
-
-        <div ref={createActionRef} className="hidden sm:block shrink-0">
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
-            <Plus aria-hidden="true" size={15} />
-            {t("subscriptions.addObligation") || "Tambah Tagihan"}
-          </Button>
-        </div>
-      </div>
+    <div className="w-full min-w-0 space-y-4">
+      <PageHeader
+        eyebrow={t("subscriptions.eyebrow") || "Keuangan"}
+        icon={Repeat}
+        title={t("subscriptions.title") || "Tagihan & Langganan"}
+        description={t("subscriptions.subtitle") || "Kelola tagihan rutin, langganan, cicilan, dan jatuh tempo pembayaran."}
+        actions={
+          <div ref={createActionRef} className="hidden sm:block shrink-0">
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+              <Plus aria-hidden="true" size={15} />
+              {t("subscriptions.addObligation") || "Tambah Tagihan"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* 2. Unified Emerald Hero Card */}
       <FinancialHeroCard

@@ -11,7 +11,7 @@ type PageHeaderProps = {
 
 export function PageHeader({ actions, description, eyebrow, icon: Icon, title }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mt-2 flex flex-col gap-2.5 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
         {eyebrow ? (
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-kash-emerald">
@@ -19,8 +19,8 @@ export function PageHeader({ actions, description, eyebrow, icon: Icon, title }:
             <span>{eyebrow}</span>
           </div>
         ) : null}
-        <h1 className={`${eyebrow ? "mt-1.5" : ""} text-xl font-extrabold text-slate-900 md:text-2xl`}>{title}</h1>
-        {description ? <p className="mt-1 text-sm font-medium text-slate-600">{description}</p> : null}
+        <h1 className={`${eyebrow ? "mt-1" : ""} text-xl font-extrabold text-slate-900 md:text-2xl`}>{title}</h1>
+        {description ? <p className="mt-0.5 text-xs font-medium leading-snug text-slate-600">{description}</p> : null}
       </div>
       {actions ? <div className="w-full shrink-0 lg:w-auto">{actions}</div> : null}
     </div>

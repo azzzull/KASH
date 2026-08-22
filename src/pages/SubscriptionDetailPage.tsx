@@ -161,7 +161,7 @@ export function SubscriptionDetailPage() {
   const progressPercent = Math.min(100, Math.max(0, rawPercent));
 
   return (
-    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
+    <div className="w-full min-w-0 space-y-4">
       {/* 1. Back Navigation Link */}
       <div>
         <Link

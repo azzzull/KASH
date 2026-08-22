@@ -138,7 +138,7 @@ export function SettingsPage() {
   const isIosApp = isIosStandalone();
 
   return (
-    <div className="w-full min-w-0 space-y-5">
+    <div className="w-full min-w-0 space-y-4">
       <PageHeader
         eyebrow="Account"
         icon={Settings}
@@ -373,4 +373,3 @@ export function SettingsPage() {
     </div>
   );
 }
-

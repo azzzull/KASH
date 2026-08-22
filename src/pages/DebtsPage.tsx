@@ -28,6 +28,7 @@ import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
+import { PageHeader } from "../components/ui/PageHeader";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { SelectField } from "../components/ui/SelectField";
 import { useI18n } from "../i18n";
@@ -103,21 +104,21 @@ export function DebtsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar with Title + Desktop Create Button */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <HandCoins className="text-kash-emerald shrink-0" size={22} />
-          <h1 className="text-lg font-black text-slate-900 truncate">{t("debts.title") || "Utang & Piutang"}</h1>
-        </div>
-
-        <div ref={createActionRef} className="hidden sm:block shrink-0">
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
-            <Plus aria-hidden="true" size={15} />
-            {t("debts.createDebt") || "Catat Utang / Piutang"}
-          </Button>
-        </div>
-      </div>
+    <div className="w-full min-w-0 space-y-4">
+      <PageHeader
+        eyebrow={t("debts.financeEyebrow") || "Keuangan"}
+        icon={HandCoins}
+        title={t("debts.title") || "Utang & Piutang"}
+        description={t("debts.subtitle") || "Pantau kewajiban, piutang, pembayaran, dan riwayat pelunasan."}
+        actions={
+          <div ref={createActionRef} className="hidden sm:block shrink-0">
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+              <Plus aria-hidden="true" size={15} />
+              {t("debts.createDebt") || "Catat Utang / Piutang"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* 2. Unified Emerald Hero Card for Debt & Receivable Posture */}
       <FinancialHeroCard

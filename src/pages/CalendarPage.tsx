@@ -324,19 +324,19 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="relative w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar with Title + "Hari Ini" Button */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <CalendarDays className="text-kash-emerald shrink-0" size={22} />
-          <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.calendar") || "Kalender Keuangan"}</h1>
-        </div>
-
-        <Button variant="secondary" onClick={() => goToMonth(today)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold shrink-0">
-          <CalendarDays aria-hidden="true" size={15} />
-          {t("common.today") || "Hari Ini"}
-        </Button>
-      </div>
+    <div className="relative w-full min-w-0 space-y-4">
+      <PageHeader
+        eyebrow={t("nav.calendar") || "Kalender"}
+        icon={CalendarDays}
+        title={t("nav.calendar") || "Kalender Keuangan"}
+        description={t("calendar.subtitle") || "Lihat aktivitas dan jadwal transaksi dalam tampilan bulanan."}
+        actions={
+          <Button variant="secondary" onClick={() => goToMonth(today)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold shrink-0">
+            <CalendarDays aria-hidden="true" size={15} />
+            {t("common.today") || "Hari Ini"}
+          </Button>
+        }
+      />
 
       {isLoading && !monthData ? (
         <div className="mt-4">

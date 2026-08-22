@@ -28,6 +28,7 @@ import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 
 import { useI18n, type TranslationKey } from "../i18n";
@@ -1172,12 +1173,13 @@ export function AnalyticsPage() {
   if (!summary) return null;
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar */}
-      <div className="flex items-center gap-2 min-w-0">
-        <BarChart3 className="text-kash-emerald shrink-0" size={22} />
-        <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.analytics") || "Analitik Keuangan"}</h1>
-      </div>
+    <div className="w-full max-w-full min-w-0 space-y-4">
+      <PageHeader
+        eyebrow={t("analytics.period") || "Analisis"}
+        icon={BarChart3}
+        title={t("nav.analytics") || "Analitik Keuangan"}
+        description={t("analytics.cashFlowOverview") || "Pantau tren pemasukan, pengeluaran, arus kas, dan kesehatan keuangan."}
+      />
 
       {/* 2. Main Emerald Financial Hero */}
       <AnalyticsHeroStory
