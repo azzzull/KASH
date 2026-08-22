@@ -564,16 +564,6 @@ function HeroCard({
                 />
             </div>
 
-            {/* Available Balance inline */}
-            <p className="mt-2 text-xs font-bold text-white/60">
-                {t("dashboard.availableBalance") || "Available Balance"}:{" "}
-                {formatPrivateAmount(
-                    summary.availableBalance.amount,
-                    currency,
-                    balancesVisible,
-                )}
-            </p>
-
             {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
                 <div className="mt-3 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
