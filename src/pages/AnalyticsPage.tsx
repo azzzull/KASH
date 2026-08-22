@@ -109,6 +109,7 @@ function ComparisonLine({
   className = "",
   comparisonLabel,
   currency,
+  layout = "inline",
   mode = "money",
   positiveWhen = "increase",
   surface = "default",
@@ -118,6 +119,7 @@ function ComparisonLine({
   className?: string;
   comparisonLabel: string;
   currency: string;
+  layout?: "inline" | "stacked";
   mode?: "money" | "percentPoint";
   positiveWhen?: "decrease" | "increase";
   surface?: "default" | "hero";
@@ -156,10 +158,34 @@ function ComparisonLine({
     `vs ${normalizedComparisonLabel}`;
 
   if (change.state === "none") {
+    if (layout === "stacked") {
+      return (
+        <div className={`min-w-0 max-w-full text-[10px] font-bold ${mutedTone} ${className}`}>
+          <p>0</p>
+          <p className="mt-0.5 text-[9px]">{comparisonText}</p>
+        </div>
+      );
+    }
+
     return (
       <p className={`text-[11px] font-bold ${mutedTone} ${className}`}>
         0 {comparisonText}
       </p>
+    );
+  }
+
+  if (layout === "stacked") {
+    return (
+      <div className={`min-w-0 max-w-full text-[10px] font-extrabold ${tone} ${className}`}>
+        <p className="inline-flex min-w-0 max-w-full items-center gap-1">
+          {Icon ? <Icon aria-hidden="true" size={11} strokeWidth={2.4} /> : null}
+          <span className="min-w-0 truncate">
+            {formattedDelta}
+            {percentText}
+          </span>
+        </p>
+        <p className={`mt-0.5 text-[9px] font-bold ${mutedTone}`}>{comparisonText}</p>
+      </div>
     );
   }
 
@@ -272,6 +298,7 @@ function AnalyticsHeroStory({
             className="mt-1"
             comparisonLabel={summary.period.comparisonLabel}
             currency={currency}
+            layout="stacked"
             surface="hero"
           />
         </div>
@@ -285,6 +312,7 @@ function AnalyticsHeroStory({
             className="mt-1"
             comparisonLabel={summary.period.comparisonLabel}
             currency={currency}
+            layout="stacked"
             positiveWhen="decrease"
             surface="hero"
           />
@@ -669,13 +697,13 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
                 <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
               </div>
             </div>
-            <div className="mt-0.5 pl-4">
+            <div className="mt-0.5 flex justify-end pl-4 text-right">
               <ComparisonLine
-                allowWrap
                 change={category.change}
-                className="leading-tight"
+                className="items-end leading-tight"
                 comparisonLabel={summary.period.comparisonLabel}
                 currency={currency}
+                layout="stacked"
                 positiveWhen="decrease"
               />
             </div>
