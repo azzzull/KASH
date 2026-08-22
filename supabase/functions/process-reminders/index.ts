@@ -13,14 +13,14 @@
 //   ↓
 // in-app notifications
 //   ↓
-// send-push
+// notifications trigger -> send-push
 //   ↓
 // Web Push devices
 //
 // SECURITY:
 // - Not callable from frontend.
 // - Requires KASH_REMINDER_CRON_SECRET.
-// - Calls send-push using KASH_PUSH_INTERNAL_SECRET.
+// - Provisions Vault secrets used by the notification push trigger.
 // ============================================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -181,12 +181,15 @@ serve(async (req: Request) => {
     );
 
     // ============================================================
-    // 4. VAULT SECRETS PROVISIONING (FOR DAILY PG_CRON)
+    // 4. VAULT SECRETS PROVISIONING (FOR DAILY PG_CRON + PUSH DISPATCH)
     // ============================================================
     try {
       await supabase.rpc("setup_kash_vault_secrets", {
         p_project_url: supabaseUrl,
         p_cron_secret: cronSecret,
+      });
+      await supabase.rpc("setup_kash_push_vault_secret", {
+        p_push_secret: pushInternalSecret,
       });
     } catch (vaultErr) {
       console.warn("Failed ensuring Vault secrets:", vaultErr);
@@ -291,183 +294,6 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
-    // 6. SEND PUSH FOR EACH LOGICAL NOTIFICATION
-    // ============================================================
-
-    let totalPushesDelivered = 0;
-    let totalDevicesTargeted = 0;
-    let totalExpiredDeactivated = 0;
-
-    const details: Array<{
-      notification_id: string;
-      user_id: string;
-      title: string;
-      target_path: string;
-      push_success: boolean;
-      delivered: number;
-      devices_targeted: number;
-      expired_deactivated: number;
-      error?: string;
-    }> = [];
-
-    for (const reminder of reminders) {
-      try {
-        // Canonical Route Resolution:
-        // 1. If reminder has specific target_path, use it.
-        // 2. Otherwise, look up the created notification to resolve /subscriptions/<id>
-        let targetPath = reminder.target_path;
-
-        if (!targetPath || targetPath === "/subscriptions" || targetPath === "/dashboard") {
-          const { data: notif } = await supabase
-            .from("notifications")
-            .select("entity_type, entity_id, metadata")
-            .eq("id", reminder.notification_id)
-            .maybeSingle();
-
-          if (notif) {
-            if (notif.entity_type === "recurring_obligation" && notif.entity_id) {
-              targetPath = `/subscriptions/${notif.entity_id}`;
-            } else if (notif.entity_type === "counterparty" && notif.entity_id) {
-              targetPath = `/debts/${notif.entity_id}`;
-            } else if (notif.entity_type === "goal" && notif.entity_id) {
-              targetPath = `/goals/${notif.entity_id}`;
-            } else if (notif.entity_type === "wallet" && notif.entity_id) {
-              targetPath = `/wallets/${notif.entity_id}`;
-            } else if (typeof notif.metadata?.target_path === "string" && notif.metadata.target_path) {
-              targetPath = notif.metadata.target_path;
-            }
-          }
-        }
-
-        // Fallback to /subscriptions if still unresolved for recurring reminders
-        if (!targetPath || !targetPath.startsWith("/")) {
-          targetPath = "/subscriptions";
-        }
-
-        const response = await fetch(
-          `${supabaseUrl}/functions/v1/send-push`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-              "x-kash-push-secret":
-                pushInternalSecret,
-            },
-            body: JSON.stringify({
-              user_id:
-                reminder.user_id,
-              notification_id:
-                reminder.notification_id,
-              title:
-                reminder.title,
-              message:
-                reminder.message,
-              target_path: targetPath,
-            }),
-          },
-        );
-
-        let pushResult:
-          | SendPushResponse
-          | null = null;
-
-        try {
-          pushResult =
-            await response.json();
-        } catch {
-          pushResult = null;
-        }
-
-        const delivered =
-          pushResult?.delivered ?? 0;
-
-        const devices =
-          pushResult?.total_devices ?? 0;
-
-        const expired =
-          pushResult?.expired_deactivated ??
-          0;
-
-        totalPushesDelivered += delivered;
-        totalDevicesTargeted += devices;
-        totalExpiredDeactivated += expired;
-
-        if (!response.ok) {
-          const message =
-            pushResult?.error ??
-            `send-push returned HTTP ${response.status}`;
-
-          console.error(
-            `send-push failed for notification ${reminder.notification_id}: ${message}`,
-          );
-
-          /*
-           * IMPORTANT:
-           *
-           * Do not fail the reminder itself.
-           * In-app notification has already been persisted.
-           */
-          details.push({
-            notification_id:
-              reminder.notification_id,
-            user_id:
-              reminder.user_id,
-            title:
-              reminder.title,
-            target_path: targetPath,
-            push_success: false,
-            delivered,
-            devices_targeted: devices,
-            expired_deactivated:
-              expired,
-            error: message,
-          });
-
-          continue;
-        }
-
-        details.push({
-          notification_id:
-            reminder.notification_id,
-          user_id:
-            reminder.user_id,
-          title:
-            reminder.title,
-          target_path: targetPath,
-          push_success: true,
-          delivered,
-          devices_targeted: devices,
-          expired_deactivated:
-            expired,
-        });
-      } catch (error) {
-        console.error(
-          `Failed to invoke send-push for notification ${reminder.notification_id}:`,
-          error,
-        );
-
-        details.push({
-          notification_id:
-            reminder.notification_id,
-          user_id:
-            reminder.user_id,
-          title:
-            reminder.title,
-          target_path: reminder.target_path || "/subscriptions",
-          push_success: false,
-          delivered: 0,
-          devices_targeted: 0,
-          expired_deactivated: 0,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Unknown push error",
-        });
-      }
-    }
-
-    // ============================================================
     // 7. SUCCESS
     // ============================================================
 
@@ -475,13 +301,23 @@ serve(async (req: Request) => {
       success: true,
       reminders_processed:
         reminders.length,
-      pushes_delivered:
-        totalPushesDelivered,
-      devices_targeted:
-        totalDevicesTargeted,
-      expired_subscriptions_deactivated:
-        totalExpiredDeactivated,
-      details,
+      pushes_delivered: 0,
+      devices_targeted: 0,
+      expired_subscriptions_deactivated: 0,
+      push_dispatch:
+        "handled_by_notifications_trigger",
+      details: reminders.map((reminder) => ({
+        notification_id:
+          reminder.notification_id,
+        user_id:
+          reminder.user_id,
+        title:
+          reminder.title,
+        target_path:
+          reminder.target_path,
+        push_dispatch:
+          "handled_by_notifications_trigger",
+      })),
     });
   } catch (error) {
     console.error(

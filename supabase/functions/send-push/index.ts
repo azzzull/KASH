@@ -251,43 +251,58 @@ serve(async (req: Request) => {
     let metadata = body.metadata;
 
     if (body.notification_id) {
-      // Check if already dispatched to prevent duplicate pushes
-      const { data: existingDelivery } = await supabase
-        .from("notification_push_deliveries")
-        .select("id, status")
-        .eq("notification_id", body.notification_id)
-        .maybeSingle();
+      const { data: notifRow, error: notifErr } = await supabase
+        .from("notifications")
+        .select("id, user_id, title, message, entity_type, entity_id, metadata")
+        .eq("id", body.notification_id)
+        .single();
 
-      if (existingDelivery && existingDelivery.status === "delivered") {
+      if (notifErr || !notifRow) {
         return jsonResponse({
-          success: true,
-          delivered: 0,
-          status: "already_delivered",
-          message: "Notification already dispatched.",
-        });
+          success: false,
+          error: `Notification ${body.notification_id} not found.`,
+        }, 404);
       }
 
-      // Load full notification row if title/message missing
-      if (!pushTitle || !pushMessage || !targetUserId) {
-        const { data: notifRow, error: notifErr } = await supabase
-          .from("notifications")
-          .select("id, user_id, title, message, entity_type, entity_id, metadata")
-          .eq("id", body.notification_id)
-          .single();
+      targetUserId = notifRow.user_id;
+      pushTitle = notifRow.title;
+      pushMessage = notifRow.message;
+      entityType = notifRow.entity_type;
+      entityId = notifRow.entity_id;
+      metadata = notifRow.metadata as Record<string, unknown>;
 
-        if (notifErr || !notifRow) {
+      const { error: claimError } = await supabase
+        .from("notification_push_deliveries")
+        .insert({
+          notification_id: body.notification_id,
+          user_id: targetUserId,
+          status: "pending",
+          attempted_at: new Date().toISOString(),
+          devices_targeted: 0,
+          devices_delivered: 0,
+        });
+
+      if (claimError) {
+        const typedClaimError = claimError as { code?: string; message?: string };
+
+        if (typedClaimError.code === "23505") {
+          const { data: existingDelivery } = await supabase
+            .from("notification_push_deliveries")
+            .select("id, status")
+            .eq("notification_id", body.notification_id)
+            .maybeSingle();
+
           return jsonResponse({
-            success: false,
-            error: `Notification ${body.notification_id} not found.`,
-          }, 404);
+            success: true,
+            delivered: 0,
+            status: existingDelivery?.status ?? "already_claimed",
+            message: "Notification push delivery was already claimed.",
+          });
         }
 
-        targetUserId = notifRow.user_id;
-        pushTitle = notifRow.title;
-        pushMessage = notifRow.message;
-        entityType = notifRow.entity_type;
-        entityId = notifRow.entity_id;
-        metadata = notifRow.metadata as Record<string, unknown>;
+        throw new Error(
+          `Failed to claim notification push delivery: ${typedClaimError.message ?? "Unknown claim error"}`,
+        );
       }
     }
 
