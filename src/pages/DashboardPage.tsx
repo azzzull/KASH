@@ -164,12 +164,14 @@ function getPreviousMonthLabel(selectedMonth: Date, locale: string) {
 }
 
 function CompactComparisonLine({
+    balancesVisible,
     change,
     currency,
     metric,
     variant = "standard",
     withPreviousLabel,
 }: {
+    balancesVisible: boolean;
     change: DashboardMetricChange;
     currency: string;
     metric: "income" | "expense" | "netCashFlow" | "netWorth";
@@ -212,7 +214,9 @@ function CompactComparisonLine({
                 <p className="flex min-w-0 max-w-full items-center gap-1 text-[10px] font-extrabold leading-tight md:text-[11px]">
                     <Icon aria-hidden="true" size={11} strokeWidth={2.4} />
                     <span className="min-w-0 truncate">
-                        {formatSignedCurrencyDelta(delta, currency)}
+                        {balancesVisible
+                            ? formatSignedCurrencyDelta(delta, currency)
+                            : "••••"}
                         {percentText}
                     </span>
                 </p>
@@ -235,7 +239,9 @@ function CompactComparisonLine({
         >
             <Icon aria-hidden="true" size={12} strokeWidth={2.4} />
             <span className="min-w-0 truncate">
-                {formatSignedCurrencyDelta(delta, currency)}
+                {balancesVisible
+                    ? formatSignedCurrencyDelta(delta, currency)
+                    : "••••"}
                 {percentText}
             </span>
             {previousText ? (
@@ -549,6 +555,7 @@ function HeroCard({
 
             <div className="mt-2">
                 <CompactComparisonLine
+                    balancesVisible={balancesVisible}
                     change={summary.netWorthComparison}
                     currency={currency}
                     metric="netWorth"
@@ -725,6 +732,7 @@ function CashFlowRow({
                     </p>
                     <div className="mt-1 min-w-0">
                         <CompactComparisonLine
+                            balancesVisible={balancesVisible}
                             change={item.change}
                             currency={currency}
                             metric={item.metric}
