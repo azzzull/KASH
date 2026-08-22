@@ -468,7 +468,7 @@ export function Modal({
 
   const mobileTransition = isDragging
     ? "none"
-    : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.38s cubic-bezier(0.22, 1, 0.36, 1)";
+    : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.40s cubic-bezier(0.22, 1, 0.36, 1)";
 
   // Backdrop opacity calculation
   const backdropOpacity = isClosing || !entered
