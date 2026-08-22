@@ -833,7 +833,7 @@ function SpendingDonut({
             </h2>
             <div className="mt-4 flex flex-col items-center justify-center gap-6 md:flex-row md:items-center">
                 {/* Donut - Larger ring & vertically centered on desktop */}
-                <div className="relative mx-auto flex h-36 w-36 sm:h-44 sm:w-44 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
+                <div className="relative mx-auto flex h-55 w-55 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
                     <svg
                         viewBox="0 0 120 120"
                         className="kash-ring-chart h-full w-full -rotate-90"

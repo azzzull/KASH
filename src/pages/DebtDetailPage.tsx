@@ -119,7 +119,7 @@ export function DebtDetailPage() {
   }
 
   const { counterparty, debts, payments, summary } = detail;
-  const activeItems = debts.filter((d) => d.status === "active" || d.status === "partially_paid");
+  const activeItems = debts.filter((d) => (d.status === "active" || d.status === "partially_paid") && Number(d.remaining_amount) > 0);
   const settledItems = debts.filter((d) => d.status === "settled" || d.status === "cancelled");
 
   const counterpartySummary: CounterpartyWithSummary = {
@@ -138,8 +138,8 @@ export function DebtDetailPage() {
   };
   const counterpartySummaryObject = counterpartySummary;
 
-  const activeDebtItems = debts.filter((d) => d.type === "debt" && d.status !== "settled" && d.status !== "cancelled");
-  const activeReceivableItems = debts.filter((d) => d.type === "receivable" && d.status !== "settled" && d.status !== "cancelled");
+  const activeDebtItems = debts.filter((d) => d.type === "debt" && (d.status === "active" || d.status === "partially_paid") && Number(d.remaining_amount) > 0);
+  const activeReceivableItems = debts.filter((d) => d.type === "receivable" && (d.status === "active" || d.status === "partially_paid") && Number(d.remaining_amount) > 0);
 
   const activeDebtOriginal = activeDebtItems.reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
   const activeDebtPaid = activeDebtItems.reduce((sum, d) => sum + (Number(d.total_paid) || 0), 0);
@@ -147,11 +147,11 @@ export function DebtDetailPage() {
   const activeReceivableOriginal = activeReceivableItems.reduce((sum, d) => sum + (Number(d.original_amount) || 0), 0);
   const activeReceivablePaid = activeReceivableItems.reduce((sum, d) => sum + (Number(d.total_paid) || 0), 0);
 
-  const displayTotalDebtOriginal = activeDebtOriginal > 0 ? activeDebtOriginal : summary.totalDebtOriginal;
-  const displayTotalDebtPaid = activeDebtItems.length > 0 ? activeDebtPaid : summary.totalDebtPaid;
+  const displayTotalDebtOriginal = activeDebtOriginal;
+  const displayTotalDebtPaid = activeDebtPaid;
 
-  const displayTotalReceivableOriginal = activeReceivableOriginal > 0 ? activeReceivableOriginal : summary.totalReceivableOriginal;
-  const displayTotalReceivablePaid = activeReceivableItems.length > 0 ? activeReceivablePaid : summary.totalReceivablePaid;
+  const displayTotalReceivableOriginal = activeReceivableOriginal;
+  const displayTotalReceivablePaid = activeReceivablePaid;
 
   return (
     <div className="w-full min-w-0 space-y-4">

@@ -93,6 +93,13 @@ async function getAuthenticatedUserId() {
   return user.id;
 }
 
+function isOutstandingDebtItem(item: Pick<DebtProgress, "remaining_amount" | "status">) {
+  return (
+    (item.status === "active" || item.status === "partially_paid") &&
+    toNumber(item.remaining_amount) > 0
+  );
+}
+
 export async function getCounterparties(filters?: {
   type?: "all" | DebtType;
   status?: "all" | "active" | "settled";
@@ -122,7 +129,7 @@ export async function getCounterparties(filters?: {
   let totalReceivable = 0;
 
   for (const item of progressItems) {
-    if (item.status !== "cancelled") {
+    if (isOutstandingDebtItem(item)) {
       const remaining = toNumber(item.remaining_amount);
       if (item.type === "debt") {
         totalDebt += remaining;
@@ -150,19 +157,24 @@ export async function getCounterparties(filters?: {
       const original = toNumber(item.original_amount);
       const paid = toNumber(item.total_paid);
       const remaining = toNumber(item.remaining_amount);
+      const isOutstanding = isOutstandingDebtItem(item);
 
       if (item.type === "debt") {
-        debtTotal += remaining;
-        debtOriginalTotal += original;
-        debtPaidTotal += paid;
+        if (isOutstanding) {
+          debtTotal += remaining;
+          debtOriginalTotal += original;
+          debtPaidTotal += paid;
+          activeDebtCount++;
+        }
         if (item.status === "settled") settledDebtCount++;
-        else activeDebtCount++;
       } else {
-        receivableTotal += remaining;
-        receivableOriginalTotal += original;
-        receivablePaidTotal += paid;
+        if (isOutstanding) {
+          receivableTotal += remaining;
+          receivableOriginalTotal += original;
+          receivablePaidTotal += paid;
+          activeReceivableCount++;
+        }
         if (item.status === "settled") settledReceivableCount++;
-        else activeReceivableCount++;
       }
     }
 
@@ -295,19 +307,24 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
     const original = toNumber(d.original_amount);
     const paid = toNumber(d.total_paid);
     const remaining = toNumber(d.remaining_amount);
+    const isOutstanding = isOutstandingDebtItem(d);
 
     if (d.type === "debt") {
-      totalDebtOriginal += original;
-      totalDebtPaid += paid;
-      totalDebtRemaining += remaining;
+      if (isOutstanding) {
+        totalDebtOriginal += original;
+        totalDebtPaid += paid;
+        totalDebtRemaining += remaining;
+        activeDebtCount++;
+      }
       if (d.status === "settled") settledDebtCount++;
-      else activeDebtCount++;
     } else {
-      totalReceivableOriginal += original;
-      totalReceivablePaid += paid;
-      totalReceivableRemaining += remaining;
+      if (isOutstanding) {
+        totalReceivableOriginal += original;
+        totalReceivablePaid += paid;
+        totalReceivableRemaining += remaining;
+        activeReceivableCount++;
+      }
       if (d.status === "settled") settledReceivableCount++;
-      else activeReceivableCount++;
     }
   }
 
@@ -563,4 +580,3 @@ export async function getOpenDebtItems(counterpartyId: string, debtType: DebtTyp
   if (error) throw error;
   return (data ?? []) as DebtProgress[];
 }
-

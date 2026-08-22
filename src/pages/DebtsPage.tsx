@@ -122,9 +122,6 @@ export function DebtsPage() {
 
       {/* 2. Unified Emerald Hero Card for Debt & Receivable Posture */}
       <FinancialHeroCard
-        icon={<HandCoins size={22} />}
-        eyebrow={t("debts.financeEyebrow") || "Keuangan"}
-        title={t("debts.title") || "Utang & Piutang"}
         primaryMetricLabel={t("debts.netObligation") || "Sisa Kewajiban Bersih"}
         primaryMetricValue={formatCurrency(totalReceivable - totalDebt, "IDR")}
         supportingMetrics={
@@ -260,7 +257,7 @@ export function DebtsPage() {
 
                   <div className="mt-4 space-y-3">
                     {/* Debt Row with Progress */}
-                    {(hasDebt || cp.settledDebtCount > 0) && (
+                    {hasDebt && (
                       <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-600">{t("debts.totalDebt")}:</span>
@@ -310,7 +307,7 @@ export function DebtsPage() {
                     )}
 
                     {/* Receivable Row with Progress */}
-                    {(hasReceivable || cp.settledReceivableCount > 0) && (
+                    {hasReceivable && (
                       <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-600">{t("debts.totalReceivable")}:</span>

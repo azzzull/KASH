@@ -284,8 +284,8 @@ export function SharedSavingsDetailPage() {
         icon={<Users size={22} />}
         eyebrow={t("shared.title") || "Tabungan Bersama"}
         title={space.name}
-        badge={
-          <div className="flex flex-wrap items-center gap-1.5">
+        statusBadges={
+          <>
             {isOwner && (
               <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 <Crown size={12} /> {t("shared.youOwner")}
@@ -301,7 +301,7 @@ export function SharedSavingsDetailPage() {
                 <ShieldCheck size={12} /> {t("shared.approver")}
               </span>
             )}
-          </div>
+          </>
         }
         primaryMetricLabel={t("shared.totalPoolBalance") || "Total Saldo Pool"}
         primaryMetricValue={formatCurrency(balance, currency)}

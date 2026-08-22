@@ -7,6 +7,9 @@ const config: Config = {
       fontFamily: {
         sans: ["Mulish", "ui-sans-serif", "system-ui", "sans-serif"],
       },
+      spacing: {
+        55: "13.75rem",
+      },
       colors: {
         kash: {
           emerald: "#10B981",

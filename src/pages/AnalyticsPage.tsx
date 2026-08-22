@@ -1,6 +1,8 @@
 import {
   BarChart3,
   CalendarDays,
+  Check,
+  ChevronDown,
   PieChart,
   Receipt,
   RefreshCw,
@@ -12,6 +14,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
   getAnalyticsSummary,
@@ -28,7 +31,6 @@ import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { PageHeader } from "../components/ui/PageHeader";
-import { SelectField } from "../components/ui/SelectField";
 
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -369,6 +371,7 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
       label: t("analytics.topCategoryImpact") || "Kontributor Belanja Terbesar",
       value: topCategory ? topCategory.name : "-",
       subvalue: topCategory ? formatCurrency(topCategory.amount, currency) : undefined,
+      compactValue: true,
       helper: undefined,
       positiveWhen: "decrease" as const,
       tone: "text-slate-900",
@@ -420,11 +423,11 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
                 </span>
               </div>
 
-              <p className={`mt-3 text-xl sm:text-2xl font-extrabold truncate ${item.tone}`}>
+              <p className={`mt-3 ${item.compactValue ? "text-xl" : "text-xl sm:text-2xl"} font-extrabold truncate ${item.tone}`}>
                 {item.value}
               </p>
               {item.subvalue ? (
-                <p className="mt-0.5 text-sm font-extrabold text-slate-900">
+                <p className="mt-0.5 text-xl font-extrabold text-slate-900">
                   {item.subvalue}
                 </p>
               ) : null}
@@ -629,7 +632,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
   if (categories.length === 0 || totalExpense <= 0) {
     return (
       <div className="mt-4 flex flex-col items-center justify-center gap-5 md:flex-row md:items-start">
-        <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full bg-slate-100">
+        <div className="mx-auto flex h-55 w-55 items-center justify-center rounded-full bg-slate-100">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">{t("dashboard.noData") || "No data"}</div>
         </div>
         <EmptyPanel title={t("analytics.noExpenseCategories") || "No expense categories"} description={t("analytics.noExpenseCategoriesDesc") || "Completed expenses in this period will appear here."} className="flex-1" />
@@ -661,7 +664,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
   return (
     <div className="my-auto flex flex-1 w-full flex-col items-center justify-center gap-6 py-4 md:flex-row md:items-center">
       {/* Donut - Larger ring & vertically centered on desktop */}
-      <div className="relative mx-auto flex h-44 w-44 sm:h-48 sm:w-48 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
+      <div className="relative mx-auto flex h-55 w-55 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
         <svg viewBox="0 0 120 120" className="kash-ring-chart h-full w-full -rotate-90">
           {segments.map((seg) => (
             <circle
@@ -990,6 +993,11 @@ function PeriodControls({
   period: AnalyticsPeriodKey;
 }) {
   const { t } = useI18n();
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
   const periodOptions: { label: string; value: AnalyticsPeriodKey }[] = useMemo(
     () => [
       { label: t("analytics.thisMonth") || "This Month", value: "this_month" },
@@ -1001,23 +1009,104 @@ function PeriodControls({
     ],
     [t],
   );
+  const selectedOption = periodOptions.find((option) => option.value === period) ?? periodOptions[0];
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePopoverPosition = () => {
+      const button = buttonRef.current;
+      if (!button) return;
+
+      const rect = button.getBoundingClientRect();
+      const width = Math.min(224, window.innerWidth - 24);
+      const left = Math.min(
+        Math.max(12, rect.right - width),
+        window.innerWidth - width - 12,
+      );
+      const top = Math.min(rect.bottom + 6, window.innerHeight - 292);
+
+      setPopoverStyle({
+        left,
+        position: "fixed",
+        top: Math.max(12, top),
+        width,
+        zIndex: 1200,
+      });
+    };
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (pickerRef.current?.contains(event.target as Node)) return;
+      if (popoverRef.current?.contains(event.target as Node)) return;
+      setIsOpen(false);
+    };
+
+    updatePopoverPosition();
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [isOpen]);
 
   return (
     <div className="flex flex-col items-end gap-2 min-w-0">
-      <div className="relative w-40 shrink-0">
-        <CalendarDays aria-hidden="true" className="pointer-events-none absolute left-2.5 top-4 z-10 -translate-y-1/2 text-white/85" size={13} />
-        <SelectField
+      <div ref={pickerRef} className="relative w-40 shrink-0">
+        <button
+          ref={buttonRef}
+          type="button"
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
           aria-label={t("analytics.period") || "Period"}
-          value={period}
-          onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}
-          className="[&_button]:mt-0 [&_button]:h-8 [&_button]:rounded-lg [&_button]:border-white/15 [&_button]:bg-white/15 [&_button]:py-0 [&_button]:pl-8 [&_button]:pr-2.5 [&_button]:text-xs [&_button]:font-extrabold [&_button]:text-white [&_button:hover]:bg-white/15 [&_button:focus]:ring-white/30 [&_button_span]:text-white [&_svg]:text-white/80"
+          onClick={() => setIsOpen((current) => !current)}
+          className="inline-flex h-8 w-full items-center justify-between gap-2 rounded-lg border border-white/15 bg-white/15 py-0 pl-2.5 pr-2.5 text-xs font-extrabold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30"
         >
-          {periodOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <CalendarDays aria-hidden="true" className="shrink-0 text-white/85" size={13} />
+            <span className="truncate">{selectedOption.label}</span>
+          </span>
+          <ChevronDown aria-hidden="true" className={`shrink-0 text-white/80 transition ${isOpen ? "rotate-180" : ""}`} size={13} />
+        </button>
+
+        {isOpen && popoverStyle
+          ? createPortal(
+              <div
+                ref={popoverRef}
+                style={popoverStyle}
+                className="rounded-lg border border-slate-200/60 bg-white p-1.5 shadow-soft"
+                role="menu"
+              >
+                {periodOptions.map((option) => {
+                  const isSelected = option.value === period;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onPeriodChange(option.value);
+                        setIsOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-extrabold transition ${
+                        isSelected
+                          ? "bg-kash-emerald text-white"
+                          : "text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="truncate">{option.label}</span>
+                      {isSelected ? <Check aria-hidden="true" className="shrink-0" size={14} /> : null}
+                    </button>
+                  );
+                })}
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
 
       {period === "custom" && (

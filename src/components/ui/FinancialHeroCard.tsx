@@ -70,6 +70,11 @@ export function FinancialHeroCard({
                   {title}
                 </h1>
               )}
+              {statusBadges && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {statusBadges}
+                </div>
+              )}
             </div>
           </div>
 
@@ -99,11 +104,6 @@ export function FinancialHeroCard({
           </div>
         </div>
 
-        {statusBadges && (
-          <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto shrink-0">
-            {statusBadges}
-          </div>
-        )}
       </div>
 
       {/* Supporting Metrics Slot */}

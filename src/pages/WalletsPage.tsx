@@ -394,23 +394,27 @@ export function WalletsPage() {
         </p>
 
         {/* Sub-breakdown badges inline */}
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-            {t("wallets.availableBalance") || "Tersedia"}: {formatCurrency(totals.available, defaultCurr)}
+        <div className="mt-6 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+            <span className="font-medium text-white/65">{t("wallets.availableBalance") || "Tersedia"}: </span>
+            <span className="font-extrabold text-white">{formatCurrency(totals.available, defaultCurr)}</span>
           </span>
           {totals.savingsPockets > 0 ? (
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-              {t("wallets.savings") || "Tabungan"}: {formatCurrency(totals.savingsPockets, defaultCurr)}
+            <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+              <span className="font-medium text-white/65">{t("wallets.savings") || "Tabungan"}: </span>
+              <span className="font-extrabold text-white">{formatCurrency(totals.savingsPockets, defaultCurr)}</span>
             </span>
           ) : null}
           {totals.goalPockets > 0 ? (
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-              {t("wallets.allocatedToGoals") || "Target"}: {formatCurrency(totals.goalPockets, defaultCurr)}
+            <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+              <span className="font-medium text-white/65">{t("wallets.allocatedToGoals") || "Target"}: </span>
+              <span className="font-extrabold text-white">{formatCurrency(totals.goalPockets, defaultCurr)}</span>
             </span>
           ) : null}
           {totals.investments > 0 ? (
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-              {t("wallets.investment") || "Investasi"}: {formatCurrency(totals.investments, defaultCurr)}
+            <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+              <span className="font-medium text-white/65">{t("wallets.investment") || "Investasi"}: </span>
+              <span className="font-extrabold text-white">{formatCurrency(totals.investments, defaultCurr)}</span>
             </span>
           ) : null}
         </div>
