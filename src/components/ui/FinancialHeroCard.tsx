@@ -55,7 +55,7 @@ export function FinancialHeroCard({
         <div className="flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-3 min-w-0">
             {icon && (
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white font-extrabold text-sm shadow-xs">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white font-extrabold text-sm shadow-xs">
                 {icon}
               </span>
             )}

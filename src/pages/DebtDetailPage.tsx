@@ -172,7 +172,7 @@ export function DebtDetailPage() {
         eyebrow={summary.totalDebtRemaining > 0 ? (t("debts.totalDebt") || "Utang") : (t("debts.totalReceivable") || "Piutang")}
         title={counterparty.name}
         badge={
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
             {summary.totalDebtRemaining === 0 && summary.totalReceivableRemaining === 0 ? (
               <>
                 <CheckCircle2 size={13} /> {t("debts.settled") || "Lunas"}

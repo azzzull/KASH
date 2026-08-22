@@ -287,17 +287,17 @@ export function SharedSavingsDetailPage() {
         badge={
           <div className="flex flex-wrap items-center gap-1.5">
             {isOwner && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/30 border border-amber-300/30 px-2.5 py-0.5 text-xs font-extrabold text-white">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 <Crown size={12} /> {t("shared.youOwner")}
               </span>
             )}
             {isAccountHolder && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 border border-white/20 px-2.5 py-0.5 text-xs font-extrabold text-white">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 <Landmark size={12} /> {t("shared.accountHolder")}
               </span>
             )}
             {isApprover && !isOwner && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 border border-white/20 px-2.5 py-0.5 text-xs font-extrabold text-white">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 <ShieldCheck size={12} /> {t("shared.approver")}
               </span>
             )}

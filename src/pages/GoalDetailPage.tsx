@@ -516,7 +516,7 @@ export function GoalDetailPage() {
       <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
               <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
             </span>
             <div>
@@ -524,7 +524,7 @@ export function GoalDetailPage() {
               <p className="text-sm font-extrabold text-white">{goal.name}</p>
             </div>
           </div>
-          <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-extrabold text-white">
+          <span className="rounded-lg bg-white/15 px-3 py-1 text-sm font-extrabold text-white">
             {progress.percentage.toFixed(0)}%
           </span>
         </div>
@@ -666,4 +666,3 @@ export function GoalDetailPage() {
     </div>
   );
 }
-

@@ -375,7 +375,7 @@ function PeriodPicker({
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
                 onClick={() => setIsOpen((current) => !current)}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white/80 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-bold text-white/85 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
             >
                 <CalendarDays aria-hidden="true" size={14} />
                 <span>{summary.period.label}</span>
@@ -551,7 +551,7 @@ function HeroCard({
                               "Show dashboard balances"
                     }
                     onClick={onToggleBalances}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/12 text-white/85 transition hover:bg-white/18 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white/85 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
                 >
                     {balancesVisible ? (
                         <EyeOff
@@ -579,38 +579,38 @@ function HeroCard({
             {/* Net Worth breakdown compact chips */}
             {breakdownTiles.length > 0 ? (
                 <div className="mt-6 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                        {breakdownTiles.map((item) => {
-                            const percent =
-                                item.percentBase > 0
-                                    ? Math.round(
-                                          (Math.abs(item.value) /
-                                              item.percentBase) *
-                                              100,
-                                      )
-                                    : 0;
+                    {breakdownTiles.map((item) => {
+                        const percent =
+                            item.percentBase > 0
+                                ? Math.round(
+                                      (Math.abs(item.value) /
+                                          item.percentBase) *
+                                          100,
+                                  )
+                                : 0;
 
-                            return (
-                                <span
-                                    key={item.key}
-                                    className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1"
-                                >
-                                    <span className="font-medium text-white/65">
-                                        {item.label}:{" "}
-                                    </span>
-                                    <span className="font-extrabold text-white">
-                                        {formatPrivateAmount(
-                                            item.value,
-                                            currency,
-                                            balancesVisible,
-                                        )}
-                                    </span>
-                                    <span className="font-semibold text-white/55">
-                                        {" "}
-                                        {percent}%
-                                    </span>
+                        return (
+                            <span
+                                key={item.key}
+                                className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1"
+                            >
+                                <span className="font-medium text-white/65">
+                                    {item.label}:{" "}
                                 </span>
-                            );
-                        })}
+                                <span className="font-extrabold text-white">
+                                    {formatPrivateAmount(
+                                        item.value,
+                                        currency,
+                                        balancesVisible,
+                                    )}
+                                </span>
+                                <span className="font-semibold text-white/55">
+                                    {" "}
+                                    {percent}%
+                                </span>
+                            </span>
+                        );
+                    })}
                 </div>
             ) : null}
         </div>

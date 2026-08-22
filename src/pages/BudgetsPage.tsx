@@ -156,11 +156,11 @@ export function BudgetsPage() {
             <span className="text-xs font-bold uppercase tracking-wider text-white/70">
               {t("budgets.unifiedFinancialPlan") || "Rencana Keuangan Terpadu"}
             </span>
-            <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/15 bg-white/10 p-0.5 text-white shadow-sm">
+            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-white/15 bg-white/15 p-0.5 text-white shadow-sm">
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
                 aria-label={t("common.prevMonth") || "Bulan Sebelumnya"}
               >
                 <ChevronLeft size={15} />
@@ -174,7 +174,7 @@ export function BudgetsPage() {
               <button
                 type="button"
                 onClick={handleNextMonth}
-                className="flex h-7 w-7 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
                 aria-label={t("common.nextMonth") || "Bulan Berikutnya"}
               >
                 <ChevronRight size={15} />
@@ -197,20 +197,20 @@ export function BudgetsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 <CheckCircle2 size={13} />
                 {overview.healthy_count} {t("budgets.healthy") || "Aman"}
               </span>
 
               {overview.near_limit_count > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/30 border border-amber-300/30 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                   <AlertCircle size={13} />
                   {overview.near_limit_count} {t("budgets.nearLimit") || "Hampir Batas"}
                 </span>
               )}
 
               {overview.over_budget_count > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/30 border border-red-300/30 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 border border-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                   <AlertCircle size={13} />
                   {overview.over_budget_count} {t("budgets.overBudget") || "Over Budget"}
                 </span>

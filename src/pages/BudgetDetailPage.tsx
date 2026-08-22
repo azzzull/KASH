@@ -280,17 +280,17 @@ export function BudgetDetailPage() {
       <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
         <div className="flex items-start gap-3 min-w-0">
           <span
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-extrabold text-sm shadow-xs bg-white/20 text-white"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg font-extrabold text-sm shadow-xs bg-white/15 text-white"
           >
             <IconComp size={22} />
           </span>
           <div className="min-w-0">
             <h1 className="text-xl font-extrabold text-white truncate">{budget.name}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-white/20 px-2 py-0.5 text-xs font-bold text-white/90">
+              <span className="rounded-lg bg-white/15 px-2 py-0.5 text-xs font-bold text-white/90">
                 {targetLabel}
               </span>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold ${isOverBudget ? "bg-red-500/30 text-white" : isNearLimit ? "bg-amber-500/30 text-white" : "bg-white/20 text-white"}`}>
+              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 {isOverBudget || isNearLimit ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
                 {budget.usage_percentage.toFixed(1)}%
               </span>

@@ -257,7 +257,7 @@ function AnalyticsHeroStory({
 
       {/* Status Badge Above Nominal */}
       <div className="mt-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-3 py-1 text-xs font-extrabold text-white">
+        <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 border border-white/15 px-3 py-1 text-xs font-extrabold text-white">
           {isSurplus ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
           {isSurplus ? (t("analytics.surplusState") || "Surplus Arus Kas") : (t("analytics.deficitState") || "Defisit Arus Kas")}
         </span>
@@ -1004,7 +1004,7 @@ function PeriodControls({
           aria-label={t("analytics.period") || "Period"}
           value={period}
           onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}
-          className="[&_button]:mt-0 [&_button]:h-8 [&_button]:rounded-full [&_button]:border-white/15 [&_button]:bg-white/10 [&_button]:py-0 [&_button]:pl-8 [&_button]:pr-2.5 [&_button]:text-xs [&_button]:font-extrabold [&_button]:text-white [&_button:hover]:bg-white/15 [&_button:focus]:ring-white/30 [&_button_span]:text-white [&_svg]:text-white/80"
+          className="[&_button]:mt-0 [&_button]:h-8 [&_button]:rounded-lg [&_button]:border-white/15 [&_button]:bg-white/15 [&_button]:py-0 [&_button]:pl-8 [&_button]:pr-2.5 [&_button]:text-xs [&_button]:font-extrabold [&_button]:text-white [&_button:hover]:bg-white/15 [&_button:focus]:ring-white/30 [&_button_span]:text-white [&_svg]:text-white/80"
         >
           {periodOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -1015,7 +1015,7 @@ function PeriodControls({
       </div>
 
       {period === "custom" && (
-        <div className="flex items-center gap-1.5 rounded-xl bg-white/10 p-1.5 ring-1 ring-white/10">
+        <div className="flex items-center gap-1.5 rounded-lg bg-white/15 p-1.5 ring-1 ring-white/15">
           <div className="w-28 sm:w-32">
             <DatePickerField
               id="analytics-start-date"

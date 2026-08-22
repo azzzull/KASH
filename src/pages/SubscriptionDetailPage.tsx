@@ -179,7 +179,7 @@ export function SubscriptionDetailPage() {
         eyebrow={obligation.provider || obligation.category?.name || (t("subscriptions.title") || "Tagihan & Langganan")}
         title={obligation.name}
         badge={
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
             {obligation.status === "active" ? (
               <>
                 <Clock size={13} /> {t("common.active") || "Aktif"}

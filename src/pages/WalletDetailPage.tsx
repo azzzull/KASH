@@ -835,7 +835,7 @@ export function WalletDetailPage() {
               {t("wallets.currentEquity") || "Nilai Investasi Saat Ini"}
             </p>
             {totalReturnPct !== null ? (
-              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-extrabold ${totalReturnPct >= 0 ? "bg-white/20 text-white" : "bg-red-500/30 text-white"}`}>
+              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 {totalReturnPct >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
                 {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(2)}%
               </span>
