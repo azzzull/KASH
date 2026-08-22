@@ -330,7 +330,7 @@ export function Modal({
 
           {/* Header Region */}
           {(title || showCloseButton) ? (
-            <div className="flex items-start justify-between gap-4 px-5 pt-1 pb-3 md:px-6 md:pt-6">
+            <div className="flex items-start justify-between gap-4 px-5 pt-1 pb-1 md:px-6 md:pt-5 md:pb-2">
               <div className="min-w-0 flex-1">
                 {title ? (
                   <h2 className="text-lg font-extrabold text-slate-900 md:text-xl">
@@ -338,7 +338,7 @@ export function Modal({
                   </h2>
                 ) : null}
                 {description ? (
-                  <div className="mt-1 text-xs md:text-sm font-semibold text-slate-600">
+                  <div className="mt-0.5 text-xs md:text-sm font-semibold text-slate-600">
                     {description}
                   </div>
                 ) : null}
@@ -357,7 +357,8 @@ export function Modal({
 
           {/* Scrollable Content Body (Protected from gesture interception) */}
           <div
-            className={`px-5 py-2 md:px-6 max-h-[calc(85dvh-80px)] md:max-h-[75vh] overflow-y-auto overscroll-contain ${bodyClassName}`}
+            data-modal-body="true"
+            className={`px-5 pt-1 pb-2 md:px-6 md:pt-1 md:pb-4 max-h-[calc(85dvh-80px)] md:max-h-[75vh] overflow-y-auto overscroll-contain ${bodyClassName}`}
           >
             {children}
           </div>

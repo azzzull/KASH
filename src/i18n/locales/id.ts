@@ -1239,6 +1239,7 @@ export const id = {
   "budgets.monthlyTargetAmount": "Target Batas Belanja Bulanan",
   "budgets.planningTargetType": "Jenis Target Perencanaan",
   "budgets.envelope": "Amplop",
+  "budgets.allEnvelopes": "Semua Pos Anggaran",
   "budgets.categoryTargetContext": "Target belanja pada kategori pengeluaran tertentu.",
   "budgets.envelopeTargetContext": "Kumpulan pos pengeluaran dalam satu amplop khusus.",
   "budgets.debtTargetContext": "Batas alokasi pembayaran cicilan/utang ke pihak tertentu.",

@@ -157,11 +157,26 @@ function displayAmount(transaction: TransactionWithMeta, currency = "IDR") {
 }
 
 function clearableFilters(filters: TransactionFilters) {
-  return Boolean(filters.query || filters.type !== "all" || filters.dateKey || filters.period !== "this_month" || filters.status !== "all" || filters.walletId || filters.categoryId || filters.sort !== "latest");
+  return Boolean(
+    filters.query ||
+    (filters.type && filters.type !== "all") ||
+    filters.dateKey ||
+    (filters.status && filters.status !== "all") ||
+    filters.walletId ||
+    filters.categoryId ||
+    filters.envelopeId ||
+    (filters.sort && filters.sort !== "latest")
+  );
 }
 
 function advancedFilterCount(filters: TransactionFilters) {
-  return Number(Boolean(filters.dateKey)) + Number(filters.period !== "this_month") + Number(filters.status !== "all") + Number(Boolean(filters.walletId)) + Number(Boolean(filters.categoryId));
+  return (
+    Number(Boolean(filters.dateKey)) +
+    Number(Boolean(filters.status && filters.status !== "all")) +
+    Number(Boolean(filters.walletId)) +
+    Number(Boolean(filters.categoryId)) +
+    Number(Boolean(filters.envelopeId))
+  );
 }
 
 function TransactionsSkeleton() {
@@ -605,6 +620,7 @@ function TransactionFormModal({
 
 function AdvancedFilterPanel({
   categories,
+  envelopes,
   filters,
   onClose,
   onReset,
@@ -612,6 +628,7 @@ function AdvancedFilterPanel({
   wallets,
 }: {
   categories: Category[];
+  envelopes: Envelope[];
   filters: TransactionFilters;
   onClose: () => void;
   onReset: () => void;
@@ -628,13 +645,13 @@ function AdvancedFilterPanel({
           onClose={onClose}
           maxWidth="md"
           title={t("transactions.filterTitle") || "Filter Transaksi"}
-          description={t("transactions.filterSubtitle") || "Persempit buku kas berdasarkan tanggal, dompet, kategori, atau status."}
+          description={t("transactions.filterSubtitle") || "Persempit buku kas berdasarkan dompet, kategori, pos anggaran, atau status."}
         >
-          <AdvancedFilterContent hideHeader categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
+          <AdvancedFilterContent hideHeader categories={categories} envelopes={envelopes} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
         </Modal>
       </div>
       <div className="absolute right-[calc(100%+4px)] top-[calc(100%+4px)] z-40 hidden w-72 rounded-xl border border-slate-200/60 bg-white p-4 shadow-soft md:block">
-        <AdvancedFilterContent categories={categories} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
+        <AdvancedFilterContent categories={categories} envelopes={envelopes} filters={filters} onClose={onClose} onReset={onReset} onUpdate={onUpdate} wallets={wallets} />
       </div>
     </>
   );
@@ -642,6 +659,7 @@ function AdvancedFilterPanel({
 
 function AdvancedFilterContent({
   categories,
+  envelopes,
   filters,
   hideHeader = false,
   onClose,
@@ -650,6 +668,7 @@ function AdvancedFilterContent({
   wallets,
 }: {
   categories: Category[];
+  envelopes: Envelope[];
   filters: TransactionFilters;
   hideHeader?: boolean;
   onClose: () => void;
@@ -658,13 +677,6 @@ function AdvancedFilterContent({
   wallets: Wallet[];
 }) {
   const { t } = useI18n();
-
-  const periodOptions: Array<{ label: string; value: TransactionPeriodFilter }> = [
-    { label: t("calendar.allTime") || "Semua Waktu", value: "all" },
-    { label: t("calendar.thisMonth") || "Bulan Ini", value: "this_month" },
-    { label: t("calendar.lastMonth") || "Bulan Lalu", value: "last_month" },
-    { label: t("calendar.thisYear") || "Tahun Ini", value: "this_year" },
-  ];
 
   const statusOptions: Array<{ label: string; value: "all" | TransactionStatus }> = [
     { label: t("transactions.allStatus") || "Semua Status", value: "all" },
@@ -678,16 +690,13 @@ function AdvancedFilterContent({
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-extrabold text-slate-900">{t("transactions.filterTitle") || "Filter Transaksi"}</h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">{t("transactions.filterSubtitle") || "Persempit berdasarkan tanggal, dompet, kategori, atau status."}</p>
+            <p className="mt-0.5 text-xs font-medium text-slate-500">{t("transactions.filterSubtitle") || "Persempit berdasarkan dompet, kategori, pos anggaran, atau status."}</p>
           </div>
           <IconButton icon={X} label="Close filters" onClick={onClose} />
         </div>
       )}
 
       <div className="mt-4 grid gap-3">
-        <SelectField id="transaction-period-filter" label={t("analytics.period") || "Periode"} value={filters.period} onChange={(event) => onUpdate("period", event.target.value as TransactionPeriodFilter)}>
-          {periodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </SelectField>
         <SelectField id="transaction-wallet-filter" label={t("wallets.title") || "Dompet"} value={filters.walletId ?? ""} onChange={(event) => onUpdate("walletId", event.target.value || undefined)}>
           <option value="">{t("wallets.allWallets") || "Semua Dompet"}</option>
           {wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}{wallet.is_archived ? ` (${t("common.archived") || "Diarsipkan"})` : ""}</option>)}
@@ -696,6 +705,16 @@ function AdvancedFilterContent({
           <option value="">{t("categories.allCategories") || "Semua Kategori"}</option>
           {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
         </SelectField>
+        {envelopes.length > 0 ? (
+          <SelectField id="transaction-envelope-filter" label={t("budgets.envelope") || "Pos Anggaran"} value={filters.envelopeId ?? ""} onChange={(event) => onUpdate("envelopeId", event.target.value || undefined)}>
+            <option value="">{t("budgets.allEnvelopes") || "Semua Pos Anggaran"}</option>
+            {envelopes.map((envelope) => (
+              <option key={envelope.id} value={envelope.id}>
+                {envelope.name}
+              </option>
+            ))}
+          </SelectField>
+        ) : null}
         <SelectField id="transaction-status-filter" label={t("common.status") || "Status"} value={filters.status} onChange={(event) => onUpdate("status", event.target.value as "all" | TransactionStatus)}>
           {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </SelectField>
@@ -732,6 +751,7 @@ export function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionWithMeta[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithMeta | null>(null);
   const [editState, setEditState] = useState<{ mode: EditMode; transaction: TransactionWithMeta } | null>(null);
   const [voidTarget, setVoidTarget] = useState<TransactionWithMeta | null>(null);
@@ -767,6 +787,7 @@ export function TransactionsPage() {
       setTransactions((current) => (append ? [...current, ...result.transactions] : result.transactions));
       setWallets(result.wallets);
       setCategories(result.categories);
+      setEnvelopes(result.envelopes || []);
       setHasMore(result.hasMore);
       if (!append) setSelectedTransaction(null);
     } catch (caughtError) {
@@ -847,11 +868,30 @@ export function TransactionsPage() {
   };
 
   const clearFilters = () => {
-    setFilters({ page: 0, pageSize: PAGE_SIZE, period: "this_month", query: "", sort: "latest", status: "all", type: "all" });
+    setFilters((current) => ({
+      ...current,
+      categoryId: undefined,
+      dateKey: undefined,
+      envelopeId: undefined,
+      page: 0,
+      query: "",
+      sort: "latest",
+      status: "all",
+      type: "all",
+      walletId: undefined,
+    }));
   };
 
   const resetAdvancedFilters = () => {
-    setFilters((current) => ({ ...current, categoryId: undefined, dateKey: undefined, page: 0, period: "this_month", status: "all", walletId: undefined }));
+    setFilters((current) => ({
+      ...current,
+      categoryId: undefined,
+      dateKey: undefined,
+      envelopeId: undefined,
+      page: 0,
+      status: "all",
+      walletId: undefined,
+    }));
   };
 
   const handleVoid = async () => {
@@ -971,6 +1011,7 @@ export function TransactionsPage() {
                 {filterPanelOpen ? (
                   <AdvancedFilterPanel
                     categories={activeCategories}
+                    envelopes={envelopes}
                     filters={filters}
                     onClose={() => setFilterPanelOpen(false)}
                     onReset={resetAdvancedFilters}

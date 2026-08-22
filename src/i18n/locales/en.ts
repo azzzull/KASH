@@ -1239,6 +1239,7 @@ export const en = {
   "budgets.monthlyTargetAmount": "Monthly Spending Limit Target",
   "budgets.planningTargetType": "Planning Target Type",
   "budgets.envelope": "Envelope",
+  "budgets.allEnvelopes": "All Budget Envelopes",
   "budgets.categoryTargetContext": "Spending target on specific expense category.",
   "budgets.envelopeTargetContext": "Spending items inside a dedicated envelope.",
   "budgets.debtTargetContext": "Allocation limit for debt or installment repayments.",
