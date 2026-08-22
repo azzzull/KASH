@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   PieChart,
   Receipt,
@@ -23,7 +24,6 @@ import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { DatePickerField } from "../components/ui/DatePickerField";
-import { SelectField } from "../components/ui/SelectField";
 
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -93,7 +93,15 @@ function cashFlowHealth(summary: AnalyticsSummary, t: (k: TranslationKey) => str
   return { helper: t("analytics.healthIncomeCovers") || "Income covers spending", tone: "text-kash-emerald", value: t("analytics.healthHealthy") || "Healthy" };
 }
 
-function AnalyticsHeroStory({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+function AnalyticsHeroStory({
+  currency,
+  periodControls,
+  summary,
+}: {
+  currency: string;
+  periodControls: ReactNode;
+  summary: AnalyticsSummary;
+}) {
   const { t, formatCurrency } = useI18n();
   const netCashFlow = summary.netCashFlow.amount;
   const isSurplus = netCashFlow >= 0;
@@ -107,15 +115,12 @@ function AnalyticsHeroStory({ currency, summary }: { currency: string; summary: 
 
   return (
     <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
-      {/* Top Row: Title Left + Period Badge Right */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Top Row: Title Left + Period Picker Right */}
+      <div className="flex items-start justify-between gap-3">
         <span className="text-xs font-bold uppercase tracking-wider text-white/70">
           {t("dashboard.netCashFlow") || "ARUS KAS BERSIH"}
         </span>
-        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/15 px-2.5 py-0.5 text-xs font-bold text-white/90 shrink-0">
-          <CalendarDays size={13} />
-          {summary.period.label}
-        </span>
+        <div className="shrink-0">{periodControls}</div>
       </div>
 
       {/* Status Badge Above Nominal */}
@@ -787,23 +792,34 @@ function PeriodControls({
   );
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2 min-w-0">
-      <div className="w-36 sm:w-44 shrink-0">
-        <SelectField
+    <div className="flex flex-col items-end gap-2 min-w-0">
+      <label className="relative shrink-0">
+        <span className="sr-only">{t("analytics.period") || "Period"}</span>
+        <CalendarDays
+          aria-hidden="true"
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-white/85"
+          size={13}
+        />
+        <ChevronDown
+          aria-hidden="true"
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/80"
+          size={13}
+        />
+        <select
           value={period}
           onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}
-          className="py-1 px-2.5 text-xs font-extrabold"
+          className="h-8 max-w-[10.5rem] appearance-none rounded-full border border-white/15 bg-white/10 py-0 pl-8 pr-7 text-xs font-extrabold text-white outline-none transition hover:bg-white/15 focus:ring-2 focus:ring-white/30"
         >
           {periodOptions.map((option) => (
-            <option key={option.value} value={option.value}>
+            <option className="text-slate-900" key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </SelectField>
-      </div>
+        </select>
+      </label>
 
       {period === "custom" && (
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 rounded-xl bg-white/10 p-1.5 ring-1 ring-white/10">
           <div className="w-28 sm:w-32">
             <DatePickerField
               id="analytics-start-date"
@@ -811,7 +827,7 @@ function PeriodControls({
               onChange={(val) => onCustomStartDateChange(val)}
             />
           </div>
-          <span className="text-xs font-bold text-slate-400">-</span>
+          <span className="text-xs font-bold text-white/50">-</span>
           <div className="w-28 sm:w-32">
             <DatePickerField
               id="analytics-end-date"
@@ -953,14 +969,17 @@ export function AnalyticsPage() {
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-4 -mt-2 sm:mt-0">
-      {/* 1. Compact Top Bar with Title + Compact Period Selector in SAME ROW */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <BarChart3 className="text-kash-emerald shrink-0" size={22} />
-          <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.analytics") || "Analitik Keuangan"}</h1>
-        </div>
+      {/* 1. Compact Top Bar */}
+      <div className="flex items-center gap-2 min-w-0">
+        <BarChart3 className="text-kash-emerald shrink-0" size={22} />
+        <h1 className="text-lg font-black text-slate-900 truncate">{t("nav.analytics") || "Analitik Keuangan"}</h1>
+      </div>
 
-        <div className="shrink-0">
+      {/* 2. Main Emerald Financial Hero */}
+      <AnalyticsHeroStory
+        summary={summary}
+        currency={currency}
+        periodControls={
           <PeriodControls
             period={period}
             customStartDate={customStartDate}
@@ -969,11 +988,8 @@ export function AnalyticsPage() {
             onCustomStartDateChange={setCustomStartDate}
             onCustomEndDateChange={setCustomEndDate}
           />
-        </div>
-      </div>
-
-      {/* 2. Main Emerald Financial Hero */}
-      <AnalyticsHeroStory summary={summary} currency={currency} />
+        }
+      />
 
       {/* 3. Main Visual Charts Grid (Donut Ring + Cash Flow Line Chart in 2 Columns) */}
       <div className="grid gap-4 lg:grid-cols-2 min-w-0 max-w-full">
