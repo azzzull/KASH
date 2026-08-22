@@ -201,34 +201,36 @@ function CompactComparisonLine({
                 : "text-[#E50914]";
     const percentText = percentage ? ` (${delta > 0 ? "+" : delta < 0 ? "-" : ""}${percentage}%)` : "";
 
+    const previousText = withPreviousLabel
+        ? t("dashboard.vsPeriod", { period: withPreviousLabel }) ||
+          `vs ${withPreviousLabel}`
+        : null;
+
     return (
-        <div className="min-w-0">
-            <p
-                className={`flex min-w-0 items-center gap-1 ${
-                    variant === "hero"
-                        ? "text-xs font-extrabold"
-                        : "text-[11px] font-extrabold md:text-xs"
-                } ${tone}`}
-            >
-                <Icon aria-hidden="true" size={13} strokeWidth={2.4} />
-                <span className="truncate">
-                    {formatSignedCurrencyDelta(delta, currency)}
-                    {percentText}
-                </span>
-            </p>
-            {withPreviousLabel ? (
-                <p
-                    className={
+        <p
+            className={`flex min-w-0 max-w-full items-center gap-1 whitespace-nowrap ${
+                variant === "hero"
+                    ? "text-xs font-extrabold"
+                    : "text-[10px] font-extrabold md:text-[11px]"
+            } ${tone}`}
+        >
+            <Icon aria-hidden="true" size={12} strokeWidth={2.4} />
+            <span className="min-w-0 truncate">
+                {formatSignedCurrencyDelta(delta, currency)}
+                {percentText}
+            </span>
+            {previousText ? (
+                <span
+                    className={`min-w-0 truncate ${
                         variant === "hero"
-                            ? "mt-0.5 truncate text-[10px] font-bold text-white/55"
-                            : "mt-0.5 truncate text-[10px] font-bold text-slate-500"
-                    }
+                            ? "text-[10px] font-bold text-white/55"
+                            : "text-[9px] font-bold text-slate-400 md:text-[10px]"
+                    }`}
                 >
-                    {t("dashboard.vsPeriod", { period: withPreviousLabel }) ||
-                        `vs ${withPreviousLabel}`}
-                </p>
+                    {previousText}
+                </span>
             ) : null}
-        </div>
+        </p>
     );
 }
 
@@ -688,7 +690,7 @@ function CashFlowRow({
             {items.map((item) => (
                 <div
                     key={item.key}
-                    className="min-w-0 px-2 py-3 first:pl-3 last:pr-3 md:px-4 md:py-4 md:first:pl-5 md:last:pr-5"
+                    className="min-w-0 px-2 py-2.5 first:pl-3 last:pr-3 md:px-4 md:py-3.5 md:first:pl-5 md:last:pr-5"
                 >
                     <p className="truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-slate-500">
                         {item.label}
@@ -702,7 +704,7 @@ function CashFlowRow({
                             balancesVisible,
                         )}
                     </p>
-                    <div className="mt-1.5 min-w-0">
+                    <div className="mt-1 min-w-0">
                         <CompactComparisonLine
                             change={item.change}
                             currency={currency}
