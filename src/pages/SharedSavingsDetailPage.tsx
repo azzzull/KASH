@@ -67,6 +67,26 @@ import type {
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../i18n";
 
+type SharedSavingsConfirmation =
+  | {
+      type: "leave";
+    }
+  | {
+      type: "remove-member";
+      userId: string;
+      memberName: string;
+    }
+  | {
+      type: "cancel-request";
+      requestId: string;
+    }
+  | {
+      type: "blocked";
+      title: string;
+      description: string;
+      itemLabel?: string;
+    };
+
 export function SharedSavingsDetailPage() {
   const { t, formatCurrency, formatDate } = useI18n();
   const { id } = useParams<{ id: string }>();
@@ -90,7 +110,7 @@ export function SharedSavingsDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
-  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [confirmation, setConfirmation] = useState<SharedSavingsConfirmation | null>(null);
   const [leavingSpace, setLeavingSpace] = useState(false);
 
   // Modal States
@@ -143,6 +163,11 @@ export function SharedSavingsDetailPage() {
     [members]
   );
 
+  const activeMembers = useMemo(
+    () => members.filter((m) => m.member_status === "active"),
+    [members]
+  );
+
   const pendingRequestsCount = useMemo(
     () => requests.filter((r) => r.status === "pending").length,
     [requests]
@@ -182,10 +207,10 @@ export function SharedSavingsDetailPage() {
   };
 
   const handleCancel = async (requestId: string) => {
-    if (!confirm("Batalkan pengajuan ini?")) return;
     setProcessingRequestId(requestId);
     try {
       await cancelSharedRequest(requestId);
+      setConfirmation(null);
       await loadData();
     } catch (err: any) {
       alert(err.message || "Gagal membatalkan pengajuan.");
@@ -195,10 +220,10 @@ export function SharedSavingsDetailPage() {
   };
 
   const handleRemoveMember = async (userId: string, memberName: string) => {
-    if (!confirm(`Hapus ${memberName} dari tabungan bersama? Pastikan porsi saldo mereka sudah Rp0.`)) return;
     try {
       if (!id) return;
       await removeSharedSavingsMember(id, userId);
+      setConfirmation(null);
       await loadData();
     } catch (err: any) {
       alert(err.message || "Gagal menghapus anggota.");
@@ -206,20 +231,35 @@ export function SharedSavingsDetailPage() {
   };
 
   const handleLeaveSpace = async () => {
-    if (!id) return;
+    if (!id || !space) return;
     if (myShare > 0) {
-      alert(`Anda masih memiliki porsi saldo sebesar ${formatCurrency(myShare, currency)}. Silakan tarik seluruh porsi Anda terlebih dahulu sebelum keluar.`);
+      setConfirmation({
+        type: "blocked",
+        title: "Belum bisa keluar",
+        description: "Anda masih memiliki porsi saldo. Silakan tarik seluruh porsi Anda terlebih dahulu sebelum keluar.",
+        itemLabel: formatCurrency(myShare, currency),
+      });
       return;
     }
     if (isOwner) {
-      alert("Anda adalah Owner tabungan ini. Silakan alihkan kepemilikan (Owner) ke anggota lain terlebih dahulu sebelum keluar.");
+      setConfirmation({
+        type: "blocked",
+        title: "Owner belum bisa keluar",
+        description: "Anda adalah Owner tabungan ini. Silakan alihkan kepemilikan ke anggota lain terlebih dahulu sebelum keluar.",
+        itemLabel: space.name,
+      });
       return;
     }
     if (isAccountHolder) {
-      alert("Anda adalah Account Holder tabungan ini. Silakan tunjuk anggota lain sebagai Account Holder terlebih dahulu sebelum keluar.");
+      setConfirmation({
+        type: "blocked",
+        title: "Account Holder belum bisa keluar",
+        description: "Anda adalah Account Holder tabungan ini. Silakan tunjuk anggota lain sebagai Account Holder terlebih dahulu sebelum keluar.",
+        itemLabel: space.name,
+      });
       return;
     }
-    setShowLeaveDialog(true);
+    setConfirmation({ type: "leave" });
   };
 
   const confirmLeaveSpace = async () => {
@@ -227,7 +267,7 @@ export function SharedSavingsDetailPage() {
     setLeavingSpace(true);
     try {
       await removeSharedSavingsMember(id, currentUserId);
-      setShowLeaveDialog(false);
+      setConfirmation(null);
       navigate("/shared-savings");
     } catch (err: any) {
       alert(err.message || "Gagal keluar dari tabungan.");
@@ -464,7 +504,7 @@ export function SharedSavingsDetailPage() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            {members.map((m) => {
+            {activeMembers.map((m) => {
               const currentShare = toNumber(m.current_share);
               const sharePct = balance > 0 ? Math.round((currentShare / balance) * 100) : 0;
               const isCurrentUser = m.user_id === currentUserId;
@@ -541,7 +581,11 @@ export function SharedSavingsDetailPage() {
                     <div className="mt-3 flex justify-end border-t border-slate-100 pt-2">
                       <button
                         type="button"
-                        onClick={() => void handleRemoveMember(m.user_id, m.member_name || m.member_email)}
+                        onClick={() => setConfirmation({
+                          type: "remove-member",
+                          userId: m.user_id,
+                          memberName: m.member_name || m.member_email,
+                        })}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-kash-expense hover:underline"
                       >
                         <UserMinus size={12} /> {t("common.delete")} (0)
@@ -735,7 +779,7 @@ export function SharedSavingsDetailPage() {
                               type="button"
                               variant="secondary"
                               disabled={isProcessing}
-                              onClick={() => void handleCancel(r.id)}
+                              onClick={() => setConfirmation({ type: "cancel-request", requestId: r.id })}
                               className="min-h-8 px-2.5 text-xs text-slate-600 hover:text-kash-expense"
                             >
                               {t("shared.confirmCancel")}
@@ -967,7 +1011,7 @@ export function SharedSavingsDetailPage() {
         isOpen={showApproversModal}
         spaceId={space.shared_savings_id}
         spaceName={space.name}
-        members={members}
+        members={activeMembers}
         approvers={approvers}
         onClose={() => setShowApproversModal(false)}
         onUpdated={() => void loadData()}
@@ -977,7 +1021,7 @@ export function SharedSavingsDetailPage() {
         isOpen={showTransferModal}
         spaceId={space.shared_savings_id}
         spaceName={space.name}
-        members={members}
+        members={activeMembers}
         currentOwnerId={space.owner_user_id}
         onClose={() => setShowTransferModal(false)}
         onTransferred={() => void loadData()}
@@ -987,13 +1031,13 @@ export function SharedSavingsDetailPage() {
         isOpen={showAccountHolderModal}
         spaceId={space.shared_savings_id}
         spaceName={space.name}
-        members={members}
+        members={activeMembers}
         currentAccountHolderId={space.account_holder_user_id}
         onClose={() => setShowAccountHolderModal(false)}
         onUpdated={() => void loadData()}
       />
 
-      {showLeaveDialog ? (
+      {confirmation?.type === "leave" ? (
         <ConfirmationDialog
           confirmLabel={t("shared.leaveSpaceBtn")}
           description={t("shared.leaveSpaceDesc")}
@@ -1002,11 +1046,54 @@ export function SharedSavingsDetailPage() {
           itemLabel={space.name}
           onCancel={() => {
             if (leavingSpace) return;
-            setShowLeaveDialog(false);
+            setConfirmation(null);
           }}
           onConfirm={() => void confirmLeaveSpace()}
           title={t("shared.leaveSpaceTitle")}
           tone="danger"
+        />
+      ) : null}
+
+      {confirmation?.type === "remove-member" ? (
+        <ConfirmationDialog
+          confirmLabel={t("common.delete")}
+          description="Hapus anggota ini dari tabungan bersama? Pastikan porsi saldo mereka sudah Rp0."
+          icon={UserMinus}
+          itemLabel={confirmation.memberName}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => void handleRemoveMember(confirmation.userId, confirmation.memberName)}
+          title="Hapus anggota"
+          tone="danger"
+        />
+      ) : null}
+
+      {confirmation?.type === "cancel-request" ? (
+        <ConfirmationDialog
+          confirmLabel={t("shared.confirmCancel")}
+          description="Batalkan pengajuan ini?"
+          icon={XCircle}
+          isLoading={processingRequestId === confirmation.requestId}
+          onCancel={() => {
+            if (processingRequestId) return;
+            setConfirmation(null);
+          }}
+          onConfirm={() => void handleCancel(confirmation.requestId)}
+          title="Batalkan pengajuan"
+          tone="warning"
+        />
+      ) : null}
+
+      {confirmation?.type === "blocked" ? (
+        <ConfirmationDialog
+          confirmLabel="OK"
+          description={confirmation.description}
+          icon={ShieldAlert}
+          itemLabel={confirmation.itemLabel}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => setConfirmation(null)}
+          showCancel={false}
+          title={confirmation.title}
+          tone="warning"
         />
       ) : null}
 

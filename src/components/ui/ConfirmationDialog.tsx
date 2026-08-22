@@ -18,6 +18,7 @@ type ConfirmationDialogProps = {
   itemLabel?: ReactNode;
   onCancel: () => void;
   onConfirm: () => void;
+  showCancel?: boolean;
   title: string;
   tone?: ConfirmationTone;
 };
@@ -48,6 +49,7 @@ export function ConfirmationDialog({
   itemLabel,
   onCancel,
   onConfirm,
+  showCancel = true,
   title,
   tone = "warning",
 }: ConfirmationDialogProps) {
@@ -80,10 +82,12 @@ export function ConfirmationDialog({
 
         {children ? <div>{children}</div> : null}
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:flex sm:justify-end pt-2">
-          <Button disabled={isLoading} onClick={onCancel} variant="secondary" className="justify-center">
-            {effectiveCancelLabel}
-          </Button>
+        <div className={`mt-5 grid gap-3 pt-2 ${showCancel ? "grid-cols-2 sm:flex sm:justify-end" : "sm:flex sm:justify-end"}`}>
+          {showCancel ? (
+            <Button disabled={isLoading} onClick={onCancel} variant="secondary" className="justify-center">
+              {effectiveCancelLabel}
+            </Button>
+          ) : null}
           <Button
             className={`${styles.confirm} justify-center`}
             disabled={disabled || isLoading}
