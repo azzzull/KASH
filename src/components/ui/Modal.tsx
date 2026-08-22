@@ -46,6 +46,7 @@ const MEDIUM_DETENT_DVH = 62;
 const LARGE_DETENT_DVH = 90;
 const LARGE_TOP_GAP_PX = 28;
 const KEYBOARD_FIELD_GAP_PX = 18;
+const KEYBOARD_FOCUS_SAFE_GAP_PX = 56;
 const KEYBOARD_TRACKING_FRAME_LIMIT = 36;
 const MODAL_LAYER_BASE = 1000;
 const MODAL_LAYER_STEP = 20;
@@ -387,8 +388,9 @@ export function Modal({
       const fieldRect = focusedElement.getBoundingClientRect();
       const stickyFooterInset = getStickyFooterInset(scrollBody, focusedElement);
       const visibleTop = Math.max(scrollRect.top, panelRect.top) + KEYBOARD_FIELD_GAP_PX;
-      const visibleBottom = Math.min(scrollRect.bottom, viewportBottom) - stickyFooterInset - KEYBOARD_FIELD_GAP_PX;
-      const fieldCannotFit = fieldRect.height + KEYBOARD_FIELD_GAP_PX * 2 > Math.max(80, visibleBottom - visibleTop);
+      const visibleBottom = Math.min(scrollRect.bottom, viewportBottom) - stickyFooterInset - KEYBOARD_FOCUS_SAFE_GAP_PX;
+      const fieldCannotFit =
+        fieldRect.height + KEYBOARD_FIELD_GAP_PX + KEYBOARD_FOCUS_SAFE_GAP_PX > Math.max(80, visibleBottom - visibleTop);
       const isHiddenBelow = fieldRect.bottom > visibleBottom;
       const isHiddenAbove = fieldRect.top < visibleTop;
 
