@@ -1,7 +1,8 @@
 import { Plus, RefreshCw, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { NotificationProvider } from "../context/NotificationContext";
+import { StaleSessionReset } from "../components/app/StaleSessionReset";
 import { ServiceWorkerNavigationBridge } from "../components/pwa/ServiceWorkerNavigationBridge";
 import { AppHeader } from "../components/layout/AppHeader";
 import { DesktopSidebar } from "../components/layout/DesktopSidebar";
@@ -141,9 +142,18 @@ export function AppShell() {
     window.location.reload();
   };
 
+  const resetTransientUi = useCallback(() => {
+    setQuickAddOpen(false);
+    setMoreOpen(false);
+    setTransactionMode(null);
+    setSuccessMessage(null);
+    setUpdateRegistration(null);
+  }, []);
+
   return (
     <NotificationProvider>
       <ServiceWorkerNavigationBridge />
+      <StaleSessionReset onResetTransientUi={resetTransientUi} />
       <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
         <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
           <DesktopSidebar />

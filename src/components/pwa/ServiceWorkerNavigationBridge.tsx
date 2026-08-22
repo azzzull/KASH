@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { markNotificationNavigationActive } from "../app/StaleSessionReset";
 import {
   clearPendingNavigation,
   getPendingNavigation,
@@ -26,6 +27,8 @@ export function ServiceWorkerNavigationBridge() {
         const pending = await getPendingNavigation();
 
         if (pending && isValidInternalPath(pending.target_path)) {
+          markNotificationNavigationActive();
+
           // Immediately clear to guarantee exact-once consumption
           await clearPendingNavigation();
 
@@ -58,6 +61,8 @@ export function ServiceWorkerNavigationBridge() {
       await clearPendingNavigation();
 
       if (isValidInternalPath(targetPath)) {
+        markNotificationNavigationActive();
+
         if (location.pathname !== targetPath) {
           navigate(targetPath);
         }
