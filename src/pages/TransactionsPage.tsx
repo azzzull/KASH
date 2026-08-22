@@ -21,7 +21,7 @@ import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { startOfLocalMonth } from "../lib/calendar";
 import { QuickCreateCategoryModal } from "../components/categories/QuickCreateCategoryModal";
-import { TransactionDetailPanel, signedTransactionAmount } from "../components/transactions/TransactionDetailPanel";
+import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
@@ -169,10 +169,28 @@ function clearableFilters(filters: TransactionFilters) {
   );
 }
 
-function signedAccountingAmount(transaction: TransactionWithMeta) {
-  if (transaction.status === "void") return 0;
-  if (transaction.type === "transfer") return 0;
-  return signedTransactionAmount(transaction);
+function transactionDailyNetAmount(transaction: TransactionWithMeta, walletId?: string) {
+  if (transaction.status !== "completed") return 0;
+
+  const amount = toNumber(transaction.amount);
+
+  if (transaction.type === "income") return amount;
+  if (transaction.type === "expense") return -amount;
+  if (transaction.type === "adjustment") return amount;
+
+  if (transaction.type === "transfer") {
+    const fee = toNumber(transaction.transfer_fee);
+
+    if (walletId) {
+      if (transaction.wallet_id === walletId) return -(amount + fee);
+      if (transaction.destination_wallet_id === walletId) return amount;
+      return 0;
+    }
+
+    return -fee;
+  }
+
+  return 0;
 }
 
 function iconSurfaceStyle(transaction: TransactionWithMeta): CSSProperties | undefined {
@@ -1030,13 +1048,13 @@ export function TransactionsPage() {
     });
 
     return Array.from(groups.entries()).map(([label, items]) => ({
-      dailyNet: items.reduce((total, transaction) => total + signedAccountingAmount(transaction), 0),
+      dailyNet: items.reduce((total, transaction) => total + transactionDailyNetAmount(transaction, filters.walletId), 0),
       items,
       label,
     }));
   };
 
-  const groupedTransactions = useMemo(() => groupTransactionsLocalized(transactions), [transactions, t]);
+  const groupedTransactions = useMemo(() => groupTransactionsLocalized(transactions), [filters.walletId, transactions, t]);
   const activeCategories = categories.filter((category) => !category.is_archived);
   const activeWallets = wallets.filter((wallet) => !wallet.is_archived);
   const activeAdvancedFilters = advancedFilterCount(filters);
