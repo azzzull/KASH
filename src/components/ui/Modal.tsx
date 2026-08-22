@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -45,6 +46,70 @@ const LARGE_DETENT_DVH = 90;
 const LARGE_TOP_GAP_PX = 28;
 
 type SheetDetent = "medium" | "large";
+type ModalStackEntry = {
+  id: number;
+  opener: HTMLElement | null;
+};
+
+let nextModalId = 1;
+let modalStack: ModalStackEntry[] = [];
+const modalStackListeners = new Set<() => void>();
+
+function notifyModalStack() {
+  modalStackListeners.forEach((listener) => listener());
+}
+
+function subscribeModalStack(listener: () => void) {
+  modalStackListeners.add(listener);
+  return () => {
+    modalStackListeners.delete(listener);
+  };
+}
+
+function registerModalStackEntry(id: number, opener: HTMLElement | null) {
+  modalStack = modalStack.filter((entry) => entry.id !== id);
+  modalStack.push({ id, opener });
+  notifyModalStack();
+}
+
+function unregisterModalStackEntry(id: number) {
+  const closingEntry = modalStack.find((entry) => entry.id === id);
+  modalStack = modalStack.filter((entry) => entry.id !== id);
+  notifyModalStack();
+
+  if (!closingEntry?.opener || !document.contains(closingEntry.opener)) return;
+  if (isEditableElement(closingEntry.opener)) return;
+
+  requestAnimationFrame(() => {
+    closingEntry.opener?.focus({ preventScroll: true });
+  });
+}
+
+function getModalStackSnapshot(id: number) {
+  const index = modalStack.findIndex((entry) => entry.id === id);
+  const topEntry = modalStack[modalStack.length - 1];
+
+  return {
+    index,
+    isTop: topEntry?.id === id,
+    hasChild: index >= 0 && index < modalStack.length - 1,
+  };
+}
+
+function isEditableElement(element: Element | null) {
+  if (!(element instanceof HTMLElement)) return false;
+  const tagName = element.tagName.toLowerCase();
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    element.isContentEditable
+  );
+}
+
+function isMobileViewport() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+}
 
 function lockBodyScroll() {
   if (typeof document === "undefined") return;
@@ -125,12 +190,14 @@ export function Modal({
   className = "",
   bodyClassName = "",
 }: ModalProps) {
+  const modalIdRef = useRef(nextModalId++);
   // Mounting & animation lifecycle
   const [mounted, setMounted] = useState(isOpen);
   const [entered, setEntered] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [sheetDetent, setSheetDetent] = useState<SheetDetent>("medium");
   const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
+  const [, setStackVersion] = useState(0);
 
   // Gesture state
   const [dragY, setDragY] = useState(0);
@@ -143,6 +210,13 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollBodyRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<number | null>(null);
+  const modalId = modalIdRef.current;
+  const stackSnapshot = getModalStackSnapshot(modalId);
+  const stackIndex = stackSnapshot.index < 0 ? modalStack.length : stackSnapshot.index;
+  const isTopModal = stackSnapshot.isTop || stackSnapshot.index < 0;
+  const hasChildModal = stackSnapshot.hasChild;
+
+  useEffect(() => subscribeModalStack(() => setStackVersion((version) => version + 1)), []);
 
   // Clean up pending close timeout on unmount
   useEffect(() => {
@@ -185,6 +259,27 @@ export function Modal({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!mounted) return;
+
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    registerModalStackEntry(modalId, opener);
+
+    return () => {
+      unregisterModalStackEntry(modalId);
+    };
+  }, [mounted, modalId]);
+
+  useLayoutEffect(() => {
+    if (!mounted || !isMobileViewport()) return;
+
+    const activeElement = document.activeElement;
+    if (panelRef.current?.contains(activeElement) && isEditableElement(activeElement)) {
+      (activeElement as HTMLElement).blur();
+    }
+    panelRef.current?.focus({ preventScroll: true });
+  }, [mounted]);
+
+  useEffect(() => {
     if (!mounted || typeof window === "undefined") return;
 
     const updateVisualViewportHeight = () => {
@@ -203,7 +298,7 @@ export function Modal({
 
   // Animated Close Controller
   const handleRequestClose = () => {
-    if (!dismissible || isClosing) return;
+    if (!dismissible || isClosing || !isTopModal) return;
     setIsClosing(true);
     setEntered(false);
     if (closeTimeoutRef.current !== null) {
@@ -222,17 +317,17 @@ export function Modal({
   useEffect(() => {
     if (!mounted) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && dismissible) {
+      if (e.key === "Escape" && dismissible && isTopModal) {
         handleRequestClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mounted, dismissible, isClosing]);
+  }, [mounted, dismissible, isClosing, isTopModal]);
 
   // Touch Gesture Handlers (iOS Safari & Standalone PWA)
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!dismissible || isClosing) return;
+    if (!dismissible || isClosing || !isTopModal) return;
     const touch = e.touches[0];
     startYRef.current = touch.clientY;
     currentYRef.current = touch.clientY;
@@ -241,7 +336,7 @@ export function Modal({
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isDragging || !dismissible || isClosing) return;
+    if (!isDragging || !dismissible || isClosing || !isTopModal) return;
     const touch = e.touches[0];
     const deltaY = touch.clientY - startYRef.current;
 
@@ -279,7 +374,7 @@ export function Modal({
   };
 
   const handleBodyTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (isClosing) return;
+    if (isClosing || !isTopModal) return;
     const touch = e.touches[0];
     startYRef.current = touch.clientY;
     currentYRef.current = touch.clientY;
@@ -288,7 +383,7 @@ export function Modal({
   };
 
   const handleBodyTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isBodyDragging || isClosing) return;
+    if (!isBodyDragging || isClosing || !isTopModal) return;
 
     const scrollBody = scrollBodyRef.current;
     if (!scrollBody) return;
@@ -362,6 +457,8 @@ export function Modal({
   const isMobileOpen = entered && !isClosing;
   const mobileTransform = isDragging
     ? `translate3d(0, ${dragY}px, 0)`
+    : hasChildModal
+    ? "translate3d(0, -10px, 0) scale(0.94)"
     : isClosing || !isMobileOpen
     ? "translate3d(0, 100%, 0)"
     : "translate3d(0, 0, 0)";
@@ -381,22 +478,30 @@ export function Modal({
     ? Math.max(320, Math.min(visualViewportHeight * (LARGE_DETENT_DVH / 100), visualViewportHeight - LARGE_TOP_GAP_PX))
     : undefined;
 
-  const mobileMaxHeight = sheetDetent === "large"
+  const mobileMaxHeight = hasChildModal
+    ? "46dvh"
+    : sheetDetent === "large"
     ? largeDetentPx
       ? `${largeDetentPx}px`
       : `min(${LARGE_DETENT_DVH}dvh, calc(100dvh - env(safe-area-inset-top) - ${LARGE_TOP_GAP_PX}px))`
     : `${MEDIUM_DETENT_DVH}dvh`;
 
+  const backdropClassName = isTopModal
+    ? `fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-240 ${backdropOpacity}`
+    : "fixed inset-0 bg-transparent opacity-0 pointer-events-none";
+
   return (
     <div
       role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 overflow-hidden"
+      aria-modal={isTopModal ? "true" : undefined}
+      aria-hidden={isTopModal ? undefined : "true"}
+      className={`fixed inset-0 overflow-hidden ${isTopModal ? "" : "pointer-events-none"}`}
+      style={{ zIndex: 50 + stackIndex * 2 }}
     >
       {/* Backdrop */}
       <div
         onClick={handleRequestClose}
-        className={`fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-240 ${backdropOpacity}`}
+        className={backdropClassName}
       />
 
       {/* Sheet / Dialog Container */}
@@ -408,12 +513,15 @@ export function Modal({
             transition: mobileTransition,
             "--mobile-sheet-max-height": mobileMaxHeight,
           } as React.CSSProperties}
+          tabIndex={-1}
           data-bottom-sheet-panel="true"
           data-bottom-sheet-detent={sheetDetent}
-          className={`pointer-events-auto flex max-h-[var(--mobile-sheet-max-height)] w-full flex-col ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:block md:max-h-[85vh] md:rounded-2xl md:pb-6 md:transform-none md:transition-all md:duration-200 ${
+          className={`${isTopModal ? "pointer-events-auto" : "pointer-events-none"} flex max-h-[var(--mobile-sheet-max-height)] w-full flex-col ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:block md:max-h-[85vh] md:rounded-2xl md:pb-6 md:!transform-none md:transition-all md:duration-200 ${
             entered && !isClosing
               ? "md:scale-100 md:opacity-100"
               : "md:scale-95 md:opacity-0"
+          } ${
+            hasChildModal ? "brightness-95 md:brightness-100" : ""
           } ${className}`}
         >
           {/* Mobile Top Drag Handle Area (44px height for comfortable touch targeting) */}
