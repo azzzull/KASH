@@ -202,16 +202,33 @@ function CompactComparisonLine({
     const percentText = percentage ? ` (${delta > 0 ? "+" : delta < 0 ? "-" : ""}${percentage}%)` : "";
 
     return (
-        <p className={`flex min-w-0 items-center gap-1 text-[11px] font-extrabold ${tone}`}>
-            <Icon aria-hidden="true" size={13} strokeWidth={2.4} />
-            <span className="truncate">
-                {formatSignedCurrencyDelta(delta, currency)}
-                {percentText}
-                {withPreviousLabel
-                    ? ` ${t("dashboard.vsPeriod", { period: withPreviousLabel }) || `vs ${withPreviousLabel}`}`
-                    : ""}
-            </span>
-        </p>
+        <div className="min-w-0">
+            <p
+                className={`flex min-w-0 items-center gap-1 ${
+                    variant === "hero"
+                        ? "text-xs font-extrabold"
+                        : "text-[11px] font-extrabold md:text-xs"
+                } ${tone}`}
+            >
+                <Icon aria-hidden="true" size={13} strokeWidth={2.4} />
+                <span className="truncate">
+                    {formatSignedCurrencyDelta(delta, currency)}
+                    {percentText}
+                </span>
+            </p>
+            {withPreviousLabel ? (
+                <p
+                    className={
+                        variant === "hero"
+                            ? "mt-0.5 truncate text-[10px] font-bold text-white/55"
+                            : "mt-0.5 truncate text-[10px] font-bold text-slate-500"
+                    }
+                >
+                    {t("dashboard.vsPeriod", { period: withPreviousLabel }) ||
+                        `vs ${withPreviousLabel}`}
+                </p>
+            ) : null}
+        </div>
     );
 }
 
@@ -529,10 +546,10 @@ function HeroCard({
                 )}
             </p>
 
-            {/* Net Worth breakdown mini tiles */}
+            {/* Net Worth breakdown flat metrics */}
             {breakdownTiles.length > 0 ? (
-                <div className="mt-4 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="flex min-w-max flex-nowrap gap-2 px-1">
+                <div className="mt-3 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex min-w-max flex-nowrap px-1">
                         {breakdownTiles.map((item) => {
                             const percent =
                                 item.percentBase > 0
@@ -546,9 +563,9 @@ function HeroCard({
                             return (
                                 <div
                                     key={item.key}
-                                    className="w-[7.7rem] shrink-0 rounded-xl border border-white/10 bg-white/10 p-3 snap-start"
+                                    className="w-[6.7rem] shrink-0 border-r border-white/15 px-3 py-1.5 first:pl-0 last:border-r-0 snap-start"
                                 >
-                                    <p className="truncate text-[11px] font-extrabold text-white/75">
+                                    <p className="truncate text-[11px] font-extrabold text-white/60">
                                         {item.label}
                                     </p>
                                     <p className="mt-1 truncate text-sm font-black text-white">
@@ -558,7 +575,7 @@ function HeroCard({
                                             balancesVisible,
                                         )}
                                     </p>
-                                    <p className="mt-1 text-[11px] font-extrabold text-white/55">
+                                    <p className="mt-0.5 text-[11px] font-extrabold text-white/45">
                                         {percent}%
                                     </p>
                                 </div>
@@ -598,17 +615,17 @@ function QuickActions() {
     ];
 
     return (
-        <div className="grid grid-cols-4 gap-2">
+        <div className="flex items-center gap-2">
             {actions.map((action) => (
                 <Link
                     key={action.to}
                     to={action.to}
-                    className="flex min-h-20 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-slate-200/60 bg-white px-2 py-2.5 text-center shadow-card transition hover:border-kash-emerald/35 hover:shadow-card-hover active:bg-kash-selected/40 md:min-h-0 md:flex-none md:flex-row md:px-5"
+                    className="flex flex-1 min-w-0 flex-col items-center gap-1 rounded-xl py-2 text-center transition hover:bg-white/80 active:bg-white md:flex-none md:flex-row md:px-5"
                 >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark ring-1 ring-kash-emerald/10">
-                        <action.icon size={20} strokeWidth={2.2} />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald">
+                        <action.icon size={20} strokeWidth={2} />
                     </div>
-                    <span className="max-w-full truncate text-[11px] font-extrabold text-slate-800">
+                    <span className="max-w-full truncate text-[11px] font-bold text-slate-600">
                         {action.label}
                     </span>
                 </Link>
@@ -621,13 +638,16 @@ function QuickActions() {
 function CashFlowRow({
     balancesVisible,
     currency,
+    selectedMonth,
     summary,
 }: {
     balancesVisible: boolean;
     currency: string;
+    selectedMonth: Date;
     summary: DashboardSummary;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
+    const previousMonthLabel = getPreviousMonthLabel(selectedMonth, locale);
     const items = [
         {
             key: "income",
@@ -674,7 +694,7 @@ function CashFlowRow({
                         {item.label}
                     </p>
                     <p
-                        className={`mt-1 truncate text-xs sm:text-base md:text-xl font-extrabold ${item.tone}`}
+                        className={`mt-1 truncate text-base font-extrabold md:text-xl ${item.tone}`}
                     >
                         {formatPrivateAmount(
                             item.value,
@@ -687,6 +707,7 @@ function CashFlowRow({
                             change={item.change}
                             currency={currency}
                             metric={item.metric}
+                            withPreviousLabel={previousMonthLabel}
                         />
                     </div>
                 </div>
@@ -1765,6 +1786,7 @@ export function DashboardPage() {
             {/* Monthly Cash Flow — compact row */}
             <CashFlowRow
                 balancesVisible={balancesVisible}
+                selectedMonth={selectedMonth}
                 summary={summary}
                 currency={currency}
             />
