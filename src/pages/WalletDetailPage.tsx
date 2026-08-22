@@ -791,16 +791,16 @@ export function WalletDetailPage() {
   const canEditInitialBalance = transactionCount === 0;
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
   const heroMetadata = (
-    <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs font-semibold text-white/90 sm:grid-cols-3">
-      <div>
+    <div className="mt-4 flex max-w-full flex-nowrap gap-2 overflow-x-auto border-t border-white/15 pt-3 text-xs font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <div className="min-w-[8.5rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.type") || "Tipe Dompet"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">{typeOption.label}</p>
       </div>
-      <div>
+      <div className="min-w-[6rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.currency") || "Mata Uang"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">{wallet.currency}</p>
       </div>
-      <div className="col-span-2 sm:col-span-1">
+      <div className="min-w-[10.5rem] shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.includeInNetWorth") || "Kekayaan Bersih"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">
           {wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")}
@@ -863,16 +863,19 @@ export function WalletDetailPage() {
             {formatCurrency(currentEquity, wallet.currency)}
           </p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-              {t("wallets.netContributions") || "Modal Bersih"}: {formatCurrency(netContributions, wallet.currency)}
+          <div className="mt-6 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+              <span className="font-medium text-white/65">{t("wallets.netContributions") || "Modal Bersih"}: </span>
+              <span className="font-extrabold text-white">{formatCurrency(netContributions, wallet.currency)}</span>
             </span>
-            <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-              {t("wallets.totalPnL") || "Total P/L"}: {totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL, wallet.currency)}
+            <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+              <span className="font-medium text-white/65">{t("wallets.totalPnL") || "Total P/L"}: </span>
+              <span className="font-extrabold text-white">{totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL, wallet.currency)}</span>
             </span>
             {realizedPnL !== 0 ? (
-              <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90">
-                {t("wallets.realizedPnL") || "Terealisasi"}: {realizedPnL >= 0 ? "+" : ""}{formatCurrency(realizedPnL, wallet.currency)}
+              <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+                <span className="font-medium text-white/65">{t("wallets.realizedPnL") || "Terealisasi"}: </span>
+                <span className="font-extrabold text-white">{realizedPnL >= 0 ? "+" : ""}{formatCurrency(realizedPnL, wallet.currency)}</span>
               </span>
             ) : null}
           </div>
