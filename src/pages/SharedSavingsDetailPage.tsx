@@ -35,6 +35,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
@@ -89,6 +90,8 @@ export function SharedSavingsDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [leavingSpace, setLeavingSpace] = useState(false);
 
   // Modal States
   const [showContributeModal, setShowContributeModal] = useState(false);
@@ -216,13 +219,19 @@ export function SharedSavingsDetailPage() {
       alert("Anda adalah Account Holder tabungan ini. Silakan tunjuk anggota lain sebagai Account Holder terlebih dahulu sebelum keluar.");
       return;
     }
-    if (!confirm("Apakah Anda yakin ingin keluar dari tabungan bersama ini?")) return;
+    setShowLeaveDialog(true);
+  };
 
+  const confirmLeaveSpace = async () => {
+    if (!id) return;
+    setLeavingSpace(true);
     try {
       await removeSharedSavingsMember(id, currentUserId);
+      setShowLeaveDialog(false);
       navigate("/shared-savings");
     } catch (err: any) {
       alert(err.message || "Gagal keluar dari tabungan.");
+      setLeavingSpace(false);
     }
   };
 
@@ -900,7 +909,7 @@ export function SharedSavingsDetailPage() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => void handleLeaveSpace()}
+              onClick={handleLeaveSpace}
               className="min-h-9 px-3.5 text-xs text-kash-expense hover:bg-red-100"
             >
               <LogOut size={14} /> {t("shared.leaveSpaceBtn")}
@@ -983,6 +992,23 @@ export function SharedSavingsDetailPage() {
         onClose={() => setShowAccountHolderModal(false)}
         onUpdated={() => void loadData()}
       />
+
+      {showLeaveDialog ? (
+        <ConfirmationDialog
+          confirmLabel={t("shared.leaveSpaceBtn")}
+          description={t("shared.leaveSpaceDesc")}
+          icon={LogOut}
+          isLoading={leavingSpace}
+          itemLabel={space.name}
+          onCancel={() => {
+            if (leavingSpace) return;
+            setShowLeaveDialog(false);
+          }}
+          onConfirm={() => void confirmLeaveSpace()}
+          title={t("shared.leaveSpaceTitle")}
+          tone="danger"
+        />
+      ) : null}
 
       {/* Reject Request Dialog */}
       {rejectingRequest && (

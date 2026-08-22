@@ -24,7 +24,7 @@ async function getAuthenticatedUserId(): Promise<string> {
 }
 
 /**
- * Fetch all shared savings spaces where the user is an owner, active member, or past member.
+ * Fetch all shared savings spaces where the user is an owner or active member.
  */
 export async function getSharedSavingsSpaces(): Promise<SharedSavingsSpaceSummary[]> {
   const userId = await getAuthenticatedUserId();
@@ -67,9 +67,13 @@ export async function getSharedSavingsSpaces(): Promise<SharedSavingsSpaceSummar
 
   const profilesMap = new Map((profilesResult.data ?? []).map((p) => [p.id, p.full_name || p.email]));
   const userSharesMap = new Map<string, number>();
+  const activeUserSpaceIds = new Set<string>();
   (sharesResult.data ?? []).forEach((row) => {
     if (row.user_id === userId) {
       userSharesMap.set(row.shared_savings_id, toNumber(row.current_share));
+      if (row.member_status === "active") {
+        activeUserSpaceIds.add(row.shared_savings_id);
+      }
     }
   });
 
@@ -85,7 +89,7 @@ export async function getSharedSavingsSpaces(): Promise<SharedSavingsSpaceSummar
   });
 
   const mySpaces = spacesData.filter((space) => {
-    return space.owner_user_id === userId || userSharesMap.has(space.shared_savings_id);
+    return space.owner_user_id === userId || activeUserSpaceIds.has(space.shared_savings_id);
   });
 
   return mySpaces.map((space): SharedSavingsSpaceSummary => {
