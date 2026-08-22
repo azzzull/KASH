@@ -5,10 +5,11 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from "@headlessui/react";
-import { Check, ChevronDown, Plus, User, UserPlus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, ChevronDown, User, UserPlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Counterparty } from "../../types/domain";
 import { useI18n } from "../../i18n";
+import { autoScrollFieldIntoContainer } from "../ui/SelectField";
 
 export type CounterpartyComboboxProps = {
   counterparties: Counterparty[];
@@ -33,6 +34,7 @@ export function CounterpartyCombobox({
 }: CounterpartyComboboxProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const effectiveLabel = label ?? (`${t("debts.personOrBusiness") || "Orang / Kontak"} *`);
   const effectivePlaceholder = placeholder ?? (t("debts.searchOrAddPerson") || "Pilih atau ketik nama orang / kontak...");
@@ -87,39 +89,93 @@ export function CounterpartyCombobox({
       onChange={handleSelect}
       onClose={() => setQuery("")}
     >
-      <div className="relative w-full max-w-full min-w-0">
-        {effectiveLabel && (
-          <label
-            htmlFor={id}
-            className="block text-sm font-bold text-slate-900"
-          >
-            {effectiveLabel}
-          </label>
-        )}
+      {({ open }) => (
+        <CounterpartyComboboxInner
+          disabled={disabled}
+          effectiveLabel={effectiveLabel}
+          effectivePlaceholder={effectivePlaceholder}
+          filteredCounterparties={filteredCounterparties}
+          handleInputChange={handleInputChange}
+          hasExactMatch={hasExactMatch}
+          id={id}
+          inputRef={inputRef}
+          open={open}
+          query={query}
+          required={required}
+          t={t}
+        />
+      )}
+    </Combobox>
+  );
+}
 
-        <div className="relative mt-2">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-600">
-            <User size={16} />
-          </div>
+function CounterpartyComboboxInner({
+  effectiveLabel,
+  effectivePlaceholder,
+  filteredCounterparties,
+  handleInputChange,
+  hasExactMatch,
+  id,
+  inputRef,
+  open,
+  query,
+  required,
+  t,
+}: {
+  disabled: boolean;
+  effectiveLabel: string;
+  effectivePlaceholder: string;
+  filteredCounterparties: Counterparty[];
+  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  hasExactMatch: boolean;
+  id: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  open: boolean;
+  query: string;
+  required: boolean;
+  t: (key: string, options?: any) => string;
+}) {
+  useEffect(() => {
+    if (open && inputRef.current) {
+      autoScrollFieldIntoContainer(inputRef.current);
+    }
+  }, [open, inputRef]);
 
-          <ComboboxInput
-            id={id}
-            displayValue={(item: Counterparty | { name: string } | null) =>
-              item?.name ?? value ?? ""
-            }
-            onChange={handleInputChange}
-            placeholder={effectivePlaceholder}
-            required={required}
-            className="block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white pl-9 pr-10 text-sm font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] disabled:bg-slate-50 disabled:text-slate-600"
-          />
+  return (
+    <div className="relative w-full max-w-full min-w-0">
+      {effectiveLabel && (
+        <label
+          htmlFor={id}
+          className="block text-sm font-bold text-slate-900"
+        >
+          {effectiveLabel}
+        </label>
+      )}
 
-          <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-600 hover:text-slate-900">
-            <ChevronDown size={18} strokeWidth={2.2} />
-          </ComboboxButton>
+      <div className="relative mt-2">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-600">
+          <User size={16} />
         </div>
 
-        <ComboboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none">
-          {/* Create new counterparty option if query is not empty and no exact match */}
+        <ComboboxInput
+          ref={inputRef}
+          id={id}
+          displayValue={(item: Counterparty | { name: string } | null) =>
+            item?.name ?? ""
+          }
+          onChange={handleInputChange}
+          placeholder={effectivePlaceholder}
+          required={required}
+          className="block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white pl-9 pr-10 text-sm font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] disabled:bg-slate-50 disabled:text-slate-600"
+        />
+
+        <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-600 hover:text-slate-900">
+          <ChevronDown size={18} strokeWidth={2.2} />
+        </ComboboxButton>
+      </div>
+
+      <ComboboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none">
+        {/* Create new counterparty option if query is not empty and no exact match */}
           {query.trim().length > 0 && !hasExactMatch && (
             <ComboboxOption
               value={{ id: "", name: query.trim(), user_id: "", created_at: "", updated_at: "" }}
@@ -166,7 +222,6 @@ export function CounterpartyCombobox({
             </div>
           )}
         </ComboboxOptions>
-      </div>
-    </Combobox>
+    </div>
   );
 }
