@@ -45,6 +45,7 @@ let savedScrollY = 0;
 const MEDIUM_DETENT_DVH = 62;
 const LARGE_DETENT_DVH = 90;
 const LARGE_TOP_GAP_PX = 28;
+const KEYBOARD_FIELD_GAP_PX = 18;
 const MODAL_LAYER_BASE = 1000;
 const MODAL_LAYER_STEP = 20;
 
@@ -108,6 +109,29 @@ function isEditableElement(element: Element | null) {
     tagName === "select" ||
     element.isContentEditable
   );
+}
+
+function isKeyboardEditableElement(element: Element | null) {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element instanceof HTMLTextAreaElement) return !element.disabled && !element.readOnly;
+  if (element.isContentEditable) return true;
+  if (!(element instanceof HTMLInputElement)) return false;
+  if (element.disabled || element.readOnly) return false;
+
+  const nonTextInputTypes = new Set([
+    "button",
+    "checkbox",
+    "color",
+    "file",
+    "hidden",
+    "image",
+    "radio",
+    "range",
+    "reset",
+    "submit",
+  ]);
+
+  return !nonTextInputTypes.has(element.type);
 }
 
 function isMobileViewport() {
@@ -213,11 +237,20 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const scrollBodyRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<number | null>(null);
+  const focusedEditableRef = useRef<HTMLElement | null>(null);
+  const keyboardFrameRef = useRef<number | null>(null);
+  const keyboardFallbackTimeoutRef = useRef<number | null>(null);
+  const keyboardDetentExpansionPendingRef = useRef(false);
+  const sheetDetentRef = useRef<SheetDetent>("medium");
+  const isTopModalRef = useRef(false);
   const modalId = modalIdRef.current;
   const stackSnapshot = getModalStackSnapshot(modalId);
   const stackIndex = stackSnapshot.index < 0 ? modalStack.length : stackSnapshot.index;
   const isTopModal = stackSnapshot.isTop || stackSnapshot.index < 0;
   const hasChildModal = stackSnapshot.hasChild;
+
+  sheetDetentRef.current = sheetDetent;
+  isTopModalRef.current = isTopModal;
 
   useEffect(() => subscribeModalStack(() => setStackVersion((version) => version + 1)), []);
 
@@ -227,6 +260,13 @@ export function Modal({
       if (closeTimeoutRef.current !== null) {
         window.clearTimeout(closeTimeoutRef.current);
       }
+      if (keyboardFrameRef.current !== null) {
+        window.cancelAnimationFrame(keyboardFrameRef.current);
+      }
+      if (keyboardFallbackTimeoutRef.current !== null) {
+        window.clearTimeout(keyboardFallbackTimeoutRef.current);
+      }
+      keyboardDetentExpansionPendingRef.current = false;
     };
   }, []);
 
@@ -296,6 +336,160 @@ export function Modal({
     return () => {
       window.visualViewport?.removeEventListener("resize", updateVisualViewportHeight);
       window.removeEventListener("resize", updateVisualViewportHeight);
+    };
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined" || !isMobileViewport()) return;
+
+    const getStickyFooterInset = (scrollBody: HTMLElement, focusedElement: HTMLElement) => {
+      const scrollRect = scrollBody.getBoundingClientRect();
+      let footerInset = 0;
+
+      scrollBody.querySelectorAll<HTMLElement>("*").forEach((element) => {
+        if (element === focusedElement || element.contains(focusedElement)) return;
+
+        const style = window.getComputedStyle(element);
+        if (style.position !== "sticky" && style.position !== "fixed") return;
+        if (style.bottom === "auto") return;
+
+        const rect = element.getBoundingClientRect();
+        const isBottomOverlay = rect.bottom >= scrollRect.bottom - 96 && rect.top < scrollRect.bottom;
+        if (!isBottomOverlay) return;
+
+        footerInset = Math.max(footerInset, Math.min(rect.height, scrollRect.height * 0.45));
+      });
+
+      return footerInset;
+    };
+
+    const adjustFocusedField = (behavior: ScrollBehavior = "smooth") => {
+      const focusedElement = focusedEditableRef.current;
+      const panel = panelRef.current;
+      const scrollBody = scrollBodyRef.current;
+
+      if (!focusedElement || !panel || !scrollBody || !isTopModalRef.current) return;
+      if (!document.contains(focusedElement) || !panel.contains(focusedElement)) return;
+      if (!isKeyboardEditableElement(focusedElement)) return;
+
+      const viewport = window.visualViewport;
+      const viewportBottom = viewport
+        ? viewport.height + Math.max(0, viewport.offsetTop)
+        : window.innerHeight;
+      const panelRect = panel.getBoundingClientRect();
+      const scrollRect = scrollBody.getBoundingClientRect();
+      const fieldRect = focusedElement.getBoundingClientRect();
+      const stickyFooterInset = getStickyFooterInset(scrollBody, focusedElement);
+      const visibleTop = Math.max(scrollRect.top, panelRect.top) + KEYBOARD_FIELD_GAP_PX;
+      const visibleBottom = Math.min(scrollRect.bottom, viewportBottom) - stickyFooterInset - KEYBOARD_FIELD_GAP_PX;
+      const fieldCannotFit = fieldRect.height + KEYBOARD_FIELD_GAP_PX * 2 > Math.max(80, visibleBottom - visibleTop);
+      const isHiddenBelow = fieldRect.bottom > visibleBottom;
+      const isHiddenAbove = fieldRect.top < visibleTop;
+
+      if (
+        (isHiddenBelow || fieldCannotFit) &&
+        sheetDetentRef.current === "medium" &&
+        !keyboardDetentExpansionPendingRef.current
+      ) {
+        keyboardDetentExpansionPendingRef.current = true;
+        setSheetDetent("large");
+
+        const handleTransitionEnd = (event: TransitionEvent) => {
+          if (event.target !== panel || event.propertyName !== "max-height") return;
+          panel.removeEventListener("transitionend", handleTransitionEnd);
+          if (keyboardFallbackTimeoutRef.current !== null) {
+            window.clearTimeout(keyboardFallbackTimeoutRef.current);
+            keyboardFallbackTimeoutRef.current = null;
+          }
+          keyboardDetentExpansionPendingRef.current = false;
+          scheduleFocusedFieldAdjustment("smooth");
+        };
+
+        panel.addEventListener("transitionend", handleTransitionEnd);
+        keyboardFallbackTimeoutRef.current = window.setTimeout(() => {
+          panel.removeEventListener("transitionend", handleTransitionEnd);
+          keyboardFallbackTimeoutRef.current = null;
+          keyboardDetentExpansionPendingRef.current = false;
+          scheduleFocusedFieldAdjustment("smooth");
+        }, 460);
+        return;
+      }
+
+      let nextScrollTop = scrollBody.scrollTop;
+
+      if (fieldRect.bottom > visibleBottom) {
+        nextScrollTop += fieldRect.bottom - visibleBottom;
+      } else if (fieldRect.top < visibleTop) {
+        nextScrollTop -= visibleTop - fieldRect.top;
+      } else {
+        return;
+      }
+
+      const maxScrollTop = scrollBody.scrollHeight - scrollBody.clientHeight;
+      const clampedScrollTop = Math.max(0, Math.min(maxScrollTop, nextScrollTop));
+      if (Math.abs(clampedScrollTop - scrollBody.scrollTop) < 2) return;
+
+      scrollBody.scrollTo({
+        top: clampedScrollTop,
+        behavior,
+      });
+    };
+
+    const scheduleFocusedFieldAdjustment = (behavior: ScrollBehavior = "smooth") => {
+      if (keyboardFrameRef.current !== null) {
+        window.cancelAnimationFrame(keyboardFrameRef.current);
+      }
+
+      keyboardFrameRef.current = window.requestAnimationFrame(() => {
+        keyboardFrameRef.current = window.requestAnimationFrame(() => {
+          keyboardFrameRef.current = null;
+          adjustFocusedField(behavior);
+        });
+      });
+    };
+
+    const handleFocusIn = (event: FocusEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (!isKeyboardEditableElement(target)) return;
+      if (!panelRef.current?.contains(target)) return;
+
+      focusedEditableRef.current = target;
+      scheduleFocusedFieldAdjustment("smooth");
+    };
+
+    const handleFocusOut = (event: FocusEvent) => {
+      if (event.target === focusedEditableRef.current) {
+        focusedEditableRef.current = null;
+      }
+    };
+
+    const handleViewportChange = () => {
+      if (!focusedEditableRef.current) return;
+      scheduleFocusedFieldAdjustment("smooth");
+    };
+
+    const panel = panelRef.current;
+    const viewport = window.visualViewport;
+
+    panel?.addEventListener("focusin", handleFocusIn);
+    panel?.addEventListener("focusout", handleFocusOut);
+    viewport?.addEventListener("resize", handleViewportChange);
+    viewport?.addEventListener("scroll", handleViewportChange);
+
+    return () => {
+      panel?.removeEventListener("focusin", handleFocusIn);
+      panel?.removeEventListener("focusout", handleFocusOut);
+      viewport?.removeEventListener("resize", handleViewportChange);
+      viewport?.removeEventListener("scroll", handleViewportChange);
+      if (keyboardFrameRef.current !== null) {
+        window.cancelAnimationFrame(keyboardFrameRef.current);
+        keyboardFrameRef.current = null;
+      }
+      if (keyboardFallbackTimeoutRef.current !== null) {
+        window.clearTimeout(keyboardFallbackTimeoutRef.current);
+        keyboardFallbackTimeoutRef.current = null;
+      }
+      keyboardDetentExpansionPendingRef.current = false;
     };
   }, [mounted]);
 
