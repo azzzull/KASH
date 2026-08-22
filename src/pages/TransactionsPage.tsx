@@ -236,9 +236,8 @@ function TransactionRow({
     <button
       type="button"
       onClick={onSelect}
-      className={`kash-activity-row block w-full text-left transition ${
-        isSelected ? "bg-kash-selected/60" : ""
-      } ${isVoid ? "opacity-60" : ""}`}
+      className={`kash-activity-row block w-full text-left transition ${isSelected ? "bg-kash-selected/60" : ""
+        } ${isVoid ? "opacity-60" : ""}`}
     >
       {/* Mobile layout */}
       <span className="flex items-center gap-3 px-1 py-2.5 md:hidden">
@@ -395,49 +394,49 @@ function TransactionFormModal({
         mode === "duplicate"
           ? transaction.type === "income"
             ? await createIncome({
+              amount: amountValue,
+              categoryId,
+              note: noteValue,
+              title: noteValue ?? categoryName,
+              transactionDate,
+              walletId,
+            })
+            : transaction.type === "expense"
+              ? await createExpense({
                 amount: amountValue,
                 categoryId,
+                envelopeId: envelopeId || null,
                 note: noteValue,
                 title: noteValue ?? categoryName,
                 transactionDate,
                 walletId,
               })
-            : transaction.type === "expense"
-              ? await createExpense({
+              : transaction.type === "transfer"
+                ? await createTransfer({
                   amount: amountValue,
-                  categoryId,
-                  envelopeId: envelopeId || null,
+                  destinationWalletId,
                   note: noteValue,
-                  title: noteValue ?? categoryName,
+                  transactionDate,
+                  transferFee: feeValue,
+                  walletId,
+                })
+                : await createAdjustment({
+                  amount: amountValue,
+                  reason: noteValue ?? "Balance Adjustment",
                   transactionDate,
                   walletId,
                 })
-              : transaction.type === "transfer"
-                ? await createTransfer({
-                    amount: amountValue,
-                    destinationWalletId,
-                    note: noteValue,
-                    transactionDate,
-                    transferFee: feeValue,
-                    walletId,
-                  })
-                : await createAdjustment({
-                    amount: amountValue,
-                    reason: noteValue ?? "Balance Adjustment",
-                    transactionDate,
-                    walletId,
-                  })
           : await updateTransaction(transaction, {
-              amount: amountValue,
-              categoryId: transaction.type === "income" || transaction.type === "expense" ? categoryId : null,
-              envelopeId: transaction.type === "expense" ? (envelopeId || null) : null,
-              destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
-              note: noteValue,
-              title: transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
-              transactionDate,
-              transferFee: feeValue,
-              walletId,
-            });
+            amount: amountValue,
+            categoryId: transaction.type === "income" || transaction.type === "expense" ? categoryId : null,
+            envelopeId: transaction.type === "expense" ? (envelopeId || null) : null,
+            destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
+            note: noteValue,
+            title: transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
+            transactionDate,
+            transferFee: feeValue,
+            walletId,
+          });
 
       if (result.error) {
         setError(t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.");
@@ -673,7 +672,7 @@ function AdvancedFilterContent({
   return (
     <div>
       {!hideHeader && (
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-sm font-extrabold text-slate-900">{t("transactions.filterTitle") || "Filter Transaksi"}</h2>
             <p className="mt-0.5 text-xs font-medium text-slate-500">{t("transactions.filterSubtitle") || "Persempit berdasarkan tanggal, dompet, kategori, atau status."}</p>
@@ -894,11 +893,10 @@ export function TransactionsPage() {
                 <button
                   type="button"
                   onClick={() => setFilterPanelOpen((current) => !current)}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition ${
-                    activeAdvancedFilters > 0
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold transition ${activeAdvancedFilters > 0
                       ? "border-kash-emerald bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
                       : "border-slate-200/60 bg-white text-slate-700 hover:border-kash-emerald/40 hover:bg-kash-selected"
-                  }`}
+                    }`}
                 >
                   <Filter aria-hidden="true" size={14} />
                   {t("common.filter") || "Filter"}
