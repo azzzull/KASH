@@ -427,6 +427,43 @@ function buildNetWorthTrend(period: AnalyticsPeriod, wallets: WalletWithBalance[
   }));
 }
 
+export function getEmptyAnalyticsSummary(options: AnalyticsSummaryOptions): AnalyticsSummary {
+  const period = resolvePeriod(options);
+
+  return {
+    categorySpending: [],
+    expense: {
+      amount: 0,
+      change: calculateMetricChange(0, 0),
+    },
+    income: {
+      amount: 0,
+      change: calculateMetricChange(0, 0),
+    },
+    incomeExpenseTrend: periodBucketRanges(period).map((bucket) => ({
+      end: bucket.end.toISOString(),
+      expense: 0,
+      income: 0,
+      key: bucket.key,
+      label: bucket.label,
+      start: bucket.start.toISOString(),
+    })),
+    netCashFlow: {
+      amount: 0,
+      change: calculateMetricChange(0, 0),
+    },
+    netWorthTrend: periodBucketRanges(period).map((bucket) => ({
+      amount: 0,
+      key: bucket.key,
+      label: bucket.label,
+    })),
+    period,
+    transferFees: 0,
+    walletDistribution: [],
+    walletNetWorth: 0,
+  };
+}
+
 export async function getAnalyticsSummary(options: AnalyticsSummaryOptions): Promise<AnalyticsSummary> {
   const userId = await getAuthenticatedUserId();
   const period = resolvePeriod(options);

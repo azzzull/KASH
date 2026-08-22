@@ -1,7 +1,6 @@
 import {
   BarChart3,
   CalendarDays,
-  ChevronDown,
   ChevronRight,
   PieChart,
   Receipt,
@@ -15,15 +14,15 @@ import {
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAnalyticsSummary, type AnalyticsPeriodKey, type AnalyticsSummary } from "../lib/analytics";
+import { getAnalyticsSummary, getEmptyAnalyticsSummary, type AnalyticsPeriodKey, type AnalyticsSummary } from "../lib/analytics";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type { BudgetWithProgress } from "../types/domain";
 import { formatCurrency } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
-import { Button } from "../components/ui/Button";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { SelectField } from "../components/ui/SelectField";
 
 import { useI18n, type TranslationKey } from "../i18n";
 
@@ -42,6 +41,11 @@ function localDateInputValue(date: Date) {
 function firstDayOfCurrentMonth() {
   const today = new Date();
   return localDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1));
+}
+
+function isEmptyAnalyticsPeriodError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /no rows?|0 rows?|not found|no data|empty/i.test(message);
 }
 
 function AnalyticsCard({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -114,7 +118,7 @@ function AnalyticsHeroStory({
     : formatCurrency(netCashFlow, currency);
 
   return (
-    <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
+    <section className="kash-hero-card overflow-visible p-5 sm:p-6 min-w-0 max-w-full">
       {/* Top Row: Title Left + Period Picker Right */}
       <div className="flex items-start justify-between gap-3">
         <span className="text-xs font-bold uppercase tracking-wider text-white/70">
@@ -793,30 +797,21 @@ function PeriodControls({
 
   return (
     <div className="flex flex-col items-end gap-2 min-w-0">
-      <label className="relative shrink-0">
-        <span className="sr-only">{t("analytics.period") || "Period"}</span>
-        <CalendarDays
-          aria-hidden="true"
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-white/85"
-          size={13}
-        />
-        <ChevronDown
-          aria-hidden="true"
-          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/80"
-          size={13}
-        />
-        <select
+      <div className="relative w-40 shrink-0">
+        <CalendarDays aria-hidden="true" className="pointer-events-none absolute left-2.5 top-4 z-10 -translate-y-1/2 text-white/85" size={13} />
+        <SelectField
+          aria-label={t("analytics.period") || "Period"}
           value={period}
           onChange={(event) => onPeriodChange(event.target.value as AnalyticsPeriodKey)}
-          className="h-8 max-w-[10.5rem] appearance-none rounded-full border border-white/15 bg-white/10 py-0 pl-8 pr-7 text-xs font-extrabold text-white outline-none transition hover:bg-white/15 focus:ring-2 focus:ring-white/30"
+          className="[&_button]:mt-0 [&_button]:h-8 [&_button]:rounded-full [&_button]:border-white/15 [&_button]:bg-white/10 [&_button]:py-0 [&_button]:pl-8 [&_button]:pr-2.5 [&_button]:text-xs [&_button]:font-extrabold [&_button]:text-white [&_button:hover]:bg-white/15 [&_button:focus]:ring-white/30 [&_button_span]:text-white [&_svg]:text-white/80"
         >
           {periodOptions.map((option) => (
-            <option className="text-slate-900" key={option.value} value={option.value}>
+            <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </select>
-      </label>
+        </SelectField>
+      </div>
 
       {period === "custom" && (
         <div className="flex items-center gap-1.5 rounded-xl bg-white/10 p-1.5 ring-1 ring-white/10">
@@ -924,14 +919,22 @@ export function AnalyticsPage() {
   const loadAnalytics = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    const summaryOptions = {
+      customEndDate: period === "custom" ? customEndDate : undefined,
+      customStartDate: period === "custom" ? customStartDate : undefined,
+      period,
+    };
+
     try {
-      const data = await getAnalyticsSummary({
-        customEndDate: period === "custom" ? customEndDate : undefined,
-        customStartDate: period === "custom" ? customStartDate : undefined,
-        period,
-      });
+      const data = await getAnalyticsSummary(summaryOptions);
       setSummary(data);
     } catch (loadError) {
+      if (isEmptyAnalyticsPeriodError(loadError)) {
+        setSummary(getEmptyAnalyticsSummary(summaryOptions));
+        setError(null);
+        return;
+      }
+
       setError(
         loadError instanceof Error ? loadError.message : "Unable to load analytics summary. Please retry.",
       );
