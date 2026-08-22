@@ -1045,7 +1045,7 @@ export const en = {
   "analytics.netWorthDirection": "Net Worth Trend Direction",
 
   // Categories & Envelopes
-  "categories.title": "Categories & Envelopes",
+  "categories.title": "Categories",
   "categories.subtitle": "Manage transaction categories and special budget envelopes.",
   "categories.transactionCategories": "Transaction Categories",
   "categories.envelopesList": "Spending Envelopes",

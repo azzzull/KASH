@@ -1045,7 +1045,7 @@ export const id = {
   "analytics.netWorthDirection": "Tren Kekayaan Bersih",
 
   // Categories & Envelopes
-  "categories.title": "Kategori & Amplop",
+  "categories.title": "Kategori",
   "categories.subtitle": "Kelola kategori transaksi dan pos amplop anggaran khusus.",
   "categories.transactionCategories": "Kategori Transaksi",
   "categories.envelopesList": "Amplop Pengeluaran",
