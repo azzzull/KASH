@@ -52,9 +52,10 @@ function getOptions(children: ReactNode): SelectOption[] {
 export function autoScrollFieldIntoContainer(triggerElement: HTMLElement | null) {
   if (!triggerElement || typeof window === "undefined") return;
 
-  requestAnimationFrame(() => {
-    const container = triggerElement.closest(
-      '[data-modal-body="true"], [role="dialog"] .overflow-y-auto, div.overflow-y-auto, form'
+  const scrollFieldIntoContainer = () => {
+    const container = (
+      triggerElement.closest('[data-bottom-sheet-scroll-owner="true"]') ??
+      triggerElement.closest('[data-modal-body="true"], [role="dialog"] .overflow-y-auto, div.overflow-y-auto, form')
     ) as HTMLElement | null;
 
     if (!container) return;
@@ -64,7 +65,7 @@ export function autoScrollFieldIntoContainer(triggerElement: HTMLElement | null)
 
     const parentDiv = triggerElement.parentElement;
     const optionsElement = (
-      parentDiv?.querySelector('[data-headlessui-state*="open"], .absolute.z-50') ??
+      parentDiv?.querySelector('.absolute.z-50, [data-headlessui-state*="open"]') ??
       container.querySelector('[data-headlessui-state*="open"]')
     ) as HTMLElement | null;
 
@@ -88,6 +89,35 @@ export function autoScrollFieldIntoContainer(triggerElement: HTMLElement | null)
         behavior: "smooth",
       });
     }
+  };
+
+  requestAnimationFrame(() => {
+    const container = triggerElement.closest('[data-bottom-sheet-scroll-owner="true"]') as HTMLElement | null;
+    const sheetPanel = triggerElement.closest('[data-bottom-sheet-panel="true"]') as HTMLElement | null;
+    const isMobileSheet = Boolean(sheetPanel && window.matchMedia("(max-width: 767px)").matches);
+
+    if (!container || !sheetPanel || !isMobileSheet) {
+      scrollFieldIntoContainer();
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const triggerRect = triggerElement.getBoundingClientRect();
+    const parentDiv = triggerElement.parentElement;
+    const optionsElement = (
+      parentDiv?.querySelector('.absolute.z-50, [data-headlessui-state*="open"]') ??
+      container.querySelector('[data-headlessui-state*="open"]')
+    ) as HTMLElement | null;
+    const optionsHeight = optionsElement ? optionsElement.getBoundingClientRect().height : 220;
+    const needsMoreSpace = triggerRect.bottom + optionsHeight + 16 > containerRect.bottom;
+
+    if (needsMoreSpace && sheetPanel.dataset.bottomSheetDetent !== "large") {
+      sheetPanel.dispatchEvent(new CustomEvent("kash:bottom-sheet-expand", { bubbles: true }));
+      window.setTimeout(scrollFieldIntoContainer, 180);
+      return;
+    }
+
+    scrollFieldIntoContainer();
   });
 }
 

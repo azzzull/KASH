@@ -40,6 +40,12 @@ let previousBodyStyles = {
 };
 let savedScrollY = 0;
 
+const MEDIUM_DETENT_DVH = 62;
+const LARGE_DETENT_DVH = 90;
+const LARGE_TOP_GAP_PX = 28;
+
+type SheetDetent = "medium" | "large";
+
 function lockBodyScroll() {
   if (typeof document === "undefined") return;
 
@@ -123,15 +129,19 @@ export function Modal({
   const [mounted, setMounted] = useState(isOpen);
   const [entered, setEntered] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [sheetDetent, setSheetDetent] = useState<SheetDetent>("medium");
+  const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
 
   // Gesture state
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isBodyDragging, setIsBodyDragging] = useState(false);
   const startYRef = useRef<number>(0);
   const currentYRef = useRef<number>(0);
   const startTimeRef = useRef<number>(0);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const scrollBodyRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<number | null>(null);
 
   // Clean up pending close timeout on unmount
@@ -150,6 +160,8 @@ export function Modal({
       setIsClosing(false);
       setDragY(0);
       setIsDragging(false);
+      setIsBodyDragging(false);
+      setSheetDetent("medium");
 
       let frame2: number;
       const frame1 = requestAnimationFrame(() => {
@@ -167,8 +179,27 @@ export function Modal({
       setMounted(false);
       setDragY(0);
       setIsDragging(false);
+      setIsBodyDragging(false);
+      setSheetDetent("medium");
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!mounted || typeof window === "undefined") return;
+
+    const updateVisualViewportHeight = () => {
+      setVisualViewportHeight(window.visualViewport?.height ?? window.innerHeight);
+    };
+
+    updateVisualViewportHeight();
+    window.visualViewport?.addEventListener("resize", updateVisualViewportHeight);
+    window.addEventListener("resize", updateVisualViewportHeight);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateVisualViewportHeight);
+      window.removeEventListener("resize", updateVisualViewportHeight);
+    };
+  }, [mounted]);
 
   // Animated Close Controller
   const handleRequestClose = () => {
@@ -214,7 +245,12 @@ export function Modal({
     const touch = e.touches[0];
     const deltaY = touch.clientY - startYRef.current;
 
-    if (deltaY > 0) {
+    if (deltaY < -32 && sheetDetent === "medium") {
+      setSheetDetent("large");
+      setDragY(0);
+      startYRef.current = touch.clientY;
+      currentYRef.current = touch.clientY;
+    } else if (deltaY > 0) {
       // Downward drag follows finger
       setDragY(deltaY);
       currentYRef.current = touch.clientY;
@@ -232,7 +268,10 @@ export function Modal({
     const elapsed = Math.max(1, Date.now() - startTimeRef.current);
     const velocity = deltaY / elapsed; // px per ms
 
-    if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
+    if (sheetDetent === "large" && deltaY > 48) {
+      setSheetDetent("medium");
+      setDragY(0);
+    } else if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
       // Threshold passed -> Dismiss with animated exit
       setDragY(400);
       handleRequestClose();
@@ -240,6 +279,44 @@ export function Modal({
       // Snap back smoothly
       setDragY(0);
     }
+  };
+
+  const handleBodyTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isClosing) return;
+    const touch = e.touches[0];
+    startYRef.current = touch.clientY;
+    currentYRef.current = touch.clientY;
+    startTimeRef.current = Date.now();
+    setIsBodyDragging(true);
+  };
+
+  const handleBodyTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isBodyDragging || isClosing) return;
+
+    const scrollBody = scrollBodyRef.current;
+    if (!scrollBody) return;
+
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - startYRef.current;
+    const hasOverflow = scrollBody.scrollHeight > scrollBody.clientHeight + 2;
+    const isAtTop = scrollBody.scrollTop <= 0;
+
+    if (sheetDetent === "medium" && hasOverflow && deltaY < -28) {
+      if (e.cancelable) e.preventDefault();
+      setSheetDetent("large");
+      setIsBodyDragging(false);
+      return;
+    }
+
+    if (sheetDetent === "large" && isAtTop && deltaY > 36 && dismissible) {
+      if (e.cancelable) e.preventDefault();
+      setSheetDetent("medium");
+      setIsBodyDragging(false);
+    }
+  };
+
+  const handleBodyTouchEnd = () => {
+    setIsBodyDragging(false);
   };
 
   // Non-passive TouchMove prevention on drag handle for iOS Safari
@@ -256,6 +333,20 @@ export function Modal({
     handleEl.addEventListener("touchmove", preventScroll, { passive: false });
     return () => {
       handleEl.removeEventListener("touchmove", preventScroll);
+    };
+  }, [mounted]);
+
+  useEffect(() => {
+    const panelEl = panelRef.current;
+    if (!panelEl) return;
+
+    const expandSheet = () => {
+      setSheetDetent("large");
+    };
+
+    panelEl.addEventListener("kash:bottom-sheet-expand", expandSheet);
+    return () => {
+      panelEl.removeEventListener("kash:bottom-sheet-expand", expandSheet);
     };
   }, [mounted]);
 
@@ -280,7 +371,7 @@ export function Modal({
 
   const mobileTransition = isDragging
     ? "none"
-    : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1)";
+    : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.26s cubic-bezier(0.32, 0.72, 0, 1)";
 
   // Backdrop opacity calculation
   const backdropOpacity = isClosing || !entered
@@ -288,6 +379,16 @@ export function Modal({
     : isDragging
     ? `opacity-${Math.max(20, Math.round(100 - (dragY / 300) * 80))}`
     : "opacity-100";
+
+  const largeDetentPx = visualViewportHeight
+    ? Math.max(320, Math.min(visualViewportHeight * (LARGE_DETENT_DVH / 100), visualViewportHeight - LARGE_TOP_GAP_PX))
+    : undefined;
+
+  const mobileMaxHeight = sheetDetent === "large"
+    ? largeDetentPx
+      ? `${largeDetentPx}px`
+      : `min(${LARGE_DETENT_DVH}dvh, calc(100dvh - env(safe-area-inset-top) - ${LARGE_TOP_GAP_PX}px))`
+    : `${MEDIUM_DETENT_DVH}dvh`;
 
   return (
     <div
@@ -308,8 +409,11 @@ export function Modal({
           style={{
             transform: mobileTransform,
             transition: mobileTransition,
-          }}
-          className={`pointer-events-auto w-full ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:rounded-2xl pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6 md:transform-none md:transition-all md:duration-200 ${
+            "--mobile-sheet-max-height": mobileMaxHeight,
+          } as React.CSSProperties}
+          data-bottom-sheet-panel="true"
+          data-bottom-sheet-detent={sheetDetent}
+          className={`pointer-events-auto flex max-h-[var(--mobile-sheet-max-height)] w-full flex-col ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:block md:max-h-[85vh] md:rounded-2xl md:pb-6 md:transform-none md:transition-all md:duration-200 ${
             entered && !isClosing
               ? "md:scale-100 md:opacity-100"
               : "md:scale-95 md:opacity-0"
@@ -330,7 +434,7 @@ export function Modal({
 
           {/* Header Region */}
           {(title || showCloseButton) ? (
-            <div className="flex items-start justify-between gap-4 px-5 pt-1 pb-1 md:px-6 md:pt-5 md:pb-2">
+            <div className="flex shrink-0 items-start justify-between gap-4 px-5 pt-1 pb-1 md:px-6 md:pt-5 md:pb-2">
               <div className="min-w-0 flex-1">
                 {title ? (
                   <h2 className="text-lg font-extrabold text-slate-900 md:text-xl">
@@ -357,8 +461,14 @@ export function Modal({
 
           {/* Scrollable Content Body (Protected from gesture interception) */}
           <div
+            ref={scrollBodyRef}
             data-modal-body="true"
-            className={`px-5 pt-1 pb-2 md:px-6 md:pt-1 md:pb-4 max-h-[calc(85dvh-80px)] md:max-h-[75vh] overflow-y-auto overscroll-contain ${bodyClassName}`}
+            data-bottom-sheet-scroll-owner="true"
+            onTouchStart={handleBodyTouchStart}
+            onTouchMove={handleBodyTouchMove}
+            onTouchEnd={handleBodyTouchEnd}
+            onTouchCancel={handleBodyTouchEnd}
+            className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))] md:max-h-[75vh] md:px-6 md:pt-1 md:pb-4 ${bodyClassName}`}
           >
             {children}
           </div>

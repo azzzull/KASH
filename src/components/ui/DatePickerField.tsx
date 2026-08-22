@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "@headlessui/react";
 import { Calendar as CalendarIcon, Check, ChevronDown, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useI18n } from "../../i18n";
+import { autoScrollFieldIntoContainer } from "./SelectField";
 
 type DatePickerFieldProps = {
   id?: string;
@@ -177,13 +178,8 @@ export function DatePickerField({
 
   // Auto-scroll into view when opened
   useEffect(() => {
-    if (isOpen && popoverRef.current) {
-      // Smoothly scroll popover into view if cut off
-      popoverRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
+    if (isOpen && containerRef.current) {
+      autoScrollFieldIntoContainer(containerRef.current);
     }
   }, [isOpen]);
 
