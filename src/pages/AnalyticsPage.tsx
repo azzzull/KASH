@@ -1,7 +1,6 @@
 import {
   BarChart3,
   CalendarDays,
-  ChevronRight,
   PieChart,
   Receipt,
   RefreshCw,
@@ -256,16 +255,8 @@ function AnalyticsHeroStory({
         <div className="shrink-0">{periodControls}</div>
       </div>
 
-      {/* Status Badge Above Nominal */}
-      <div className="mt-3">
-        <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 border border-white/15 px-3 py-1 text-xs font-extrabold text-white">
-          {isSurplus ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-          {isSurplus ? (t("analytics.surplusState") || "Surplus Arus Kas") : (t("analytics.deficitState") || "Defisit Arus Kas")}
-        </span>
-      </div>
-
       {/* Main Nominal */}
-      <div className="mt-2.5">
+      <div className="mt-3">
         <p className="break-words text-3xl font-extrabold text-white sm:text-4xl">
           {formattedNetCashFlow}
         </p>
@@ -377,7 +368,8 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
       icon: PieChart,
       label: t("analytics.topCategoryImpact") || "Kontributor Belanja Terbesar",
       value: topCategory ? topCategory.name : "-",
-      helper: topCategory ? `${formatCurrency(topCategory.amount, currency)} (${topCategory.percent.toFixed(0)}% dari total)` : (t("analytics.noData") || "Belum ada transaksi"),
+      subvalue: topCategory ? formatCurrency(topCategory.amount, currency) : undefined,
+      helper: undefined,
       positiveWhen: "decrease" as const,
       tone: "text-slate-900",
       accentBg: "bg-blue-500/10 text-blue-700",
@@ -431,6 +423,11 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
               <p className={`mt-3 text-xl sm:text-2xl font-extrabold truncate ${item.tone}`}>
                 {item.value}
               </p>
+              {item.subvalue ? (
+                <p className="mt-0.5 text-sm font-extrabold text-slate-900">
+                  {item.subvalue}
+                </p>
+              ) : null}
               <ComparisonLine
                 change={item.change}
                 className="mt-1.5"
@@ -441,9 +438,11 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
               />
             </div>
 
-            <p className="mt-4 border-t border-slate-100/80 pt-3 text-xs font-semibold text-slate-500 leading-relaxed">
-              {item.helper}
-            </p>
+            {item.helper ? (
+              <p className="mt-4 border-t border-slate-100/80 pt-3 text-xs font-semibold text-slate-500 leading-relaxed">
+                {item.helper}
+              </p>
+            ) : null}
           </div>
         ))}
       </div>
@@ -455,6 +454,12 @@ function chartTickLabel(value: number) {
   if (value >= 1000000) return `${(value / 1000000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}jt`;
   if (value >= 1000) return `${Math.round(value / 1000).toLocaleString("id-ID")}rb`;
   return "0";
+}
+
+function chartCompactMoneyLabel(value: number) {
+  if (value >= 1000000) return `${(value / 1000000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}jt`;
+  if (value >= 1000) return `${Math.round(value / 1000).toLocaleString("id-ID")}rb`;
+  return value.toLocaleString("id-ID");
 }
 
 function currentTrendIndex(points: { key: string }[]) {
@@ -484,7 +489,7 @@ function scrollChartToIndex(scrollElement: HTMLDivElement, itemCount: number, ta
 }
 
 function CashFlowOverview({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
-  const { t, formatCurrency, formatCompactCurrency } = useI18n();
+  const { t, formatCurrency } = useI18n();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const hasData = summary.incomeExpenseTrend.some((point) => point.income > 0 || point.expense > 0);
   const points = summary.incomeExpenseTrend;
@@ -558,7 +563,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
                   textAnchor="middle"
                   className="fill-kash-emerald text-[9px] font-extrabold"
                 >
-                  {formatCompactCurrency(point.income)}
+                  {chartCompactMoneyLabel(point.income)}
                 </text>
               ) : null}
               {point.expense > 0 ? (
@@ -568,7 +573,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
                   textAnchor="middle"
                   className="fill-[#E50914] text-[9px] font-extrabold"
                 >
-                  {formatCompactCurrency(point.expense)}
+                  {chartCompactMoneyLabel(point.expense)}
                 </text>
               ) : null}
               <rect
@@ -624,7 +629,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
   if (categories.length === 0 || totalExpense <= 0) {
     return (
       <div className="mt-4 flex flex-col items-center justify-center gap-5 md:flex-row md:items-start">
-        <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full bg-slate-100">
+        <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full bg-slate-100">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">{t("dashboard.noData") || "No data"}</div>
         </div>
         <EmptyPanel title={t("analytics.noExpenseCategories") || "No expense categories"} description={t("analytics.noExpenseCategoriesDesc") || "Completed expenses in this period will appear here."} className="flex-1" />
@@ -656,7 +661,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
   return (
     <div className="my-auto flex flex-1 w-full flex-col items-center justify-center gap-6 py-4 md:flex-row md:items-center">
       {/* Donut - Larger ring & vertically centered on desktop */}
-      <div className="relative mx-auto flex h-36 w-36 sm:h-44 sm:w-44 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
+      <div className="relative mx-auto flex h-44 w-44 sm:h-48 sm:w-48 md:h-52 md:w-52 lg:h-56 lg:w-56 max-w-full shrink-0 items-center justify-center md:mx-0">
         <svg viewBox="0 0 120 120" className="kash-ring-chart h-full w-full -rotate-90">
           {segments.map((seg) => (
             <circle
@@ -1200,10 +1205,7 @@ export function AnalyticsPage() {
       {/* 3. Main Visual Charts Grid (Donut Ring + Cash Flow Line Chart in 2 Columns) */}
       <div className="grid gap-4 lg:grid-cols-2 min-w-0 max-w-full">
         <AnalyticsCard className="p-5 flex flex-col justify-between h-full">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
-            <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
-          </div>
+          <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
           <SpendingByCategory summary={summary} currency={currency} />
         </AnalyticsCard>
 
