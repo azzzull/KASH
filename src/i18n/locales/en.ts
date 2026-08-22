@@ -218,7 +218,7 @@ export const en = {
     "quickAdd.reimbursableHelper": "Record advance expense to be reimbursed",
 
     // Dashboard
-    "dashboard.title": "Financial Dashboard",
+    "dashboard.title": "Here's your financial overview",
     "dashboard.netWorth": "Net Worth",
     "dashboard.availableBalance": "Available Balance",
     "dashboard.monthlyIncome": "Monthly Income",
@@ -259,6 +259,7 @@ export const en = {
     "dashboard.calendar": "Financial Calendar",
     "dashboard.newThisMonth": "new this month",
     "dashboard.vsLastMonth": "compared to last month",
+    "dashboard.vsPeriod": "vs {period}",
     "dashboard.thisMonth": "This Month",
     "dashboard.year": "Year",
     "dashboard.hideBalances": "Hide Balances",

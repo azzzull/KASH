@@ -4,25 +4,25 @@ import {
     ArrowRight,
     ArrowRightLeft,
     ArrowUpRight,
-    BarChart3,
     CalendarDays,
     ChevronDown,
     CreditCard,
     Eye,
     EyeOff,
     HandCoins,
-    Home,
     Info,
+    Minus,
     PiggyBank,
     RefreshCw,
     Scale,
-    Send,
+    Target,
     TrendingDown,
     TrendingUp,
-    Wallet,
+    WalletCards,
 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import {
     getDashboardSummary,
@@ -145,99 +145,71 @@ function DashboardCard({
     );
 }
 
-function MetricComparisonLine({
-    change,
-    metric,
-}: {
-    change: DashboardMetricChange;
-    metric: "income" | "expense" | "netCashFlow";
-}) {
-    const { t } = useI18n();
-    if (change.state === "none") return null;
-
-    const increased = change.state === "increase";
-    const decreased = change.state === "decrease";
-    const isPositive =
-        metric === "expense" ? decreased : increased || change.state === "new";
-    const tone = isPositive ? "text-emerald-300" : "text-red-300";
-
-    if (change.state === "new") {
-        if (metric === "expense") return null;
-        return (
-            <p className={`text-xs font-bold ${tone}`}>
-                {t("dashboard.newThisMonth") || "New this month"}
-            </p>
-        );
-    }
-
-    if (change.state === "flat") {
-        return (
-            <p className="text-xs font-bold text-white/60">
-                0.0% {t("dashboard.vsLastMonth") || "vs last month"}
-            </p>
-        );
-    }
-
-    const Icon = increased ? TrendingUp : TrendingDown;
-    const percentage = Math.abs(change.percent ?? 0).toFixed(1);
-
-    return (
-        <p className="flex items-center gap-1 text-xs font-bold">
-            <span className={`inline-flex items-center gap-1 ${tone}`}>
-                <Icon aria-hidden="true" size={12} strokeWidth={2.4} />
-                {percentage}%
-            </span>
-            <span className="text-white/50">
-                {t("dashboard.vsLastMonth") || "vs last month"}
-            </span>
-        </p>
-    );
+function formatSignedCurrencyDelta(amount: number, currency: string) {
+    const sign = amount > 0 ? "+" : amount < 0 ? "-" : "";
+    return `${sign}${formatAmount(Math.abs(amount), currency)}`;
 }
 
-function MetricComparisonLineStandard({
+function formatCompactPercentageValue(value: number | null | undefined, locale: string) {
+    if (value === null || value === undefined || !Number.isFinite(value)) return null;
+    const formatted = Math.abs(value).toFixed(1).replace(/\.0$/, "");
+    return locale === "id" ? formatted.replace(".", ",") : formatted;
+}
+
+function getPreviousMonthLabel(selectedMonth: Date, locale: string) {
+    return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
+        month: "long",
+        year: "numeric",
+    }).format(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1));
+}
+
+function CompactComparisonLine({
     change,
+    currency,
     metric,
+    variant = "standard",
+    withPreviousLabel,
 }: {
     change: DashboardMetricChange;
-    metric: "income" | "expense" | "netCashFlow";
+    currency: string;
+    metric: "income" | "expense" | "netCashFlow" | "netWorth";
+    variant?: "hero" | "standard";
+    withPreviousLabel?: string;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     if (change.state === "none") return null;
 
-    const increased = change.state === "increase";
-    const decreased = change.state === "decrease";
+    const delta = change.current - change.previous;
+    const increased = delta > 0;
+    const decreased = delta < 0;
+    const isNeutral = !increased && !decreased;
     const isPositive =
         metric === "expense" ? decreased : increased || change.state === "new";
-    const tone = isPositive ? "text-kash-emerald" : "text-[#E50914]";
-
-    if (change.state === "new") {
-        if (metric === "expense") return null;
-        return (
-            <p className={`text-[11px] font-bold ${tone}`}>
-                {t("dashboard.newThisMonth") || "New this month"}
-            </p>
-        );
-    }
-
-    if (change.state === "flat") {
-        return (
-            <p className="text-[11px] font-bold text-slate-600">
-                0.0% {t("dashboard.vsLastMonth") || "vs last month"}
-            </p>
-        );
-    }
-
-    const Icon = increased ? TrendingUp : TrendingDown;
-    const percentage = Math.abs(change.percent ?? 0).toFixed(1);
+    const Icon = isNeutral ? Minus : increased ? TrendingUp : TrendingDown;
+    const percentage = formatCompactPercentageValue(change.percent, locale);
+    const tone =
+        variant === "hero"
+            ? isNeutral
+                ? "text-white/65"
+                : isPositive
+                  ? "text-emerald-100"
+                  : "text-red-200"
+            : isNeutral
+              ? "text-slate-500"
+              : isPositive
+                ? "text-kash-emerald"
+                : "text-[#E50914]";
+    const percentText = percentage ? ` (${delta > 0 ? "+" : delta < 0 ? "-" : ""}${percentage}%)` : "";
 
     return (
-        <p className="flex items-center gap-1 text-[11px] font-bold">
-            <span className={`inline-flex items-center gap-0.5 ${tone}`}>
-                <Icon aria-hidden="true" size={11} strokeWidth={2.4} />
-                {percentage}%
-            </span>
-            <span className="text-slate-600">
-                {t("dashboard.vsLastMonth") || "vs last month"}
+        <p className={`flex min-w-0 items-center gap-1 text-[11px] font-extrabold ${tone}`}>
+            <Icon aria-hidden="true" size={13} strokeWidth={2.4} />
+            <span className="truncate">
+                {formatSignedCurrencyDelta(delta, currency)}
+                {percentText}
+                {withPreviousLabel
+                    ? ` ${t("dashboard.vsPeriod", { period: withPreviousLabel }) || `vs ${withPreviousLabel}`}`
+                    : ""}
             </span>
         </p>
     );
@@ -280,7 +252,10 @@ function PeriodPicker({
 }) {
     const { t, locale } = useI18n();
     const pickerRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
     const [isOpen, setIsOpen] = useState(false);
+    const [popoverStyle, setPopoverStyle] = useState<CSSProperties | null>(null);
     const [pickerYear, setPickerYear] = useState(selectedMonth.getFullYear());
     const monthOptions = useMemo(() => {
         return Array.from({ length: 12 }, (_, index) => {
@@ -300,19 +275,48 @@ function PeriodPicker({
     useEffect(() => {
         if (!isOpen) return;
 
+        const updatePopoverPosition = () => {
+            const button = buttonRef.current;
+            if (!button) return;
+
+            const rect = button.getBoundingClientRect();
+            const width = Math.min(256, window.innerWidth - 24);
+            const left = Math.min(
+                Math.max(12, rect.right - width),
+                window.innerWidth - width - 12,
+            );
+            const top = Math.min(rect.bottom + 6, window.innerHeight - 256);
+
+            setPopoverStyle({
+                left,
+                position: "fixed",
+                top: Math.max(12, top),
+                width,
+                zIndex: 1200,
+            });
+        };
+
         const closeOnOutsideClick = (event: PointerEvent) => {
             if (pickerRef.current?.contains(event.target as Node)) return;
+            if (popoverRef.current?.contains(event.target as Node)) return;
             setIsOpen(false);
         };
 
+        updatePopoverPosition();
         document.addEventListener("pointerdown", closeOnOutsideClick);
-        return () =>
+        window.addEventListener("resize", updatePopoverPosition);
+        window.addEventListener("scroll", updatePopoverPosition, true);
+        return () => {
             document.removeEventListener("pointerdown", closeOnOutsideClick);
+            window.removeEventListener("resize", updatePopoverPosition);
+            window.removeEventListener("scroll", updatePopoverPosition, true);
+        };
     }, [isOpen]);
 
     return (
         <div ref={pickerRef} className={`relative ${className}`}>
             <button
+                ref={buttonRef}
                 type="button"
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
@@ -324,8 +328,13 @@ function PeriodPicker({
                 <ChevronDown aria-hidden="true" size={12} />
             </button>
 
-            {isOpen ? (
-                <div className="absolute left-0 top-[calc(100%+6px)] z-30 w-64 rounded-xl border border-slate-200/60 bg-white p-3 shadow-soft sm:left-auto sm:right-0">
+            {isOpen && popoverStyle
+                ? createPortal(
+                <div
+                    ref={popoverRef}
+                    style={popoverStyle}
+                    className="rounded-xl border border-slate-200/60 bg-white p-3 shadow-soft"
+                >
                     <label
                         className="block text-[11px] font-bold uppercase tracking-wide text-slate-500"
                         htmlFor="dashboard-period-year"
@@ -372,8 +381,10 @@ function PeriodPicker({
                             );
                         })}
                     </div>
-                </div>
-            ) : null}
+                </div>,
+                document.body,
+              )
+                : null}
         </div>
     );
 }
@@ -394,14 +405,59 @@ function HeroCard({
     selectedMonth: Date;
     summary: DashboardSummary;
 }) {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
+    const previousMonthLabel = getPreviousMonthLabel(selectedMonth, locale);
+    const breakdown = summary.netWorthBreakdown;
+    const assetTotal = breakdown
+        ? Math.max(
+              0,
+              breakdown.availableCash +
+                  breakdown.savings +
+                  breakdown.investments +
+                  breakdown.receivables,
+          )
+        : 0;
+    const breakdownTiles = breakdown
+        ? [
+              {
+                  key: "cash",
+                  label: t("dashboard.cash") || "Cash",
+                  value: breakdown.availableCash,
+                  percentBase: assetTotal,
+              },
+              {
+                  key: "savings",
+                  label: t("dashboard.savings") || "Savings",
+                  value: breakdown.savings,
+                  percentBase: assetTotal,
+              },
+              {
+                  key: "investments",
+                  label: t("dashboard.investments") || "Investments",
+                  value: breakdown.investments,
+                  percentBase: assetTotal,
+              },
+              {
+                  key: "receivables",
+                  label: t("dashboard.receivables") || "Receivable",
+                  value: breakdown.receivables,
+                  percentBase: assetTotal,
+              },
+              {
+                  key: "debt",
+                  label: t("dashboard.debt") || "Debts",
+                  value: -breakdown.debt,
+                  percentBase: assetTotal,
+              },
+          ]
+        : [];
 
     return (
-        <div className="kash-hero-card p-5 md:p-6">
+        <div className="kash-hero-card p-4 md:p-6">
             {/* Top row: label + controls */}
             <div className="relative flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wide text-white/70">
                         {t("dashboard.netWorth") || "Net Worth"}
                     </p>
                     <Info
@@ -421,7 +477,7 @@ function HeroCard({
 
             {/* Net Worth amount + inline eye toggle */}
             <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                <p className="break-words text-3xl font-extrabold tracking-tight text-white md:text-4xl">
+                <p className="break-words text-[2rem] font-extrabold leading-none tracking-tight text-white md:text-4xl">
                     {formatPrivateAmount(
                         summary.netWorth.amount,
                         currency,
@@ -439,7 +495,7 @@ function HeroCard({
                               "Show dashboard balances"
                     }
                     onClick={onToggleBalances}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/12 text-white/85 transition hover:bg-white/18 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
                 >
                     {balancesVisible ? (
                         <EyeOff
@@ -453,8 +509,18 @@ function HeroCard({
                 </button>
             </div>
 
+            <div className="mt-2">
+                <CompactComparisonLine
+                    change={summary.netWorthComparison}
+                    currency={currency}
+                    metric="netWorth"
+                    variant="hero"
+                    withPreviousLabel={previousMonthLabel}
+                />
+            </div>
+
             {/* Available Balance inline */}
-            <p className="mt-1 text-sm font-semibold text-white/60">
+            <p className="mt-2 text-xs font-bold text-white/60">
                 {t("dashboard.availableBalance") || "Available Balance"}:{" "}
                 {formatPrivateAmount(
                     summary.availableBalance.amount,
@@ -463,55 +529,42 @@ function HeroCard({
                 )}
             </p>
 
-            {/* Net Worth breakdown badges */}
-            {summary.netWorthBreakdown ? (
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                        {t("dashboard.cash") || "Kas"}:{" "}
-                        {formatPrivateAmount(
-                            summary.netWorthBreakdown.availableCash,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </span>
-                    <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                        {t("dashboard.savings") || "Tabungan"}:{" "}
-                        {formatPrivateAmount(
-                            summary.netWorthBreakdown.savings,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </span>
-                    {summary.netWorthBreakdown.investments > 0 ? (
-                        <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                            {t("dashboard.investments") || "Investasi"}:{" "}
-                            {formatPrivateAmount(
-                                summary.netWorthBreakdown.investments,
-                                currency,
-                                balancesVisible,
-                            )}
-                        </span>
-                    ) : null}
-                    {summary.netWorthBreakdown.receivables > 0 ? (
-                        <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                            {t("dashboard.receivables") || "Piutang"}:{" "}
-                            {formatPrivateAmount(
-                                summary.netWorthBreakdown.receivables,
-                                currency,
-                                balancesVisible,
-                            )}
-                        </span>
-                    ) : null}
-                    {summary.netWorthBreakdown.debt > 0 ? (
-                        <span className="rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-bold text-white/80">
-                            {t("dashboard.debt") || "Utang"}: -
-                            {formatPrivateAmount(
-                                summary.netWorthBreakdown.debt,
-                                currency,
-                                balancesVisible,
-                            )}
-                        </span>
-                    ) : null}
+            {/* Net Worth breakdown mini tiles */}
+            {breakdownTiles.length > 0 ? (
+                <div className="mt-4 -mx-1 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex min-w-max flex-nowrap gap-2 px-1">
+                        {breakdownTiles.map((item) => {
+                            const percent =
+                                item.percentBase > 0
+                                    ? Math.round(
+                                          (Math.abs(item.value) /
+                                              item.percentBase) *
+                                              100,
+                                      )
+                                    : 0;
+
+                            return (
+                                <div
+                                    key={item.key}
+                                    className="w-[7.7rem] shrink-0 rounded-xl border border-white/10 bg-white/10 p-3 snap-start"
+                                >
+                                    <p className="truncate text-[11px] font-extrabold text-white/75">
+                                        {item.label}
+                                    </p>
+                                    <p className="mt-1 truncate text-sm font-black text-white">
+                                        {formatPrivateCompactAmount(
+                                            item.value,
+                                            currency,
+                                            balancesVisible,
+                                        )}
+                                    </p>
+                                    <p className="mt-1 text-[11px] font-extrabold text-white/55">
+                                        {percent}%
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             ) : null}
         </div>
@@ -522,16 +575,20 @@ function HeroCard({
 function QuickActions() {
     const { t } = useI18n();
     const actions = [
-        { icon: Wallet, label: t("nav.wallets") || "Wallets", to: "/wallets" },
         {
-            icon: Send,
-            label: t("transactions.transfer") || "Transaction",
-            to: "/transactions",
+            icon: WalletCards,
+            label: t("nav.wallets") || "Wallets",
+            to: "/wallets",
         },
         {
-            icon: BarChart3,
-            label: t("nav.analytics") || "Analytics",
-            to: "/analytics",
+            icon: Scale,
+            label: t("nav.budgets") || "Budget",
+            to: "/budgets",
+        },
+        {
+            icon: Target,
+            label: t("nav.goals") || "Goal",
+            to: "/goals",
         },
         {
             icon: CalendarDays,
@@ -541,17 +598,17 @@ function QuickActions() {
     ];
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-4 gap-2">
             {actions.map((action) => (
                 <Link
                     key={action.to}
                     to={action.to}
-                    className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-3 text-center transition hover:bg-white/80 active:bg-white md:flex-none md:px-5"
+                    className="flex min-h-20 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border border-slate-200/60 bg-white px-2 py-2.5 text-center shadow-card transition hover:border-kash-emerald/35 hover:shadow-card-hover active:bg-kash-selected/40 md:min-h-0 md:flex-none md:flex-row md:px-5"
                 >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald">
-                        <action.icon size={20} strokeWidth={2} />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-kash-selected text-kash-emeraldDark ring-1 ring-kash-emerald/10">
+                        <action.icon size={20} strokeWidth={2.2} />
                     </div>
-                    <span className="text-[11px] font-bold text-slate-600">
+                    <span className="max-w-full truncate text-[11px] font-extrabold text-slate-800">
                         {action.label}
                     </span>
                 </Link>
@@ -625,9 +682,10 @@ function CashFlowRow({
                             balancesVisible,
                         )}
                     </p>
-                    <div className="mt-1 min-w-0 truncate">
-                        <MetricComparisonLineStandard
+                    <div className="mt-1.5 min-w-0">
+                        <CompactComparisonLine
                             change={item.change}
+                            currency={currency}
                             metric={item.metric}
                         />
                     </div>

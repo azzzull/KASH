@@ -132,6 +132,7 @@ export type DashboardSummary = {
     daysInMonth: number;
   };
   netWorth: DashboardMetric;
+  netWorthComparison: DashboardMetricChange;
   netWorthBreakdown: DashboardNetWorthBreakdown;
   availableBalance: DashboardMetric;
   monthlyIncome: DashboardMetric;
@@ -304,8 +305,10 @@ function calculateMonthlyMetrics(transactions: Transaction[]) {
 }
 
 function calculateMetricChange(current: number, previous: number): DashboardMetricChange {
-  if (previous > 0) {
-    const percent = ((current - previous) / previous) * 100;
+  const previousMagnitude = Math.abs(previous);
+
+  if (previousMagnitude > 0) {
+    const percent = ((current - previous) / previousMagnitude) * 100;
     return {
       current,
       previous,
@@ -329,6 +332,53 @@ function calculateMetricChange(current: number, previous: number): DashboardMetr
     percent: null,
     state: "none",
   };
+}
+
+function walletInitialBalanceAt(wallet: Wallet, cutoffExclusive: Date) {
+  const createdAt = new Date(wallet.created_at);
+  return createdAt < cutoffExclusive ? moneyValue(wallet.initial_balance) : 0;
+}
+
+function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: Set<string>) {
+  if (transaction.status === "void") return 0;
+
+  const sourceIncluded = includedWalletIds.has(transaction.wallet_id);
+  const destinationIncluded = transaction.destination_wallet_id ? includedWalletIds.has(transaction.destination_wallet_id) : false;
+
+  if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;
+  if (transaction.type === "expense") return sourceIncluded ? -moneyValue(transaction.amount) : 0;
+
+  if (transaction.type === "adjustment") {
+    if (
+      transaction.related_entity_type === "debt_creation" ||
+      transaction.related_entity_type === "receivable_creation" ||
+      transaction.related_entity_type === "debt_payment" ||
+      transaction.related_entity_type === "receivable_payment"
+    ) {
+      return 0;
+    }
+
+    return sourceIncluded ? moneyValue(transaction.amount) : 0;
+  }
+
+  if (transaction.type === "transfer") {
+    const outgoing = sourceIncluded ? -(moneyValue(transaction.amount) + moneyValue(transaction.transfer_fee)) : 0;
+    const incoming = destinationIncluded ? moneyValue(transaction.amount) : 0;
+    return outgoing + incoming;
+  }
+
+  return 0;
+}
+
+function netWorthAtCutoff(wallets: Wallet[], transactions: Transaction[], cutoffExclusive: Date) {
+  const includedWallets = wallets.filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived);
+  const includedWalletIds = new Set(includedWallets.map((wallet) => wallet.id));
+  const initialBalance = includedWallets.reduce((sum, wallet) => sum + walletInitialBalanceAt(wallet, cutoffExclusive), 0);
+  const ledgerEffect = transactions
+    .filter((transaction) => new Date(transaction.transaction_date) < cutoffExclusive)
+    .reduce((sum, transaction) => sum + transactionNetWorthEffect(transaction, includedWalletIds), 0);
+
+  return initialBalance + ledgerEffect;
 }
 
 function buildWalletDistribution(wallets: DashboardWalletItem[]) {
@@ -422,6 +472,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     monthTransactionResult,
     previousMonthTransactionResult,
     recentTransactionResult,
+    netWorthTransactionResult,
     goalResult,
     goalProgressResult,
     counterpartiesResult,
@@ -465,6 +516,13 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       .order("transaction_date", { ascending: false })
       .limit(12),
     supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .lt("transaction_date", month.end.toISOString())
+      .order("transaction_date", { ascending: true }),
+    supabase
       .from("goals")
       .select("*")
       .eq("user_id", userId)
@@ -482,6 +540,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   if (monthTransactionResult.error) throw monthTransactionResult.error;
   if (previousMonthTransactionResult.error) throw previousMonthTransactionResult.error;
   if (recentTransactionResult.error) throw recentTransactionResult.error;
+  if (netWorthTransactionResult.error) throw netWorthTransactionResult.error;
   if (goalResult.error) throw goalResult.error;
   if (goalProgressResult.error) throw goalProgressResult.error;
   if (counterpartiesResult.error) throw counterpartiesResult.error;
@@ -496,6 +555,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
   const categories = categoryResult.data ?? [];
   const monthTransactions = monthTransactionResult.data ?? [];
   const previousMonthTransactions = previousMonthTransactionResult.data ?? [];
+  const netWorthTransactions = netWorthTransactionResult.data ?? [];
   const recentTransactions = (recentTransactionResult.data ?? []).filter((transaction) => transaction.status !== "void").slice(0, 6);
   const dashboardGoals = buildDashboardGoals(goalResult.data ?? [], goalProgressResult.data ?? []);
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
@@ -599,6 +659,11 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     .reduce((sum, wallet) => sum + wallet.balance, 0);
 
   const netWorth = availableCash + savingsTotal + investmentsTotal + otherWalletsTotal + totalReceivable - totalDebt;
+  const previousPeriodNetWorth =
+    netWorthAtCutoff(wallets, netWorthTransactions, previousMonth.end) +
+    sharedSavingsShares +
+    totalReceivable -
+    totalDebt;
 
   return {
     period: {
@@ -608,6 +673,7 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
       daysInMonth: month.daysInMonth,
     },
     netWorth: { amount: netWorth },
+    netWorthComparison: calculateMetricChange(netWorth, previousPeriodNetWorth),
     netWorthBreakdown: {
       availableCash,
       savings: savingsTotal,

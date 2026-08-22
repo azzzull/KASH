@@ -221,7 +221,7 @@ export const id = {
         "Catat talangan kantor / orang lain yang akan diganti",
 
     // Dashboard
-    "dashboard.title": "Dasbor Keuangan",
+    "dashboard.title": "Berikut ringkasan keuangan Anda",
     "dashboard.netWorth": "Kekayaan Bersih (Net Worth)",
     "dashboard.availableBalance": "Saldo Tersedia",
     "dashboard.monthlyIncome": "Pemasukan Bulan Ini",
@@ -263,6 +263,7 @@ export const id = {
     "dashboard.calendar": "Kalender Keuangan",
     "dashboard.newThisMonth": "baru bulan ini",
     "dashboard.vsLastMonth": "dibandingkan bulan lalu",
+    "dashboard.vsPeriod": "vs {period}",
     "dashboard.thisMonth": "Bulan Ini",
     "dashboard.year": "Tahun",
     "dashboard.hideBalances": "Sembunyikan Saldo",
