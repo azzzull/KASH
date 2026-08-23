@@ -80,6 +80,8 @@ export type DashboardGoalItem = {
 };
 
 export type DashboardRecentTransaction = {
+  categoryColor: string | null;
+  categoryIcon: string | null;
   categoryName: string;
   id: string;
   type: TransactionType;
@@ -712,8 +714,13 @@ export async function getDashboardSummary(options: DashboardSummaryOptions = {})
     calendarActivity: buildCalendarActivity(monthTransactions),
     recentTransactions: recentTransactions.map((transaction) => {
       const description = describeTransaction(transaction, walletsById, categoriesById);
+      const category = transaction.category_id
+        ? categoriesById.get(transaction.category_id) ?? null
+        : null;
 
       return {
+        categoryColor: category?.color ?? null,
+        categoryIcon: category?.icon ?? null,
         categoryName: description.categoryName,
         id: transaction.id,
         type: transaction.type,

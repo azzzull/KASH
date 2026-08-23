@@ -177,7 +177,7 @@ function SelectedDatePanel({
             <p className="mt-0.5 text-[11px] font-semibold text-slate-500">{t("dashboard.noTransactionsDesc") || "Tanggal yang memiliki aktivitas transaksi ditandai pada kalender."}</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-xs">
+          <div className="divide-y divide-slate-100 px-1">
             {selectedTransactions.map((transaction) => (
               <TransactionRow
                 key={transaction.id}

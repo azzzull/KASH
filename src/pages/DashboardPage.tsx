@@ -1195,7 +1195,11 @@ function RecentTransactions({
                     hideAmounts={!balancesVisible}
                     transaction={{
                         amount: transaction.amount,
-                        category: { name: transaction.categoryName },
+                        category: {
+                            color: transaction.categoryColor,
+                            icon: transaction.categoryIcon,
+                            name: transaction.categoryName,
+                        },
                         status: "completed",
                         title: transaction.title,
                         transaction_date: transaction.date,
