@@ -27,6 +27,8 @@ import {
 } from "../components/transactions/TransactionDetailPanel";
 import { Button } from "../components/ui/Button";
 import { PageHeader } from "../components/ui/PageHeader";
+import { UpcomingTimeline } from "../components/financial/UpcomingTimeline";
+import { getRecurringObligations, type RecurringObligationWithMeta } from "../lib/subscriptions";
 
 const activityOrder = ["income", "expense", "transfer", "adjustment"] as const;
 const activityDotClass = {
@@ -71,18 +73,21 @@ function CalendarSkeleton() {
 function CalendarGrid({
   activeMonth,
   monthData,
+  obligations,
   onSelectDate,
   selectedDateKey,
   todayKey,
 }: {
   activeMonth: Date;
   monthData: CalendarMonthData;
+  obligations: RecurringObligationWithMeta[];
   onSelectDate: (dateKey: string) => void;
   selectedDateKey: string;
   todayKey: string;
 }) {
   const { locale, formatDate, formatCompactCurrency } = useI18n();
   const calendarCells = useMemo(() => buildCalendarCells(activeMonth), [activeMonth]);
+  const obligationDates = useMemo(() => new Set(obligations.filter((item) => item.status === "active").map((item) => (item.currentPayment?.due_date ?? item.next_due_date)?.slice(0, 10)).filter((dateKey): dateKey is string => Boolean(dateKey))), [obligations]);
   const weekdays = useMemo(() => {
     return locale === "id" ? ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   }, [locale]);
@@ -109,6 +114,7 @@ function CalendarGrid({
           const isSelected = selectedDateKey === cell.dateKey;
           const isToday = todayKey === cell.dateKey;
           const dayNumber = cell.date.getDate();
+          const hasObligation = obligationDates.has(cell.dateKey);
           const selectedDateLabel = formatDate(parseLocalDateKey(cell.dateKey));
 
           return (
@@ -140,9 +146,10 @@ function CalendarGrid({
                     </span>
                   )}
                 </div>
-              ) : (
-                <span className="flex min-h-3" aria-hidden="true" />
-              )}
+              ) : null}
+              <span className="flex min-h-3 items-center gap-0.5" aria-hidden="true">
+                {hasObligation ? <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> : null}
+              </span>
             </button>
           );
         })}
@@ -158,6 +165,7 @@ function SelectedDatePanel({
   selectedDateKey,
   selectedSummary,
   selectedTransactions,
+  upcomingObligations,
 }: {
   currency: string;
   isLoading: boolean;
@@ -165,6 +173,7 @@ function SelectedDatePanel({
   selectedDateKey: string;
   selectedSummary: ReturnType<typeof calculateDaySummary>;
   selectedTransactions: TransactionWithMeta[];
+  upcomingObligations: RecurringObligationWithMeta[];
 }) {
   const { t, formatDate, formatCurrency } = useI18n();
   const formattedDate = formatDate(parseLocalDateKey(selectedDateKey));
@@ -176,7 +185,11 @@ function SelectedDatePanel({
           <h2 className="text-base font-extrabold text-slate-900">{formattedDate}</h2>
           {isLoading ? <Loader2 aria-hidden="true" className="animate-spin text-slate-400" size={15} /> : null}
         </div>
+        <span className={`shrink-0 text-xs font-extrabold ${selectedSummary.net >= 0 ? "text-kash-emeraldDark" : "text-kash-expense"}`}>
+          {selectedSummary.transactionCount > 0 ? `${selectedSummary.net >= 0 ? "+" : ""}${formatCurrency(selectedSummary.net, currency)}` : (t("dashboard.noData") || "No activity")}
+        </span>
       </div>
+      {selectedSummary.transactionCount > 0 ? <p className="mt-1 text-xs font-semibold text-slate-500">{selectedSummary.transactionCount} {t("nav.transactions") || "transactions"}</p> : null}
 
       <div className="mt-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">{t("nav.transactions") || "Transaksi Hari Ini"}</h3>
@@ -199,6 +212,11 @@ function SelectedDatePanel({
             ))}
           </div>
         )}
+      </div>
+
+      <div className="mt-5 border-t border-slate-100 pt-4">
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-600">{t("subscriptions.tabDueSoon") || "Upcoming"}</h3>
+        <UpcomingTimeline currency={currency} emptyClassName="min-h-20" items={upcomingObligations} selectedDateKey={selectedDateKey} />
       </div>
     </section>
   );
@@ -276,6 +294,7 @@ export function CalendarPage() {
   const [activeMonth, setActiveMonth] = useState(() => startOfLocalMonth(parseLocalDateKey(initialDateKey)));
   const [selectedDateKey, setSelectedDateKey] = useState(initialDateKey);
   const [monthData, setMonthData] = useState<CalendarMonthData | null>(null);
+  const [upcomingObligations, setUpcomingObligations] = useState<RecurringObligationWithMeta[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -301,6 +320,14 @@ export function CalendarPage() {
   useEffect(() => {
     void loadMonth();
   }, [loadMonth]);
+
+  useEffect(() => {
+    let isMounted = true;
+    void getRecurringObligations().then(({ data }) => {
+      if (isMounted) setUpcomingObligations(data);
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   useAppEvent(appEvents.transactionSaved, () => void loadMonth());
 
@@ -380,6 +407,7 @@ export function CalendarPage() {
           <CalendarGrid
             activeMonth={activeMonth}
             monthData={monthData}
+            obligations={upcomingObligations}
             selectedDateKey={selectedDateKey}
             todayKey={todayKey}
             onSelectDate={(dateKey) => {
@@ -395,6 +423,7 @@ export function CalendarPage() {
             selectedSummary={selectedSummary}
             selectedTransactions={selectedTransactions}
             onSelectTransaction={setSelectedTransaction}
+            upcomingObligations={upcomingObligations}
           />
         </section>
       ) : null}

@@ -42,6 +42,10 @@ import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../i18n";
 import type { TransactionType } from "../types/domain";
+import { CashFlowChart as SharedCashFlowChart } from "../components/analytics/CashFlowChart";
+import { UpcomingTimeline } from "../components/financial/UpcomingTimeline";
+import { getRecurringObligations, type RecurringObligationWithMeta } from "../lib/subscriptions";
+import { TransactionPreviewRow } from "../components/transactions/TransactionPreviewRow";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -1193,6 +1197,19 @@ function RecentTransactions({
                           ? -transaction.amount
                           : transaction.amount;
 
+                return <TransactionPreviewRow
+                    key={transaction.id}
+                    amount={transaction.amount}
+                    categoryLabel={transaction.categoryName}
+                    currency={currency}
+                    dateLabel={new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(transactionDate)}
+                    fee={transaction.transferFee}
+                    hideAmounts={!balancesVisible}
+                    title={transaction.title}
+                    type={transaction.type}
+                    walletLabel={transaction.walletName}
+                />;
+
                 return (
                     <div
                         key={transaction.id}
@@ -1722,6 +1739,7 @@ export function DashboardPage() {
         startOfMonth(new Date()),
     );
     const [summary, setSummary] = useState<DashboardSummary | null>(null);
+    const [upcomingObligations, setUpcomingObligations] = useState<RecurringObligationWithMeta[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [balancesVisible, setBalancesVisible] = useState(
         getStoredBalancesVisibility,
@@ -1756,6 +1774,14 @@ export function DashboardPage() {
     useEffect(() => {
         void loadDashboard();
     }, [loadDashboard]);
+
+    useEffect(() => {
+        let isMounted = true;
+        void getRecurringObligations().then(({ data }) => {
+            if (isMounted) setUpcomingObligations(data);
+        });
+        return () => { isMounted = false; };
+    }, []);
 
     useAppEvent(appEvents.transactionSaved, () => void loadDashboard());
     useAppEvent(appEvents.goalSaved, () => void loadDashboard());
@@ -1866,11 +1892,25 @@ export function DashboardPage() {
                             </span>
                         </div>
                     </div>
-                    <CashFlowChart
-                        balancesVisible={balancesVisible}
-                        summary={summary}
-                        currency={currency}
-                    />
+                    {summary.cashflow.some((point) => point.income > 0 || point.expense > 0) ? (
+                        <SharedCashFlowChart
+                            currency={currency}
+                            focusKey={String(new Date().getDate())}
+                            points={summary.cashflow.map((point) => ({
+                                expense: point.expense,
+                                income: point.income,
+                                key: String(point.day),
+                                label: point.label,
+                            }))}
+                            variant="compact"
+                        />
+                    ) : (
+                        <EmptyPanel
+                            title={t("dashboard.noCashflowData") || "No cash flow data this month"}
+                            description={t("dashboard.noCashflowDesc") || "Income and expense activity will appear as a daily chart."}
+                            className="min-h-28"
+                        />
+                    )}
                 </DashboardCard>
             </div>
 
@@ -1893,6 +1933,14 @@ export function DashboardPage() {
                     summary={summary}
                     currency={currency}
                 />
+            </DashboardCard>
+
+            <DashboardCard className="p-5">
+                <div className="flex items-center justify-between gap-4">
+                    <h2 className="text-sm font-extrabold text-slate-900">{t("subscriptions.tabDueSoon") || "Upcoming"}</h2>
+                    <Link to="/calendar" className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark">{t("common.viewAll")}</Link>
+                </div>
+                <div className="mt-2"><UpcomingTimeline currency={currency} items={upcomingObligations} /></div>
             </DashboardCard>
 
             {/* Secondary Summaries — 2×2 on desktop */}
@@ -1996,24 +2044,18 @@ export function DashboardPage() {
             </div>
 
             {/* Calendar — secondary area */}
-            <DashboardCard className="p-5">
+            <DashboardCard className="hidden">
                 <div className="flex items-center justify-between gap-4">
                     <h2 className="text-sm font-extrabold text-slate-900">
-                        {t("dashboard.calendar") || "Calendar"}
+                        {t("subscriptions.tabDueSoon") || "Upcoming"}
                     </h2>
-                    <span className="text-xs font-bold text-slate-500">
-                        {summary.period.label}
-                    </span>
+                    <Link to="/calendar" className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark">
+                        {t("common.viewAll")}
+                    </Link>
                 </div>
-                <DashboardCalendar
-                    month={selectedMonth}
-                    summary={summary}
-                    onSelectDate={(dateKey) =>
-                        navigate(
-                            `/calendar?date=${encodeURIComponent(dateKey)}`,
-                        )
-                    }
-                />
+                <div className="mt-2">
+                    <UpcomingTimeline currency={currency} items={upcomingObligations} />
+                </div>
             </DashboardCard>
 
             {error ? (
