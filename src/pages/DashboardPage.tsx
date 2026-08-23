@@ -45,7 +45,7 @@ import type { TransactionType } from "../types/domain";
 import { CashFlowChart as SharedCashFlowChart } from "../components/analytics/CashFlowChart";
 import { UpcomingTimeline } from "../components/financial/UpcomingTimeline";
 import { getRecurringObligations, type RecurringObligationWithMeta } from "../lib/subscriptions";
-import { TransactionPreviewRow } from "../components/transactions/TransactionPreviewRow";
+import { TransactionRow } from "../components/transactions/TransactionRow";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -1188,76 +1188,22 @@ function RecentTransactions({
     return (
         <div className="space-y-0.5">
             {summary.recentTransactions.slice(0, 5).map((transaction) => {
-                const Icon = transactionIcon(transaction.type);
-                const transactionDate = new Date(transaction.date);
-                const signedAmount =
-                    transaction.type === "income"
-                        ? transaction.amount
-                        : transaction.type === "expense"
-                          ? -transaction.amount
-                          : transaction.amount;
-
-                return <TransactionPreviewRow
+                return <TransactionRow
                     key={transaction.id}
-                    amount={transaction.amount}
-                    categoryLabel={transaction.categoryName}
                     currency={currency}
-                    dateLabel={new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(transactionDate)}
-                    fee={transaction.transferFee}
+                    density="compact"
                     hideAmounts={!balancesVisible}
-                    title={transaction.title}
-                    type={transaction.type}
-                    walletLabel={transaction.walletName}
+                    transaction={{
+                        amount: transaction.amount,
+                        category: { name: transaction.categoryName },
+                        status: "completed",
+                        title: transaction.title,
+                        transaction_date: transaction.date,
+                        transfer_fee: transaction.transferFee,
+                        type: transaction.type,
+                        wallet: { name: transaction.walletName },
+                    }}
                 />;
-
-                return (
-                    <div
-                        key={transaction.id}
-                        className="kash-activity-row flex items-center gap-3 rounded-xl px-1 py-2.5"
-                    >
-                        <span
-                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${transactionTone[transaction.type]}`}
-                        >
-                            <Icon
-                                aria-hidden="true"
-                                size={16}
-                                strokeWidth={2}
-                            />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-bold text-slate-900">
-                                {transaction.title}
-                            </p>
-                            <p className="truncate text-xs font-medium text-slate-500">
-                                {transaction.categoryName} •{" "}
-                                {transaction.walletName}
-                            </p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                            <p
-                                className={`text-sm font-extrabold ${transactionTone[transaction.type]}`}
-                            >
-                                {transaction.type === "transfer"
-                                    ? formatPrivateAmount(
-                                          transaction.amount,
-                                          currency,
-                                          balancesVisible,
-                                      )
-                                    : formatPrivateAmount(
-                                          signedAmount,
-                                          currency,
-                                          balancesVisible,
-                                      )}
-                            </p>
-                            <p className="text-[11px] font-medium text-slate-500">
-                                {new Intl.DateTimeFormat(
-                                    locale === "id" ? "id-ID" : "en-US",
-                                    { hour: "2-digit", minute: "2-digit" },
-                                ).format(transactionDate)}
-                            </p>
-                        </div>
-                    </div>
-                );
             })}
         </div>
     );

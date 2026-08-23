@@ -22,6 +22,7 @@ import { useSearchParams } from "react-router-dom";
 import { startOfLocalMonth } from "../lib/calendar";
 import { QuickCreateCategoryModal } from "../components/categories/QuickCreateCategoryModal";
 import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
+import { TransactionRow as CanonicalTransactionRow } from "../components/transactions/TransactionRow";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
@@ -370,122 +371,6 @@ function TransactionsSkeleton() {
         </div>
       ))}
     </div>
-  );
-}
-
-function TransactionRow({
-  currency,
-  isSelected,
-  onSelect,
-  transaction,
-}: {
-  currency: string;
-  isSelected: boolean;
-  onSelect: () => void;
-  transaction: TransactionWithMeta;
-}) {
-  const { t, formatCurrency } = useI18n();
-  const Icon = transaction.category?.icon ? getCategoryIcon(transaction.category.icon) : transactionIcon(transaction.type);
-  const date = new Date(transaction.transaction_date);
-  const isVoid = transaction.status === "void";
-  const timeLabel = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit" }).format(date);
-  const iconClass = transaction.category?.color ? "" : transactionTone[transaction.type];
-  const iconStyle = iconSurfaceStyle(transaction);
-
-  const getTranslatedTitle = () => {
-    if (transaction.title) return transaction.title;
-    if (transaction.type === "transfer") return `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`;
-    if (transaction.type === "adjustment") {
-      if (transaction.related_entity_type === "debt_payment") return t("debts.debtPayment") || "Pembayaran Utang";
-      if (transaction.related_entity_type === "receivable_payment") return t("debts.receivableCollection") || "Pelunasan Piutang";
-      if (transaction.related_entity_type === "shared_savings_contribution") return t("sharedSavings.contribution") || "Setoran Tabungan Bersama";
-      if (transaction.related_entity_type === "shared_savings_withdrawal") return t("sharedSavings.withdrawal") || "Penarikan Tabungan Bersama";
-      if (transaction.related_entity_type === "goal_contribution") return t("goals.contribution") || "Setoran Target";
-      if (transaction.related_entity_type === "goal_refund") return t("goals.refund") || "Pengembalian Target";
-      return t("wallets.balanceAdjustment") || "Penyesuaian Saldo";
-    }
-    return transaction.category?.name ?? (transaction.type === "income" ? (t("transactions.income") || "Pemasukan") : (t("transactions.expense") || "Pengeluaran"));
-  };
-
-  const getTranslatedCategoryLabel = () => {
-    if (transaction.type === "transfer") return t("transactions.transfer") || "Transfer";
-    if (transaction.type === "adjustment") {
-      if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return t("debts.debt") || "Utang";
-      if (transaction.related_entity_type === "receivable_payment" || transaction.related_entity_type === "receivable_creation") return t("debts.receivable") || "Piutang";
-      if (
-        transaction.related_entity_type === "shared_savings_contribution" ||
-        transaction.related_entity_type === "shared_savings_withdrawal"
-      ) {
-        return t("sharedSavings.title") || "Tabungan Bersama";
-      }
-      if (
-        transaction.related_entity_type === "goal_contribution" ||
-        transaction.related_entity_type === "goal_refund"
-      ) {
-        return t("goals.title") || "Target";
-      }
-      return t("wallets.adjustment") || "Penyesuaian";
-    }
-    return transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`kash-activity-row block w-full text-left transition ${isSelected ? "bg-kash-selected/60" : ""
-        } ${isVoid ? "opacity-60" : ""}`}
-    >
-      {/* Mobile layout */}
-      <span className="flex items-center gap-3 px-1 py-2.5 md:hidden">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${iconClass}`} style={iconStyle}>
-          <Icon aria-hidden="true" size={16} strokeWidth={2} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-bold text-slate-900">{getTranslatedTitle()}</span>
-          <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">
-            {getTranslatedCategoryLabel()} • {transactionWalletLabel(transaction)}
-          </span>
-          {isVoid ? <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{t("transactions.voided") || "Dibatalkan"}</span> : null}
-        </span>
-        <span className="shrink-0 text-right">
-          <span className={`block text-sm font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>
-            {displayAmount(transaction, currency)}
-          </span>
-          {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
-            <span className="block text-[10px] font-bold text-kash-expense">
-              + {t("transactions.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
-            </span>
-          ) : null}
-          <span className="mt-0.5 block text-[11px] font-medium text-slate-500">{timeLabel}</span>
-        </span>
-      </span>
-
-      {/* Desktop layout */}
-      <span
-        className="hidden items-center gap-4 px-2 py-2.5 text-sm md:flex"
-        style={{ gridTemplateColumns: "36px minmax(0, 1fr) minmax(100px, 160px) 130px 56px" }}
-      >
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${iconClass}`} style={iconStyle}>
-          <Icon aria-hidden="true" size={16} strokeWidth={2} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-bold text-slate-900">{getTranslatedTitle()}</span>
-          <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{getTranslatedCategoryLabel()}</span>
-          {isVoid ? <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-500">{t("transactions.voided") || "Dibatalkan"}</span> : null}
-        </span>
-        <span className="min-w-0 truncate font-medium text-slate-500">{transactionWalletLabel(transaction)}</span>
-        <span className={`text-right font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>
-          <span>{displayAmount(transaction, currency)}</span>
-          {transaction.type === "transfer" && toNumber(transaction.transfer_fee) > 0 ? (
-            <span className="block text-[10px] font-bold text-kash-expense">
-              + {t("transactions.fee") || "biaya"} {formatCurrency(transaction.transfer_fee, currency)}
-            </span>
-          ) : null}
-        </span>
-        <span className="text-right text-xs font-medium text-slate-500">{timeLabel}</span>
-      </span>
-    </button>
   );
 }
 
@@ -1252,7 +1137,7 @@ export function TransactionsPage() {
               {/* Transactions */}
               <div>
                 {group.items.map((transaction) => (
-                  <TransactionRow
+                  <CanonicalTransactionRow
                     key={transaction.id}
                     currency={currency}
                     isSelected={selectedTransaction?.id === transaction.id}
