@@ -1168,6 +1168,8 @@ export const id = {
         "Anda berhasil mempertahankan tingkat tabungan bersih sebesar {rate}%. Pengeluaran terbesar bulan ini dialokasikan untuk {category}.",
     "analytics.deficitStoryDesc":
         "Arus kas keluar periode ini lebih besar dari total pemasukan. Evaluasi pengeluaran pada {category} untuk menjaga keseimbangan kas.",
+    "analytics.spendingChange": "Perubahan Belanja",
+    "analytics.spendingChangeStory": "Dibanding periode sebelumnya",
     "analytics.avgMonthlyExpenseStory": "Laju pengeluaran rutin per bulan",
     "analytics.avgMonthlyIncomeStory": "Kecepatan arus masuk dana",
     "analytics.healthySavingsPace": "Diatas target ideal 20%",

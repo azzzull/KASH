@@ -1161,6 +1161,8 @@ export const en = {
         "You successfully maintained a net savings rate of {rate}%. Highest spending this month went to {category}.",
     "analytics.deficitStoryDesc":
         "Cash outflow in this period exceeded total income. Review spending on {category} to restore cash balance.",
+    "analytics.spendingChange": "Spending Change",
+    "analytics.spendingChangeStory": "Compared with the previous period",
     "analytics.avgMonthlyExpenseStory": "Routine monthly spending pace",
     "analytics.avgMonthlyIncomeStory": "Inflow rate of funds",
     "analytics.healthySavingsPace": "Above ideal 20% target",

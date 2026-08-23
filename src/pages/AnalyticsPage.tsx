@@ -25,7 +25,7 @@ import {
 } from "../lib/analytics";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type { BudgetWithProgress } from "../types/domain";
-import { formatCurrency } from "../lib/money";
+import { formatCompactCurrency, formatCurrency } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
@@ -71,18 +71,6 @@ function EmptyPanel({ description, title, className = "" }: { className?: string
   );
 }
 
-function monthEquivalent(summary: AnalyticsSummary) {
-  const start = new Date(summary.period.start);
-  const end = new Date(summary.period.end);
-  const days = Math.max(1, (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
-  return Math.max(1, days / 30.4375);
-}
-
-function formatPercent(value: number | null) {
-  if (value == null || !Number.isFinite(value)) return "-";
-  return `${value.toFixed(1)}%`;
-}
-
 function buildMetricChange(current: number, previous: number): AnalyticsMetricChange {
   if (previous > 0) {
     const percent = ((current - previous) / previous) * 100;
@@ -101,8 +89,48 @@ function buildMetricChange(current: number, previous: number): AnalyticsMetricCh
   return { current, percent: null, previous, state: "none" };
 }
 
-function averageMetricChange(change: AnalyticsMetricChange, divisor: number): AnalyticsMetricChange {
-  return buildMetricChange(change.current / divisor, change.previous / divisor);
+const CASH_FLOW_WINDOW_SIZE = 7;
+
+function splitCashFlowWindows(points: AnalyticsSummary["incomeExpenseTrend"]) {
+  const windows: { index: number; points: AnalyticsSummary["incomeExpenseTrend"]; scale: number }[] = [];
+
+  for (let start = 0; start < points.length; start += CASH_FLOW_WINDOW_SIZE) {
+    const windowPoints = points.slice(start, start + CASH_FLOW_WINDOW_SIZE);
+    const scale = Math.max(1, ...windowPoints.flatMap((point) => [Math.abs(point.income), Math.abs(point.expense)]));
+    windows.push({
+      index: windows.length,
+      points: windowPoints,
+      scale,
+    });
+  }
+
+  return windows;
+}
+
+function cashFlowWindowIndexFromScroll(scrollLeft: number, clientWidth: number, windowCount: number) {
+  if (windowCount <= 1 || clientWidth <= 0) return 0;
+  return Math.min(windowCount - 1, Math.max(0, Math.round(scrollLeft / clientWidth)));
+}
+
+function cashFlowAxisTicks(scale: number) {
+  return [scale, scale * 0.5, 0, -scale * 0.5, -scale];
+}
+
+function MiniInsightBars({ values, toneClass }: { toneClass: string; values: number[] }) {
+  return (
+    <div className="flex h-10 items-end gap-1 overflow-hidden">
+      {values.map((value, index) => (
+        <span
+          key={`${index}-${value}`}
+          className={`flex-1 rounded-t-sm ${toneClass}`}
+          style={{
+            height: `${Math.max(18, Math.min(100, value))}%`,
+            opacity: 0.48 + Math.min(0.42, value / 220),
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function ComparisonLine({
@@ -318,15 +346,9 @@ function AnalyticsHeroStory({
 
 function AnalyticsInsights({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
-  const months = monthEquivalent(summary);
-  const averageMonthlyExpense = summary.expense.amount / months;
-  const averageMonthlyIncome = summary.income.amount / months;
-  const averageMonthlyCashFlow = summary.netCashFlow.amount / months;
   const savingsRate = summary.income.amount > 0 ? (summary.netCashFlow.amount / summary.income.amount) * 100 : null;
   const previousSavingsRate =
-    summary.income.change.previous > 0
-      ? (summary.netCashFlow.change.previous / summary.income.change.previous) * 100
-      : null;
+    summary.income.change.previous > 0 ? (summary.netCashFlow.change.previous / summary.income.change.previous) * 100 : null;
   const savingsRateChange =
     savingsRate != null && previousSavingsRate != null
       ? buildMetricChange(savingsRate, previousSavingsRate)
@@ -335,67 +357,53 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
 
   const insights = [
     {
-      change: averageMetricChange(summary.expense.change, months),
+      change: summary.expense.change,
+      goodWhenDecrease: true,
       icon: TrendingDown,
-      label: t("analytics.avgMonthlyExpense") || "Rata-rata Belanja Bulanan",
-      value: formatCurrency(averageMonthlyExpense, currency),
-      helper: t("analytics.avgMonthlyExpenseStory") || "Laju pengeluaran rutin per bulan",
-      positiveWhen: "decrease" as const,
+      label: t("analytics.spendingChange") || "Perubahan Belanja",
+      value: formatCurrency(summary.expense.amount, currency),
+      helper: t("analytics.spendingChangeStory") || "Dibanding periode sebelumnya",
       tone: "text-slate-900",
       accentBg: "bg-[#E50914]/10 text-[#E50914]",
-    },
-    {
-      change: averageMetricChange(summary.income.change, months),
-      icon: TrendingUp,
-      label: t("analytics.avgMonthlyIncome") || "Rata-rata Pemasukan Bulanan",
-      value: formatCurrency(averageMonthlyIncome, currency),
-      helper: t("analytics.avgMonthlyIncomeStory") || "Kecepatan arus masuk dana",
-      positiveWhen: "increase" as const,
-      tone: "text-slate-900",
-      accentBg: "bg-kash-emerald/10 text-kash-emeraldDark",
+      spark: [36, 48, 56, 62, 70, 84],
+      sparkTone: "bg-[#E50914]",
     },
     {
       change: savingsRateChange,
+      goodWhenDecrease: false,
       icon: Sparkles,
       label: t("analytics.savingsRate") || "Rasio Tabungan Bersih",
       value: savingsRate != null ? `${savingsRate.toFixed(1)}%` : "-",
-      helper: savingsRate != null && savingsRate >= 20 ? (t("analytics.healthySavingsPace") || "Diatas target ideal 20%") : (t("analytics.moderateSavingsPace") || "Alokasi tabungan perlu ditingkatkan"),
-      mode: "percentPoint" as const,
-      positiveWhen: "increase" as const,
+      helper: savingsRate != null && savingsRate >= 20 ? (t("analytics.healthySavingsPace") || "Di atas target ideal 20%") : (t("analytics.moderateSavingsPace") || "Alokasi tabungan perlu ditingkatkan"),
       tone: savingsRate != null && savingsRate >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]",
-      accentBg: "bg-amber-500/10 text-amber-800",
+      accentBg: savingsRate != null && savingsRate >= 0 ? "bg-kash-emerald/10 text-kash-emeraldDark" : "bg-red-500/10 text-red-700",
+      spark: [28, 34, 42, 56, 68, 74],
+      sparkTone: savingsRate != null && savingsRate >= 0 ? "bg-kash-emerald" : "bg-[#E50914]",
     },
     {
       change: topCategory?.change ?? buildMetricChange(0, 0),
+      goodWhenDecrease: true,
       icon: PieChart,
       label: t("analytics.topCategoryImpact") || "Kontributor Belanja Terbesar",
       value: topCategory ? topCategory.name : "-",
       subvalue: topCategory ? formatCurrency(topCategory.amount, currency) : undefined,
-      compactValue: true,
-      helper: undefined,
-      positiveWhen: "decrease" as const,
+      helper: topCategory ? `${formatCurrency(topCategory.amount, currency)} - ${Math.round(topCategory.percent)}%` : (t("analytics.noExpenseCategories") || "Belum ada kategori"),
       tone: "text-slate-900",
       accentBg: "bg-blue-500/10 text-blue-700",
+      spark: [24, 32, 50, 58, 72, 88],
+      sparkTone: "bg-blue-500",
     },
     {
       change: summary.transferFeesChange,
+      goodWhenDecrease: true,
       icon: Receipt,
       label: t("analytics.transferFees") || "Beban Biaya Transfer",
       value: formatCurrency(summary.transferFees, currency),
       helper: summary.transferFees > 0 ? (t("analytics.transferFeesStory") || "Biaya administrasi terakumulasi") : (t("analytics.zeroTransferFees") || "Bebas biaya transfer pada periode ini"),
-      positiveWhen: "decrease" as const,
       tone: summary.transferFees > 0 ? "text-amber-700" : "text-slate-700",
       accentBg: "bg-slate-100 text-slate-700",
-    },
-    {
-      change: averageMetricChange(summary.netCashFlow.change, months),
-      icon: WalletCards,
-      label: t("analytics.netCashFlow") || "Net Surplus/Defisit Kas",
-      value: formatCurrency(averageMonthlyCashFlow, currency),
-      helper: averageMonthlyCashFlow >= 0 ? (t("analytics.surplusPaceStory") || "Pengakumulasian kas positif") : (t("analytics.deficitPaceStory") || "Defisit kas terakumulasi"),
-      positiveWhen: "increase" as const,
-      tone: averageMonthlyCashFlow >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]",
-      accentBg: averageMonthlyCashFlow >= 0 ? "bg-kash-emerald/10 text-kash-emeraldDark" : "bg-red-500/10 text-red-700",
+      spark: [18, 24, 30, 36, 28, 40],
+      sparkTone: "bg-slate-500",
     },
   ];
 
@@ -407,11 +415,11 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
         </h3>
       </div>
 
-      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="flex gap-3 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {insights.map((item) => (
-          <div
+          <article
             key={item.label}
-            className="flex flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 sm:p-5 shadow-card hover:shadow-md transition min-w-0 max-w-full box-border"
+            className="flex w-[15rem] min-w-[15rem] max-w-[15rem] flex-none snap-start flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card transition hover:shadow-md"
           >
             <div className="min-w-0">
               <div className="flex items-start justify-between gap-3">
@@ -423,30 +431,32 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
                 </span>
               </div>
 
-              <p className={`mt-3 ${item.compactValue ? "text-xl" : "text-xl sm:text-2xl"} font-extrabold truncate ${item.tone}`}>
+              <p className={`mt-3 truncate text-xl font-extrabold ${item.tone}`}>
                 {item.value}
               </p>
               {item.subvalue ? (
-                <p className="mt-0.5 text-xl font-extrabold text-slate-900">
+                <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
                   {item.subvalue}
                 </p>
               ) : null}
-              <ComparisonLine
-                change={item.change}
-                className="mt-1.5"
-                comparisonLabel={summary.period.comparisonLabel}
-                currency={currency}
-                mode={item.mode}
-                positiveWhen={item.positiveWhen}
-              />
+              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+                <span className="truncate">{item.helper}</span>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                    item.change.percent != null && ((item.goodWhenDecrease && item.change.percent < 0) || (!item.goodWhenDecrease && item.change.percent > 0))
+                      ? "bg-emerald-50 text-kash-emeraldDark"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {item.change.percent == null ? "-" : `${item.change.percent > 0 ? "+" : ""}${item.change.percent.toFixed(1)}%`}
+                </span>
+              </div>
             </div>
 
-            {item.helper ? (
-              <p className="mt-4 border-t border-slate-100/80 pt-3 text-xs font-semibold text-slate-500 leading-relaxed">
-                {item.helper}
-              </p>
-            ) : null}
-          </div>
+            <div className="mt-4 rounded-xl bg-slate-50 px-2.5 py-2">
+              <MiniInsightBars values={item.spark} toneClass={item.sparkTone} />
+            </div>
+          </article>
         ))}
       </div>
     </section>
@@ -457,12 +467,6 @@ function chartTickLabel(value: number) {
   if (value >= 1000000) return `${(value / 1000000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}jt`;
   if (value >= 1000) return `${Math.round(value / 1000).toLocaleString("id-ID")}rb`;
   return "0";
-}
-
-function chartCompactMoneyLabel(value: number) {
-  if (value >= 1000000) return `${(value / 1000000).toLocaleString("id-ID", { maximumFractionDigits: 1 })}jt`;
-  if (value >= 1000) return `${Math.round(value / 1000).toLocaleString("id-ID")}rb`;
-  return value.toLocaleString("id-ID");
 }
 
 function currentTrendIndex(points: { key: string }[]) {
@@ -493,133 +497,197 @@ function scrollChartToIndex(scrollElement: HTMLDivElement, itemCount: number, ta
 
 function CashFlowOverview({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
-  const mobileScrollRef = useRef<HTMLDivElement>(null);
-  const hasData = summary.incomeExpenseTrend.some((point) => point.income > 0 || point.expense > 0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
   const points = summary.incomeExpenseTrend;
-  const mobileWidth = Math.max(360, points.length * 40);
-  const ticks = [0, 0.25, 0.5, 0.75, 1];
+  const windows = useMemo(() => splitCashFlowWindows(points), [points]);
+  const initialWindowIndex = Math.min(Math.max(0, Math.floor(currentTrendIndex(points) / CASH_FLOW_WINDOW_SIZE)), Math.max(0, windows.length - 1));
+  const [activeWindowIndex, setActiveWindowIndex] = useState(initialWindowIndex);
+  const [selectedPointKey, setSelectedPointKey] = useState(() => points[currentTrendIndex(points)]?.key ?? points[0]?.key ?? "");
+  const hasData = points.some((point) => point.income > 0 || point.expense > 0);
+  const activeWindow = windows[activeWindowIndex] ?? windows[0] ?? null;
+  const selectedPoint = points.find((point) => point.key === selectedPointKey) ?? activeWindow?.points[0] ?? points[0] ?? null;
 
   useEffect(() => {
-    const scrollElement = mobileScrollRef.current;
-    if (!scrollElement || points.length === 0) return;
+    const activeFirstPoint = activeWindow?.points[0];
+    if (!activeFirstPoint) return;
 
-    scrollChartToIndex(scrollElement, points.length, currentTrendIndex(points));
-  }, [points]);
+    const selectedStillVisible = activeWindow.points.some((point) => point.key === selectedPointKey);
+    if (!selectedStillVisible) {
+      setSelectedPointKey(activeFirstPoint.key);
+    }
+  }, [activeWindow, selectedPointKey]);
+
+  useEffect(() => {
+    const fallbackIndex = Math.min(Math.max(0, Math.floor(currentTrendIndex(points) / CASH_FLOW_WINDOW_SIZE)), Math.max(0, windows.length - 1));
+    setActiveWindowIndex(fallbackIndex);
+
+    const nextSelection = points[currentTrendIndex(points)] ?? points[0];
+    if (nextSelection) setSelectedPointKey(nextSelection.key);
+  }, [points, windows.length]);
+
+  useEffect(() => {
+    const scrollElement = scrollRef.current;
+    if (!scrollElement || windows.length === 0) return;
+
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    scrollElement.scrollLeft = Math.min(
+      maxScrollLeft,
+      Math.max(0, activeWindowIndex * scrollElement.clientWidth),
+    );
+  }, [activeWindowIndex, windows.length]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current != null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+      }
+    };
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const scrollElement = scrollRef.current;
+    if (!scrollElement || windows.length === 0) return;
+
+    if (scrollRafRef.current != null) {
+      window.cancelAnimationFrame(scrollRafRef.current);
+    }
+
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      setActiveWindowIndex((current) => {
+        const next = cashFlowWindowIndexFromScroll(scrollElement.scrollLeft, scrollElement.clientWidth, windows.length);
+        return next === current ? current : next;
+      });
+    });
+  }, [windows.length]);
 
   if (!hasData) {
-    return <EmptyPanel title={t("analytics.noCashFlowData") || "No cash flow data"} description={t("analytics.noCashFlowDesc") || "Income and expense activity in this period will build the chart."} className="min-h-64" />;
-  }
-
-  function renderChart({
-    className,
-    showYAxisLabels = true,
-    style,
-    width,
-    chartPadding = { bottom: 34, left: 38, right: 10, top: 16 },
-  }: {
-    chartPadding?: { bottom: number; left: number; right: number; top: number };
-    className: string;
-    showYAxisLabels?: boolean;
-    style?: CSSProperties;
-    width: number;
-  }) {
-    const height = 260;
-    const padding = chartPadding;
-    const maxValue = Math.max(1, ...points.flatMap((point) => [point.income, point.expense]));
-    const plotHeight = height - padding.top - padding.bottom;
-    const plotWidth = width - padding.left - padding.right;
-    const bandWidth = plotWidth / points.length;
-    const barWidth = Math.min(18, Math.max(7, bandWidth / 3.4));
-
     return (
-      <svg role="img" aria-label={`Cash flow overview for ${summary.period.label}`} viewBox={`0 0 ${width} ${height}`} className={className} style={style}>
-        {ticks.map((tick) => {
-          const y = padding.top + plotHeight - tick * plotHeight;
-          const value = maxValue * tick;
-
-          return (
-            <g key={tick}>
-              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke={CHART_GRID_COLOR} strokeWidth="1" />
-              {showYAxisLabels ? (
-                <text x={padding.left - 8} y={y + 4} textAnchor="end" className="fill-slate-600 text-[10px] font-bold">
-                  {chartTickLabel(value)}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
-
-        {points.map((point, index) => {
-          const centerX = padding.left + bandWidth * (index + 0.5);
-          const incomeHeight = (point.income / maxValue) * plotHeight;
-          const expenseHeight = (point.expense / maxValue) * plotHeight;
-          const incomeY = padding.top + plotHeight - incomeHeight;
-          const expenseY = padding.top + plotHeight - expenseHeight;
-
-          return (
-            <g key={point.key}>
-              <title>{`${point.label}: Income ${formatCurrency(point.income, currency)}, Expense ${formatCurrency(point.expense, currency)}`}</title>
-              {point.income > 0 ? (
-                <text
-                  x={centerX - barWidth / 2 - 2}
-                  y={Math.max(10, incomeY - 5)}
-                  textAnchor="middle"
-                  className="fill-kash-emerald text-[9px] font-extrabold"
-                >
-                  {chartCompactMoneyLabel(point.income)}
-                </text>
-              ) : null}
-              {point.expense > 0 ? (
-                <text
-                  x={centerX + barWidth / 2 + 2}
-                  y={Math.max(10, expenseY - 5)}
-                  textAnchor="middle"
-                  className="fill-[#E50914] text-[9px] font-extrabold"
-                >
-                  {chartCompactMoneyLabel(point.expense)}
-                </text>
-              ) : null}
-              <rect
-                x={centerX - barWidth - 2}
-                y={incomeY}
-                width={barWidth}
-                height={point.income > 0 ? Math.max(incomeHeight, 3) : 2}
-                rx="3"
-                fill={INCOME_COLOR}
-                opacity={point.income > 0 ? 0.95 : 0.16}
-              />
-              <rect
-                x={centerX + 2}
-                y={expenseY}
-                width={barWidth}
-                height={point.expense > 0 ? Math.max(expenseHeight, 3) : 2}
-                rx="3"
-                fill={EXPENSE_COLOR}
-                opacity={point.expense > 0 ? 1 : 0.16}
-              />
-              <text x={centerX} y={height - 10} textAnchor="middle" className="fill-slate-700 text-[10px] font-bold">
-                {point.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+      <EmptyPanel
+        title={t("analytics.noCashFlowData") || "No cash flow data"}
+        description={t("analytics.noCashFlowDesc") || "Income and expense activity in this period will build the chart."}
+        className="min-h-64"
+      />
     );
   }
 
-  const scrollChartWidth = Math.max(720, points.length * 48);
-
   return (
-    <div className="w-full max-w-full min-w-0 overflow-hidden">
-      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {renderChart({
-          className: "block h-64 sm:h-72 max-w-none",
-          chartPadding: { bottom: 34, left: 10, right: 10, top: 16 },
-          showYAxisLabels: true,
-          style: { width: `${Math.max(100, (points.length / 7) * 100)}%`, minWidth: "100%" },
-          width: scrollChartWidth,
+    <div className="w-full min-w-0 overflow-hidden">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Daily Cash Flow"}</h4>
+          <p className="mt-0.5 text-xs font-semibold text-slate-500">{activeWindow ? `${activeWindow.points[0]?.label ?? ""} - ${activeWindow.points[activeWindow.points.length - 1]?.label ?? ""}` : summary.period.label}</p>
+        </div>
+        <div className="text-right text-xs font-semibold text-slate-500">
+          <p>{activeWindowIndex + 1}/{Math.max(1, windows.length)}</p>
+          <p>{selectedPoint ? selectedPoint.label : summary.period.label}</p>
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex w-full min-w-0 snap-x snap-mandatory overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {windows.map((window) => {
+          const barMaxHeight = 58;
+          const gridLinePositions = [0, 0.25, 0.5, 0.75, 1];
+          const tickValues = cashFlowAxisTicks(window.scale);
+          const selectedKeyInWindow = selectedPoint?.key;
+
+          return (
+            <section key={window.index} className="flex min-w-full flex-none snap-start gap-3">
+              <div className="relative hidden w-14 shrink-0 sm:block">
+                <div className="relative h-[180px]">
+                  {gridLinePositions.map((position, index) => {
+                    const tickValue = tickValues[index] ?? 0;
+                    return (
+                      <div
+                        key={position}
+                        className="absolute right-0 -translate-y-1/2 text-[10px] font-bold text-slate-500"
+                        style={{ top: `${position * 100}%` }}
+                      >
+                        {formatCompactCurrency(tickValue, currency)}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="relative h-[180px] overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-50/80">
+                  <div className="absolute inset-x-0 top-1/2 h-px bg-slate-300/80" />
+                  {gridLinePositions.map((position) => (
+                    <div
+                      key={position}
+                      className="absolute inset-x-0 border-t border-dashed border-slate-200/70"
+                      style={{ top: `${position * 100}%` }}
+                    />
+                  ))}
+
+                  <div className="absolute inset-0 grid grid-cols-7 gap-1.5 px-2 pb-8 pt-3 sm:gap-2 sm:px-3">
+                    {Array.from({ length: CASH_FLOW_WINDOW_SIZE }).map((_, slotIndex) => {
+                      const point = window.points[slotIndex];
+                      const isSelected = point?.key === selectedKeyInWindow;
+                      const incomeHeight = point ? Math.max(2, Math.round((point.income / window.scale) * barMaxHeight)) : 0;
+                      const expenseHeight = point ? Math.max(2, Math.round((point.expense / window.scale) * barMaxHeight)) : 0;
+                      const hasIncome = Boolean(point && point.income > 0);
+                      const hasExpense = Boolean(point && point.expense > 0);
+                      const netValue = point ? point.income - point.expense : 0;
+
+                      return (
+                        <button
+                          key={point?.key ?? `empty-${window.index}-${slotIndex}`}
+                          type="button"
+                          disabled={!point}
+                          onClick={() => point && setSelectedPointKey(point.key)}
+                          className={`relative flex min-w-0 flex-col items-center justify-end rounded-xl transition ${point ? "cursor-pointer" : "cursor-default"}`}
+                          aria-pressed={isSelected}
+                        >
+                          <div className={`absolute inset-x-1 top-2 bottom-8 rounded-lg transition ${isSelected ? "bg-white/55" : "bg-transparent"}`} />
+                          {point ? (
+                            <>
+                              <div className="absolute inset-x-0 top-1 flex flex-col items-center gap-0.5 text-[9px] font-extrabold leading-none text-kash-emerald transition duration-300 ease-out">
+                                {hasIncome ? <span className="whitespace-nowrap text-kash-emerald">{formatCompactCurrency(point.income, currency)}</span> : null}
+                              </div>
+                              <div
+                                className="absolute left-1/2 bottom-1/2 w-2.5 -translate-x-1/2 rounded-t-md bg-kash-emerald transition-all duration-300 ease-out"
+                                style={{ height: `${incomeHeight}px`, opacity: hasIncome ? 0.95 : 0.16 }}
+                              />
+                              <div
+                                className="absolute left-1/2 top-1/2 w-2.5 -translate-x-1/2 rounded-b-md bg-[#E50914] transition-all duration-300 ease-out"
+                                style={{ height: `${expenseHeight}px`, opacity: hasExpense ? 0.95 : 0.16 }}
+                              />
+                              <div className="absolute inset-x-0 bottom-9 flex flex-col items-center gap-0.5 text-[9px] font-extrabold leading-none text-[#E50914] transition duration-300 ease-out">
+                                {hasExpense ? <span className="whitespace-nowrap text-[#E50914]">{formatCompactCurrency(point.expense, currency)}</span> : null}
+                              </div>
+                              <div className="absolute inset-x-0 bottom-2 flex flex-col items-center gap-0.5">
+                                <span className={`max-w-full truncate text-[10px] font-bold ${isSelected ? "text-slate-900" : "text-slate-600"}`}>{point.label}</span>
+                                <span className={`text-[9px] font-bold ${netValue >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]"}`}>
+                                  {formatCompactCurrency(netValue, currency)}
+                                </span>
+                              </div>
+                            </>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
         })}
       </div>
+
+      {selectedPoint ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200/70 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
+          <span className="font-extrabold text-slate-900">{selectedPoint.label}</span>
+          <span>{t("common.typeIncome") || "Income"}: {formatCurrency(selectedPoint.income, currency)}</span>
+          <span>{t("common.typeExpense") || "Expense"}: {formatCurrency(selectedPoint.expense, currency)}</span>
+          <span>{t("dashboard.netCashFlow") || "Net"}: {formatCurrency(selectedPoint.income - selectedPoint.expense, currency)}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -705,16 +773,6 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
                 <span className="font-bold text-slate-900">{formatCurrency(category.amount, currency)}</span>
                 <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
               </div>
-            </div>
-            <div className="mt-0.5 flex justify-end pl-4 text-right">
-              <ComparisonLine
-                change={category.change}
-                className="items-end leading-tight"
-                comparisonLabel={summary.period.comparisonLabel}
-                currency={currency}
-                layout="stacked"
-                positiveWhen="decrease"
-              />
             </div>
           </div>
         ))}
@@ -1378,3 +1436,5 @@ export function AnalyticsPage() {
     </div>
   );
 }
+
+
