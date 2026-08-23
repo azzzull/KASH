@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  CircleDollarSign,
   PieChart,
   Receipt,
   RefreshCw,
@@ -89,48 +90,8 @@ function buildMetricChange(current: number, previous: number): AnalyticsMetricCh
   return { current, percent: null, previous, state: "none" };
 }
 
-const CASH_FLOW_WINDOW_SIZE = 7;
-
-function splitCashFlowWindows(points: AnalyticsSummary["incomeExpenseTrend"]) {
-  const windows: { index: number; points: AnalyticsSummary["incomeExpenseTrend"]; scale: number }[] = [];
-
-  for (let start = 0; start < points.length; start += CASH_FLOW_WINDOW_SIZE) {
-    const windowPoints = points.slice(start, start + CASH_FLOW_WINDOW_SIZE);
-    const scale = Math.max(1, ...windowPoints.flatMap((point) => [Math.abs(point.income), Math.abs(point.expense)]));
-    windows.push({
-      index: windows.length,
-      points: windowPoints,
-      scale,
-    });
-  }
-
-  return windows;
-}
-
-function cashFlowWindowIndexFromScroll(scrollLeft: number, clientWidth: number, windowCount: number) {
-  if (windowCount <= 1 || clientWidth <= 0) return 0;
-  return Math.min(windowCount - 1, Math.max(0, Math.round(scrollLeft / clientWidth)));
-}
-
 function cashFlowAxisTicks(scale: number) {
   return [scale, scale * 0.5, 0, -scale * 0.5, -scale];
-}
-
-function MiniInsightBars({ values, toneClass }: { toneClass: string; values: number[] }) {
-  return (
-    <div className="flex h-10 items-end gap-1 overflow-hidden">
-      {values.map((value, index) => (
-        <span
-          key={`${index}-${value}`}
-          className={`flex-1 rounded-t-sm ${toneClass}`}
-          style={{
-            height: `${Math.max(18, Math.min(100, value))}%`,
-            opacity: 0.48 + Math.min(0.42, value / 220),
-          }}
-        />
-      ))}
-    </div>
-  );
 }
 
 function ComparisonLine({
@@ -347,65 +308,18 @@ function AnalyticsHeroStory({
 function AnalyticsInsights({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
   const savingsRate = summary.income.amount > 0 ? (summary.netCashFlow.amount / summary.income.amount) * 100 : null;
-  const previousSavingsRate =
-    summary.income.change.previous > 0 ? (summary.netCashFlow.change.previous / summary.income.change.previous) * 100 : null;
-  const savingsRateChange =
-    savingsRate != null && previousSavingsRate != null
-      ? buildMetricChange(savingsRate, previousSavingsRate)
-      : buildMetricChange(savingsRate ?? 0, 0);
   const topCategory = summary.categorySpending[0] ?? null;
+  const previousSpending = summary.expense.change.previous;
+  const currentSpending = summary.expense.amount;
+  const spendingBarMax = Math.max(1, previousSpending, currentSpending);
+  const topCategoryShare = Math.max(0, Math.min(100, topCategory?.percent ?? 0));
+  const savingsProgress = Math.max(0, Math.min(100, savingsRate ?? 0));
 
-  const insights = [
-    {
-      change: summary.expense.change,
-      goodWhenDecrease: true,
-      icon: TrendingDown,
-      label: t("analytics.spendingChange") || "Perubahan Belanja",
-      value: formatCurrency(summary.expense.amount, currency),
-      helper: t("analytics.spendingChangeStory") || "Dibanding periode sebelumnya",
-      tone: "text-slate-900",
-      accentBg: "bg-[#E50914]/10 text-[#E50914]",
-      spark: [36, 48, 56, 62, 70, 84],
-      sparkTone: "bg-[#E50914]",
-    },
-    {
-      change: savingsRateChange,
-      goodWhenDecrease: false,
-      icon: Sparkles,
-      label: t("analytics.savingsRate") || "Rasio Tabungan Bersih",
-      value: savingsRate != null ? `${savingsRate.toFixed(1)}%` : "-",
-      helper: savingsRate != null && savingsRate >= 20 ? (t("analytics.healthySavingsPace") || "Di atas target ideal 20%") : (t("analytics.moderateSavingsPace") || "Alokasi tabungan perlu ditingkatkan"),
-      tone: savingsRate != null && savingsRate >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]",
-      accentBg: savingsRate != null && savingsRate >= 0 ? "bg-kash-emerald/10 text-kash-emeraldDark" : "bg-red-500/10 text-red-700",
-      spark: [28, 34, 42, 56, 68, 74],
-      sparkTone: savingsRate != null && savingsRate >= 0 ? "bg-kash-emerald" : "bg-[#E50914]",
-    },
-    {
-      change: topCategory?.change ?? buildMetricChange(0, 0),
-      goodWhenDecrease: true,
-      icon: PieChart,
-      label: t("analytics.topCategoryImpact") || "Kontributor Belanja Terbesar",
-      value: topCategory ? topCategory.name : "-",
-      subvalue: topCategory ? formatCurrency(topCategory.amount, currency) : undefined,
-      helper: topCategory ? `${formatCurrency(topCategory.amount, currency)} - ${Math.round(topCategory.percent)}%` : (t("analytics.noExpenseCategories") || "Belum ada kategori"),
-      tone: "text-slate-900",
-      accentBg: "bg-blue-500/10 text-blue-700",
-      spark: [24, 32, 50, 58, 72, 88],
-      sparkTone: "bg-blue-500",
-    },
-    {
-      change: summary.transferFeesChange,
-      goodWhenDecrease: true,
-      icon: Receipt,
-      label: t("analytics.transferFees") || "Beban Biaya Transfer",
-      value: formatCurrency(summary.transferFees, currency),
-      helper: summary.transferFees > 0 ? (t("analytics.transferFeesStory") || "Biaya administrasi terakumulasi") : (t("analytics.zeroTransferFees") || "Bebas biaya transfer pada periode ini"),
-      tone: summary.transferFees > 0 ? "text-amber-700" : "text-slate-700",
-      accentBg: "bg-slate-100 text-slate-700",
-      spark: [18, 24, 30, 36, 28, 40],
-      sparkTone: "bg-slate-500",
-    },
-  ];
+  const InsightCard = ({ children }: { children: ReactNode }) => (
+    <article className="flex h-[12.5rem] w-[15rem] min-w-[15rem] max-w-[15rem] flex-none flex-col rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card">
+      {children}
+    </article>
+  );
 
   return (
     <section className="space-y-3">
@@ -416,48 +330,58 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {insights.map((item) => (
-          <article
-            key={item.label}
-            className="flex w-[15rem] min-w-[15rem] max-w-[15rem] flex-none snap-start flex-col justify-between rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card transition hover:shadow-md"
-          >
-            <div className="min-w-0">
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 leading-tight">
-                  {item.label}
+        <InsightCard>
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("analytics.spendingChange") || "Perubahan Belanja"}</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E50914]/10 text-[#E50914]"><TrendingDown size={16} /></span>
+          </div>
+          <p className="mt-2 text-lg font-extrabold text-slate-900">{formatCurrency(currentSpending, currency)}</p>
+          <div className="mt-auto flex h-16 items-end justify-around gap-6 px-4">
+            {[
+              { amount: previousSpending, label: t("analytics.previousPeriod") || "Sebelumnya" },
+              { amount: currentSpending, label: t("analytics.currentPeriod") || "Saat ini" },
+            ].map((item) => (
+              <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                <span className="text-[9px] font-bold text-slate-500">{formatCompactCurrency(item.amount, currency)}</span>
+                <span className="flex h-8 w-full items-end rounded-t-sm bg-slate-100">
+                  <span className="w-full rounded-t-sm bg-[#E50914] transition-[height] duration-300 ease-out" style={{ height: `${Math.max(item.amount > 0 ? 8 : 2, (item.amount / spendingBarMax) * 100)}%` }} />
                 </span>
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-extrabold text-xs ${item.accentBg}`}>
-                  <item.icon size={16} />
-                </span>
+                <span className="text-[9px] font-bold text-slate-500">{item.label}</span>
               </div>
+            ))}
+          </div>
+        </InsightCard>
 
-              <p className={`mt-3 truncate text-xl font-extrabold ${item.tone}`}>
-                {item.value}
-              </p>
-              {item.subvalue ? (
-                <p className="mt-0.5 truncate text-sm font-bold text-slate-900">
-                  {item.subvalue}
-                </p>
-              ) : null}
-              <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-                <span className="truncate">{item.helper}</span>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                    item.change.percent != null && ((item.goodWhenDecrease && item.change.percent < 0) || (!item.goodWhenDecrease && item.change.percent > 0))
-                      ? "bg-emerald-50 text-kash-emeraldDark"
-                      : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {item.change.percent == null ? "-" : `${item.change.percent > 0 ? "+" : ""}${item.change.percent.toFixed(1)}%`}
-                </span>
-              </div>
-            </div>
+        <InsightCard>
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("analytics.topCategoryImpact") || "Kontributor Belanja Terbesar"}</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-700"><PieChart size={16} /></span>
+          </div>
+          {topCategory ? (
+            <>
+              <div className="mt-3 flex items-baseline justify-between gap-3"><p className="truncate text-lg font-extrabold text-slate-900">{topCategory.name}</p><span className="shrink-0 text-sm font-extrabold text-blue-700">{Math.round(topCategoryShare)}%</span></div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-500 transition-[width] duration-300 ease-out" style={{ width: `${topCategoryShare}%` }} /></div>
+              <p className="mt-3 text-xs font-semibold text-slate-500">{formatCurrency(topCategory.amount, currency)} {t("analytics.ofTotalExpense") || "dari total pengeluaran"}</p>
+            </>
+          ) : <p className="mt-auto text-sm font-semibold text-slate-500">{t("analytics.noExpenseCategories") || "Belum ada kategori"}</p>}
+        </InsightCard>
 
-            <div className="mt-4 rounded-xl bg-slate-50 px-2.5 py-2">
-              <MiniInsightBars values={item.spark} toneClass={item.sparkTone} />
-            </div>
-          </article>
-        ))}
+        <InsightCard>
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("analytics.savingsRate") || "Rasio Tabungan"}</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emeraldDark"><CircleDollarSign size={16} /></span>
+          </div>
+          {savingsRate == null ? (
+            <div className="mt-auto"><p className="text-2xl font-extrabold text-slate-900">-</p><p className="mt-1 text-sm font-bold text-slate-700">{t("analytics.noIncomeYet") || "Belum ada pemasukan"}</p><p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{t("analytics.savingsRateUnavailable") || "Rasio tabungan belum dapat dihitung untuk periode ini."}</p></div>
+          ) : (
+            <div className="mt-auto"><div className="flex items-baseline justify-between gap-3"><p className={`text-2xl font-extrabold ${savingsRate >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]"}`}>{savingsRate.toFixed(1)}%</p><span className="text-xs font-semibold text-slate-500">{t("analytics.savingsRate") || "Rasio Tabungan"}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-[width] duration-300 ease-out ${savingsRate >= 0 ? "bg-kash-emerald" : "bg-[#E50914]"}`} style={{ width: `${savingsProgress}%` }} /></div></div>
+          )}
+        </InsightCard>
+
+        <InsightCard>
+          <div className="flex items-start justify-between gap-3"><span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("analytics.transferFees") || "Biaya Transfer"}</span><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700"><Receipt size={16} /></span></div>
+          <div className="mt-auto"><p className="text-2xl font-extrabold text-slate-900">{formatCurrency(summary.transferFees, currency)}</p><p className="mt-1 text-xs font-semibold text-slate-500">{summary.transferFees > 0 ? (t("analytics.transferFeesStory") || "Biaya transfer bulan ini") : (t("analytics.zeroTransferFees") || "Bebas biaya transfer pada periode ini")}</p></div>
+        </InsightCard>
       </div>
     </section>
   );
@@ -500,42 +424,36 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
   const points = summary.incomeExpenseTrend;
-  const windows = useMemo(() => splitCashFlowWindows(points), [points]);
-  const initialWindowIndex = Math.min(Math.max(0, Math.floor(currentTrendIndex(points) / CASH_FLOW_WINDOW_SIZE)), Math.max(0, windows.length - 1));
-  const [activeWindowIndex, setActiveWindowIndex] = useState(initialWindowIndex);
+  const [visibleRange, setVisibleRange] = useState({ end: Math.min(points.length, 7), start: 0 });
   const [selectedPointKey, setSelectedPointKey] = useState(() => points[currentTrendIndex(points)]?.key ?? points[0]?.key ?? "");
   const hasData = points.some((point) => point.income > 0 || point.expense > 0);
-  const activeWindow = windows[activeWindowIndex] ?? windows[0] ?? null;
-  const selectedPoint = points.find((point) => point.key === selectedPointKey) ?? activeWindow?.points[0] ?? points[0] ?? null;
+  const selectedPoint = points.find((point) => point.key === selectedPointKey) ?? points[0] ?? null;
+  const visiblePoints = points.slice(visibleRange.start, visibleRange.end);
+  const scale = Math.max(1, ...visiblePoints.flatMap((point) => [point.income, point.expense]));
+  const axisTicks = cashFlowAxisTicks(scale);
+  const dayColumnWidth = 40;
+  const plotHeight = 160;
+  const plotHalfHeight = 70;
+  const isCurrentMonth = summary.period.key === "this_month";
 
   useEffect(() => {
-    const activeFirstPoint = activeWindow?.points[0];
-    if (!activeFirstPoint) return;
-
-    const selectedStillVisible = activeWindow.points.some((point) => point.key === selectedPointKey);
-    if (!selectedStillVisible) {
-      setSelectedPointKey(activeFirstPoint.key);
-    }
-  }, [activeWindow, selectedPointKey]);
-
-  useEffect(() => {
-    const fallbackIndex = Math.min(Math.max(0, Math.floor(currentTrendIndex(points) / CASH_FLOW_WINDOW_SIZE)), Math.max(0, windows.length - 1));
-    setActiveWindowIndex(fallbackIndex);
-
     const nextSelection = points[currentTrendIndex(points)] ?? points[0];
     if (nextSelection) setSelectedPointKey(nextSelection.key);
-  }, [points, windows.length]);
+    setVisibleRange({ end: Math.min(points.length, 7), start: 0 });
+  }, [points]);
 
   useEffect(() => {
     const scrollElement = scrollRef.current;
-    if (!scrollElement || windows.length === 0) return;
+    if (!scrollElement || points.length === 0) return;
 
-    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
-    scrollElement.scrollLeft = Math.min(
-      maxScrollLeft,
-      Math.max(0, activeWindowIndex * scrollElement.clientWidth),
-    );
-  }, [activeWindowIndex, windows.length]);
+    window.requestAnimationFrame(() => {
+      const visibleCount = Math.max(1, Math.ceil(scrollElement.clientWidth / dayColumnWidth));
+      const todayIndex = isCurrentMonth ? currentTrendIndex(points) : 0;
+      const targetStart = Math.min(Math.max(0, todayIndex - Math.floor(visibleCount / 2)), Math.max(0, points.length - visibleCount));
+      scrollElement.scrollLeft = targetStart * dayColumnWidth;
+      setVisibleRange({ start: targetStart, end: Math.min(points.length, targetStart + visibleCount) });
+    });
+  }, [isCurrentMonth, points]);
 
   useEffect(() => {
     return () => {
@@ -547,19 +465,19 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
 
   const handleScroll = useCallback(() => {
     const scrollElement = scrollRef.current;
-    if (!scrollElement || windows.length === 0) return;
+    if (!scrollElement || points.length === 0) return;
 
     if (scrollRafRef.current != null) {
       window.cancelAnimationFrame(scrollRafRef.current);
     }
 
     scrollRafRef.current = window.requestAnimationFrame(() => {
-      setActiveWindowIndex((current) => {
-        const next = cashFlowWindowIndexFromScroll(scrollElement.scrollLeft, scrollElement.clientWidth, windows.length);
-        return next === current ? current : next;
-      });
+      const start = Math.max(0, Math.floor(scrollElement.scrollLeft / dayColumnWidth));
+      const visibleCount = Math.max(1, Math.ceil(scrollElement.clientWidth / dayColumnWidth));
+      const end = Math.min(points.length, start + visibleCount);
+      setVisibleRange((current) => current.start === start && current.end === end ? current : { start, end });
     });
-  }, [windows.length]);
+  }, [points.length]);
 
   if (!hasData) {
     return (
@@ -576,108 +494,36 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h4 className="text-sm font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Daily Cash Flow"}</h4>
-          <p className="mt-0.5 text-xs font-semibold text-slate-500">{activeWindow ? `${activeWindow.points[0]?.label ?? ""} - ${activeWindow.points[activeWindow.points.length - 1]?.label ?? ""}` : summary.period.label}</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-500">{visiblePoints.length ? `${visiblePoints[0]?.label ?? ""} - ${visiblePoints[visiblePoints.length - 1]?.label ?? ""}` : summary.period.label}</p>
         </div>
-        <div className="text-right text-xs font-semibold text-slate-500">
-          <p>{activeWindowIndex + 1}/{Math.max(1, windows.length)}</p>
-          <p>{selectedPoint ? selectedPoint.label : summary.period.label}</p>
-        </div>
+        <p className="text-right text-xs font-semibold text-slate-500">{selectedPoint ? selectedPoint.label : summary.period.label}</p>
       </div>
 
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex w-full min-w-0 snap-x snap-mandatory overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {windows.map((window) => {
-          const barMaxHeight = 58;
-          const gridLinePositions = [0, 0.25, 0.5, 0.75, 1];
-          const tickValues = cashFlowAxisTicks(window.scale);
-          const selectedKeyInWindow = selectedPoint?.key;
-
-          return (
-            <section key={window.index} className="flex min-w-full flex-none snap-start gap-3">
-              <div className="relative hidden w-14 shrink-0 sm:block">
-                <div className="relative h-[180px]">
-                  {gridLinePositions.map((position, index) => {
-                    const tickValue = tickValues[index] ?? 0;
-                    return (
-                      <div
-                        key={position}
-                        className="absolute right-0 -translate-y-1/2 text-[10px] font-bold text-slate-500"
-                        style={{ top: `${position * 100}%` }}
-                      >
-                        {formatCompactCurrency(tickValue, currency)}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="relative h-[180px] overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-50/80">
-                  <div className="absolute inset-x-0 top-1/2 h-px bg-slate-300/80" />
-                  {gridLinePositions.map((position) => (
-                    <div
-                      key={position}
-                      className="absolute inset-x-0 border-t border-dashed border-slate-200/70"
-                      style={{ top: `${position * 100}%` }}
-                    />
-                  ))}
-
-                  <div className="absolute inset-0 grid grid-cols-7 gap-1.5 px-2 pb-8 pt-3 sm:gap-2 sm:px-3">
-                    {Array.from({ length: CASH_FLOW_WINDOW_SIZE }).map((_, slotIndex) => {
-                      const point = window.points[slotIndex];
-                      const isSelected = point?.key === selectedKeyInWindow;
-                      const incomeHeight = point ? Math.max(2, Math.round((point.income / window.scale) * barMaxHeight)) : 0;
-                      const expenseHeight = point ? Math.max(2, Math.round((point.expense / window.scale) * barMaxHeight)) : 0;
-                      const hasIncome = Boolean(point && point.income > 0);
-                      const hasExpense = Boolean(point && point.expense > 0);
-                      const netValue = point ? point.income - point.expense : 0;
-
-                      return (
-                        <button
-                          key={point?.key ?? `empty-${window.index}-${slotIndex}`}
-                          type="button"
-                          disabled={!point}
-                          onClick={() => point && setSelectedPointKey(point.key)}
-                          className={`relative flex min-w-0 flex-col items-center justify-end rounded-xl transition ${point ? "cursor-pointer" : "cursor-default"}`}
-                          aria-pressed={isSelected}
-                        >
-                          <div className={`absolute inset-x-1 top-2 bottom-8 rounded-lg transition ${isSelected ? "bg-white/55" : "bg-transparent"}`} />
-                          {point ? (
-                            <>
-                              <div className="absolute inset-x-0 top-1 flex flex-col items-center gap-0.5 text-[9px] font-extrabold leading-none text-kash-emerald transition duration-300 ease-out">
-                                {hasIncome ? <span className="whitespace-nowrap text-kash-emerald">{formatCompactCurrency(point.income, currency)}</span> : null}
-                              </div>
-                              <div
-                                className="absolute left-1/2 bottom-1/2 w-2.5 -translate-x-1/2 rounded-t-md bg-kash-emerald transition-all duration-300 ease-out"
-                                style={{ height: `${incomeHeight}px`, opacity: hasIncome ? 0.95 : 0.16 }}
-                              />
-                              <div
-                                className="absolute left-1/2 top-1/2 w-2.5 -translate-x-1/2 rounded-b-md bg-[#E50914] transition-all duration-300 ease-out"
-                                style={{ height: `${expenseHeight}px`, opacity: hasExpense ? 0.95 : 0.16 }}
-                              />
-                              <div className="absolute inset-x-0 bottom-9 flex flex-col items-center gap-0.5 text-[9px] font-extrabold leading-none text-[#E50914] transition duration-300 ease-out">
-                                {hasExpense ? <span className="whitespace-nowrap text-[#E50914]">{formatCompactCurrency(point.expense, currency)}</span> : null}
-                              </div>
-                              <div className="absolute inset-x-0 bottom-2 flex flex-col items-center gap-0.5">
-                                <span className={`max-w-full truncate text-[10px] font-bold ${isSelected ? "text-slate-900" : "text-slate-600"}`}>{point.label}</span>
-                                <span className={`text-[9px] font-bold ${netValue >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]"}`}>
-                                  {formatCompactCurrency(netValue, currency)}
-                                </span>
-                              </div>
-                            </>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </section>
-          );
-        })}
+      <div className="flex h-[214px] min-w-0 gap-2 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-2">
+        <div className="relative h-[160px] w-12 shrink-0 text-right">
+          {axisTicks.map((tick, index) => (
+            <span key={index} className="absolute right-0 -translate-y-1/2 text-[9px] font-bold text-slate-500 sm:text-[10px]" style={{ top: `${index * 25}%` }}>{formatCompactCurrency(tick, currency)}</span>
+          ))}
+        </div>
+        <div ref={scrollRef} onScroll={handleScroll} className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="relative h-[198px]" style={{ width: `${Math.max(1, points.length) * dayColumnWidth}px` }}>
+            <div className="absolute inset-x-0 top-0 h-[160px]">
+              {[0, 25, 50, 75, 100].map((position) => <div key={position} className={`absolute inset-x-0 border-t ${position === 50 ? "border-slate-300" : "border-dashed border-slate-200/70"}`} style={{ top: `${position}%` }} />)}
+              {points.map((point, index) => {
+                const isSelected = point.key === selectedPoint?.key;
+                const isToday = isCurrentMonth && point.key === localDateInputValue(new Date());
+                const incomeHeight = point.income > 0 ? Math.max(2, Math.round((point.income / scale) * plotHalfHeight)) : 0;
+                const expenseHeight = point.expense > 0 ? Math.max(2, Math.round((point.expense / scale) * plotHalfHeight)) : 0;
+                return <button key={point.key} type="button" onClick={() => setSelectedPointKey(point.key)} aria-pressed={isSelected} aria-label={`${point.label}: ${t("common.typeIncome") || "Income"} ${formatCurrency(point.income, currency)}, ${t("common.typeExpense") || "Expense"} ${formatCurrency(point.expense, currency)}`} className="absolute top-0 h-[198px] cursor-pointer" style={{ left: `${index * dayColumnWidth}px`, width: `${dayColumnWidth}px` }}>
+                  <span className={`absolute inset-x-1 top-1 h-[158px] rounded-lg transition-colors ${isSelected ? "bg-white/80" : isToday ? "bg-kash-emerald/10" : "bg-transparent"}`} />
+                  {point.income > 0 ? <span className="absolute bottom-[118px] left-1/2 z-10 w-3 -translate-x-1/2 rounded-t-md bg-kash-emerald transition-[height] duration-300 ease-out" style={{ height: `${incomeHeight}px` }} /> : null}
+                  {point.expense > 0 ? <span className="absolute left-1/2 top-[80px] z-10 w-3 -translate-x-1/2 rounded-b-md bg-[#E50914] transition-[height] duration-300 ease-out" style={{ height: `${expenseHeight}px` }} /> : null}
+                  <span className={`absolute inset-x-0 top-[171px] truncate text-center text-[10px] font-bold ${isSelected || isToday ? "text-slate-900" : "text-slate-600"}`}>{point.label}</span>
+                </button>;
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
       {selectedPoint ? (
@@ -786,97 +632,6 @@ function linePath(points: { x: number; y: number }[]) {
   return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
 }
 
-function IncomeExpenseLineChart({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
-  const { t, formatCurrency } = useI18n();
-  const mobileScrollRef = useRef<HTMLDivElement>(null);
-  const hasData = summary.incomeExpenseTrend.some((point) => point.income > 0 || point.expense > 0);
-  const points = summary.incomeExpenseTrend;
-
-  useEffect(() => {
-    const scrollElement = mobileScrollRef.current;
-    if (!scrollElement || points.length === 0) return;
-
-    scrollChartToIndex(scrollElement, points.length, currentTrendIndex(points));
-  }, [points]);
-
-  if (!hasData) {
-    return <EmptyPanel title={t("analytics.noTrendData") || "No trend data"} description={t("analytics.noTrendDataDesc") || "Income and expense trend will appear after activity exists."} className="mt-4 min-h-64" />;
-  }
-
-  const desktopWidth = 560;
-  const mobileWidth = Math.max(560, points.length * 48);
-  const height = 260;
-
-  function renderChart({
-    className,
-    showYAxisLabels,
-    style,
-    width,
-    chartPadding,
-  }: {
-    chartPadding: { bottom: number; left: number; right: number; top: number };
-    className: string;
-    showYAxisLabels: boolean;
-    style?: CSSProperties;
-    width: number;
-  }) {
-    const padding = chartPadding;
-    const plotHeight = height - padding.top - padding.bottom;
-    const plotWidth = width - padding.left - padding.right;
-    const maxValue = Math.max(1, ...points.flatMap((point) => [point.income, point.expense]));
-    const xForIndex = (index: number) => padding.left + (plotWidth / Math.max(points.length - 1, 1)) * index;
-    const yForValue = (value: number) => padding.top + plotHeight - (value / maxValue) * plotHeight;
-    const incomePoints = points.map((point, index) => ({ x: xForIndex(index), y: yForValue(point.income) }));
-    const expensePoints = points.map((point, index) => ({ x: xForIndex(index), y: yForValue(point.expense) }));
-
-    return (
-      <svg role="img" aria-label={`Income vs expense trend for ${summary.period.label}`} viewBox={`0 0 ${width} ${height}`} className={className} style={style}>
-        {[0, 0.5, 1].map((tick) => {
-          const y = padding.top + plotHeight - tick * plotHeight;
-          return (
-            <g key={tick}>
-              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke={CHART_GRID_COLOR} strokeWidth="1" />
-              {showYAxisLabels ? (
-                <text x={padding.left - 8} y={y + 4} textAnchor="end" className="fill-slate-600 text-[10px] font-bold">
-                  {chartTickLabel(maxValue * tick)}
-                </text>
-              ) : null}
-            </g>
-          );
-        })}
-        <path d={linePath(incomePoints)} fill="none" stroke={INCOME_COLOR} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
-        <path d={linePath(expensePoints)} fill="none" stroke={EXPENSE_COLOR} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
-        {points.map((point, index) => (
-          <g key={point.key}>
-            <title>{`${point.label}: Income ${formatCurrency(point.income, currency)}, Expense ${formatCurrency(point.expense, currency)}`}</title>
-            <circle cx={incomePoints[index].x} cy={incomePoints[index].y} r="3.5" fill={INCOME_COLOR} />
-            <circle cx={expensePoints[index].x} cy={expensePoints[index].y} r="3.5" fill={EXPENSE_COLOR} />
-            <text x={incomePoints[index].x} y={height - 10} textAnchor="middle" className="fill-slate-700 text-[10px] font-bold">
-              {point.label}
-            </text>
-          </g>
-        ))}
-      </svg>
-    );
-  }
-
-  const scrollChartWidth = Math.max(640, points.length * 48);
-
-  return (
-    <div className="mt-4 w-full max-w-full min-w-0 overflow-hidden">
-      <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {renderChart({
-          chartPadding: { bottom: 34, left: 10, right: 10, top: 18 },
-          className: "block h-64 max-w-none",
-          showYAxisLabels: true,
-          style: { width: `${Math.max(100, (points.length / 7) * 100)}%`, minWidth: "100%" },
-          width: scrollChartWidth,
-        })}
-      </div>
-    </div>
-  );
-}
-
 function NetWorthTrend({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
@@ -896,7 +651,7 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
 
   const desktopWidth = 1040;
   const mobileWidth = Math.max(560, pointsData.length * 52);
-  const height = 250;
+  const height = 210;
 
   function renderChart({
     chartPadding,
@@ -958,8 +713,8 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
     <div className="mt-4 w-full max-w-full min-w-0 overflow-hidden">
       <div ref={mobileScrollRef} className="w-full max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {renderChart({
-          chartPadding: { bottom: 34, left: 10, right: 10, top: 18 },
-          className: "block h-64 max-w-none",
+          chartPadding: { bottom: 28, left: 10, right: 10, top: 12 },
+          className: "block h-[210px] max-w-none",
           showYAxisLabels: true,
           style: { width: `${Math.max(100, (pointsData.length / 7) * 100)}%`, minWidth: "100%" },
           width: scrollChartWidth,
@@ -1380,38 +1135,19 @@ export function AnalyticsPage() {
       {/* 4. Editorial Insights Section */}
       <AnalyticsInsights summary={summary} currency={currency} />
 
-      {/* 5. Supporting Trend Charts Grid */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <AnalyticsCard className="p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.incomeVsExpense") || "Income vs Expense"}</h2>
-            <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
-                {t("common.typeIncome") || t("dashboard.income") || "Income"}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
-                {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
-              </span>
-            </div>
+      {/* 5. Net Worth Trend */}
+      <AnalyticsCard className="p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.netWorthTrend") || "Net Worth Trend"}</h2>
           </div>
-          <IncomeExpenseLineChart summary={summary} currency={currency} />
-        </AnalyticsCard>
-
-        <AnalyticsCard className="p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">{t("analytics.netWorthTrend") || "Net Worth Trend"}</h2>
-            </div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NET_WORTH_COLOR }} />
-              {t("dashboard.netWorth") || "Net Worth"}
-            </div>
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NET_WORTH_COLOR }} />
+            {t("dashboard.netWorth") || "Net Worth"}
           </div>
-          <NetWorthTrend summary={summary} currency={currency} />
-        </AnalyticsCard>
-      </div>
+        </div>
+        <NetWorthTrend summary={summary} currency={currency} />
+      </AnalyticsCard>
 
       {/* 6. Budget vs Actual & Wallet Distribution (Full Width) */}
       <BudgetVsActualCard currency={currency} />
