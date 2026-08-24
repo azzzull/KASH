@@ -575,8 +575,8 @@ function HeroCard({
                 <PrivacyAmount
                     onToggle={onToggleBalances}
                     label={balancesVisible
-                        ? (tPrivacy("dashboard.hideBalances") || "Hide dashboard balances")
-                        : (tPrivacy("dashboard.showBalances") || "Show dashboard balances")}
+                        ? (t("dashboard.hideBalances") || "Hide dashboard balances")
+                        : (t("dashboard.showBalances") || "Show dashboard balances")}
                 >
                     <p className="break-words text-[2rem] font-extrabold leading-none tracking-tight text-white md:text-4xl">
                         {formatPrivateAmount(
@@ -646,8 +646,8 @@ function HeroCard({
                                 <PrivacyAmount
                                     onToggle={onToggleBalances}
                                     label={balancesVisible
-                                        ? (tPrivacy("dashboard.hideBalances") || "Hide dashboard balances")
-                                        : (tPrivacy("dashboard.showBalances") || "Show dashboard balances")}
+                                        ? (t("dashboard.hideBalances") || "Hide dashboard balances")
+                                        : (t("dashboard.showBalances") || "Show dashboard balances")}
                                 >
                                     <span className="font-extrabold text-white">
                                         {formatPrivateAmount(
