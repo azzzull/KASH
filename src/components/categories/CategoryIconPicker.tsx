@@ -90,15 +90,9 @@ export function CategoryIconPicker({
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
-    // Auto-focus search input when opened
-    const timer = setTimeout(() => {
-      searchInputRef.current?.focus({ preventScroll: true });
-    }, 50);
-
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
-      clearTimeout(timer);
     };
   }, [isOpen]);
 

@@ -583,19 +583,14 @@ function CreateObligationModal({
           </div>
 
           <div className="w-full max-w-full min-w-0">
-            <label className="block text-sm font-bold text-slate-900" htmlFor="counterparty-name">
-              {t("debts.personOrBusiness") || "Orang atau Pihak Terkait"} *
-            </label>
-            <div className="mt-1">
-              <CounterpartyCombobox
-                id="obligation-counterparty"
-                counterparties={allCounterparties}
-                onChange={(selected) => setCounterpartyName(selected)}
-                placeholder={t("debts.searchOrAddPerson") || "Cari atau tambah nama orang / pihak..."}
-                value={counterpartyName}
-                required
-              />
-            </div>
+            <CounterpartyCombobox
+              id="obligation-counterparty"
+              counterparties={allCounterparties}
+              onChange={(selected) => setCounterpartyName(selected)}
+              placeholder={t("debts.searchOrAddPerson") || "Cari atau tambah nama orang / pihak..."}
+              value={counterpartyName}
+              required
+            />
             <p className="mt-1.5 text-xs font-semibold text-slate-600">
               {t("debts.typeNameToSearch") || "Ketik nama untuk mencari kontak yang sudah ada atau menambahkan baru."}
             </p>
