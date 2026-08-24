@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import React, { type CSSProperties } from "react";
 import { useI18n, type TranslationKey } from "../../i18n";
 import { getCategoryIcon } from "../../lib/categoryMeta";
 import { formatCurrency, toNumber } from "../../lib/money";
@@ -29,6 +29,7 @@ export function TransactionRow({
   hideAmounts = false,
   isSelected = false,
   onSelect,
+  onTogglePrivacy,
   transaction,
 }: {
   currency: string;
@@ -36,6 +37,7 @@ export function TransactionRow({
   hideAmounts?: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
+  onTogglePrivacy?: () => void;
   transaction: TransactionRowData;
 }) {
   const { locale, t } = useI18n();
@@ -55,13 +57,22 @@ export function TransactionRow({
   const displayAmount = hideAmounts ? "••••••" : transaction.type === "transfer" ? formatCurrency(amount, currency) : transaction.type === "adjustment" ? `${amount > 0 ? "+" : ""}${formatCurrency(amount, currency)}` : formatCurrency(transaction.type === "income" ? amount : -amount, currency);
   const rowClass = `kash-activity-row block w-full text-left transition ${isSelected ? "bg-kash-selected/60" : ""} ${isVoid ? "opacity-60" : ""}`;
   const padding = density === "compact" ? "px-1 py-2" : "px-1 py-2.5";
+  const amountClickProps = onTogglePrivacy
+    ? {
+        onClick: (e: React.MouseEvent) => { e.stopPropagation(); onTogglePrivacy(); },
+        onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onTogglePrivacy(); } },
+        role: "button" as const,
+        tabIndex: 0,
+        className: "shrink-0 text-right cursor-pointer select-none rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-kash-emerald/40 active:opacity-70 [@media(hover:hover)]:hover:opacity-75",
+      }
+    : { className: "shrink-0 text-right" };
   const content = <>
     <span className={`flex items-center gap-3 ${padding} ${density === "default" ? "md:hidden" : ""}`}>
       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${iconClass}`} style={iconSurfaceStyle(transaction)}><Icon aria-hidden="true" size={16} strokeWidth={2} /></span>
       <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-slate-900">{title}</span><span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{categoryLabel} • {walletLabel}</span>{isVoid ? <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{t("transactions.voided") || "Dibatalkan"}</span> : null}</span>
-      <span className="shrink-0 text-right"><span className={`block text-sm font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>{displayAmount}</span>{!hideAmounts && transaction.type === "transfer" && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">+ {t("transactions.fee") || "biaya"} {formatCurrency(fee, currency)}</span> : null}<span className="mt-0.5 block text-[11px] font-medium text-slate-500">{timeLabel}</span></span>
+      <span {...amountClickProps}><span className={`block text-sm font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>{displayAmount}</span>{!hideAmounts && transaction.type === "transfer" && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">+ {t("transactions.fee") || "biaya"} {formatCurrency(fee, currency)}</span> : null}<span className="mt-0.5 block text-[11px] font-medium text-slate-500">{timeLabel}</span></span>
     </span>
-    {density === "default" ? <span className="hidden items-center gap-4 px-2 py-2.5 text-sm md:flex"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${iconClass}`} style={iconSurfaceStyle(transaction)}><Icon aria-hidden="true" size={16} strokeWidth={2} /></span><span className="min-w-0 flex-1"><span className="block truncate font-bold text-slate-900">{title}</span><span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{categoryLabel}</span></span><span className="min-w-0 truncate font-medium text-slate-500">{walletLabel}</span><span className={`text-right font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>{displayAmount}{!hideAmounts && transaction.type === "transfer" && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">+ {t("transactions.fee") || "biaya"} {formatCurrency(fee, currency)}</span> : null}</span><span className="text-right text-xs font-medium text-slate-500">{timeLabel}</span></span> : null}
+    {density === "default" ? <span className="hidden items-center gap-4 px-2 py-2.5 text-sm md:flex"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 ${iconClass}`} style={iconSurfaceStyle(transaction)}><Icon aria-hidden="true" size={16} strokeWidth={2} /></span><span className="min-w-0 flex-1"><span className="block truncate font-bold text-slate-900">{title}</span><span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{categoryLabel}</span></span><span className="min-w-0 truncate font-medium text-slate-500">{walletLabel}</span><span {...amountClickProps}><span className={`block text-right font-extrabold ${isVoid ? "text-slate-500 line-through" : transactionTone[transaction.type]}`}>{displayAmount}{!hideAmounts && transaction.type === "transfer" && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">+ {t("transactions.fee") || "biaya"} {formatCurrency(fee, currency)}</span> : null}</span></span><span className="text-right text-xs font-medium text-slate-500">{timeLabel}</span></span> : null}
   </>;
   return onSelect ? <button type="button" onClick={onSelect} className={rowClass}>{content}</button> : <div className={rowClass}>{content}</div>;
 }

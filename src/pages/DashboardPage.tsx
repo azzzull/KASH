@@ -132,6 +132,41 @@ function getStoredBalancesVisibility() {
     );
 }
 
+/* ─── Privacy Amount Toggle Wrapper ─── */
+function PrivacyAmount({
+    children,
+    className = "",
+    onToggle,
+    label,
+}: {
+    children: React.ReactNode;
+    className?: string;
+    onToggle: () => void;
+    label?: string;
+}) {
+    return (
+        <span
+            role="button"
+            tabIndex={0}
+            aria-label={label}
+            className={`cursor-pointer select-none rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-kash-emerald/40 active:opacity-70 [@media(hover:hover)]:hover:opacity-75 ${className}`}
+            onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+            }}
+            onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onToggle();
+                }
+            }}
+        >
+            {children}
+        </span>
+    );
+}
+
 /* ─── Shared Sub-Components ─── */
 function DashboardCard({
     children,
@@ -537,13 +572,20 @@ function HeroCard({
 
             {/* Net Worth amount + inline eye toggle */}
             <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                <p className="break-words text-[2rem] font-extrabold leading-none tracking-tight text-white md:text-4xl">
-                    {formatPrivateAmount(
-                        summary.netWorth.amount,
-                        currency,
-                        balancesVisible,
-                    )}
-                </p>
+                <PrivacyAmount
+                    onToggle={onToggleBalances}
+                    label={balancesVisible
+                        ? (tPrivacy("dashboard.hideBalances") || "Hide dashboard balances")
+                        : (tPrivacy("dashboard.showBalances") || "Show dashboard balances")}
+                >
+                    <p className="break-words text-[2rem] font-extrabold leading-none tracking-tight text-white md:text-4xl">
+                        {formatPrivateAmount(
+                            summary.netWorth.amount,
+                            currency,
+                            balancesVisible,
+                        )}
+                    </p>
+                </PrivacyAmount>
                 <button
                     type="button"
                     aria-pressed={balancesVisible}
@@ -601,13 +643,20 @@ function HeroCard({
                                 <span className="font-medium text-white/65">
                                     {item.label}:{" "}
                                 </span>
-                                <span className="font-extrabold text-white">
-                                    {formatPrivateAmount(
-                                        item.value,
-                                        currency,
-                                        balancesVisible,
-                                    )}
-                                </span>
+                                <PrivacyAmount
+                                    onToggle={onToggleBalances}
+                                    label={balancesVisible
+                                        ? (tPrivacy("dashboard.hideBalances") || "Hide dashboard balances")
+                                        : (tPrivacy("dashboard.showBalances") || "Show dashboard balances")}
+                                >
+                                    <span className="font-extrabold text-white">
+                                        {formatPrivateAmount(
+                                            item.value,
+                                            currency,
+                                            balancesVisible,
+                                        )}
+                                    </span>
+                                </PrivacyAmount>
                                 <span className="font-semibold text-white/55">
                                     {" "}
                                     {percent}%
@@ -671,11 +720,13 @@ function QuickActions() {
 function CashFlowRow({
     balancesVisible,
     currency,
+    onToggleBalances,
     selectedMonth,
     summary,
 }: {
     balancesVisible: boolean;
     currency: string;
+    onToggleBalances: () => void;
     selectedMonth: Date;
     summary: DashboardSummary;
 }) {
@@ -726,15 +777,20 @@ function CashFlowRow({
                     <p className="truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-slate-500">
                         {item.label}
                     </p>
-                    <p
-                        className={`mt-1 truncate text-base font-extrabold md:text-xl ${item.tone}`}
+                    <PrivacyAmount
+                        onToggle={onToggleBalances}
+                        aria-label={balancesVisible ? "Hide balances" : "Show balances"}
                     >
-                        {formatPrivateAmount(
-                            item.value,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </p>
+                        <p
+                            className={`mt-1 truncate text-base font-extrabold md:text-xl ${item.tone}`}
+                        >
+                            {formatPrivateAmount(
+                                item.value,
+                                currency,
+                                balancesVisible,
+                            )}
+                        </p>
+                    </PrivacyAmount>
                     <div className="mt-1 min-w-0">
                         <CompactComparisonLine
                             balancesVisible={balancesVisible}
@@ -755,10 +811,12 @@ function CashFlowRow({
 function SpendingDonut({
     balancesVisible,
     currency,
+    onToggleBalances,
     summary,
 }: {
     balancesVisible: boolean;
     currency: string;
+    onToggleBalances: () => void;
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
@@ -863,13 +921,15 @@ function SpendingDonut({
                             <p className="text-[11px] font-bold text-slate-500">
                                 {t("dashboard.totalExpense") || "Total Spend"}
                             </p>
-                            <p className="mt-0.5 max-w-[7rem] truncate text-xs sm:text-sm md:text-base font-extrabold leading-tight text-slate-900">
-                                {formatPrivateAmount(
-                                    totalExpense,
-                                    currency,
-                                    balancesVisible,
-                                )}
-                            </p>
+                            <PrivacyAmount onToggle={onToggleBalances}>
+                                <p className="mt-0.5 max-w-[7rem] truncate text-xs sm:text-sm md:text-base font-extrabold leading-tight text-slate-900">
+                                    {formatPrivateAmount(
+                                        totalExpense,
+                                        currency,
+                                        balancesVisible,
+                                    )}
+                                </p>
+                            </PrivacyAmount>
                         </div>
                     </div>
                 </div>
@@ -891,13 +951,15 @@ function SpendingDonut({
                                 </span>
                             </div>
                             <div className="shrink-0 text-right">
-                                <span className="font-bold text-slate-900">
-                                    {formatPrivateAmount(
-                                        category.amount,
-                                        currency,
-                                        balancesVisible,
-                                    )}
-                                </span>
+                                <PrivacyAmount onToggle={onToggleBalances}>
+                                    <span className="font-bold text-slate-900">
+                                        {formatPrivateAmount(
+                                            category.amount,
+                                            currency,
+                                            balancesVisible,
+                                        )}
+                                    </span>
+                                </PrivacyAmount>
                                 <span className="ml-1.5 text-xs font-semibold text-slate-500">
                                     {Math.round(category.percent)}%
                                 </span>
@@ -1163,10 +1225,12 @@ function transactionIcon(type: TransactionType) {
 function RecentTransactions({
     balancesVisible,
     currency,
+    onToggleBalances,
     summary,
 }: {
     balancesVisible: boolean;
     currency: string;
+    onToggleBalances: () => void;
     summary: DashboardSummary;
 }) {
     const { t, locale } = useI18n();
@@ -1193,6 +1257,7 @@ function RecentTransactions({
                     currency={currency}
                     density="compact"
                     hideAmounts={!balancesVisible}
+                    onTogglePrivacy={onToggleBalances}
                     transaction={{
                         amount: transaction.amount,
                         category: {
@@ -1303,10 +1368,12 @@ function DashboardCalendar({
 function WalletSummary({
     balancesVisible,
     currency,
+    onToggleBalances,
     summary,
 }: {
     balancesVisible: boolean;
     currency: string;
+    onToggleBalances: () => void;
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
@@ -1344,13 +1411,15 @@ function WalletSummary({
                             </p>
                         </div>
                     </div>
-                    <span className="shrink-0 text-sm font-extrabold text-slate-900">
-                        {formatPrivateAmount(
-                            wallet.balance,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </span>
+                    <PrivacyAmount onToggle={onToggleBalances}>
+                        <span className="shrink-0 text-sm font-extrabold text-slate-900">
+                            {formatPrivateAmount(
+                                wallet.balance,
+                                currency,
+                                balancesVisible,
+                            )}
+                        </span>
+                    </PrivacyAmount>
                 </div>
             ))}
         </div>
@@ -1360,10 +1429,12 @@ function WalletSummary({
 function GoalsSummary({
     balancesVisible,
     currency,
+    onToggleBalances,
     summary,
 }: {
     balancesVisible: boolean;
     currency: string;
+    onToggleBalances: () => void;
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
@@ -1392,17 +1463,22 @@ function GoalsSummary({
                                 {goal.name}
                             </p>
                             <p className="mt-0.5 text-[11px] font-medium text-slate-500">
-                                {formatPrivateAmount(
-                                    goal.currentAmount,
-                                    currency,
-                                    balancesVisible,
-                                )}{" "}
+                                <PrivacyAmount onToggle={onToggleBalances}>
+                                    {formatPrivateAmount(
+                                        goal.currentAmount,
+                                        currency,
+                                        balancesVisible,
+                                    )}
+                                </PrivacyAmount>
+                                {" "}
                                 {t("shared.ofTotal") || "of"}{" "}
-                                {formatPrivateAmount(
-                                    goal.targetAmount,
-                                    currency,
-                                    balancesVisible,
-                                )}
+                                <PrivacyAmount onToggle={onToggleBalances}>
+                                    {formatPrivateAmount(
+                                        goal.targetAmount,
+                                        currency,
+                                        balancesVisible,
+                                    )}
+                                </PrivacyAmount>
                             </p>
                         </div>
                         <span className="shrink-0 text-xs font-extrabold text-kash-emerald">
@@ -1424,10 +1500,12 @@ function GoalsSummary({
 function DebtReceivableSummary({
     balancesVisible,
     currency,
+    onToggleBalances,
     summary,
 }: {
     balancesVisible: boolean;
     currency: string;
+    onToggleBalances: () => void;
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
@@ -1458,25 +1536,29 @@ function DebtReceivableSummary({
                     <span className="text-[11px] font-bold text-slate-500">
                         {t("dashboard.youOwe") || "You Owe"}
                     </span>
-                    <p className="mt-0.5 text-sm font-extrabold text-slate-900">
-                        {formatPrivateAmount(
-                            totalDebt,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </p>
+                    <PrivacyAmount onToggle={onToggleBalances}>
+                        <p className="mt-0.5 text-sm font-extrabold text-slate-900">
+                            {formatPrivateAmount(
+                                totalDebt,
+                                currency,
+                                balancesVisible,
+                            )}
+                        </p>
+                    </PrivacyAmount>
                 </div>
                 <div className="rounded-xl bg-slate-50 p-2.5">
                     <span className="text-[11px] font-bold text-slate-500">
                         {t("dashboard.owedToYou") || "Owed to You"}
                     </span>
-                    <p className="mt-0.5 text-sm font-extrabold text-slate-900">
-                        {formatPrivateAmount(
-                            totalReceivable,
-                            currency,
-                            balancesVisible,
-                        )}
-                    </p>
+                    <PrivacyAmount onToggle={onToggleBalances}>
+                        <p className="mt-0.5 text-sm font-extrabold text-slate-900">
+                            {formatPrivateAmount(
+                                totalReceivable,
+                                currency,
+                                balancesVisible,
+                            )}
+                        </p>
+                    </PrivacyAmount>
                 </div>
             </div>
 
@@ -1500,24 +1582,26 @@ function DebtReceivableSummary({
                             </div>
                             <div className="text-right shrink-0">
                                 {cp.debtTotal > 0 && (
-                                    <p className="font-extrabold text-kash-expense">
-                                        -
-                                        {formatPrivateAmount(
-                                            cp.debtTotal,
-                                            currency,
-                                            balancesVisible,
-                                        )}
-                                    </p>
+                                    <PrivacyAmount onToggle={onToggleBalances}>
+                                        <p className="font-extrabold text-kash-expense">
+                                            -{formatPrivateAmount(
+                                                cp.debtTotal,
+                                                currency,
+                                                balancesVisible,
+                                            )}
+                                        </p>
+                                    </PrivacyAmount>
                                 )}
                                 {cp.receivableTotal > 0 && (
-                                    <p className="font-extrabold text-kash-emerald">
-                                        +
-                                        {formatPrivateAmount(
-                                            cp.receivableTotal,
-                                            currency,
-                                            balancesVisible,
-                                        )}
-                                    </p>
+                                    <PrivacyAmount onToggle={onToggleBalances}>
+                                        <p className="font-extrabold text-kash-emerald">
+                                            +{formatPrivateAmount(
+                                                cp.receivableTotal,
+                                                currency,
+                                                balancesVisible,
+                                            )}
+                                        </p>
+                                    </PrivacyAmount>
                                 )}
                             </div>
                         </Link>
@@ -1531,10 +1615,12 @@ function DebtReceivableSummary({
 function BudgetDashboardSummary({
     balancesVisible,
     currency,
+    onToggleBalances,
     selectedMonth,
 }: {
     balancesVisible: boolean;
     currency: string;
+    onToggleBalances: () => void;
     selectedMonth: Date;
 }) {
     const { t } = useI18n();
@@ -1625,21 +1711,25 @@ function BudgetDashboardSummary({
                         </div>
 
                         <div className="mt-1 flex items-center justify-between text-[11px] font-medium text-slate-500">
-                            <span>
-                                {formatPrivateAmount(
-                                    spentNum,
-                                    currency,
-                                    balancesVisible,
-                                )}
-                            </span>
-                            <span>
-                                /{" "}
-                                {formatPrivateAmount(
-                                    effectiveNum,
-                                    currency,
-                                    balancesVisible,
-                                )}
-                            </span>
+                            <PrivacyAmount onToggle={onToggleBalances}>
+                                <span>
+                                    {formatPrivateAmount(
+                                        spentNum,
+                                        currency,
+                                        balancesVisible,
+                                    )}
+                                </span>
+                            </PrivacyAmount>
+                            <PrivacyAmount onToggle={onToggleBalances}>
+                                <span>
+                                    /{" "}
+                                    {formatPrivateAmount(
+                                        effectiveNum,
+                                        currency,
+                                        balancesVisible,
+                                    )}
+                                </span>
+                            </PrivacyAmount>
                         </div>
                     </div>
                 );
@@ -1800,6 +1890,7 @@ export function DashboardPage() {
             {/* Monthly Cash Flow — compact row */}
             <CashFlowRow
                 balancesVisible={balancesVisible}
+                onToggleBalances={() => setBalancesVisible((v) => !v)}
                 selectedMonth={selectedMonth}
                 summary={summary}
                 currency={currency}
@@ -1809,6 +1900,7 @@ export function DashboardPage() {
             <div className="grid gap-4 lg:grid-cols-2">
                 <SpendingDonut
                     balancesVisible={balancesVisible}
+                    onToggleBalances={() => setBalancesVisible((v) => !v)}
                     summary={summary}
                     currency={currency}
                 />
@@ -1880,6 +1972,7 @@ export function DashboardPage() {
                 </div>
                 <RecentTransactions
                     balancesVisible={balancesVisible}
+                    onToggleBalances={() => setBalancesVisible((v) => !v)}
                     summary={summary}
                     currency={currency}
                 />
@@ -1890,7 +1983,12 @@ export function DashboardPage() {
                     <h2 className="text-sm font-extrabold text-slate-900">{t("subscriptions.tabDueSoon") || "Upcoming"}</h2>
                     <Link to="/calendar" className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark">{t("common.viewAll")}</Link>
                 </div>
-                <div className="mt-2"><UpcomingTimeline currency={currency} items={upcomingObligations} /></div>
+                <div className="mt-2"><UpcomingTimeline
+                    balancesVisible={balancesVisible}
+                    currency={currency}
+                    items={upcomingObligations}
+                    onTogglePrivacy={() => setBalancesVisible((v) => !v)}
+                /></div>
             </DashboardCard>
 
             {/* Secondary Summaries — 2×2 on desktop */}
@@ -1916,6 +2014,7 @@ export function DashboardPage() {
                     </div>
                     <BudgetDashboardSummary
                         balancesVisible={balancesVisible}
+                        onToggleBalances={() => setBalancesVisible((v) => !v)}
                         currency={currency}
                         selectedMonth={selectedMonth}
                     />
@@ -1935,6 +2034,7 @@ export function DashboardPage() {
                     </div>
                     <WalletSummary
                         balancesVisible={balancesVisible}
+                        onToggleBalances={() => setBalancesVisible((v) => !v)}
                         summary={summary}
                         currency={currency}
                     />
@@ -1961,6 +2061,7 @@ export function DashboardPage() {
                     </div>
                     <GoalsSummary
                         balancesVisible={balancesVisible}
+                        onToggleBalances={() => setBalancesVisible((v) => !v)}
                         summary={summary}
                         currency={currency}
                     />
@@ -1987,6 +2088,7 @@ export function DashboardPage() {
                     </div>
                     <DebtReceivableSummary
                         balancesVisible={balancesVisible}
+                        onToggleBalances={() => setBalancesVisible((v) => !v)}
                         summary={summary}
                         currency={currency}
                     />
