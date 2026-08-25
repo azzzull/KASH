@@ -1,5 +1,6 @@
 import type { Envelope, MoneyAmount } from "../types/domain";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "./money";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 export type CreateEnvelopeInput = {
@@ -19,12 +20,17 @@ export type UpdateEnvelopeInput = {
   isArchived?: boolean;
 };
 
-export async function getEnvelopes(includeArchived = false): Promise<{ data: Envelope[] | null; error: Error | null }> {
+export async function getEnvelopes(includeArchived = false, spaceId?: string): Promise<{ data: Envelope[] | null; error: Error | null }> {
   try {
+    const targetSpaceId = spaceId ?? getActiveSpaceId();
     let query = supabase
       .from("envelopes")
       .select("*")
       .order("name", { ascending: true });
+
+    if (targetSpaceId) {
+      query = query.eq("space_id", targetSpaceId);
+    }
 
     if (!includeArchived) {
       query = query.eq("is_archived", false);
@@ -54,11 +60,12 @@ export async function getEnvelopeById(id: string): Promise<{ data: Envelope | nu
   }
 }
 
-export async function createEnvelope(input: CreateEnvelopeInput): Promise<{ data: Envelope | null; error: Error | null }> {
+export async function createEnvelope(input: CreateEnvelopeInput, spaceId?: string): Promise<{ data: Envelope | null; error: Error | null }> {
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
+    const targetSpaceId = spaceId ?? getActiveSpaceId() ?? undefined;
     const rawTarget = input.targetAmount ? parseMoneyInputDigits(input.targetAmount) : null;
     const numTarget = rawTarget ? toNumber(rawTarget) : null;
 
@@ -66,6 +73,7 @@ export async function createEnvelope(input: CreateEnvelopeInput): Promise<{ data
       .from("envelopes")
       .insert({
         user_id: user.id,
+        space_id: targetSpaceId,
         name: input.name.trim(),
         icon: input.icon ?? "layers",
         color: input.color ?? "#10B981",

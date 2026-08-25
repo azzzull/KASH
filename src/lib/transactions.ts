@@ -2,6 +2,7 @@ import type { Category, CategoryType, Envelope, Transaction, TransactionStatus, 
 import type { Database } from "../types/database";
 import { addMoneyValues, isMoneyGreaterThan } from "./money";
 import { toUtcIsoString } from "./datetime";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 type BaseTransactionInput = {
@@ -10,6 +11,7 @@ type BaseTransactionInput = {
   transactionDate: string;
   note: string | null;
   envelopeId?: string | null;
+  spaceId?: string;
 };
 
 type CategoryTransactionInput = BaseTransactionInput & {
@@ -22,7 +24,7 @@ type TransferInput = BaseTransactionInput & {
   transferFee: string;
 };
 
-type AdjustmentInput = Pick<BaseTransactionInput, "transactionDate" | "walletId"> & {
+type AdjustmentInput = Pick<BaseTransactionInput, "transactionDate" | "walletId" | "spaceId"> & {
   amount: string;
   reason: string;
 };
@@ -45,6 +47,7 @@ export type TransactionFilters = {
   status?: TransactionStatusFilter;
   type?: TransactionTypeFilter;
   walletId?: string;
+  spaceId?: string;
 };
 
 export type TransactionWithMeta = Transaction & {
@@ -189,8 +192,10 @@ async function createTransaction(payload: {
   transaction_date: string;
   type: TransactionType;
   wallet_id: string;
+  space_id?: string;
 }) {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = payload.space_id ?? getActiveSpaceId() ?? undefined;
   const outgoingAmount = outgoingAmountFor(payload.type, payload.amount, payload.transfer_fee ?? "0");
 
   if (outgoingAmount) {
@@ -201,6 +206,7 @@ async function createTransaction(payload: {
     .from("transactions")
     .insert({
       user_id: userId,
+      space_id: targetSpaceId,
       type: payload.type,
       amount: payload.amount,
       wallet_id: payload.wallet_id,
@@ -226,6 +232,7 @@ export async function createIncome(input: CategoryTransactionInput) {
     transaction_date: input.transactionDate,
     type: "income",
     wallet_id: input.walletId,
+    space_id: input.spaceId,
   });
 }
 
@@ -239,6 +246,7 @@ export async function createExpense(input: CategoryTransactionInput) {
     transaction_date: input.transactionDate,
     type: "expense",
     wallet_id: input.walletId,
+    space_id: input.spaceId,
   });
 }
 
@@ -251,6 +259,7 @@ export async function createTransfer(input: TransferInput) {
     transfer_fee: input.transferFee,
     type: "transfer",
     wallet_id: input.walletId,
+    space_id: input.spaceId,
   });
 }
 
@@ -262,20 +271,39 @@ export async function createAdjustment(input: AdjustmentInput) {
     transaction_date: input.transactionDate,
     type: "adjustment",
     wallet_id: input.walletId,
+    space_id: input.spaceId,
   });
 }
 
-export async function getTransactionSupportData() {
+export async function getTransactionSupportData(spaceId?: string) {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+
+  let walletQuery = supabase.from("wallets").select("*").eq("user_id", userId).order("created_at", { ascending: true });
+  if (targetSpaceId) {
+    walletQuery = walletQuery.eq("space_id", targetSpaceId);
+  }
+
+  let categoryQuery = supabase
+    .from("categories")
+    .select("*")
+    .order("category_type", { ascending: true })
+    .order("name", { ascending: true });
+  if (targetSpaceId) {
+    categoryQuery = categoryQuery.or(`and(is_system.eq.true,space_id.is.null),and(user_id.eq.${userId},space_id.eq.${targetSpaceId})`);
+  } else {
+    categoryQuery = categoryQuery.or(`user_id.is.null,user_id.eq.${userId}`);
+  }
+
+  let envelopeQuery = supabase.from("envelopes").select("*").eq("user_id", userId).eq("is_archived", false).order("name", { ascending: true });
+  if (targetSpaceId) {
+    envelopeQuery = envelopeQuery.eq("space_id", targetSpaceId);
+  }
+
   const [walletResult, categoryResult, envelopeResult] = await Promise.all([
-    supabase.from("wallets").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
-    supabase
-      .from("categories")
-      .select("*")
-      .or(`user_id.is.null,user_id.eq.${userId}`)
-      .order("category_type", { ascending: true })
-      .order("name", { ascending: true }),
-    supabase.from("envelopes").select("*").eq("user_id", userId).eq("is_archived", false).order("name", { ascending: true }),
+    walletQuery,
+    categoryQuery,
+    envelopeQuery,
   ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -298,15 +326,17 @@ function monthRange(monthInput: Date | string) {
 
 export async function getTransactions(filters: TransactionFilters = {}) {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = filters.spaceId ?? getActiveSpaceId();
   const page = filters.page ?? 0;
   const pageSize = filters.pageSize ?? 30;
   const sort = filters.sort ?? "latest";
   const exactDayRange = filters.dateKey ? localDayRange(filters.dateKey) : null;
   const range = exactDayRange ?? (filters.monthDate ? monthRange(filters.monthDate) : periodRange(filters.period));
-  const supportData = await getTransactionSupportData();
+  const supportData = await getTransactionSupportData(targetSpaceId ?? undefined);
 
   let query = supabase.from("transactions").select("*", { count: "exact" }).eq("user_id", userId);
 
+  if (targetSpaceId) query = query.eq("space_id", targetSpaceId);
   if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
   if (filters.status && filters.status !== "all") query = query.eq("status", filters.status);
   if (filters.categoryId) query = query.eq("category_id", filters.categoryId);

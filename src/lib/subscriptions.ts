@@ -10,6 +10,7 @@ import type {
   Wallet,
 } from "../types/domain";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "./money";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 export type CreateRecurringObligationInput = {
@@ -77,21 +78,38 @@ async function getAuthenticatedUserId(): Promise<string> {
 /**
  * Fetch all recurring obligations for the user with calculated summary metrics.
  */
-export async function getRecurringObligations(): Promise<{
+export async function getRecurringObligations(spaceId?: string): Promise<{
   data: RecurringObligationWithMeta[];
   error: Error | null;
 }> {
   try {
     const userId = await getAuthenticatedUserId();
+    const targetSpaceId = spaceId ?? getActiveSpaceId();
+
+    let obligationsQuery = supabase
+      .from("recurring_obligations_summary_view")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (targetSpaceId) {
+      obligationsQuery = obligationsQuery.eq("space_id", targetSpaceId);
+    }
+
+    let walletsQuery = supabase.from("wallets").select("*").eq("user_id", userId);
+    if (targetSpaceId) {
+      walletsQuery = walletsQuery.eq("space_id", targetSpaceId);
+    }
+
+    let categoriesQuery = supabase.from("categories").select("*");
+    if (targetSpaceId) {
+      categoriesQuery = categoriesQuery.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
+    }
 
     const [obligationsRes, categoriesRes, walletsRes, openPaymentsRes] = await Promise.all([
-      supabase
-        .from("recurring_obligations_summary_view")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
-      supabase.from("categories").select("*"),
-      supabase.from("wallets").select("*").eq("user_id", userId),
+      obligationsQuery,
+      categoriesQuery,
+      walletsQuery,
       supabase
         .from("recurring_payments")
         .select("*")

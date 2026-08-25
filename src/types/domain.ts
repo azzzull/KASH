@@ -1,6 +1,18 @@
 export type CurrencyCode = "IDR" | string;
 export type MoneyAmount = string | number;
 
+export type FinancialSpaceType = "personal" | "managed";
+
+export type FinancialSpace = {
+  id: string;
+  owner_user_id: string;
+  name: string;
+  space_type: FinancialSpaceType;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Profile = {
   id: string;
   email: string;
@@ -19,6 +31,7 @@ export type WalletType = "bank" | "digital_bank" | "ewallet" | "cash" | "investm
 export type Wallet = {
   id: string;
   user_id: string;
+  space_id?: string;
   name: string;
   wallet_type: WalletType;
   institution_name: string | null;
@@ -41,6 +54,7 @@ export type CategoryType = "income" | "expense";
 export type Category = {
   id: string;
   user_id: string | null;
+  space_id?: string | null;
   name: string;
   category_type: CategoryType;
   icon: string | null;
@@ -54,6 +68,7 @@ export type Category = {
 export type Envelope = {
   id: string;
   user_id: string;
+  space_id?: string;
   name: string;
   icon: string | null;
   color: string | null;
@@ -96,6 +111,7 @@ export type TransactionStatus = "completed" | "void";
 export type Transaction = {
   id: string;
   user_id: string;
+  space_id?: string;
   type: TransactionType;
   amount: MoneyAmount;
   wallet_id: string;
@@ -137,6 +153,7 @@ export type GoalStatus = "active" | "completed" | "cancelled";
 export type Goal = {
   id: string;
   user_id: string;
+  space_id?: string;
   wallet_id: string | null;
   name: string;
   target_amount: MoneyAmount;
@@ -212,6 +229,7 @@ export type PaymentMode = "wallet" | "historical";
 export type Counterparty = {
   id: string;
   user_id: string;
+  space_id?: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -220,6 +238,7 @@ export type Counterparty = {
 export type Debt = {
   id: string;
   user_id: string;
+  space_id?: string;
   counterparty_id: string;
   type: DebtType;
   title: string;
@@ -297,6 +316,7 @@ export type RecurringPaymentStatus = "pending" | "paid" | "overdue" | "skipped";
 export type RecurringObligation = {
   id: string;
   user_id: string;
+  space_id?: string;
   type: RecurringObligationType;
   name: string;
   provider: string | null;
@@ -364,6 +384,7 @@ export type BudgetStatus = "healthy" | "near_limit" | "over_budget";
 export type Budget = {
   id: string;
   user_id: string;
+  space_id?: string;
   name: string;
   type: BudgetType;
   target_type: BudgetTargetType;

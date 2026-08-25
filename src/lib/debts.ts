@@ -11,6 +11,7 @@ import type {
   Wallet,
 } from "../types/domain";
 import { addMoneyValues, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "./money";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 export type CounterpartyWithSummary = Counterparty & {
@@ -100,15 +101,24 @@ function isOutstandingDebtItem(item: Pick<DebtProgress, "remaining_amount" | "st
   );
 }
 
-export async function getCounterparties(filters?: {
-  type?: "all" | DebtType;
-  status?: "all" | "active" | "settled";
-  query?: string;
-}) {
+export async function getCounterparties(
+  filters?: {
+    type?: "all" | DebtType;
+    status?: "all" | "active" | "settled";
+    query?: string;
+  },
+  spaceId?: string
+) {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+
+  let cpQuery = supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true });
+  if (targetSpaceId) {
+    cpQuery = cpQuery.eq("space_id", targetSpaceId);
+  }
 
   const [counterpartiesResult, progressResult] = await Promise.all([
-    supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true }),
+    cpQuery,
     supabase.from("debt_progress_view").select("*").eq("user_id", userId),
   ]);
 
@@ -347,20 +357,26 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   };
 }
 
-export async function findOrCreateCounterparty(name: string): Promise<{ data: Counterparty | null; error: any }> {
+export async function findOrCreateCounterparty(name: string, spaceId?: string): Promise<{ data: Counterparty | null; error: any }> {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = spaceId ?? getActiveSpaceId() ?? undefined;
   const trimmed = name.trim();
   if (!trimmed) {
     return { data: null, error: new Error("Counterparty name is required.") };
   }
 
   // Check if existing exists (case-insensitive)
-  const { data: existing, error: findError } = await supabase
+  let findQuery = supabase
     .from("counterparties")
     .select("*")
     .eq("user_id", userId)
-    .ilike("name", trimmed)
-    .maybeSingle();
+    .ilike("name", trimmed);
+
+  if (targetSpaceId) {
+    findQuery = findQuery.eq("space_id", targetSpaceId);
+  }
+
+  const { data: existing, error: findError } = await findQuery.maybeSingle();
 
   if (existing) {
     return { data: existing as Counterparty, error: null };
@@ -372,6 +388,7 @@ export async function findOrCreateCounterparty(name: string): Promise<{ data: Co
     .insert({
       name: trimmed,
       user_id: userId,
+      space_id: targetSpaceId,
     })
     .select("*")
     .single();
@@ -381,12 +398,17 @@ export async function findOrCreateCounterparty(name: string): Promise<{ data: Co
   }
 
   // Handle unique expression index race condition (fetch existing)
-  const { data: fallback, error: fallbackError } = await supabase
+  let fallbackQuery = supabase
     .from("counterparties")
     .select("*")
     .eq("user_id", userId)
-    .ilike("name", trimmed)
-    .maybeSingle();
+    .ilike("name", trimmed);
+
+  if (targetSpaceId) {
+    fallbackQuery = fallbackQuery.eq("space_id", targetSpaceId);
+  }
+
+  const { data: fallback, error: fallbackError } = await fallbackQuery.maybeSingle();
 
   if (fallback) {
     return { data: fallback as Counterparty, error: null };
@@ -413,7 +435,7 @@ export async function renameCounterparty(id: string, name: string): Promise<{ da
 
 export async function createDebt(
   input: CreateDebtInput,
-  options?: { walletId?: string | null; counterpartyName?: string },
+  options?: { walletId?: string | null; counterpartyName?: string; spaceId?: string },
 ): Promise<{ data: Debt | null; error: any }> {
   const res = await createMultipleDebts([input], options);
   return { data: res.data ? res.data[0] ?? null : null, error: res.error };
@@ -421,13 +443,14 @@ export async function createDebt(
 
 export async function createMultipleDebts(
   inputs: CreateDebtInput[],
-  options?: { walletId?: string | null; counterpartyName?: string },
+  options?: { walletId?: string | null; counterpartyName?: string; spaceId?: string },
 ): Promise<{ data: Debt[] | null; error: any }> {
   if (inputs.length === 0) {
     return { data: [], error: null };
   }
 
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = options?.spaceId ?? getActiveSpaceId() ?? undefined;
   const payloads: Database["public"]["Tables"]["debts"]["Insert"][] = [];
   let totalAmountNumber = 0;
 
@@ -444,6 +467,7 @@ export async function createMultipleDebts(
 
     payloads.push({
       user_id: userId,
+      space_id: targetSpaceId,
       counterparty_id: input.counterpartyId,
       type: input.type,
       title: input.title.trim(),
@@ -464,6 +488,7 @@ export async function createMultipleDebts(
 
     const { error: txError } = await supabase.from("transactions").insert({
       user_id: userId,
+      space_id: targetSpaceId,
       type: "adjustment",
       amount: type === "debt" ? totalAmountNumber.toString() : (-totalAmountNumber).toString(),
       wallet_id: options.walletId,

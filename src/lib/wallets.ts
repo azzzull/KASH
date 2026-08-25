@@ -1,5 +1,6 @@
 import type { CurrencyCode, InvestmentActivity, InvestmentActivityType, InvestmentValuation, Wallet, WalletBalance, WalletType } from "../types/domain";
 import type { Database } from "../types/database";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 type CreateFirstWalletInput = {
@@ -53,12 +54,19 @@ function attachBalances(wallets: any[], balances: WalletBalance[]): WalletWithBa
   }));
 }
 
-export async function getWallets() {
-  const { data: wallets, error: walletError } = await supabase
+export async function getWallets(spaceId?: string) {
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+  let query = supabase
     .from("wallets")
     .select("*, goals!goals_wallet_id_fkey(id, name, target_amount, deadline, status)")
     .eq("is_archived", false)
     .order("created_at", { ascending: true });
+
+  if (targetSpaceId) {
+    query = query.eq("space_id", targetSpaceId);
+  }
+
+  const { data: wallets, error: walletError } = await query;
 
   if (walletError || !wallets) {
     return { data: null, error: walletError };
@@ -148,13 +156,15 @@ export async function getWalletLinkedGoalCount(walletId: string) {
   };
 }
 
-export async function createWallet(input: CreateWalletInput) {
+export async function createWallet(input: CreateWalletInput, spaceId?: string) {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = spaceId ?? getActiveSpaceId() ?? undefined;
 
   return supabase
     .from("wallets")
     .insert({
       user_id: userId,
+      space_id: targetSpaceId,
       name: input.name,
       wallet_type: input.walletType,
       institution_name: input.institutionName,
@@ -168,8 +178,8 @@ export async function createWallet(input: CreateWalletInput) {
     .single();
 }
 
-export async function createFirstWallet(input: CreateFirstWalletInput) {
-  return createWallet(input);
+export async function createFirstWallet(input: CreateFirstWalletInput, spaceId?: string) {
+  return createWallet(input, spaceId);
 }
 
 export async function updateWallet(id: string, input: UpdateWalletInput) {

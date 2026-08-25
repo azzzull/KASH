@@ -1,4 +1,5 @@
 import type { Category, CategoryType } from "../types/domain";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 export type CreateCategoryInput = {
@@ -37,31 +38,47 @@ export async function getSystemCategories() {
     .order("name", { ascending: true });
 }
 
-export async function getUserCategories() {
-  return supabase
+export async function getUserCategories(spaceId?: string) {
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+  let query = supabase
     .from("categories")
     .select("*")
     .eq("is_system", false)
     .order("category_type", { ascending: true })
     .order("name", { ascending: true });
+
+  if (targetSpaceId) {
+    query = query.eq("space_id", targetSpaceId);
+  }
+
+  return query;
 }
 
-export async function getActiveCategories() {
-  return supabase
+export async function getActiveCategories(spaceId?: string) {
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+  let query = supabase
     .from("categories")
     .select("*")
     .eq("is_archived", false)
     .order("category_type", { ascending: true })
     .order("name", { ascending: true });
+
+  if (targetSpaceId) {
+    query = query.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
+  }
+
+  return query;
 }
 
-export async function createCategory(input: CreateCategoryInput) {
+export async function createCategory(input: CreateCategoryInput, spaceId?: string) {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = spaceId ?? getActiveSpaceId() ?? undefined;
 
   return supabase
     .from("categories")
     .insert({
       user_id: userId,
+      space_id: targetSpaceId,
       name: input.name,
       category_type: input.categoryType,
       icon: input.icon,

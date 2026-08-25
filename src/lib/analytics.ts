@@ -1,5 +1,6 @@
 import { createCategoryColorResolver } from "./chartColors";
 import { toNumber } from "./money";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
 import type { Category, Transaction, Wallet, WalletBalance } from "../types/domain";
@@ -479,51 +480,73 @@ export function getEmptyAnalyticsSummary(options: AnalyticsSummaryOptions): Anal
   };
 }
 
-export async function getAnalyticsSummary(options: AnalyticsSummaryOptions): Promise<AnalyticsSummary> {
+export async function getAnalyticsSummary(
+  options: AnalyticsSummaryOptions,
+  spaceId?: string
+): Promise<AnalyticsSummary> {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
   const period = resolvePeriod(options);
   const currentStart = period.start;
   const currentEnd = period.end;
 
+  let walletQuery = supabase
+    .from("wallets")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: true });
+  if (targetSpaceId) walletQuery = walletQuery.eq("space_id", targetSpaceId);
+
+  let categoryQuery = supabase
+    .from("categories")
+    .select("*")
+    .eq("is_archived", false)
+    .order("category_type", { ascending: true })
+    .order("name", { ascending: true });
+  if (targetSpaceId) {
+    categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
+  } else {
+    categoryQuery = categoryQuery.or(`user_id.is.null,user_id.eq.${userId}`);
+  }
+
+  let currentTxnQuery = supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "completed")
+    .gte("transaction_date", currentStart)
+    .lt("transaction_date", currentEnd)
+    .order("transaction_date", { ascending: true });
+  if (targetSpaceId) currentTxnQuery = currentTxnQuery.eq("space_id", targetSpaceId);
+
+  let prevTxnQuery = supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "completed")
+    .gte("transaction_date", period.previousStart)
+    .lt("transaction_date", period.previousEnd)
+    .order("transaction_date", { ascending: true });
+  if (targetSpaceId) prevTxnQuery = prevTxnQuery.eq("space_id", targetSpaceId);
+
+  let histTxnQuery = supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "completed")
+    .lt("transaction_date", currentEnd)
+    .order("transaction_date", { ascending: true });
+  if (targetSpaceId) histTxnQuery = histTxnQuery.eq("space_id", targetSpaceId);
+
   const [walletResult, balanceResult, categoryResult, currentTransactionResult, previousTransactionResult, historicalTransactionResult] =
     await Promise.all([
-      supabase
-        .from("wallets")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("is_archived", false)
-        .order("created_at", { ascending: true }),
+      walletQuery,
       supabase.from("wallet_balance_view").select("*").eq("user_id", userId),
-      supabase
-        .from("categories")
-        .select("*")
-        .eq("is_archived", false)
-        .or(`user_id.is.null,user_id.eq.${userId}`)
-        .order("category_type", { ascending: true })
-        .order("name", { ascending: true }),
-      supabase
-        .from("transactions")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "completed")
-        .gte("transaction_date", currentStart)
-        .lt("transaction_date", currentEnd)
-        .order("transaction_date", { ascending: true }),
-      supabase
-        .from("transactions")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "completed")
-        .gte("transaction_date", period.previousStart)
-        .lt("transaction_date", period.previousEnd)
-        .order("transaction_date", { ascending: true }),
-      supabase
-        .from("transactions")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("status", "completed")
-        .lt("transaction_date", currentEnd)
-        .order("transaction_date", { ascending: true }),
+      categoryQuery,
+      currentTxnQuery,
+      prevTxnQuery,
+      histTxnQuery,
     ]);
 
   if (walletResult.error) throw walletResult.error;

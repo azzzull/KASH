@@ -5,6 +5,7 @@ import { registerServiceWorker } from "./app/registerServiceWorker";
 import { router } from "./app/router";
 import { AppLaunchSplashProvider } from "./components/app/AppLaunchSplash";
 import { AuthProvider } from "./context/AuthContext";
+import { ActiveSpaceProvider } from "./context/ActiveSpaceContext";
 import "./styles/index.css";
 
 import { I18nProvider } from "./i18n";
@@ -12,11 +13,13 @@ import { I18nProvider } from "./i18n";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
-      <I18nProvider>
-        <AppLaunchSplashProvider>
-          <RouterProvider router={router} />
-        </AppLaunchSplashProvider>
-      </I18nProvider>
+      <ActiveSpaceProvider>
+        <I18nProvider>
+          <AppLaunchSplashProvider>
+            <RouterProvider router={router} />
+          </AppLaunchSplashProvider>
+        </I18nProvider>
+      </ActiveSpaceProvider>
     </AuthProvider>
   </React.StrictMode>,
 );

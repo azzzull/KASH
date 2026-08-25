@@ -18,6 +18,8 @@ import type {
   DebtStatus,
   DebtType,
   Envelope,
+  FinancialSpace,
+  FinancialSpaceType,
   Goal,
   GoalContribution,
   GoalProgress,
@@ -59,6 +61,20 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      financial_spaces: {
+        Row: FinancialSpace;
+        Insert: {
+          id?: string;
+          owner_user_id: string;
+          name: string;
+          space_type: FinancialSpaceType;
+          is_archived?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<FinancialSpace, "id" | "owner_user_id" | "created_at">>;
+        Relationships: [];
+      };
       profiles: {
         Row: Profile;
         Insert: {
@@ -81,6 +97,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          space_id?: string;
           name: string;
           wallet_type: WalletType;
           institution_name?: string | null;
@@ -105,6 +122,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id?: string | null;
+          space_id?: string | null;
           name: string;
           category_type: CategoryType;
           icon?: string | null;
@@ -122,6 +140,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          space_id?: string;
           name: string;
           icon?: string | null;
           color?: string | null;
@@ -170,6 +189,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          space_id?: string;
           type: TransactionType;
           amount: string;
           wallet_id: string;
@@ -195,6 +215,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          space_id?: string;
           wallet_id?: string | null;
           name: string;
           target_amount: string;
@@ -230,6 +251,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          space_id?: string;
           name: string;
           created_at?: string;
           updated_at?: string;
@@ -242,6 +264,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          space_id?: string;
           counterparty_id: string;
           type: DebtType;
           title: string;
@@ -310,6 +333,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          space_id?: string;
           type: RecurringObligationType;
           name: string;
           provider?: string | null;

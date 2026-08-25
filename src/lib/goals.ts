@@ -1,5 +1,6 @@
 import type { Database } from "../types/database";
 import type { Goal, GoalContribution, GoalProgress, Wallet } from "../types/domain";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 export type GoalWithProgress = Goal & {
@@ -57,12 +58,19 @@ function attachProgress(goals: Goal[], progressRows: GoalProgress[]): GoalWithPr
   }));
 }
 
-export async function getGoals() {
-  const { data: goals, error: goalsError } = await supabase
+export async function getGoals(spaceId?: string) {
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+  let query = supabase
     .from("goals")
     .select("*")
     .neq("status", "cancelled")
     .order("created_at", { ascending: false });
+
+  if (targetSpaceId) {
+    query = query.eq("space_id", targetSpaceId);
+  }
+
+  const { data: goals, error: goalsError } = await query;
 
   if (goalsError || !goals) {
     return { data: null, error: goalsError };

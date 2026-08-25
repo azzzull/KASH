@@ -1,5 +1,6 @@
 import type { Category, Transaction, TransactionType, Wallet } from "../types/domain";
 import { toNumber } from "./money";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 import { getTransactionSupportData, type TransactionWithMeta } from "./transactions";
 
@@ -134,7 +135,7 @@ export function groupTransactionsByDate(transactions: TransactionWithMeta[]) {
   return grouped;
 }
 
-export async function getCalendarMonthTransactions(monthDate: Date): Promise<CalendarMonthData> {
+export async function getCalendarMonthTransactions(monthDate: Date, spaceId?: string): Promise<CalendarMonthData> {
   const {
     data: { user },
     error: userError,
@@ -144,9 +145,11 @@ export async function getCalendarMonthTransactions(monthDate: Date): Promise<Cal
     throw new Error("You need to be signed in to view the calendar.");
   }
 
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
   const range = getCalendarQueryRange(monthDate);
-  const supportData = await getTransactionSupportData();
-  const { data, error } = await supabase
+  const supportData = await getTransactionSupportData(targetSpaceId ?? undefined);
+
+  let query = supabase
     .from("transactions")
     .select("*")
     .eq("user_id", user.id)
@@ -154,6 +157,12 @@ export async function getCalendarMonthTransactions(monthDate: Date): Promise<Cal
     .gte("transaction_date", range.start.toISOString())
     .lt("transaction_date", range.end.toISOString())
     .order("transaction_date", { ascending: true });
+
+  if (targetSpaceId) {
+    query = query.eq("space_id", targetSpaceId);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
