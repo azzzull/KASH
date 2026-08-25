@@ -833,7 +833,7 @@ function SpendingDonut({
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
-    const categories = summary.spendingByCategory.slice(0, 5);
+    const categories = summary.spendingByCategory;
     const totalExpense = categories.reduce(
         (sum, category) => sum + category.amount,
         0,
@@ -960,7 +960,9 @@ function SpendingDonut({
                                     style={{ backgroundColor: category.color }}
                                 />
                                 <span className="truncate font-semibold text-slate-700">
-                                    {category.name}
+                                    {category.id === "uncategorized"
+                                        ? (t("categories.uncategorized") || "Tanpa Kategori")
+                                        : category.name}
                                 </span>
                             </div>
                             <div className="shrink-0 text-right">

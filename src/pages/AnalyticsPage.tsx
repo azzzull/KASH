@@ -441,7 +441,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
 
 function SpendingByCategory({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
-  const categories = summary.categorySpending.slice(0, 6);
+  const categories = summary.categorySpending;
   const totalExpense = categories.reduce((sum, category) => sum + category.amount, 0);
 
   if (categories.length === 0 || totalExpense <= 0) {
@@ -514,7 +514,11 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
-                <span className="truncate font-semibold text-slate-700">{category.name}</span>
+                <span className="truncate font-semibold text-slate-700">
+                  {category.id === "uncategorized"
+                    ? (t("categories.uncategorized") || "Tanpa Kategori")
+                    : category.name}
+                </span>
               </div>
               <div className="shrink-0 text-right">
                 <span className="font-bold text-slate-900">{formatCurrency(category.amount, currency)}</span>
