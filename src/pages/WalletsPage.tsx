@@ -295,6 +295,7 @@ export function WalletsPage() {
 
   useAppEvent(appEvents.transactionSaved, () => void loadWallets());
   useAppEvent(appEvents.goalSaved, () => void loadWallets());
+  useAppEvent(appEvents.spaceChanged, () => void loadWallets());
 
   const totals = useMemo(() => {
     return wallets.reduce(

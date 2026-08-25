@@ -40,6 +40,8 @@ import {
   getCategoryIcon,
   isAllowedCategoryColor,
 } from "../lib/categoryMeta";
+import { appEvents } from "../lib/appEvents";
+import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import type { Category, CategoryType, Envelope } from "../types/domain";
 
@@ -530,6 +532,8 @@ export function CategoriesPage() {
   useEffect(() => {
     void loadData();
   }, []);
+
+  useAppEvent(appEvents.spaceChanged, () => void loadData());
 
   const groupedCategories = useMemo(() => {
     const activeSystem = systemCategories.filter((category) => !category.is_archived);

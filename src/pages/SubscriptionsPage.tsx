@@ -64,6 +64,7 @@ export function SubscriptionsPage() {
 
   useAppEvent(appEvents.transactionSaved, () => void loadData());
   useAppEvent(appEvents.notificationsUpdated, () => void loadData());
+  useAppEvent(appEvents.spaceChanged, () => void loadData());
 
   // Calculations for Summary Metrics
   const summaryMetrics = useMemo(() => {

@@ -1,11 +1,13 @@
-import { Bell, LogOut, Settings } from "lucide-react";
+import { Bell, Briefcase, ChevronRight, LogOut, Settings, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useI18n } from "../../i18n";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
+import { SpaceSwitcherModal } from "../spaces/SpaceSwitcherModal";
 import kashLogo from "../../../logo/SVG/KASHLogo.svg";
 
 type AppHeaderProps = {
@@ -16,11 +18,13 @@ export function AppHeader({ visible }: AppHeaderProps) {
     const { t } = useI18n();
     const navigate = useNavigate();
     const { profile, signOut } = useAuth();
+    const { activeSpace } = useActiveSpace();
     const { unreadCount } = useNotifications();
     const notificationsRef = useRef<HTMLDivElement>(null);
     const profileMenuRef = useRef<HTMLDivElement>(null);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+    const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
     const initial =
         profile?.full_name?.charAt(0) ?? profile?.email.charAt(0) ?? "A";
 
@@ -119,7 +123,7 @@ export function AppHeader({ visible }: AppHeaderProps) {
                             {initial.toUpperCase()}
                         </button>
                         {profileMenuOpen ? (
-                            <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-56 rounded-lg border border-kash-emerald/15 bg-white p-2 shadow-soft">
+                            <div className="absolute right-0 top-[calc(100%+8px)] z-40 w-64 rounded-xl border border-kash-emerald/15 bg-white p-2 shadow-soft">
                                 <div className="border-b border-slate-100 px-3 py-2">
                                     <p className="truncate text-sm font-extrabold text-slate-900">
                                         {profile?.full_name || t("nav.account")}
@@ -128,13 +132,42 @@ export function AppHeader({ visible }: AppHeaderProps) {
                                         {profile?.email}
                                     </p>
                                 </div>
+
+                                <div className="my-1 border-b border-slate-100 pb-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setProfileMenuOpen(false);
+                                            setSpaceSwitcherOpen(true);
+                                        }}
+                                        className="flex w-full touch-manipulation items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 transition hover:bg-kash-selected/70 hover:text-kash-emeraldDark active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            {activeSpace?.space_type === "managed" ? (
+                                                <Briefcase size={15} className="shrink-0 text-kash-emerald" />
+                                            ) : (
+                                                <User size={15} className="shrink-0 text-kash-emerald" />
+                                            )}
+                                            <div className="min-w-0">
+                                                <p className="truncate text-xs font-extrabold text-slate-900">
+                                                    {activeSpace?.name || t("spaces.personal")}
+                                                </p>
+                                                <p className="truncate text-[10px] font-semibold text-slate-400">
+                                                    {t("spaces.switchSpace")}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={14} className="shrink-0 text-slate-400" />
+                                    </button>
+                                </div>
+
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setProfileMenuOpen(false);
                                         navigate("/settings");
                                     }}
-                                    className="mt-2 flex w-full touch-manipulation items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
+                                    className="flex w-full touch-manipulation items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
                                 >
                                     <Settings aria-hidden="true" size={17} />
                                     {t("nav.settings")}
@@ -152,6 +185,11 @@ export function AppHeader({ visible }: AppHeaderProps) {
                     </div>
                 </div>
             </div>
+
+            <SpaceSwitcherModal
+                isOpen={spaceSwitcherOpen}
+                onClose={() => setSpaceSwitcherOpen(false)}
+            />
         </header>
     );
 }

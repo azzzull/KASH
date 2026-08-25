@@ -40,6 +40,7 @@ import { formatCurrency, toNumber } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useI18n } from "../i18n";
 import type { TransactionType } from "../types/domain";
 import { CashFlowChart as SharedCashFlowChart } from "../components/analytics/CashFlowChart";
@@ -547,13 +548,18 @@ function HeroCard({
           ]
         : [];
 
+    const { activeSpace } = useActiveSpace();
+    const isManaged = activeSpace?.space_type === "managed";
+
     return (
         <div className="kash-hero-card p-4 md:p-6">
             {/* Top row: label + controls */}
             <div className="relative flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                     <p className="text-[11px] font-extrabold uppercase tracking-wide text-white/70">
-                        {t("dashboard.netWorth") || "Net Worth"}
+                        {isManaged
+                            ? t("dashboard.managedBalance") || "Managed Balance"
+                            : t("dashboard.netWorth") || "Net Worth"}
                     </p>
                     <Info
                         aria-hidden="true"
@@ -731,11 +737,15 @@ function CashFlowRow({
     summary: DashboardSummary;
 }) {
     const { t, locale } = useI18n();
+    const { activeSpace } = useActiveSpace();
+    const isManaged = activeSpace?.space_type === "managed";
     const previousMonthLabel = getPreviousMonthLabel(selectedMonth, locale);
     const items = [
         {
             key: "income",
-            label: t("common.typeIncome") || t("dashboard.income") || "Income",
+            label: isManaged
+                ? t("dashboard.managedIncome") || "Funding"
+                : t("common.typeIncome") || t("dashboard.income") || "Income",
             value: summary.monthlyIncome.amount,
             change: summary.monthComparison.income,
             metric: "income" as const,
@@ -744,8 +754,9 @@ function CashFlowRow({
         },
         {
             key: "expense",
-            label:
-                t("common.typeExpense") || t("dashboard.expense") || "Expense",
+            label: isManaged
+                ? t("dashboard.managedExpense") || "Spending"
+                : t("common.typeExpense") || t("dashboard.expense") || "Expense",
             value: summary.monthlyExpense.amount,
             change: summary.monthComparison.expense,
             metric: "expense" as const,
@@ -754,7 +765,9 @@ function CashFlowRow({
         },
         {
             key: "cashflow",
-            label: t("dashboard.netCashFlow") || "Cash Flow",
+            label: isManaged
+                ? t("dashboard.managedNetFlow") || "Net Flow"
+                : t("dashboard.netCashFlow") || "Cash Flow",
             value: summary.netCashFlow.amount,
             change: summary.monthComparison.netCashFlow,
             metric: "netCashFlow" as const,
@@ -1791,14 +1804,17 @@ export function DashboardPage() {
         profile?.email.split("@")[0] ??
         "there";
 
+    const { activeSpaceId } = useActiveSpace();
+
     const loadDashboard = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
         try {
-            const nextSummary = await getDashboardSummary({
-                referenceDate: selectedMonth,
-            });
+            const nextSummary = await getDashboardSummary(
+                { referenceDate: selectedMonth },
+                activeSpaceId ?? undefined
+            );
             setSummary(nextSummary);
         } catch (caughtError) {
             setError(
@@ -1809,7 +1825,7 @@ export function DashboardPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedMonth]);
+    }, [selectedMonth, activeSpaceId]);
 
     useEffect(() => {
         void loadDashboard();
@@ -1817,15 +1833,16 @@ export function DashboardPage() {
 
     useEffect(() => {
         let isMounted = true;
-        void getRecurringObligations().then(({ data }) => {
+        void getRecurringObligations(activeSpaceId ?? undefined).then(({ data }) => {
             if (isMounted) setUpcomingObligations(data);
         });
         return () => { isMounted = false; };
-    }, []);
+    }, [activeSpaceId]);
 
     useAppEvent(appEvents.transactionSaved, () => void loadDashboard());
     useAppEvent(appEvents.goalSaved, () => void loadDashboard());
     useAppEvent(appEvents.debtSaved, () => void loadDashboard());
+    useAppEvent(appEvents.spaceChanged, () => void loadDashboard());
 
     useEffect(() => {
         window.localStorage.removeItem(LEGACY_DASHBOARD_BALANCES_VISIBLE_KEY);

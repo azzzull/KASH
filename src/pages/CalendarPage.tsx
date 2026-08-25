@@ -244,6 +244,7 @@ export function CalendarPage() {
   }, []);
 
   useAppEvent(appEvents.transactionSaved, () => void loadMonth());
+  useAppEvent(appEvents.spaceChanged, () => void loadMonth());
 
   useEffect(() => {
     const dateKey = searchParams.get("date");

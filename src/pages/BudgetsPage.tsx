@@ -87,6 +87,9 @@ export function BudgetsPage() {
   useAppEvent(appEvents.budgetSaved, () => {
     void loadData();
   });
+  useAppEvent(appEvents.spaceChanged, () => {
+    void loadData();
+  });
 
   const handlePrevMonth = () => {
     const [year, month] = currentMonth.split("-").map(Number);

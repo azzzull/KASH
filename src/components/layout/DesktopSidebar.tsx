@@ -1,26 +1,30 @@
-import { Bell, LogOut, Settings, X } from "lucide-react";
+import { Bell, Briefcase, ChevronRight, LogOut, Settings, User, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { navGroups } from "../../app/navigation";
 import { useAuth } from "../../context/AuthContext";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useI18n } from "../../i18n";
 import { useNotifications } from "../../context/NotificationContext";
 import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { KashLogo } from "../brand/KashLogo";
 import { IconButton } from "../ui/IconButton";
 import { NotificationsPopover } from "./NotificationsPopover";
+import { SpaceSwitcherModal } from "../spaces/SpaceSwitcherModal";
 
 export function DesktopSidebar() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
+  const { activeSpace } = useActiveSpace();
   const { unreadCount } = useNotifications();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const displayName = profile?.full_name || profile?.email || "Account";
-  const subtitle = profile?.email ?? "View Profile";
+  const subtitle = activeSpace?.name || (activeSpace?.space_type === "managed" ? "Managed Space" : "Personal Space");
   const initial = displayName.charAt(0).toUpperCase();
 
   const handleSignOut = async () => {
@@ -169,7 +173,40 @@ export function DesktopSidebar() {
           </div>
         </button>
         {profileMenuOpen ? (
-          <div className="absolute bottom-[calc(100%+8px)] left-0 right-0 z-40 rounded-lg border border-kash-emerald/15 bg-white p-2 shadow-soft">
+          <div className="absolute bottom-[calc(100%+8px)] left-0 right-0 z-40 rounded-xl border border-kash-emerald/15 bg-white p-2 shadow-soft">
+            <div className="border-b border-slate-100 px-3 py-2">
+              <p className="truncate text-sm font-extrabold text-slate-900">{displayName}</p>
+              <p className="truncate text-xs font-semibold text-slate-500">{profile?.email}</p>
+            </div>
+
+            <div className="my-1 border-b border-slate-100 pb-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  setSpaceSwitcherOpen(true);
+                }}
+                className="flex w-full touch-manipulation items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 transition hover:bg-kash-selected/70 hover:text-kash-emeraldDark active:bg-kash-selected focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {activeSpace?.space_type === "managed" ? (
+                    <Briefcase size={15} className="shrink-0 text-kash-emerald" />
+                  ) : (
+                    <User size={15} className="shrink-0 text-kash-emerald" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-extrabold text-slate-900">
+                      {activeSpace?.name || t("spaces.personal")}
+                    </p>
+                    <p className="truncate text-[10px] font-semibold text-slate-400">
+                      {t("spaces.switchSpace")}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight size={14} className="shrink-0 text-slate-400" />
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => {
@@ -195,6 +232,11 @@ export function DesktopSidebar() {
           </div>
         ) : null}
       </div>
+
+      <SpaceSwitcherModal
+        isOpen={spaceSwitcherOpen}
+        onClose={() => setSpaceSwitcherOpen(false)}
+      />
 
       {logoutOpen ? (
         <ConfirmationDialog

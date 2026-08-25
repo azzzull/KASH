@@ -375,6 +375,7 @@ export function GoalsPage() {
 
     useAppEvent(appEvents.transactionSaved, () => void loadGoals());
     useAppEvent(appEvents.goalSaved, () => void loadGoals());
+    useAppEvent(appEvents.spaceChanged, () => void loadGoals());
 
     const summary = useMemo(() => {
         return goals.reduce(

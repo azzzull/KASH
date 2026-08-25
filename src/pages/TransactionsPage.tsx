@@ -902,6 +902,7 @@ export function TransactionsPage() {
   };
 
   useAppEvent(appEvents.transactionSaved, () => void loadTransactions(filters));
+  useAppEvent(appEvents.spaceChanged, () => void loadTransactions(filters));
 
   useEffect(() => {
     if (!filterPanelOpen) return;

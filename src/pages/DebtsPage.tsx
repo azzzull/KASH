@@ -94,6 +94,7 @@ export function DebtsPage() {
 
   useAppEvent(appEvents.debtSaved, loadData);
   useAppEvent(appEvents.transactionSaved, loadData);
+  useAppEvent(appEvents.spaceChanged, loadData);
 
   const typeFilterOptions = useMemo(() => [
     { label: t("debts.tabAll"), value: "all" },

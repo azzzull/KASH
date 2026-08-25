@@ -3,6 +3,7 @@ export const appEvents = {
   debtSaved: "kash:debt-saved",
   goalSaved: "kash:goal-saved",
   notificationsUpdated: "kash:notifications-updated",
+  spaceChanged: "kash:space-changed",
   transactionSaved: "kash:transaction-saved",
 } as const;
 
@@ -26,6 +27,10 @@ export function emitGoalSaved() {
 
 export function emitNotificationsUpdated() {
   emitAppEvent(appEvents.notificationsUpdated);
+}
+
+export function emitSpaceChanged() {
+  emitAppEvent(appEvents.spaceChanged);
 }
 
 export function emitTransactionSaved() {

@@ -11,9 +11,14 @@ import { useAuth } from "./AuthContext";
 import type { FinancialSpace } from "../types/domain";
 import {
   getFinancialSpaces,
+  createManagedSpace as createManagedSpaceApi,
+  renameManagedSpace as renameManagedSpaceApi,
+  archiveManagedSpace as archiveManagedSpaceApi,
+  restoreManagedSpace as restoreManagedSpaceApi,
   setActiveSpaceId as persistActiveSpaceId,
   getActiveSpaceId as getStoredActiveSpaceId,
 } from "../lib/spaces";
+import { emitSpaceChanged } from "../lib/appEvents";
 
 type ActiveSpaceContextValue = {
   spaces: FinancialSpace[];
@@ -22,6 +27,10 @@ type ActiveSpaceContextValue = {
   activeSpaceId: string | null;
   loading: boolean;
   setActiveSpace: (spaceOrId: FinancialSpace | string) => void;
+  createManagedSpace: (name: string) => Promise<FinancialSpace>;
+  renameManagedSpace: (spaceId: string, name: string) => Promise<FinancialSpace>;
+  archiveManagedSpace: (spaceId: string) => Promise<void>;
+  restoreManagedSpace: (spaceId: string) => Promise<void>;
   refreshSpaces: () => Promise<void>;
 };
 
@@ -89,17 +98,83 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       const targetId = typeof spaceOrId === "string" ? spaceOrId : spaceOrId.id;
       const targetSpace = spaces.find((s) => s.id === targetId && !s.is_archived);
 
+      let nextId: string | null = null;
       if (targetSpace) {
-        setActiveSpaceIdState(targetSpace.id);
-        persistActiveSpaceId(targetSpace.id);
+        nextId = targetSpace.id;
       } else {
         const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+        nextId = personal?.id ?? null;
+      }
+
+      setActiveSpaceIdState(nextId);
+      persistActiveSpaceId(nextId);
+      emitSpaceChanged();
+    },
+    [spaces]
+  );
+
+  const createManagedSpace = useCallback(
+    async (name: string): Promise<FinancialSpace> => {
+      const { data, error } = await createManagedSpaceApi(name);
+      if (error || !data) {
+        throw error || new Error("Gagal membuat Financial Space");
+      }
+
+      await loadSpaces();
+      setActiveSpaceIdState(data.id);
+      persistActiveSpaceId(data.id);
+      emitSpaceChanged();
+      return data;
+    },
+    [loadSpaces]
+  );
+
+  const renameManagedSpace = useCallback(
+    async (spaceId: string, name: string): Promise<FinancialSpace> => {
+      const { data, error } = await renameManagedSpaceApi(spaceId, name);
+      if (error || !data) {
+        throw error || new Error("Gagal mengubah nama Financial Space");
+      }
+
+      await loadSpaces();
+      emitSpaceChanged();
+      return data;
+    },
+    [loadSpaces]
+  );
+
+  const archiveManagedSpace = useCallback(
+    async (spaceId: string): Promise<void> => {
+      const { error } = await archiveManagedSpaceApi(spaceId);
+      if (error) {
+        throw error;
+      }
+
+      // If active space is the one being archived, fallback to personal space
+      const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+      if (activeSpaceId === spaceId) {
         const fallbackId = personal?.id ?? null;
         setActiveSpaceIdState(fallbackId);
         persistActiveSpaceId(fallbackId);
       }
+
+      await loadSpaces();
+      emitSpaceChanged();
     },
-    [spaces]
+    [spaces, activeSpaceId, loadSpaces]
+  );
+
+  const restoreManagedSpace = useCallback(
+    async (spaceId: string): Promise<void> => {
+      const { error } = await restoreManagedSpaceApi(spaceId);
+      if (error) {
+        throw error;
+      }
+
+      await loadSpaces();
+      emitSpaceChanged();
+    },
+    [loadSpaces]
   );
 
   const personalSpace = useMemo(
@@ -109,7 +184,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
 
   const activeSpace = useMemo(() => {
     if (!activeSpaceId) return personalSpace;
-    return spaces.find((s) => s.id === activeSpaceId) ?? personalSpace;
+    return spaces.find((s) => s.id === activeSpaceId && !s.is_archived) ?? personalSpace;
   }, [spaces, activeSpaceId, personalSpace]);
 
   const value = useMemo<ActiveSpaceContextValue>(
@@ -120,9 +195,25 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       activeSpaceId: activeSpace?.id ?? activeSpaceId,
       loading,
       setActiveSpace,
+      createManagedSpace,
+      renameManagedSpace,
+      archiveManagedSpace,
+      restoreManagedSpace,
       refreshSpaces: loadSpaces,
     }),
-    [spaces, personalSpace, activeSpace, activeSpaceId, loading, setActiveSpace, loadSpaces]
+    [
+      spaces,
+      personalSpace,
+      activeSpace,
+      activeSpaceId,
+      loading,
+      setActiveSpace,
+      createManagedSpace,
+      renameManagedSpace,
+      archiveManagedSpace,
+      restoreManagedSpace,
+      loadSpaces,
+    ]
   );
 
   return <ActiveSpaceContext.Provider value={value}>{children}</ActiveSpaceContext.Provider>;

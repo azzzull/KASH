@@ -30,6 +30,7 @@ import { formatCompactCurrency, formatCurrency } from "../lib/money";
 import { appEvents } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { CashFlowChart } from "../components/analytics/CashFlowChart";
@@ -227,6 +228,8 @@ function AnalyticsHeroStory({
   summary: AnalyticsSummary;
 }) {
   const { t, formatCurrency } = useI18n();
+  const { activeSpace } = useActiveSpace();
+  const isManaged = activeSpace?.space_type === "managed";
   const netCashFlow = summary.netCashFlow.amount;
   const isSurplus = netCashFlow >= 0;
   const savingsRate = summary.income.amount > 0 ? (netCashFlow / summary.income.amount) * 100 : 0;
@@ -242,7 +245,9 @@ function AnalyticsHeroStory({
       {/* Top Row: Title Left + Period Picker Right */}
       <div className="flex items-start justify-between gap-3">
         <span className="text-xs font-bold uppercase tracking-wider text-white/70">
-          {t("dashboard.netCashFlow") || "ARUS KAS BERSIH"}
+          {isManaged
+            ? t("dashboard.managedNetFlow") || "ARUS BERSIH"
+            : t("dashboard.netCashFlow") || "ARUS KAS BERSIH"}
         </span>
         <div className="shrink-0">{periodControls}</div>
       </div>
@@ -273,7 +278,9 @@ function AnalyticsHeroStory({
       {/* Bottom Inline Summary Row: Pemasukan | Pengeluaran */}
       <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs">
         <div>
-          <span className="text-white/60 font-semibold">{t("common.typeIncome") || "Pemasukan"}</span>
+          <span className="text-white/60 font-semibold">
+            {isManaged ? t("dashboard.managedIncome") || "Dana Masuk" : t("common.typeIncome") || "Pemasukan"}
+          </span>
           <p className="mt-0.5 text-sm font-extrabold text-white">
             {formatCurrency(summary.income.amount, currency)}
           </p>
@@ -287,7 +294,9 @@ function AnalyticsHeroStory({
           />
         </div>
         <div>
-          <span className="text-white/60 font-semibold">{t("common.typeExpense") || "Pengeluaran"}</span>
+          <span className="text-white/60 font-semibold">
+            {isManaged ? t("dashboard.managedExpense") || "Pengeluaran" : t("common.typeExpense") || "Pengeluaran"}
+          </span>
           <p className="mt-0.5 text-sm font-extrabold text-white">
             {formatCurrency(summary.expense.amount, currency)}
           </p>
@@ -648,7 +657,9 @@ function WalletDistribution({ currency, summary }: { currency: string; summary: 
           </div>
         ))}
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-slate-200 pt-3 text-sm">
-          <p className="font-extrabold text-slate-900">{t("dashboard.netWorth") || "Net Worth"}</p>
+          <p className="font-extrabold text-slate-900">
+            {isManaged ? t("dashboard.managedBalance") || "Saldo Kelolaan" : t("dashboard.netWorth") || "Net Worth"}
+          </p>
           <div className="min-w-0 text-right">
             <p className="font-extrabold text-slate-900">{formatCurrency(summary.walletNetWorth, currency)}</p>
             <ComparisonLine
@@ -905,6 +916,7 @@ function BudgetVsActualCard({ currency }: { currency: string }) {
 export function AnalyticsPage() {
   const { t } = useI18n();
   const { profile } = useAuth();
+  const { activeSpace, activeSpaceId } = useActiveSpace();
   const currency = profile?.default_currency ?? "IDR";
   const [period, setPeriod] = useState<AnalyticsPeriodKey>("this_month");
   const [customStartDate, setCustomStartDate] = useState(
@@ -927,7 +939,7 @@ export function AnalyticsPage() {
     };
 
     try {
-      const data = await getAnalyticsSummary(summaryOptions);
+      const data = await getAnalyticsSummary(summaryOptions, activeSpaceId ?? undefined);
       setSummary(data);
     } catch (loadError) {
       if (isEmptyAnalyticsPeriodError(loadError)) {
@@ -942,13 +954,14 @@ export function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [customEndDate, customStartDate, period]);
+  }, [customEndDate, customStartDate, period, activeSpaceId]);
 
   useEffect(() => {
     void loadAnalytics();
   }, [loadAnalytics]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadAnalytics());
+  useAppEvent(appEvents.spaceChanged, () => void loadAnalytics());
 
   if (isLoading && !summary) return <AnalyticsSkeleton />;
 
@@ -1035,7 +1048,9 @@ export function AnalyticsPage() {
           </div>
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NET_WORTH_COLOR }} />
-            {t("dashboard.netWorth") || "Net Worth"}
+            {activeSpace?.space_type === "managed"
+              ? t("dashboard.managedBalance") || "Saldo Kelolaan"
+              : t("dashboard.netWorth") || "Net Worth"}
           </div>
         </div>
         <NetWorthTrend summary={summary} currency={currency} />
