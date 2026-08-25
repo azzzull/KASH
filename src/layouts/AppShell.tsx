@@ -16,6 +16,7 @@ import {
 } from "../components/layout/QuickAddMenu";
 import { TransactionModal } from "../components/transactions/TransactionModal";
 import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpenseModal";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 
 export function AppShell() {
   const location = useLocation();
@@ -23,6 +24,7 @@ export function AppShell() {
   const contentRef = useRef<HTMLElement | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const { activeSpaceId } = useActiveSpace();
   const [transactionMode, setTransactionMode] =
     useState<QuickAddMode | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -164,7 +166,7 @@ export function AppShell() {
           <div className="flex min-w-0 flex-1 flex-col lg:h-[100dvh] lg:min-h-0">
             <AppHeader visible={mobileHeaderVisible} />
             <main ref={contentRef} className="flex-1 px-4 pt-20 pb-28 md:px-6 md:pt-6 lg:min-h-0 lg:overflow-y-auto lg:pb-8 lg:pt-8">
-              <Outlet />
+              <Outlet key={activeSpaceId ?? 'no-space'} />
             </main>
           </div>
         </div>

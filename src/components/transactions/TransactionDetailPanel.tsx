@@ -12,6 +12,7 @@ import {
 import { useI18n } from "../../i18n";
 import { formatCurrency, toNumber } from "../../lib/money";
 import { Modal } from "../ui/Modal";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import type { TransactionType } from "../../types/domain";
 import type { TransactionWithMeta } from "../../lib/transactions";
 
@@ -139,7 +140,7 @@ export function TransactionDetailModal({
       if (transaction.related_entity_type === "goal_refund") return t("goals.refund") || "Pengembalian Target";
       return t("wallets.balanceAdjustment") || "Penyesuaian Saldo";
     }
-    return transaction.category?.name ?? (transaction.type === "income" ? (t("transactions.income") || "Pemasukan") : (t("transactions.expense") || "Pengeluaran"));
+    return transaction.category?.name ?? (transaction.type === "income" ? (isManaged ? (t("transactions.funding") || "Dana Masuk") : (t("transactions.income") || "Pemasukan")) : (isManaged ? (t("transactions.spending") || "Pengeluaran") : (t("transactions.expense") || "Pengeluaran")));
   };
 
   const getTranslatedCategoryLabel = () => {

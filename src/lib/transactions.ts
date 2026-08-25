@@ -290,9 +290,9 @@ export async function getTransactionSupportData(spaceId?: string) {
     .order("category_type", { ascending: true })
     .order("name", { ascending: true });
   if (targetSpaceId) {
-    categoryQuery = categoryQuery.or(`and(is_system.eq.true,space_id.is.null),and(user_id.eq.${userId},space_id.eq.${targetSpaceId})`);
+    categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
   } else {
-    categoryQuery = categoryQuery.or(`user_id.is.null,user_id.eq.${userId}`);
+    categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.is.null`);
   }
 
   let envelopeQuery = supabase.from("envelopes").select("*").eq("user_id", userId).eq("is_archived", false).order("name", { ascending: true });

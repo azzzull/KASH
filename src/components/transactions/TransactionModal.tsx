@@ -18,6 +18,7 @@ import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
 import type { Category, Envelope } from "../../types/domain";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 
 export type QuickTransactionMode = "expense" | "income" | "transfer";
 
@@ -53,6 +54,8 @@ function isAmountError(error: string | null) {
 
 export function TransactionModal({ mode, onClose, onSaved }: TransactionModalProps) {
   const { t, formatCurrency } = useI18n();
+  const { activeSpace } = useActiveSpace();
+  const isManaged = activeSpace?.space_type === "managed";
 
   const modeCopy: Record<
     QuickTransactionMode,
@@ -63,8 +66,8 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       submitLabel: string;
     }
   > = {
-    expense: { accent: "text-kash-expense", icon: ArrowDown, submitLabel: t("transactions.saveExpense") || "Simpan Pengeluaran", title: t("transactions.newExpense") || "Pengeluaran Baru" },
-    income: { accent: "text-kash-income", icon: ArrowUp, submitLabel: t("transactions.saveIncome") || "Simpan Pemasukan", title: t("transactions.newIncome") || "Pemasukan Baru" },
+    expense: { accent: "text-kash-expense", icon: ArrowDown, submitLabel: isManaged ? (t("transactions.saveSpending") || "Simpan Pengeluaran") : (t("transactions.saveExpense") || "Simpan Pengeluaran"), title: isManaged ? (t("transactions.newSpending") || "Pengeluaran Baru") : (t("transactions.newExpense") || "Pengeluaran Baru") },
+    income: { accent: "text-kash-income", icon: ArrowUp, submitLabel: isManaged ? (t("transactions.saveFunding") || "Simpan Dana Masuk") : (t("transactions.saveIncome") || "Simpan Pemasukan"), title: isManaged ? (t("transactions.newFunding") || "Dana Masuk") : (t("transactions.newIncome") || "Pemasukan Baru") },
     transfer: { accent: "text-kash-transfer", icon: ArrowRightLeft, submitLabel: t("transactions.transfer") || "Transfer", title: t("transactions.newTransfer") || "Transfer Baru" },
   };
 

@@ -104,6 +104,8 @@ export async function getRecurringObligations(spaceId?: string): Promise<{
     let categoriesQuery = supabase.from("categories").select("*");
     if (targetSpaceId) {
       categoriesQuery = categoriesQuery.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
+    } else {
+      categoriesQuery = categoriesQuery.or(`is_system.eq.true,space_id.is.null`);
     }
 
     const [obligationsRes, categoriesRes, walletsRes, openPaymentsRes] = await Promise.all([

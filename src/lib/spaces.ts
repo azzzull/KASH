@@ -218,3 +218,21 @@ export async function restoreManagedSpace(spaceId: string): Promise<{
     return { error: err };
   }
 }
+
+export async function deleteManagedSpace(spaceId: string): Promise<{
+  error: Error | null;
+}> {
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error("You need to be signed in to delete a Financial Space.");
+    }
+
+    const { error } = await supabase.rpc("delete_managed_space" as any, { p_space_id: spaceId });
+    if (error) throw error;
+    
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+}

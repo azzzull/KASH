@@ -507,7 +507,7 @@ export async function getAnalyticsSummary(
   if (targetSpaceId) {
     categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
   } else {
-    categoryQuery = categoryQuery.or(`user_id.is.null,user_id.eq.${userId}`);
+    categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.is.null`);
   }
 
   let currentTxnQuery = supabase

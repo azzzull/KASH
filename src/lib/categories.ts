@@ -49,6 +49,8 @@ export async function getUserCategories(spaceId?: string) {
 
   if (targetSpaceId) {
     query = query.eq("space_id", targetSpaceId);
+  } else {
+    query = query.is("space_id", null);
   }
 
   return query;
@@ -65,6 +67,8 @@ export async function getActiveCategories(spaceId?: string) {
 
   if (targetSpaceId) {
     query = query.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
+  } else {
+    query = query.or(`is_system.eq.true,space_id.is.null`);
   }
 
   return query;

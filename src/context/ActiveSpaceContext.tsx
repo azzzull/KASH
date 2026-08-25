@@ -15,6 +15,7 @@ import {
   renameManagedSpace as renameManagedSpaceApi,
   archiveManagedSpace as archiveManagedSpaceApi,
   restoreManagedSpace as restoreManagedSpaceApi,
+  deleteManagedSpace as deleteManagedSpaceApi,
   setActiveSpaceId as persistActiveSpaceId,
   getActiveSpaceId as getStoredActiveSpaceId,
 } from "../lib/spaces";
@@ -31,6 +32,7 @@ type ActiveSpaceContextValue = {
   renameManagedSpace: (spaceId: string, name: string) => Promise<FinancialSpace>;
   archiveManagedSpace: (spaceId: string) => Promise<void>;
   restoreManagedSpace: (spaceId: string) => Promise<void>;
+  deleteManagedSpace: (spaceId: string) => Promise<void>;
   refreshSpaces: () => Promise<void>;
 };
 
@@ -174,6 +176,27 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     [loadSpaces]
   );
 
+  const deleteManagedSpace = useCallback(
+    async (spaceId: string): Promise<void> => {
+      const { error } = await deleteManagedSpaceApi(spaceId);
+      if (error) {
+        throw error;
+      }
+
+      // If active space is the one being deleted, fallback to personal space
+      const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+      if (activeSpaceId === spaceId) {
+        const fallbackId = personal?.id ?? null;
+        setActiveSpaceIdState(fallbackId);
+        persistActiveSpaceId(fallbackId);
+      }
+
+      await loadSpaces();
+      emitSpaceChanged();
+    },
+    [spaces, activeSpaceId, loadSpaces]
+  );
+
   const personalSpace = useMemo(
     () => spaces.find((s) => s.space_type === "personal") ?? null,
     [spaces]
@@ -196,6 +219,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       renameManagedSpace,
       archiveManagedSpace,
       restoreManagedSpace,
+      deleteManagedSpace,
       refreshSpaces: loadSpaces,
     }),
     [
@@ -209,6 +233,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       renameManagedSpace,
       archiveManagedSpace,
       restoreManagedSpace,
+      deleteManagedSpace,
       loadSpaces,
     ]
   );

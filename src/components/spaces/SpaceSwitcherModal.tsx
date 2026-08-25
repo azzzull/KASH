@@ -1,5 +1,6 @@
-import { Check, Plus, User, Briefcase, MoreVertical, Edit2, Archive } from "lucide-react";
+import { Check, Plus, User, Briefcase, MoreVertical, Edit2, Archive, X } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useI18n } from "../../i18n";
 import type { FinancialSpace } from "../../types/domain";
@@ -23,6 +24,8 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
     setActiveSpace,
     renameManagedSpace,
     archiveManagedSpace,
+    restoreManagedSpace,
+    deleteManagedSpace,
   } = useActiveSpace();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -30,15 +33,21 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
   const [editName, setEditName] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const [archivingSpace, setArchivingSpace] = useState<FinancialSpace | null>(null);
   const [archiveLoading, setArchiveLoading] = useState(false);
+  const [deletingSpace, setDeletingSpace] = useState<FinancialSpace | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
 
   const managedSpaces = spaces.filter((s) => s.space_type === "managed" && !s.is_archived);
+  const archivedSpaces = spaces.filter((s) => s.space_type === "managed" && s.is_archived);
 
   const handleSelect = (space: FinancialSpace) => {
     setActiveSpace(space.id);
     onClose();
+    navigate("/");
   };
 
   const handleStartRename = (e: React.MouseEvent, space: FinancialSpace) => {
@@ -79,11 +88,49 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
     setArchiveLoading(true);
     try {
       await archiveManagedSpace(archivingSpace.id);
+      if (activeSpaceId === archivingSpace.id && personalSpace) {
+        setActiveSpace(personalSpace.id);
+        navigate("/");
+      }
       setArchivingSpace(null);
     } catch (err) {
       console.error("Failed to archive space:", err);
     } finally {
       setArchiveLoading(false);
+    }
+  };
+
+  const handleRestore = async (e: React.MouseEvent, space: FinancialSpace) => {
+    e.stopPropagation();
+    setRestoreLoading(true);
+    try {
+      await restoreManagedSpace(space.id);
+    } catch (err) {
+      console.error("Failed to restore space:", err);
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
+  const handleStartDelete = (e: React.MouseEvent, space: FinancialSpace) => {
+    e.stopPropagation();
+    setDeletingSpace(space);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingSpace) return;
+    setDeleteLoading(true);
+    try {
+      await deleteManagedSpace(deletingSpace.id);
+      if (activeSpaceId === deletingSpace.id && personalSpace) {
+        setActiveSpace(personalSpace.id);
+        navigate("/");
+      }
+      setDeletingSpace(null);
+    } catch (err) {
+      console.error("Failed to delete space:", err);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -216,6 +263,57 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
             </div>
           </div>
 
+          {/* Archived Section */}
+          {archivedSpaces.length > 0 && (
+            <div className="border-t border-slate-100 pt-3">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  {(t("spaces.archivedSpaces" as any) || "Arsip Space")}
+                </p>
+              </div>
+              <div className="mt-2 flex flex-col gap-1">
+                {archivedSpaces.map((space) => (
+                  <div
+                    key={space.id}
+                    className="flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left transition bg-slate-50 opacity-80"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+                        <Archive size={18} strokeWidth={2.2} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-extrabold text-slate-600 line-through">
+                          {space.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleRestore(e, space)}
+                        disabled={restoreLoading}
+                        className="h-8 px-2.5 text-xs text-slate-500"
+                      >
+                        {t("spaces.restore" as any) || "Pulihkan"}
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleStartDelete(e, space)}
+                        aria-label={t("spaces.deleteSpace" as any) || "Hapus Permanen"}
+                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-kash-expense/10 hover:text-kash-expense active:bg-kash-expense/20"
+                      >
+                        <X size={14} strokeWidth={2.5} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Add Space Action */}
           <div className="border-t border-slate-100 pt-3">
             <button
@@ -299,6 +397,19 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
           tone="danger"
           onConfirm={handleConfirmArchive}
           onCancel={() => setArchivingSpace(null)}
+        />
+      ) : null}
+
+      {/* Delete Confirmation Dialog */}
+      {deletingSpace ? (
+        <ConfirmationDialog
+          title={t("spaces.deleteSpace" as any) || "Hapus Financial Space?"}
+          description={t("spaces.deleteConfirm" as any) || "Semua wallet, transaksi, budget, kategori, hutang/piutang, dan data keuangan di space ini akan dihapus permanen dan tidak dapat dipulihkan."}
+          confirmLabel={t("common.deletePermanent" as any) || "Hapus Permanen"}
+          tone="danger"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeletingSpace(null)}
+          isLoading={deleteLoading}
         />
       ) : null}
     </>
