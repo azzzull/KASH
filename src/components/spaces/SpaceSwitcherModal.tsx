@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useI18n } from "../../i18n";
 import type { FinancialSpace } from "../../types/domain";
+import { Button } from "../ui/Button";
+import { FormField } from "../ui/FormField";
 import { Modal } from "../ui/Modal";
 import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { CreateSpaceModal } from "./CreateSpaceModal";
@@ -255,7 +257,9 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                 {editError}
               </div>
             ) : null}
-            <input
+            <FormField
+              id="edit-space-name-input"
+              label={t("spaces.spaceName")}
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
@@ -263,23 +267,25 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
               maxLength={50}
               disabled={editLoading}
               autoFocus
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/15"
+              required
+              hasError={Boolean(editError)}
             />
             <div className="flex items-center justify-end gap-3 pt-2">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setEditingSpace(null)}
-                className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100"
+                disabled={editLoading}
               >
                 {t("common.cancel")}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
+                variant="primary"
                 disabled={editLoading || !editName.trim()}
-                className="rounded-xl bg-kash-emerald px-4 py-2 text-sm font-bold text-white shadow-soft transition hover:bg-kash-emeraldDark disabled:opacity-50"
               >
                 {editLoading ? t("common.saving") : t("common.save")}
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>

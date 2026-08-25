@@ -65,23 +65,19 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
         <FormField
           id="space-name-input"
           label={t("spaces.spaceName")}
+          type="text"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (error) setError(null);
+          }}
+          placeholder={t("spaces.spaceNamePlaceholder")}
+          maxLength={50}
+          disabled={loading}
+          autoFocus
           required
-        >
-          <input
-            id="space-name-input"
-            type="text"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              if (error) setError(null);
-            }}
-            placeholder={t("spaces.spaceNamePlaceholder")}
-            maxLength={50}
-            disabled={loading}
-            autoFocus
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/15 disabled:opacity-50"
-          />
-        </FormField>
+          hasError={Boolean(error)}
+        />
 
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button
