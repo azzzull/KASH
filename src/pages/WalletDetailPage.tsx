@@ -89,6 +89,8 @@ function EditWalletModal({
   const [error, setError] = useState<string | null>(null);
   const selectedType = getWalletTypeOption(form.walletType);
 
+  const isSpecialized = wallet.wallet_type === "investment" || (wallet.wallet_type === "savings" && !!wallet.goal_id);
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = form.name.trim();
@@ -148,16 +150,18 @@ function EditWalletModal({
         ) : null}
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <SelectField
-            disabled
+            disabled={isSpecialized || saving}
             id="edit-wallet-type"
             label={t("wallets.type") || "Tipe Dompet"}
             onChange={(event) => setForm((current) => ({ ...current, walletType: event.target.value as WalletType }))}
             value={form.walletType}
           >
-            {walletTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
+            {walletTypeOptions
+              .filter(opt => isSpecialized ? opt.value === wallet.wallet_type : !["investment"].includes(opt.value) && !(opt.value === "savings" && wallet.goal_id))
+              .map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
             ))}
           </SelectField>
           <FormField id="edit-wallet-name" label={t("wallets.name") || "Nama Dompet"} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} value={form.name} />

@@ -28,7 +28,7 @@ type ActiveSpaceContextValue = {
   activeSpaceId: string | null;
   loading: boolean;
   setActiveSpace: (spaceOrId: FinancialSpace | string) => void;
-  createManagedSpace: (name: string) => Promise<FinancialSpace>;
+  createManagedSpace: (name: string, walletName: string, walletType: string) => Promise<FinancialSpace>;
   renameManagedSpace: (spaceId: string, name: string) => Promise<FinancialSpace>;
   archiveManagedSpace: (spaceId: string) => Promise<void>;
   restoreManagedSpace: (spaceId: string) => Promise<void>;
@@ -116,8 +116,8 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   );
 
   const createManagedSpace = useCallback(
-    async (name: string): Promise<FinancialSpace> => {
-      const { data, error } = await createManagedSpaceApi(name);
+    async (name: string, walletName: string, walletType: string): Promise<FinancialSpace> => {
+      const { data, error } = await createManagedSpaceApi(name, walletName, walletType);
       if (error || !data) {
         throw error || new Error("Gagal membuat Financial Space");
       }

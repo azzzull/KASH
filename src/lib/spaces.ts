@@ -77,31 +77,21 @@ export async function getPersonalSpace(): Promise<{
   }
 }
 
-export async function createManagedSpace(name: string): Promise<{
+export async function createManagedSpace(name: string, walletName: string, walletType: string): Promise<{
   data: FinancialSpace | null;
   error: Error | null;
 }> {
   try {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      throw new Error("Nama Financial Space tidak boleh kosong.");
-    }
-
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       throw new Error("You need to be signed in to create a Financial Space.");
     }
 
-    const { data, error } = await supabase
-      .from("financial_spaces")
-      .insert({
-        owner_user_id: user.id,
-        name: trimmed,
-        space_type: "managed",
-        is_archived: false,
-      })
-      .select("*")
-      .single();
+    const { data, error } = await supabase.rpc("create_managed_space_with_wallet" as any, {
+      p_space_name: name,
+      p_wallet_name: walletName,
+      p_wallet_type: walletType,
+    });
 
     if (error) throw error;
     return { data: data as FinancialSpace, error: null };
