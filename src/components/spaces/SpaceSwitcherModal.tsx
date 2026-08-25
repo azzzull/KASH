@@ -234,78 +234,77 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                         {isActive ? (
-                          <>
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-kash-emerald text-white">
-                              <Check size={14} strokeWidth={3} />
-                            </span>
-                            <Menu as="div" className="relative inline-block text-left ml-1">
-                              <MenuButton
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-700 focus:outline-none"
-                                aria-label="Aksi Space"
-                              >
-                                <MoreVertical size={16} />
-                              </MenuButton>
-                              <MenuItems
-                                transition
-                                className="absolute right-0 z-30 mt-1 w-44 origin-top-right rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75"
-                              >
-                                <MenuItem>
-                                  {({ focus }) => (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStartRename(e, space);
-                                      }}
-                                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                                        focus ? "bg-slate-50 text-slate-900" : "text-slate-700"
-                                      }`}
-                                    >
-                                      <Edit3 size={14} />
-                                      {t("spaces.renameSpace" as any) || "Ubah Nama"}
-                                    </button>
-                                  )}
-                                </MenuItem>
-                                <MenuItem>
-                                  {({ focus }) => (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStartArchive(e, space);
-                                      }}
-                                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                                        focus ? "bg-kash-expense/10 text-kash-expense" : "text-slate-700"
-                                      }`}
-                                    >
-                                      <Archive size={14} />
-                                      {t("spaces.archiveSpace" as any) || "Arsipkan"}
-                                    </button>
-                                  )}
-                                </MenuItem>
-                                <MenuItem>
-                                  {({ focus }) => (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStartDelete(e, space);
-                                      }}
-                                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                                        focus ? "bg-kash-expense/10 text-kash-expense" : "text-slate-700"
-                                      }`}
-                                    >
-                                      <Trash2 size={14} />
-                                      {t("spaces.deleteSpace" as any) || "Hapus Space"}
-                                    </button>
-                                  )}
-                                </MenuItem>
-                              </MenuItems>
-                            </Menu>
-                          </>
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-kash-emerald text-white">
+                            <Check size={14} strokeWidth={3} />
+                          </span>
                         ) : null}
+                        <Menu as="div" className="relative inline-block text-left">
+                          <MenuButton
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-700 focus:outline-none"
+                            aria-label="Aksi Space"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical size={16} />
+                          </MenuButton>
+                          <MenuItems
+                            transition
+                            className="absolute right-0 z-30 mt-1 w-44 origin-top-right rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75"
+                          >
+                            <MenuItem>
+                              {({ focus }) => (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartRename(e, space);
+                                  }}
+                                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                                    focus ? "bg-slate-50 text-slate-900" : "text-slate-700"
+                                  }`}
+                                >
+                                  <Edit3 size={14} />
+                                  {t("spaces.renameSpace")}
+                                </button>
+                              )}
+                            </MenuItem>
+                            <MenuItem>
+                              {({ focus }) => (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartArchive(e, space);
+                                  }}
+                                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                                    focus ? "bg-kash-expense/10 text-kash-expense" : "text-slate-700"
+                                  }`}
+                                >
+                                  <Archive size={14} />
+                                  {t("spaces.archiveSpace")}
+                                </button>
+                              )}
+                            </MenuItem>
+                            <MenuItem>
+                              {({ focus }) => (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartDelete(e, space);
+                                  }}
+                                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                                    focus ? "bg-kash-expense/10 text-kash-expense" : "text-slate-700"
+                                  }`}
+                                >
+                                  <Trash2 size={14} />
+                                  {t("spaces.deleteSpace")}
+                                </button>
+                              )}
+                            </MenuItem>
+                          </MenuItems>
+                        </Menu>
                       </div>
                     </div>
                   );
@@ -319,7 +318,7 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
             <div className="border-t border-slate-100 pt-3">
               <div className="flex items-center justify-between px-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  {(t("spaces.archivedSpaces" as any) || "Arsip Space")}
+                  {`${t("spaces.archivedSpaces")} (${archivedSpaces.length})`}
                 </p>
               </div>
               <div className="mt-2 flex flex-col gap-1">
@@ -348,12 +347,12 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                         disabled={restoreLoading}
                         className="h-8 px-2.5 text-xs text-slate-500"
                       >
-                        {t("spaces.restore" as any) || "Pulihkan"}
+                        {t("spaces.restore")}
                       </Button>
                       <button
                         type="button"
                         onClick={(e) => handleStartDelete(e, space)}
-                        aria-label={t("spaces.deleteSpace" as any) || "Hapus Permanen"}
+                        aria-label={t("spaces.deleteSpace")}
                         className="rounded-lg p-1.5 text-slate-400 transition hover:bg-kash-expense/10 hover:text-kash-expense active:bg-kash-expense/20"
                       >
                         <X size={14} strokeWidth={2.5} />
@@ -454,9 +453,9 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
       {/* Delete Confirmation Dialog */}
       {deletingSpace ? (
         <ConfirmationDialog
-          title={t("spaces.deleteSpace" as any) || "Hapus Financial Space?"}
-          description={t("spaces.deleteConfirm" as any) || "Semua wallet, transaksi, budget, kategori, hutang/piutang, dan data keuangan di space ini akan dihapus permanen dan tidak dapat dipulihkan."}
-          confirmLabel={t("common.deletePermanent" as any) || "Hapus Permanen"}
+          title={t("spaces.deleteSpace")}
+          description={t("spaces.deleteConfirm")}
+          confirmLabel={t("common.deletePermanent")}
           tone="danger"
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeletingSpace(null)}

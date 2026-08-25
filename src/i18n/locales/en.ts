@@ -236,6 +236,13 @@ export const en = {
     "spaces.switchSpace": "Switch Financial Space",
     "spaces.active": "Active",
     "spaces.noManagedSpaces": "No managed financial spaces yet",
+    "spaces.delete": "Delete Space",
+    "spaces.deleteSpace": "Delete Space",
+    "spaces.deleteConfirm":
+        "All wallets, transactions, budgets, categories, debts/receivables, and financial data in this space will be permanently deleted and cannot be recovered.",
+    "spaces.archivedSpaces": "Archived Spaces",
+    "spaces.restore": "Restore",
+    "spaces.initialWallet": "Initial Wallet",
 
     // Dashboard
     "dashboard.title": "Here's your financial overview",
@@ -1483,6 +1490,8 @@ export const en = {
     "transactions.uncategorized": "Uncategorized",
     "nav.envelopes": "Envelopes",
     "common.deletePermanently": "Delete Permanently",
+    "common.deletePermanent": "Delete Permanently",
+    "wallets.namePlaceholder": "e.g. Main Cash, Operational Account",
     "common.of": "of",
     "common.prevMonth": "Previous Month",
     "common.nextMonth": "Next Month",

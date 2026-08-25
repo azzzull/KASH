@@ -239,6 +239,13 @@ export const id = {
     "spaces.switchSpace": "Ganti Financial Space",
     "spaces.active": "Aktif",
     "spaces.noManagedSpaces": "Belum ada Financial Space kelolaan",
+    "spaces.delete": "Hapus Space",
+    "spaces.deleteSpace": "Hapus Space",
+    "spaces.deleteConfirm":
+        "Semua wallet, transaksi, budget, kategori, hutang/piutang, dan data keuangan di space ini akan dihapus permanen dan tidak dapat dipulihkan.",
+    "spaces.archivedSpaces": "Arsip Space",
+    "spaces.restore": "Pulihkan",
+    "spaces.initialWallet": "Dompet Awal",
 
     // Dashboard
     "dashboard.title": "Berikut ringkasan keuangan Anda",
@@ -1493,6 +1500,8 @@ export const id = {
     "transactions.uncategorized": "Tanpa Kategori",
     "nav.envelopes": "Amplop",
     "common.deletePermanently": "Hapus Permanen",
+    "common.deletePermanent": "Hapus Permanen",
+    "wallets.namePlaceholder": "Misal: Kas Utama, Rekening Operasional",
     "common.of": "dari",
     "common.prevMonth": "Bulan Sebelumnya",
     "common.nextMonth": "Bulan Berikutnya",
