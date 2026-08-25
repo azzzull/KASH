@@ -582,13 +582,16 @@ export type Database = {
           p_envelope_id?: string | null;
           p_debt_id?: string | null;
           p_goal_id?: string | null;
+          p_wallet_id?: string | null;
           p_note?: string | null;
+          p_space_id?: string | null;
         };
         Returns: string;
       };
       get_monthly_budget_progress: {
         Args: {
           p_period_start?: string | null;
+          p_space_id?: string | null;
         };
         Returns: {
           budget_id: string;
@@ -626,6 +629,7 @@ export type Database = {
       get_monthly_budget_overview: {
         Args: {
           p_period_start?: string | null;
+          p_space_id?: string | null;
         };
         Returns: {
           period_start: string;

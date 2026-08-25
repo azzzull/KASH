@@ -22,6 +22,7 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
@@ -31,6 +32,7 @@ import type { BudgetWithProgress, Transaction } from "../types/domain";
 
 export function BudgetDetailPage() {
   const { t, formatMonthYear, formatDate, formatCurrency } = useI18n();
+  const { activeSpaceId } = useActiveSpace();
   const { id: budgetId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -69,7 +71,7 @@ export function BudgetDetailPage() {
     if (!budgetId) return;
     setLoading(true);
     try {
-      const bData = await getBudgetDetail(budgetId, currentMonth);
+      const bData = await getBudgetDetail(budgetId, currentMonth, activeSpaceId ?? undefined);
       setBudget(bData);
       if (bData) {
         const txList = await getBudgetMatchingTransactions(
@@ -85,7 +87,7 @@ export function BudgetDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [budgetId, currentMonth]);
+  }, [budgetId, currentMonth, activeSpaceId]);
 
   useEffect(() => {
     void loadData();

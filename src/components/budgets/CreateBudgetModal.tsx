@@ -18,6 +18,7 @@ import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { ToggleField } from "../ui/ToggleField";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useI18n } from "../../i18n";
 
 type CreateBudgetModalProps = {
@@ -28,6 +29,7 @@ type CreateBudgetModalProps = {
 
 export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudgetModalProps) {
   const { t } = useI18n();
+  const { activeSpaceId } = useActiveSpace();
   const [targetType, setTargetType] = useState<BudgetTargetType>("category");
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -62,12 +64,12 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
 
   useEffect(() => {
     Promise.all([
-      getActiveCategories(),
-      getEnvelopes(),
-      getCounterparties({ type: "debt", status: "active" }).catch(() => ({ counterparties: [] })),
-      getActiveDebts().catch(() => []),
-      getGoals().catch(() => ({ data: [] })),
-      getWallets().catch(() => ({ data: [] })),
+      getActiveCategories(activeSpaceId ?? undefined),
+      getEnvelopes(false, activeSpaceId ?? undefined),
+      getCounterparties({ type: "debt", status: "active" }, activeSpaceId ?? undefined).catch(() => ({ counterparties: [] })),
+      getActiveDebts(activeSpaceId ?? undefined).catch(() => []),
+      getGoals(activeSpaceId ?? undefined).catch(() => ({ data: [] })),
+      getWallets(activeSpaceId ?? undefined).catch(() => ({ data: [] })),
     ]).then(([catRes, envRes, cpRes, debtRes, goalRes, walletRes]) => {
       setLoading(false);
       if (catRes.data) {
@@ -93,7 +95,7 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
         setSavingsWallets(pureSavingsOnly);
       }
     });
-  }, []);
+  }, [activeSpaceId]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -164,21 +166,24 @@ export function CreateBudgetModal({ initialMonth, onClose, onSaved }: CreateBudg
 
     setSaving(true);
     try {
-      await createBudgetTarget({
-        name: name.trim() || defaultName,
-        targetType,
-        amount: rawAmount,
-        startPeriod,
-        repeatMonthly,
-        rolloverEnabled,
-        categoryId: targetType === "category" ? categoryId : null,
-        envelopeId: targetType === "envelope" ? envelopeId : null,
-        counterpartyId: targetType === "debt" ? counterpartyId || null : null,
-        debtId: targetType === "debt" && isSpecificItemTarget ? debtId || null : null,
-        goalId: targetType === "goal" && savingsMode === "goal" ? goalId || null : null,
-        walletId: targetType === "goal" && savingsMode === "pocket" ? walletId || null : null,
-        note: note.trim() || null,
-      });
+      await createBudgetTarget(
+        {
+          name: name.trim() || defaultName,
+          targetType,
+          amount: rawAmount,
+          startPeriod,
+          repeatMonthly,
+          rolloverEnabled,
+          categoryId: targetType === "category" ? categoryId : null,
+          envelopeId: targetType === "envelope" ? envelopeId : null,
+          counterpartyId: targetType === "debt" ? counterpartyId || null : null,
+          debtId: targetType === "debt" && isSpecificItemTarget ? debtId || null : null,
+          goalId: targetType === "goal" && savingsMode === "goal" ? goalId || null : null,
+          walletId: targetType === "goal" && savingsMode === "pocket" ? walletId || null : null,
+          note: note.trim() || null,
+        },
+        activeSpaceId ?? undefined
+      );
 
       onSaved();
       onClose();

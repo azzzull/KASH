@@ -6,6 +6,7 @@ import type {
   Transaction,
 } from "../types/domain";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "./money";
+import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
 export type CreateBudgetTargetInput = {
@@ -56,9 +57,11 @@ export type UpdateBudgetInput = {
 /**
  * Fetch monthly budgets with enriched progress and spending breakdown.
  */
-export async function getMonthlyBudgets(periodStart?: string): Promise<BudgetWithProgress[]> {
+export async function getMonthlyBudgets(periodStart?: string, spaceId?: string): Promise<BudgetWithProgress[]> {
+  const targetSpaceId = spaceId ?? getActiveSpaceId() ?? null;
   const { data, error } = await supabase.rpc("get_monthly_budget_progress", {
     p_period_start: periodStart ?? null,
+    p_space_id: targetSpaceId,
   });
 
   if (error) {
@@ -112,9 +115,11 @@ export async function getMonthlyBudgets(periodStart?: string): Promise<BudgetWit
 /**
  * Fetch monthly overview aggregate totals (Unified Monthly Financial Plan with Zero Cross-Budget Double-Counting).
  */
-export async function getMonthlyBudgetOverview(periodStart?: string): Promise<MonthlyBudgetOverview> {
+export async function getMonthlyBudgetOverview(periodStart?: string, spaceId?: string): Promise<MonthlyBudgetOverview> {
+  const targetSpaceId = spaceId ?? getActiveSpaceId() ?? null;
   const { data, error } = await supabase.rpc("get_monthly_budget_overview" as any, {
     p_period_start: periodStart || null,
+    p_space_id: targetSpaceId,
   });
 
   if (error) throw error;
@@ -160,13 +165,15 @@ export async function getMonthlyBudgetOverview(periodStart?: string): Promise<Mo
 export async function getBudgetDetail(
   budgetId: string,
   periodStart?: string,
+  spaceId?: string,
 ): Promise<BudgetWithProgress | null> {
+  const targetSpaceId = spaceId ?? getActiveSpaceId() ?? null;
   const normPeriod = periodStart
     ? `${periodStart.substring(0, 7)}-01`
     : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`;
 
   try {
-    const list = await getMonthlyBudgets(normPeriod);
+    const list = await getMonthlyBudgets(normPeriod, targetSpaceId ?? undefined);
     const found = list.find((b) => b.budget_id === budgetId);
     if (found) return found;
   } catch (err) {
@@ -226,7 +233,8 @@ export async function getBudgetDetail(
 /**
  * Universal Atomic Budget Creator (supports Category, Envelope, Debt, and Goal targets).
  */
-export async function createBudgetTarget(input: CreateBudgetTargetInput): Promise<string> {
+export async function createBudgetTarget(input: CreateBudgetTargetInput, spaceId?: string): Promise<string> {
+  const targetSpaceId = spaceId ?? getActiveSpaceId() ?? null;
   const rawAmount = parseMoneyInputDigits(input.amount);
   const amountNumber = toNumber(rawAmount);
 
@@ -248,6 +256,7 @@ export async function createBudgetTarget(input: CreateBudgetTargetInput): Promis
     p_goal_id: input.goalId || null,
     p_wallet_id: input.walletId || null,
     p_note: input.note?.trim() || null,
+    p_space_id: targetSpaceId,
   });
 
   if (error) throw error;

@@ -19,6 +19,7 @@ import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
@@ -27,6 +28,7 @@ import type { BudgetWithProgress, MonthlyBudgetOverview } from "../types/domain"
 
 export function BudgetsPage() {
   const { t, formatMonthYear, formatCurrency } = useI18n();
+  const { activeSpaceId } = useActiveSpace();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -54,8 +56,8 @@ export function BudgetsPage() {
     setLoading(true);
     try {
       const [overviewData, budgetList] = await Promise.all([
-        getMonthlyBudgetOverview(currentMonth),
-        getMonthlyBudgets(currentMonth),
+        getMonthlyBudgetOverview(currentMonth, activeSpaceId ?? undefined),
+        getMonthlyBudgets(currentMonth, activeSpaceId ?? undefined),
       ]);
       const healthyCount = budgetList.filter((budget) => budget.status === "healthy").length;
       const nearLimitCount = budgetList.filter((budget) => budget.status === "near_limit").length;
@@ -75,7 +77,7 @@ export function BudgetsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentMonth]);
+  }, [currentMonth, activeSpaceId]);
 
   useEffect(() => {
     void loadData();

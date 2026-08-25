@@ -232,6 +232,7 @@ export async function getEnvelopeMonthlyAnalytics(
   try {
     const { data: budgetData } = await supabase.rpc("get_monthly_budget_progress" as any, {
       p_period_start: normPeriod,
+      p_space_id: envelope.space_id ?? getActiveSpaceId() ?? null,
     });
     if (budgetData && Array.isArray(budgetData)) {
       activeBudget = budgetData.find(
