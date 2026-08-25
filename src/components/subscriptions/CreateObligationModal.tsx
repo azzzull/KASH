@@ -14,6 +14,7 @@ import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { useI18n } from "../../i18n";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 
 type CreateObligationModalProps = {
   onClose: () => void;
@@ -48,6 +49,7 @@ function findSmartCategory(targetType: RecurringObligationType, catList: Categor
 
 export function CreateObligationModal({ onClose, onSaved }: CreateObligationModalProps) {
   const { t, formatCurrency } = useI18n();
+  const { activeSpaceId } = useActiveSpace();
   const [type, setType] = useState<RecurringObligationType>("subscription");
   const [name, setName] = useState("");
   const [provider, setProvider] = useState("");
@@ -83,7 +85,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
   ], [t]);
 
   useEffect(() => {
-    Promise.all([getActiveCategories(), getWallets()])
+    Promise.all([getActiveCategories(activeSpaceId ?? undefined), getWallets(activeSpaceId ?? undefined)])
       .then(([catRes, walRes]) => {
         if (catRes.data) {
           const expCategories = (catRes.data as Category[]).filter((c) => c.category_type === "expense");
@@ -96,7 +98,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
         }
       })
       .catch(() => {});
-  }, []);
+  }, [activeSpaceId]);
 
   const isInstallmentType = type === "paylater" || type === "installment";
 
@@ -172,6 +174,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
       installmentTotalAmount: isInstallmentType ? String(calculatedTotalAmount) : undefined,
       alreadyPaidCount: isInstallmentType ? parseInt(alreadyPaidCount, 10) || 0 : 0,
       note: note.trim() || undefined,
+      spaceId: activeSpaceId ?? undefined,
     };
 
     const { error: saveError } = await createRecurringObligation(input);

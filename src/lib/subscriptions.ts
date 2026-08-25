@@ -28,6 +28,7 @@ export type CreateRecurringObligationInput = {
   installmentCount?: number | null;
   alreadyPaidCount?: number;
   note?: string;
+  spaceId?: string | null;
 };
 
 export type UpdateRecurringObligationInput = {
@@ -239,7 +240,8 @@ export async function createRecurringObligation(
       p_installment_count: input.installmentCount || null,
       p_already_paid_count: input.alreadyPaidCount || 0,
       p_note: input.note?.trim() || null,
-    });
+      p_space_id: input.spaceId ?? getActiveSpaceId() ?? null,
+    } as any);
 
     if (error) throw error;
 

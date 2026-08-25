@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Wallet as WalletIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { Link, useNavigate } from "react-router-dom";
 import { CreateObligationModal } from "../components/subscriptions/CreateObligationModal";
 import { PaymentModal } from "../components/subscriptions/PaymentModal";
@@ -39,6 +40,7 @@ type TabFilter = "all" | "subscriptions" | "installments" | "due_soon";
 export function SubscriptionsPage() {
   const navigate = useNavigate();
   const { t, formatDate, formatCurrency } = useI18n();
+  const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const [obligations, setObligations] = useState<RecurringObligationWithMeta[]>([]);
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,17 +52,22 @@ export function SubscriptionsPage() {
     payment: RecurringPayment;
   } | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
-    const [obRes, walRes] = await Promise.all([getRecurringObligations(), getWallets()]);
+    const [obRes, walRes] = await Promise.all([
+      getRecurringObligations(activeSpaceId ?? undefined),
+      getWallets(activeSpaceId ?? undefined),
+    ]);
     if (obRes.data) setObligations(obRes.data);
     if (walRes.data) setWallets(walRes.data);
     setLoading(false);
-  };
+  }, [activeSpaceId]);
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    if (!spaceLoading) {
+      void loadData();
+    }
+  }, [loadData, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadData());
   useAppEvent(appEvents.notificationsUpdated, () => void loadData());

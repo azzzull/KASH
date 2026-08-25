@@ -21,6 +21,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { UpcomingTimeline } from "../components/financial/UpcomingTimeline";
 import { getRecurringObligations, type RecurringObligationWithMeta } from "../lib/subscriptions";
 import { TransactionRow } from "../components/transactions/TransactionRow";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 
 const activityOrder = ["income", "expense", "transfer", "adjustment"] as const;
 const activityDotClass = {
@@ -201,6 +202,7 @@ function SelectedDatePanel({
 
 export function CalendarPage() {
   const { t, formatMonthYear } = useI18n();
+  const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const [searchParams] = useSearchParams();
   const today = useMemo(() => new Date(), []);
   const todayKey = localDateKey(today);
@@ -222,26 +224,24 @@ export function CalendarPage() {
     setError(null);
 
     try {
-      const result = await getCalendarMonthTransactions(activeMonth);
+      const [result, obligationsResult] = await Promise.all([
+        getCalendarMonthTransactions(activeMonth, activeSpaceId ?? undefined),
+        getRecurringObligations(activeSpaceId ?? undefined),
+      ]);
       setMonthData(result);
+      setUpcomingObligations(obligationsResult.data);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Couldn't load calendar transactions.");
     } finally {
       setIsLoading(false);
     }
-  }, [activeMonth]);
+  }, [activeMonth, activeSpaceId]);
 
   useEffect(() => {
-    void loadMonth();
-  }, [loadMonth]);
-
-  useEffect(() => {
-    let isMounted = true;
-    void getRecurringObligations().then(({ data }) => {
-      if (isMounted) setUpcomingObligations(data);
-    });
-    return () => { isMounted = false; };
-  }, []);
+    if (!spaceLoading) {
+      void loadMonth();
+    }
+  }, [loadMonth, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadMonth());
   useAppEvent(appEvents.spaceChanged, () => void loadMonth());
