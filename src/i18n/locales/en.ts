@@ -1501,6 +1501,11 @@ export const en = {
         "On iPhone/iPad, add KASH to your Home Screen (Share → Add to Home Screen) to enable Web Push notifications.",
     "settings.pushDeniedNotice":
         "Notification permissions are blocked by your browser. To re-enable, tap the lock/settings icon in your browser address bar and allow Notifications.",
+    "notifications.onboardingTitle": "Enable Notifications",
+    "notifications.onboardingDesc":
+        "Get bill reminders, reimbursement updates, and important alerts from KASH.",
+    "notifications.onboardingEnable": "Enable Notifications",
+    "notifications.onboardingLater": "Maybe Later",
 
     // Auth & Login
     "login.title": "Your money, organized in one place.",

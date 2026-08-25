@@ -4,6 +4,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { NotificationProvider } from "../context/NotificationContext";
 import { useAppLaunchSplash } from "../components/app/AppLaunchSplash";
 import { StaleSessionReset } from "../components/app/StaleSessionReset";
+import { PushNotificationOnboardingPrompt } from "../components/notifications/PushNotificationOnboardingPrompt";
 import { ServiceWorkerNavigationBridge } from "../components/pwa/ServiceWorkerNavigationBridge";
 import { AppHeader } from "../components/layout/AppHeader";
 import { DesktopSidebar } from "../components/layout/DesktopSidebar";
@@ -155,6 +156,7 @@ export function AppShell() {
   return (
     <NotificationProvider>
       <ServiceWorkerNavigationBridge />
+      <PushNotificationOnboardingPrompt />
       <StaleSessionReset onResetTransientUi={resetTransientUi} onStaleResetStart={showStaleResetSplash} />
       <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
         <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">

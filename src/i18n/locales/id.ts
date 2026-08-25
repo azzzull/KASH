@@ -1512,6 +1512,11 @@ export const id = {
         "Di iPhone/iPad, tambahkan KASH ke Layar Utama (Bagikan → Tambah ke Layar Utama) untuk mengaktifkan notifikasi Web Push.",
     "settings.pushDeniedNotice":
         "Izin notifikasi diblokir oleh browser Anda. Untuk mengaktifkan kembali, ketuk ikon gembok/pengaturan di bilah alamat browser dan izinkan Notifikasi.",
+    "notifications.onboardingTitle": "Aktifkan Notifikasi",
+    "notifications.onboardingDesc":
+        "Dapatkan pengingat tagihan, reimbursement, dan update penting dari KASH.",
+    "notifications.onboardingEnable": "Aktifkan Notifikasi",
+    "notifications.onboardingLater": "Nanti Saja",
 
     // Auth & Login
     "login.title": "Keuangan Anda, tertata dalam satu tempat.",
