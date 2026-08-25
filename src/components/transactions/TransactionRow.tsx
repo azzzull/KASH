@@ -54,7 +54,7 @@ export function TransactionRow({
     ? `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`
     : transaction.type === "adjustment"
       ? adjustmentTitle(transaction.related_entity_type, t)
-      : transaction.category?.name ?? (transaction.type === "income" ? (isManaged ? (t("transactions.funding") || "Dana Masuk") : (t("transactions.income") || "Pemasukan")) : (isManaged ? (t("transactions.spending") || "Pengeluaran") : (t("transactions.expense") || "Pengeluaran"))));
+      : transaction.category?.name ?? (transaction.type === "income" ? (isManaged ? (t("transactions.funding" as any) || "Dana Masuk") : (t("transactions.income") || "Pemasukan")) : (isManaged ? (t("transactions.spending" as any) || "Pengeluaran") : (t("transactions.expense") || "Pengeluaran"))));
   const categoryLabel = transaction.type === "transfer" ? (t("transactions.transfer") || "Transfer") : transaction.type === "adjustment" ? adjustmentCategory(transaction.related_entity_type, t) : transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
   const walletLabel = transaction.type === "transfer" ? `${transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} -> ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}` : transaction.wallet?.name ?? (t("wallets.title") || "Dompet");
   const displayAmount = hideAmounts ? "••••••" : transaction.type === "transfer" ? formatCurrency(amount, currency) : transaction.type === "adjustment" ? `${amount > 0 ? "+" : ""}${formatCurrency(amount, currency)}` : formatCurrency(transaction.type === "income" ? amount : -amount, currency);

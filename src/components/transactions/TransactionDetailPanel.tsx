@@ -119,6 +119,8 @@ export function TransactionDetailModal({
   transaction: TransactionWithMeta | null;
 }) {
   const { t, formatDate, formatCurrency } = useI18n();
+  const { activeSpace } = useActiveSpace();
+  const isManaged = activeSpace?.space_type === "managed";
 
   if (!transaction) return null;
 
@@ -140,7 +142,7 @@ export function TransactionDetailModal({
       if (transaction.related_entity_type === "goal_refund") return t("goals.refund") || "Pengembalian Target";
       return t("wallets.balanceAdjustment") || "Penyesuaian Saldo";
     }
-    return transaction.category?.name ?? (transaction.type === "income" ? (isManaged ? (t("transactions.funding") || "Dana Masuk") : (t("transactions.income") || "Pemasukan")) : (isManaged ? (t("transactions.spending") || "Pengeluaran") : (t("transactions.expense") || "Pengeluaran")));
+    return transaction.category?.name ?? (transaction.type === "income" ? (isManaged ? (t("transactions.funding" as any) || "Dana Masuk") : (t("transactions.income") || "Pemasukan")) : (isManaged ? (t("transactions.spending" as any) || "Pengeluaran") : (t("transactions.expense") || "Pengeluaran")));
   };
 
   const getTranslatedCategoryLabel = () => {

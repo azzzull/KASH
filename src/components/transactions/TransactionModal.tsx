@@ -66,8 +66,8 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       submitLabel: string;
     }
   > = {
-    expense: { accent: "text-kash-expense", icon: ArrowDown, submitLabel: isManaged ? (t("transactions.saveSpending") || "Simpan Pengeluaran") : (t("transactions.saveExpense") || "Simpan Pengeluaran"), title: isManaged ? (t("transactions.newSpending") || "Pengeluaran Baru") : (t("transactions.newExpense") || "Pengeluaran Baru") },
-    income: { accent: "text-kash-income", icon: ArrowUp, submitLabel: isManaged ? (t("transactions.saveFunding") || "Simpan Dana Masuk") : (t("transactions.saveIncome") || "Simpan Pemasukan"), title: isManaged ? (t("transactions.newFunding") || "Dana Masuk") : (t("transactions.newIncome") || "Pemasukan Baru") },
+    expense: { accent: "text-kash-expense", icon: ArrowDown, submitLabel: isManaged ? (t("transactions.saveSpending" as any) || "Simpan Pengeluaran") : (t("transactions.saveExpense") || "Simpan Pengeluaran"), title: isManaged ? (t("transactions.newSpending" as any) || "Pengeluaran Baru") : (t("transactions.newExpense") || "Pengeluaran Baru") },
+    income: { accent: "text-kash-income", icon: ArrowUp, submitLabel: isManaged ? (t("transactions.saveFunding" as any) || "Simpan Dana Masuk") : (t("transactions.saveIncome") || "Simpan Pemasukan"), title: isManaged ? (t("transactions.newFunding" as any) || "Dana Masuk") : (t("transactions.newIncome") || "Pemasukan Baru") },
     transfer: { accent: "text-kash-transfer", icon: ArrowRightLeft, submitLabel: t("transactions.transfer") || "Transfer", title: t("transactions.newTransfer") || "Transfer Baru" },
   };
 
