@@ -101,7 +101,7 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
 
         <div className="border-t border-slate-100 pt-3 flex flex-col gap-5">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {t("spaces.initialWallet") || "Initial Wallet"}
+            {t("spaces.initialWallet" as any) || "Initial Wallet"}
           </p>
 
           <FormField
@@ -114,7 +114,7 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
               setWalletNameEdited(true);
               if (error) setError(null);
             }}
-            placeholder={t("wallets.namePlaceholder") || "Masukkan nama dompet"}
+            placeholder={t("wallets.namePlaceholder" as any) || "Masukkan nama dompet"}
             maxLength={50}
             disabled={loading}
             required
