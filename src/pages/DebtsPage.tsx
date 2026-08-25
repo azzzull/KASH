@@ -31,6 +31,7 @@ import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { SelectField } from "../components/ui/SelectField";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useI18n } from "../i18n";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitDebtSaved, emitTransactionSaved } from "../lib/appEvents";
@@ -54,6 +55,7 @@ type StatusFilter = "active" | "settled" | "all";
 export function DebtsPage() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const { activeSpaceId } = useActiveSpace();
   const [loading, setLoading] = useState(true);
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [allCounterparties, setAllCounterparties] = useState<Counterparty[]>([]);
@@ -72,11 +74,14 @@ export function DebtsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getCounterparties({
-        type: typeFilter,
-        status: statusFilter,
-        query: searchQuery,
-      });
+      const data = await getCounterparties(
+        {
+          type: typeFilter,
+          status: statusFilter,
+          query: searchQuery,
+        },
+        activeSpaceId ?? undefined
+      );
       setCounterparties(data.counterparties);
       setAllCounterparties(data.allCounterparties);
       setTotalDebt(data.totalDebt);
@@ -90,7 +95,7 @@ export function DebtsPage() {
 
   useEffect(() => {
     loadData();
-  }, [typeFilter, statusFilter, searchQuery]);
+  }, [typeFilter, statusFilter, searchQuery, activeSpaceId]);
 
   useAppEvent(appEvents.debtSaved, loadData);
   useAppEvent(appEvents.transactionSaved, loadData);
@@ -420,12 +425,13 @@ function CreateObligationModal({
   >([{ id: "1", title: "", originalAmount: "", dueDate: "", note: "" }]);
   const [linkWallet, setLinkWallet] = useState(false);
   const [selectedWalletId, setSelectedWalletId] = useState("");
+  const { activeSpaceId } = useActiveSpace();
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getWallets()
+    getWallets(activeSpaceId ?? undefined)
       .then((res) => {
         if (res.data) {
           setWallets(res.data);
@@ -433,7 +439,7 @@ function CreateObligationModal({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [activeSpaceId]);
 
   const addItemRow = () => {
     setItems((prev) => [
@@ -808,6 +814,7 @@ export function SettlementModal({
     return local.toISOString().slice(0, 16);
   });
   const [note, setNote] = useState("");
+  const { activeSpaceId } = useActiveSpace();
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -816,14 +823,14 @@ export function SettlementModal({
   const isDebt = debtType === "debt";
 
   useEffect(() => {
-    getWallets().then((res) => {
+    getWallets(activeSpaceId ?? undefined).then((res) => {
       if (res.data) {
         setWallets(res.data);
         const liquid = res.data.find((w) => !w.is_archived);
         if (liquid) setWalletId(liquid.id);
       }
     });
-  }, []);
+  }, [activeSpaceId]);
 
   const parsedAmount = toNumber(parseMoneyInputDigits(amount) || "0");
   const remainingAfterPayment = Math.max(totalOutstanding - parsedAmount, 0);

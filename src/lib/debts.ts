@@ -126,27 +126,16 @@ export async function getCounterparties(
   if (progressResult.error) throw progressResult.error;
 
   const counterparties = counterpartiesResult.data ?? [];
-  const progressItems = (progressResult.data ?? []) as DebtProgress[];
+  const validCpIds = new Set(counterparties.map((c) => c.id));
+  const progressItems = ((progressResult.data ?? []) as DebtProgress[]).filter((item) =>
+    validCpIds.has(item.counterparty_id)
+  );
 
   const progressByCounterparty = new Map<string, DebtProgress[]>();
   for (const item of progressItems) {
     const list = progressByCounterparty.get(item.counterparty_id) ?? [];
     list.push(item);
     progressByCounterparty.set(item.counterparty_id, list);
-  }
-
-  let totalDebt = 0;
-  let totalReceivable = 0;
-
-  for (const item of progressItems) {
-    if (isOutstandingDebtItem(item)) {
-      const remaining = toNumber(item.remaining_amount);
-      if (item.type === "debt") {
-        totalDebt += remaining;
-      } else {
-        totalReceivable += remaining;
-      }
-    }
   }
 
   const summaries: CounterpartyWithSummary[] = counterparties.map((c) => {
@@ -204,6 +193,9 @@ export async function getCounterparties(
     };
   });
 
+  const totalDebt = summaries.reduce((sum, c) => sum + c.debtTotal, 0);
+  const totalReceivable = summaries.reduce((sum, c) => sum + c.receivableTotal, 0);
+
   // Apply filters
   let filtered = summaries;
 
@@ -232,8 +224,21 @@ export async function getCounterparties(
   };
 }
 
-export async function getActiveDebts(): Promise<DebtProgress[]> {
+export async function getActiveDebts(spaceId?: string): Promise<DebtProgress[]> {
   const userId = await getAuthenticatedUserId();
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+
+  let cpQuery = supabase.from("counterparties").select("id").eq("user_id", userId);
+  if (targetSpaceId) {
+    cpQuery = cpQuery.eq("space_id", targetSpaceId);
+  }
+  const { data: cpData, error: cpError } = await cpQuery;
+  if (cpError) throw cpError;
+  const validCpIds = new Set((cpData ?? []).map((cp) => cp.id));
+  if (validCpIds.size === 0) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("debt_progress_view")
     .select("*")
@@ -244,7 +249,8 @@ export async function getActiveDebts(): Promise<DebtProgress[]> {
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return (data as DebtProgress[]) ?? [];
+  const list = (data as DebtProgress[]) ?? [];
+  return list.filter((item) => validCpIds.has(item.counterparty_id));
 }
 
 export async function getCounterpartyDetail(counterpartyId: string): Promise<CounterpartyDetail> {

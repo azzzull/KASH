@@ -591,12 +591,21 @@ export async function getDashboardSummary(
   const previousMonthTransactions = previousMonthTransactionResult.data ?? [];
   const netWorthTransactions = netWorthTransactionResult.data ?? [];
   const recentTransactions = (recentTransactionResult.data ?? []).filter((transaction) => transaction.status !== "void").slice(0, 6);
-  const dashboardGoals = buildDashboardGoals(goalResult.data ?? [], goalProgressResult.data ?? []);
+
+  const validGoalIds = new Set((goalResult.data ?? []).map((g) => g.id));
+  const goalProgressItems = ((goalProgressResult.data ?? []) as GoalProgress[]).filter((item) =>
+    validGoalIds.has(item.goal_id)
+  );
+  const dashboardGoals = buildDashboardGoals(goalResult.data ?? [], goalProgressItems);
+
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
 
   const counterparties = (counterpartiesResult.data ?? []) as Counterparty[];
-  const debtProgressItems = (debtProgressResult.data ?? []) as DebtProgress[];
+  const validCpIds = new Set(counterparties.map((cp) => cp.id));
+  const debtProgressItems = ((debtProgressResult.data ?? []) as DebtProgress[]).filter((item) =>
+    validCpIds.has(item.counterparty_id)
+  );
 
   let totalDebt = 0;
   let totalReceivable = 0;
@@ -666,11 +675,23 @@ export async function getDashboardSummary(
     }))
     .sort((a, b) => b.balance - a.balance);
 
-  const sharedSavingsShares = (sharedSavingsResult.data ?? []).reduce((sum, row: any) => {
+  let isManagedSpace = false;
+  if (targetSpaceId) {
+    const { data: spaceData } = await supabase
+      .from("financial_spaces")
+      .select("space_type")
+      .eq("id", targetSpaceId)
+      .maybeSingle();
+    isManagedSpace = spaceData?.space_type === "managed";
+  }
+
+  const rawSharedSavingsShares = (sharedSavingsResult.data ?? []).reduce((sum, row: any) => {
     const s = moneyValue(row.current_share);
     return s > 0 ? sum + s : sum;
   }, 0);
-  const sharedSavingsSpaceCount = (sharedSavingsResult.data ?? []).filter((row: any) => row.member_status === "active").length;
+  const rawSharedSavingsSpaceCount = (sharedSavingsResult.data ?? []).filter((row: any) => row.member_status === "active").length;
+  const sharedSavingsShares = isManagedSpace ? 0 : rawSharedSavingsShares;
+  const sharedSavingsSpaceCount = isManagedSpace ? 0 : rawSharedSavingsSpaceCount;
 
   const currentMonthMetrics = calculateMonthlyMetrics(monthTransactions);
   const previousMonthMetrics = calculateMonthlyMetrics(previousMonthTransactions);

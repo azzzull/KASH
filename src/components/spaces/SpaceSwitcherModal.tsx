@@ -239,7 +239,6 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
         isOpen={createOpen}
         onClose={() => {
           setCreateOpen(false);
-          onClose();
         }}
       />
 

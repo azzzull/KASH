@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useI18n } from "../../i18n";
 import { Button } from "../ui/Button";
@@ -13,7 +12,6 @@ type CreateSpaceModalProps = {
 
 export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const { createManagedSpace } = useActiveSpace();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +31,6 @@ export function CreateSpaceModal({ isOpen, onClose }: CreateSpaceModalProps) {
       await createManagedSpace(trimmed);
       setName("");
       onClose();
-      navigate("/dashboard");
     } catch (err: any) {
       setError(err?.message || t("common.error"));
     } finally {

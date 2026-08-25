@@ -121,9 +121,6 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       }
 
       await loadSpaces();
-      setActiveSpaceIdState(data.id);
-      persistActiveSpaceId(data.id);
-      emitSpaceChanged();
       return data;
     },
     [loadSpaces]
