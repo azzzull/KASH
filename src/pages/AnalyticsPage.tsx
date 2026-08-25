@@ -627,6 +627,8 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
 
 function WalletDistribution({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
+  const { activeSpace } = useActiveSpace();
+  const isManaged = activeSpace?.space_type === "managed";
   const totalAssets = summary.walletDistribution.reduce((sum, item) => sum + item.amount, 0);
 
   if (summary.walletDistribution.length === 0 || totalAssets <= 0) {

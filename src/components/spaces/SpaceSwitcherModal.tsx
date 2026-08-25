@@ -291,7 +291,7 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
           title={t("spaces.archiveSpace")}
           description={t("spaces.archiveConfirm")}
           confirmLabel={t("common.archive")}
-          isDestructive
+          tone="danger"
           onConfirm={handleConfirmArchive}
           onCancel={() => setArchivingSpace(null)}
         />
