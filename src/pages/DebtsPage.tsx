@@ -435,7 +435,6 @@ function CreateObligationModal({
       .then((res) => {
         if (res.data) {
           setWallets(res.data);
-          if (res.data.length > 0) setSelectedWalletId(res.data[0].id);
         }
       })
       .catch(() => {});
@@ -720,9 +719,6 @@ function CreateObligationModal({
                 checked={linkWallet}
                 onChange={(e) => {
                   setLinkWallet(e.target.checked);
-                  if (e.target.checked && !selectedWalletId && wallets.length > 0) {
-                    setSelectedWalletId(wallets[0].id);
-                  }
                 }}
                 className="mt-0.5 h-4 w-4 rounded border-slate-300 text-kash-emerald focus:ring-kash-emerald"
               />
@@ -749,6 +745,7 @@ function CreateObligationModal({
                   onChange={(e) => setSelectedWalletId(e.target.value)}
                   required
                 >
+                  <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
                   {wallets.map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")})
@@ -826,8 +823,6 @@ export function SettlementModal({
     getWallets(activeSpaceId ?? undefined).then((res) => {
       if (res.data) {
         setWallets(res.data);
-        const liquid = res.data.find((w) => !w.is_archived);
-        if (liquid) setWalletId(liquid.id);
       }
     });
   }, [activeSpaceId]);
@@ -848,7 +843,7 @@ export function SettlementModal({
     }
 
     if (paymentMode === "wallet" && !walletId) {
-      setError(t("debts.selectWalletError") || "Silakan pilih dompet.");
+      setError(t("transactions.chooseWallet") || "Pilih dompet.");
       return;
     }
 
@@ -963,7 +958,7 @@ export function SettlementModal({
               value={walletId}
               onChange={(e) => setWalletId(e.target.value)}
             >
-              {wallets.length === 0 ? <option value="">{t("wallets.noWalletsFound") || "Tidak ada dompet tersedia"}</option> : null}
+              <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
               {wallets.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name} - {t("wallets.balance") || "Saldo"}: {formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")}

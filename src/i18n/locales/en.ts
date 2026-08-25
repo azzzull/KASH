@@ -158,6 +158,7 @@ export const en = {
     "transactions.chooseCategory": "Select a category for income or expense.",
     "transactions.chooseDestinationWallet":
         "Select a destination wallet for the transfer.",
+    "transactions.selectDestinationWallet": "Select Destination Wallet",
     "transactions.walletsMustBeDifferent":
         "Source and destination wallets must be different.",
     "transactions.feeCannotBeNegative": "Transfer fee cannot be negative.",
@@ -191,6 +192,7 @@ export const en = {
     "transactions.transferBreakdown": "Transfer Breakdown",
     "transactions.from": "From",
     "categories.uncategorized": "Uncategorized",
+    "categories.selectCategory": "Select Category",
     "categories.create": "Create Category",
     "categories.createNewOption": "+ Create New Category...",
     "envelopes.title": "Envelopes",
@@ -366,7 +368,8 @@ export const en = {
     "budgets.envelopeAllocation": "Envelope Allocation",
 
     // Wallets
-    "wallets.title": "My Wallets",
+    "wallets.title": "Wallets",
+    "wallets.selectWallet": "Select Wallet",
     "wallets.subtitle":
         "Manage bank accounts, e-wallets, cash, and savings pockets.",
     "wallets.create": "Add Wallet",

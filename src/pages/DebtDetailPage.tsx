@@ -659,7 +659,6 @@ function CreateItemModal({
       .then((res) => {
         if (res.data) {
           setWallets(res.data);
-          if (res.data.length > 0) setSelectedWalletId(res.data[0].id);
         }
       })
       .catch(() => {});
@@ -920,9 +919,6 @@ function CreateItemModal({
                 checked={linkWallet}
                 onChange={(e) => {
                   setLinkWallet(e.target.checked);
-                  if (e.target.checked && !selectedWalletId && wallets.length > 0) {
-                    setSelectedWalletId(wallets[0].id);
-                  }
                 }}
                 className="mt-0.5 h-4 w-4 rounded border-slate-300 text-kash-emerald focus:ring-kash-emerald"
               />
@@ -949,6 +945,7 @@ function CreateItemModal({
                   onChange={(e) => setSelectedWalletId(e.target.value)}
                   required
                 >
+                  <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
                   {wallets.map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, "IDR")})
@@ -1237,7 +1234,6 @@ function ItemSettlementModal({
       const { data } = await getWallets();
       if (data && data.length > 0) {
         setWallets(data);
-        setWalletId(data[0].id);
       }
     };
     void fetchWallets();
@@ -1383,6 +1379,7 @@ function ItemSettlementModal({
               onChange={(e) => setWalletId(e.target.value)}
               required
             >
+              <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
               {wallets.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})

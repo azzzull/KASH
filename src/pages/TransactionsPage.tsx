@@ -579,6 +579,7 @@ function TransactionFormModal({
                 }
               }}
             >
+              <option value="">{t("categories.selectCategory") || "Pilih Kategori"}</option>
               {filteredCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -611,6 +612,7 @@ function TransactionFormModal({
             onChange={(event) => setWalletId(event.target.value)}
             value={walletId}
           >
+            <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
             {activeWallets.map((wallet) => (
               <option key={wallet.id} value={wallet.id}>
                 {wallet.name}{wallet.is_archived ? ` (${t("common.archived") || "Diarsipkan"})` : ""}
@@ -626,6 +628,7 @@ function TransactionFormModal({
               onChange={(event) => setDestinationWalletId(event.target.value)}
               value={destinationWalletId}
             >
+              <option value="">{t("transactions.selectDestinationWallet") || "Pilih Dompet Tujuan"}</option>
               {activeWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
                   {wallet.name}{wallet.is_archived ? ` (${t("common.archived") || "Diarsipkan"})` : ""}
@@ -771,6 +774,7 @@ function AdvancedFilterContent({
         </SelectField>
         <SelectField id="transaction-category-filter" label={t("categories.title") || "Kategori"} value={filters.categoryId ?? ""} onChange={(event) => onUpdate("categoryId", event.target.value || undefined)}>
           <option value="">{t("categories.allCategories") || "Semua Kategori"}</option>
+          <option value="uncategorized">{t("categories.uncategorized") || "Tanpa Kategori"}</option>
           {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
         </SelectField>
         {envelopes.length > 0 ? (
@@ -808,11 +812,21 @@ export function TransactionsPage() {
   const { t, formatDate, formatCurrency: formatLocalizedCurrency } = useI18n();
   const [searchParams] = useSearchParams();
 
-  const [activeMonth, setActiveMonth] = useState(() => startOfLocalMonth(new Date()));
+  const [activeMonth, setActiveMonth] = useState(() => {
+    const monthParam = searchParams.get("month");
+    if (monthParam) {
+      const parsed = new Date(monthParam.length === 7 ? `${monthParam}-01` : monthParam);
+      if (!isNaN(parsed.getTime())) return startOfLocalMonth(parsed);
+    }
+    return startOfLocalMonth(new Date());
+  });
   const [filters, setFilters] = useState<TransactionFilters>(() => {
     const initialDateKey = searchParams.get("date") ?? undefined;
     const initialWalletId = searchParams.get("wallet") ?? undefined;
+    const initialCategoryId = searchParams.get("category") ?? searchParams.get("categoryId") ?? undefined;
+    const initialType = (searchParams.get("type") as TransactionTypeFilter) ?? "all";
     return {
+      categoryId: initialCategoryId,
       dateKey: initialDateKey,
       monthDate: activeMonth,
       page: 0,
@@ -820,7 +834,7 @@ export function TransactionsPage() {
       query: "",
       sort: "latest",
       status: "all",
-      type: "all",
+      type: initialType,
       walletId: initialWalletId,
     };
   });
@@ -880,13 +894,37 @@ export function TransactionsPage() {
   useEffect(() => {
     const dateKey = searchParams.get("date") ?? undefined;
     const walletId = searchParams.get("wallet") ?? undefined;
+    const categoryId = searchParams.get("category") ?? searchParams.get("categoryId") ?? undefined;
+    const type = (searchParams.get("type") as TransactionTypeFilter) ?? undefined;
+    const monthParam = searchParams.get("month");
+
+    let nextMonth = activeMonth;
+    if (monthParam) {
+      const parsed = new Date(monthParam.length === 7 ? `${monthParam}-01` : monthParam);
+      if (!isNaN(parsed.getTime())) {
+        nextMonth = startOfLocalMonth(parsed);
+        setActiveMonth(nextMonth);
+      }
+    }
+
     setFilters((current) => {
-      if (current.dateKey === dateKey && current.walletId === walletId) return current;
+      if (
+        current.dateKey === dateKey &&
+        current.walletId === walletId &&
+        current.categoryId === categoryId &&
+        (type === undefined || current.type === type) &&
+        current.monthDate === nextMonth
+      ) {
+        return current;
+      }
       return {
         ...current,
         dateKey,
+        monthDate: nextMonth,
         page: 0,
+        type: type ?? current.type,
         walletId: walletId ?? current.walletId,
+        categoryId: categoryId ?? current.categoryId,
       };
     });
   }, [searchParams]);
@@ -1057,20 +1095,52 @@ export function TransactionsPage() {
           </div>
         </div>
 
-        {filters.walletId && (
-          <div className="mt-2.5 flex items-center gap-2 px-1">
-            <span className="text-xs font-semibold text-slate-500">{t("wallets.title") || "Dompet"}:</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-0.5 text-xs font-extrabold text-kash-emeraldDark border border-kash-emerald/20">
-              {wallets.find((w) => w.id === filters.walletId)?.name || filters.walletId}
-              <button
-                type="button"
-                aria-label="Clear wallet filter"
-                onClick={() => updateFilter("walletId", undefined)}
-                className="ml-0.5 text-kash-emeraldDark hover:text-kash-expense transition"
-              >
-                <X size={13} />
-              </button>
-            </span>
+        {(filters.walletId || filters.categoryId || filters.dateKey) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 px-1">
+            {filters.walletId && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-0.5 text-xs font-extrabold text-kash-emeraldDark border border-kash-emerald/20">
+                <span className="font-semibold text-slate-500">{t("wallets.title") || "Dompet"}:</span>
+                {wallets.find((w) => w.id === filters.walletId)?.name || filters.walletId}
+                <button
+                  type="button"
+                  aria-label="Clear wallet filter"
+                  onClick={() => updateFilter("walletId", undefined)}
+                  className="ml-0.5 text-kash-emeraldDark hover:text-kash-expense transition"
+                >
+                  <X size={13} />
+                </button>
+              </span>
+            )}
+            {filters.categoryId && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-0.5 text-xs font-extrabold text-kash-emeraldDark border border-kash-emerald/20">
+                <span className="font-semibold text-slate-500">{t("categories.title") || "Kategori"}:</span>
+                {filters.categoryId === "uncategorized"
+                  ? (t("categories.uncategorized") || "Tanpa Kategori")
+                  : (categories.find((c) => c.id === filters.categoryId)?.name || filters.categoryId)}
+                <button
+                  type="button"
+                  aria-label="Clear category filter"
+                  onClick={() => updateFilter("categoryId", undefined)}
+                  className="ml-0.5 text-kash-emeraldDark hover:text-kash-expense transition"
+                >
+                  <X size={13} />
+                </button>
+              </span>
+            )}
+            {filters.dateKey && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-0.5 text-xs font-extrabold text-kash-emeraldDark border border-kash-emerald/20">
+                <span className="font-semibold text-slate-500">{t("common.date") || "Tanggal"}:</span>
+                {formatDate(filters.dateKey)}
+                <button
+                  type="button"
+                  aria-label="Clear date filter"
+                  onClick={() => updateFilter("dateKey", undefined)}
+                  className="ml-0.5 text-kash-emeraldDark hover:text-kash-expense transition"
+                >
+                  <X size={13} />
+                </button>
+              </span>
+            )}
           </div>
         )}
 

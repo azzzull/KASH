@@ -1,6 +1,5 @@
 import { Check, Plus, User, Briefcase, MoreVertical, Edit2, Archive, X, Trash2, Edit3 } from "lucide-react";
-import { useState } from "react";
-import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useI18n } from "../../i18n";
@@ -41,6 +40,32 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
   const [deletingSpace, setDeletingSpace] = useState<FinancialSpace | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
+  const [openMenuSpaceId, setOpenMenuSpaceId] = useState<string | null>(null);
+  const menuContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!openMenuSpaceId) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (menuContainerRef.current && menuContainerRef.current.contains(event.target as Node)) {
+        return;
+      }
+      setOpenMenuSpaceId(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenMenuSpaceId(null);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openMenuSpaceId]);
 
   const managedSpaces = spaces.filter((s) => s.space_type === "managed" && !s.is_archived);
   const archivedSpaces = spaces.filter((s) => s.space_type === "managed" && s.is_archived);
@@ -240,71 +265,70 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                             <Check size={14} strokeWidth={3} />
                           </span>
                         ) : null}
-                        <Menu as="div" className="relative inline-block text-left">
-                          <MenuButton
+                        <div
+                          ref={openMenuSpaceId === space.id ? menuContainerRef : undefined}
+                          className="relative inline-block text-left"
+                        >
+                          <button
+                            type="button"
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-700 focus:outline-none"
                             aria-label="Aksi Space"
-                            onClick={(e) => e.stopPropagation()}
+                            aria-haspopup="menu"
+                            aria-expanded={openMenuSpaceId === space.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuSpaceId((current) => (current === space.id ? null : space.id));
+                            }}
                           >
                             <MoreVertical size={16} />
-                          </MenuButton>
-                          <MenuItems
-                            transition
-                            className="absolute right-0 z-30 mt-1 w-44 origin-top-right rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75"
-                          >
-                            <MenuItem>
-                              {({ focus }) => (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartRename(e, space);
-                                  }}
-                                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                                    focus ? "bg-slate-50 text-slate-900" : "text-slate-700"
-                                  }`}
-                                >
-                                  <Edit3 size={14} />
-                                  {t("spaces.renameSpace")}
-                                </button>
-                              )}
-                            </MenuItem>
-                            <MenuItem>
-                              {({ focus }) => (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartArchive(e, space);
-                                  }}
-                                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                                    focus ? "bg-kash-expense/10 text-kash-expense" : "text-slate-700"
-                                  }`}
-                                >
-                                  <Archive size={14} />
-                                  {t("spaces.archiveSpace")}
-                                </button>
-                              )}
-                            </MenuItem>
-                            <MenuItem>
-                              {({ focus }) => (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartDelete(e, space);
-                                  }}
-                                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                                    focus ? "bg-kash-expense/10 text-kash-expense" : "text-slate-700"
-                                  }`}
-                                >
-                                  <Trash2 size={14} />
-                                  {t("spaces.deleteSpace")}
-                                </button>
-                              )}
-                            </MenuItem>
-                          </MenuItems>
-                        </Menu>
+                          </button>
+                          {openMenuSpaceId === space.id ? (
+                            <div
+                              role="menu"
+                              className="absolute right-0 top-full z-50 mt-1 w-44 origin-top-right rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100"
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuSpaceId(null);
+                                  handleStartRename(e, space);
+                                }}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
+                              >
+                                <Edit3 size={14} />
+                                {t("spaces.renameSpace")}
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuSpaceId(null);
+                                  handleStartArchive(e, space);
+                                }}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-kash-expense/10 hover:text-kash-expense"
+                              >
+                                <Archive size={14} />
+                                {t("spaces.archiveSpace")}
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuSpaceId(null);
+                                  handleStartDelete(e, space);
+                                }}
+                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-kash-expense/10 hover:text-kash-expense"
+                              >
+                                <Trash2 size={14} />
+                                {t("spaces.deleteSpace")}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   );

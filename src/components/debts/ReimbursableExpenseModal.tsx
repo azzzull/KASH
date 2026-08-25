@@ -90,7 +90,7 @@ export function ReimbursableExpenseModal({
   // Reset form to defaults
   const resetForm = () => {
     setAmount("");
-    setWalletId(activeWallets[0]?.id ?? "");
+    setWalletId("");
     setCounterpartyName("");
     setTitle("");
     setTransactionDate(getTodayLocalDate());
@@ -118,12 +118,6 @@ export function ReimbursableExpenseModal({
 
         if (walletsRes.data) {
           setWallets(walletsRes.data);
-          const firstActive = walletsRes.data.find(
-            (w) => !w.is_archived,
-          );
-          if (firstActive && !walletId) {
-            setWalletId(firstActive.id);
-          }
         }
 
         if (cpRes && cpRes.allCounterparties) {
@@ -281,7 +275,7 @@ export function ReimbursableExpenseModal({
             required
             value={walletId}
           >
-            <option disabled value="">
+            <option value="">
               Select a wallet...
             </option>
 

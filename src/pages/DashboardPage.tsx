@@ -822,17 +822,20 @@ function CashFlowRow({
 
 /* ─── SVG Donut Chart ─── */
 function SpendingDonut({
+    activeMonth,
     balancesVisible,
     currency,
     onToggleBalances,
     summary,
 }: {
+    activeMonth?: Date;
     balancesVisible: boolean;
     currency: string;
     onToggleBalances: () => void;
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const categories = summary.spendingByCategory;
     const totalExpense = categories.reduce(
         (sum, category) => sum + category.amount,
@@ -948,11 +951,20 @@ function SpendingDonut({
                 </div>
 
                 {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
-                <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
+                <div className="w-full min-w-0 max-w-full space-y-1.5 md:flex-1">
                     {categories.map((category) => (
-                        <div
+                        <button
+                            type="button"
                             key={category.id}
-                            className="flex items-center justify-between gap-2.5 text-xs sm:text-sm"
+                            onClick={() => {
+                                const monthParam = activeMonth ? monthKey(activeMonth) : undefined;
+                                const params = new URLSearchParams();
+                                if (category.id) params.set("category", category.id);
+                                params.set("type", "expense");
+                                if (monthParam) params.set("month", monthParam);
+                                navigate(`/transactions?${params.toString()}`);
+                            }}
+                            className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl p-2 -mx-2 text-left text-xs transition hover:bg-slate-100/70 active:bg-slate-100 sm:text-sm"
                         >
                             <div className="flex min-w-0 items-center gap-2">
                                 <span
@@ -979,7 +991,7 @@ function SpendingDonut({
                                     {Math.round(category.percent)}%
                                 </span>
                             </div>
-                        </div>
+                        </button>
                     ))}
                 </div>
             </div>
@@ -1918,6 +1930,7 @@ export function DashboardPage() {
             {/* Middle: Spending Donut + Cash Flow Chart */}
             <div className="grid gap-4 lg:grid-cols-2">
                 <SpendingDonut
+                    activeMonth={selectedMonth}
                     balancesVisible={balancesVisible}
                     onToggleBalances={() => setBalancesVisible((v) => !v)}
                     summary={summary}

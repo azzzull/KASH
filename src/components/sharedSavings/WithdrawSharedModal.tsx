@@ -51,9 +51,6 @@ export function WithdrawSharedModal({
         }
         const activeWallets = (res.data ?? []).filter((w) => !w.is_archived);
         setWallets(activeWallets);
-        if (activeWallets.length > 0 && !selectedWalletId) {
-          setSelectedWalletId(activeWallets[0].id);
-        }
       })
       .catch((err) => setError(err.message || t("common.error")))
       .finally(() => setLoading(false));
@@ -145,6 +142,7 @@ export function WithdrawSharedModal({
               if (error) setError(null);
             }}
           >
+            <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
             {wallets.map((w) => {
               const bal = toNumber(w.balance?.current_balance ?? w.initial_balance);
               return (

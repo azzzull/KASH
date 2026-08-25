@@ -158,6 +158,7 @@ export const id = {
     "transactions.chooseCategory":
         "Pilih kategori untuk pemasukan atau pengeluaran.",
     "transactions.chooseDestinationWallet": "Pilih dompet tujuan transfer.",
+    "transactions.selectDestinationWallet": "Pilih Dompet Tujuan",
     "transactions.walletsMustBeDifferent":
         "Dompet asal dan dompet tujuan harus berbeda.",
     "transactions.feeCannotBeNegative": "Biaya transfer tidak boleh negatif.",
@@ -193,6 +194,7 @@ export const id = {
     "transactions.transferBreakdown": "Rincian Transfer",
     "transactions.from": "Dari",
     "categories.uncategorized": "Tanpa Kategori",
+    "categories.selectCategory": "Pilih Kategori",
     "categories.create": "Buat Kategori",
     "categories.createNewOption": "+ Buat Kategori Baru...",
     "envelopes.title": "Amplop",
@@ -372,6 +374,7 @@ export const id = {
 
     // Wallets
     "wallets.title": "Daftar Dompet",
+    "wallets.selectWallet": "Pilih Dompet",
     "wallets.subtitle":
         "Kelola rekening bank, e-wallet, uang tunai, dan pos tabungan Anda.",
     "wallets.create": "Tambah Dompet",

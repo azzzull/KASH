@@ -15,10 +15,12 @@ type SelectFieldProps = {
   className?: string;
   defaultValue?: string;
   disabled?: boolean;
+  hasError?: boolean;
   id?: string;
   label?: string;
   name?: string;
   onChange?: (event: SelectFieldChangeEvent) => void;
+  placeholder?: string;
   required?: boolean;
   value?: string;
 };
@@ -121,12 +123,27 @@ export function autoScrollFieldIntoContainer(triggerElement: HTMLElement | null)
   });
 }
 
-export function SelectField({ "aria-label": ariaLabel, action, children, className = "", defaultValue, disabled, id, label, name, onChange, required, value }: SelectFieldProps) {
+export function SelectField({
+  "aria-label": ariaLabel,
+  action,
+  children,
+  className = "",
+  defaultValue,
+  disabled,
+  hasError,
+  id,
+  label,
+  name,
+  onChange,
+  placeholder,
+  required,
+  value,
+}: SelectFieldProps) {
   const options = useMemo(() => getOptions(children), [children]);
-  const fallbackValue = defaultValue ?? options.find((option) => !option.disabled)?.value ?? "";
+  const fallbackValue = defaultValue ?? "";
   const [internalValue, setInternalValue] = useState(fallbackValue);
-  const selectedValue = value ?? internalValue;
-  const selectedOption = options.find((option) => option.value === selectedValue) ?? options.find((option) => !option.disabled);
+  const selectedValue = value !== undefined ? value : internalValue;
+  const selectedOption = options.find((option) => option.value === selectedValue);
   const buttonRef = useRef<HTMLButtonElement>(null!);
 
   const handleChange = (nextValue: string) => {
@@ -143,11 +160,13 @@ export function SelectField({ "aria-label": ariaLabel, action, children, classNa
           buttonRef={buttonRef}
           className={className}
           disabled={disabled}
+          hasError={hasError}
           id={id}
           label={label}
           name={name}
           open={open}
           options={options}
+          placeholder={placeholder}
           required={required}
           selectedOption={selectedOption}
           selectedValue={selectedValue}
@@ -163,11 +182,13 @@ function SelectFieldContent({
   buttonRef,
   className,
   disabled,
+  hasError,
   id,
   label,
   name,
   open,
   options,
+  placeholder,
   required,
   selectedOption,
   selectedValue,
@@ -177,11 +198,13 @@ function SelectFieldContent({
   buttonRef: React.RefObject<HTMLButtonElement>;
   className: string;
   disabled?: boolean;
+  hasError?: boolean;
   id?: string;
   label?: string;
   name?: string;
   open: boolean;
   options: SelectOption[];
+  placeholder?: string;
   required?: boolean;
   selectedOption?: SelectOption;
   selectedValue: string;
@@ -191,6 +214,9 @@ function SelectFieldContent({
       autoScrollFieldIntoContainer(buttonRef.current);
     }
   }, [open, buttonRef]);
+
+  const isPlaceholderSelected = !selectedValue || selectedValue === "" || selectedOption?.value === "";
+  const displayLabel = selectedOption?.label ?? placeholder ?? "Select";
 
   return (
     <div className={`relative block w-full max-w-full min-w-0 ${className}`}>
@@ -205,10 +231,20 @@ function SelectFieldContent({
         ref={buttonRef}
         aria-label={ariaLabel}
         id={id}
-        className="group mt-2 flex h-12 w-full touch-manipulation items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 text-left text-base font-semibold text-slate-900 transition [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emerald/50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/40 focus:border-kash-emerald focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[rgba(16,185,129,0.20)] disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 md:text-sm"
+        className={`group mt-2 flex h-12 w-full touch-manipulation items-center justify-between gap-3 rounded-lg border bg-white px-3 text-left text-base transition focus-visible:outline-none focus-visible:ring-4 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-600 md:text-sm ${
+          hasError
+            ? "border-kash-expense/50 focus:border-kash-expense focus-visible:ring-[rgba(239,68,68,0.20)]"
+            : "border-slate-200 focus:border-kash-emerald focus-visible:ring-[rgba(16,185,129,0.20)] [@media(hover:hover)_and_(pointer:fine)]:hover:border-kash-emerald/50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/40"
+        }`}
       >
-        <span className="min-w-0 truncate text-slate-900 group-disabled:text-slate-600">
-          {selectedOption?.label ?? "Select"}
+        <span
+          className={`min-w-0 truncate ${
+            isPlaceholderSelected
+              ? "font-normal text-slate-400 group-disabled:text-slate-400"
+              : "font-semibold text-slate-900 group-disabled:text-slate-600"
+          }`}
+        >
+          {displayLabel}
         </span>
         <ChevronDown aria-hidden="true" className="shrink-0 text-slate-600 transition group-data-[open]:rotate-180" size={18} strokeWidth={2.2} />
       </ListboxButton>

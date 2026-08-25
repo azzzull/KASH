@@ -42,10 +42,6 @@ const modeCopy: Record<
   transfer: { accent: "text-kash-transfer", icon: ArrowRightLeft, submitLabel: "Transfer", title: "Transfer" },
 };
 
-function firstValue<T extends { id: string }>(items: T[]) {
-  return items[0]?.id ?? "";
-}
-
 function isAmountError(error: string | null) {
   if (!error) return false;
   const normalizedError = error.toLowerCase();
@@ -110,22 +106,12 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setWallets(walletResult.data);
     setCategories(categoryResult.data);
     setEnvelopes(envelopeResult.data ?? []);
-    setWalletId((current) => current || firstValue(walletResult.data));
-    setDestinationWalletId((current) => current || walletResult.data.find((wallet) => wallet.id !== walletResult.data?.[0]?.id)?.id || "");
-
-    const nextCategories = filterCategoriesByType(categoryResult.data, mode === "income" ? "income" : "expense");
-    setCategoryId((current) => (nextCategories.some((cat) => cat.id === current) ? current : firstValue(nextCategories)));
     setLoading(false);
   };
 
   useEffect(() => {
     void loadData();
   }, []);
-
-  useEffect(() => {
-    const nextCategories = filterCategoriesByType(categories, mode === "income" ? "income" : "expense");
-    setCategoryId((current) => (nextCategories.some((cat) => cat.id === current) ? current : firstValue(nextCategories)));
-  }, [categories, mode]);
 
   useEffect(() => {
     if (!error) return;
@@ -162,7 +148,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       return null;
     }
 
-    if (!categoryId) return `${t("transactions.chooseCategory") || "Pilih kategori"} ${mode}.`;
+    if (!categoryId) return t("transactions.chooseCategory") || "Pilih kategori.";
     if (mode === "expense" && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
       return t("transactions.insufficientBalanceExpense") || "Saldo dompet tidak mencukupi. Periksa kembali nominal transaksi.";
     }
@@ -297,6 +283,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                 }}
                 value={categoryId}
               >
+                <option value="">{t("categories.selectCategory") || "Pilih Kategori"}</option>
                 {filteredCategories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -340,6 +327,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             ) : null}
 
             <SelectField id={`${mode}-wallet`} label={mode === "transfer" ? (t("transactions.fromWallet") || "Dari Dompet") : (t("wallets.title") || "Dompet")} onChange={(event) => setWalletId(event.target.value)} value={walletId}>
+              <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
               {wallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
                   {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
@@ -350,6 +338,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             {mode === "transfer" ? (
               <>
                 <SelectField id="transfer-destination" label={t("transactions.toWallet") || "Ke Dompet"} onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
+                  <option value="">{t("transactions.selectDestinationWallet") || "Pilih Dompet Tujuan"}</option>
                   {wallets.map((wallet) => (
                     <option key={wallet.id} value={wallet.id}>
                       {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
