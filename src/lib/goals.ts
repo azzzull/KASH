@@ -21,7 +21,6 @@ export type CreateGoalInput = {
   targetAmount: string;
   deadline: string | null;
   icon: string | null;
-  is_archived: boolean;
   imageUrl?: string | null;
   note: string | null;
   pocketInstitution?: string | null;
@@ -183,8 +182,12 @@ export async function updateGoal(id: string, input: UpdateGoalInput) {
   return result;
 }
 
-export async function archiveGoal(id: string) {
-  return supabase.from("goals").update({ status: "cancelled" }).eq("id", id).select("*").single();
+export async function archiveGoal(goalId: string, isArchived: boolean) {
+  return supabase.rpc(isArchived ? "archive_goal" : "unarchive_goal", { p_goal_id: goalId });
+}
+
+export async function deleteGoalIfEmpty(goalId: string) {
+  return supabase.rpc("delete_goal_if_empty", { p_goal_id: goalId });
 }
 
 export async function closeGoal(goalId: string, destinationWalletId?: string | null) {

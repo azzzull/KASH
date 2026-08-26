@@ -23,8 +23,10 @@ import { FormField } from "../components/ui/FormField";
 import { Modal } from "../components/ui/Modal";
 import { SelectField } from "../components/ui/SelectField";
 import {
+  archiveGoal,
   closeGoal,
   createGoalContribution,
+  deleteGoalIfEmpty,
   getGoalById,
   updateGoal,
   type GoalDetail,
@@ -674,7 +676,7 @@ export function GoalDetailPage() {
           onCancel={() => setShowArchiveDialog(false)}
           onConfirm={() => void handleArchiveGoal()}
           title={goal.is_archived ? "Keluarkan dari arsip?" : "Arsipkan target ini?"}
-          tone="primary"
+          tone="neutral"
         />
       ) : null}
       {showDeleteDialog ? (

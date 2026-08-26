@@ -532,6 +532,7 @@ export const en = {
     "goals.iconHome": "Home",
     "goals.iconVehicle": "Vehicle",
     "goals.iconDream": "Dream",
+    "goals.archiveGoal": "Archive Goal",
     "goals.nameRequired": "Goal name is required.",
     "goals.amountGreaterThanZero": "Amount must be greater than zero.",
     "goals.createError": "Failed to save goal.",

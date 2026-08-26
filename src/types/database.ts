@@ -224,6 +224,7 @@ export type Database = {
           image_url?: string | null;
           note?: string | null;
           status?: GoalStatus;
+            is_archived?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -935,7 +936,25 @@ export type Database = {
         };
         Returns: boolean;
       };
-      remove_shared_savings_member: {
+      archive_goal: {
+          Args: {
+            p_goal_id: string;
+          };
+          Returns: undefined;
+        };
+        unarchive_goal: {
+          Args: {
+            p_goal_id: string;
+          };
+          Returns: undefined;
+        };
+        delete_goal_if_empty: {
+          Args: {
+            p_goal_id: string;
+          };
+          Returns: undefined;
+        };
+        remove_shared_savings_member: {
         Args: {
           p_shared_savings_id: string;
           p_user_id: string;

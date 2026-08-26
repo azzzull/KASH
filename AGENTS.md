@@ -225,3 +225,104 @@ When uncertain:
 
 Maintain KASH as it currently exists.
 Do not regress newer approved behavior to stale requirements.
+
+## Production Verification — STRICT
+
+Never claim a task is complete, deployed, fixed, or build-safe without direct
+verification.
+
+### Frontend / Netlify
+
+KASH production build is authoritative:
+
+`npm run build`
+
+This runs:
+`tsc -b && vite build`
+
+Rules:
+- `npx tsc --noEmit` alone is NOT sufficient.
+- Before reporting success, always run `npm run build`.
+- If production build fails, task is NOT complete.
+- Fix all errors, rerun the full production build, and only then report PASS.
+- Never use `as any`, unsafe casts, or suppress TypeScript errors just to pass build.
+
+### Git / Deployment Readiness
+
+Before saying changes are ready to deploy:
+- run `git status`
+- verify all required source/type/i18n/config files are tracked
+- verify newly created production files are not accidentally gitignored
+- temporary files such as `scratch/` must not be committed
+- explicitly report any required uncommitted/untracked file
+
+Do not assume a local file will exist in Netlify just because it exists on disk.
+
+### Database Migrations
+
+Never claim a migration is deployed unless:
+1. migration status was checked
+2. `supabase db push` actually succeeded
+3. remote migration history confirms it
+4. required remote validation queries were executed
+
+A locally created migration is NOT deployed.
+
+Never infer remote values from local SQL.
+
+If a migration fails:
+- STOP
+- report the exact database error
+- do not perform broad automatic repairs
+
+### Evidence-Based Reporting
+
+Do not report:
+- "deployed"
+- "verified"
+- "build successful"
+- "fixed"
+- "PASS"
+
+unless the corresponding command actually ran successfully in the current task.
+
+Never convert assumptions into verification claims.
+
+If something was not directly verified, explicitly say:
+`NOT VERIFIED`
+
+### Cross-Layer Changes
+
+When a task changes any combination of:
+- database/schema
+- generated/manual DB types
+- domain types
+- services
+- UI components
+- i18n
+
+verify all affected layers are synchronized before completion.
+
+Especially after schema changes, check TypeScript/domain types and all affected
+call sites.
+
+Especially after adding i18n keys, verify both ID and EN locale definitions.
+
+### Final Pre-Completion Gate
+
+Before the final report, always perform:
+
+1. Review changed files
+2. `git status`
+3. `npm run build`
+4. database remote validation if SQL was deployed
+5. confirm no known error remains
+
+If any step fails:
+DO NOT report the task as complete.
+
+Final report must include:
+- production build: PASS / FAIL
+- database deployment: APPLIED / NOT APPLICABLE / NOT APPLIED
+- git state: CLEAN / CHANGES PENDING
+- remaining blocker: NONE or exact blocker

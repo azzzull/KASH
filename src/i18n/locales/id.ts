@@ -541,6 +541,7 @@ export const id = {
     "goals.iconHome": "Rumah",
     "goals.iconVehicle": "Kendaraan",
     "goals.iconDream": "Impian",
+    "goals.archiveGoal": "Arsipkan Target",
     "goals.nameRequired": "Nama target wajib diisi.",
     "goals.amountGreaterThanZero": "Nominal harus lebih besar dari nol.",
     "goals.createError": "Gagal menyimpan target.",

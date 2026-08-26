@@ -162,6 +162,7 @@ export type Goal = {
   image_url: string | null;
   note: string | null;
   status: GoalStatus;
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
 };
