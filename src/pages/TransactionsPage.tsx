@@ -28,6 +28,7 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
+import { HeaderFilterButton } from "../components/ui/HeaderActionControls";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { SelectField } from "../components/ui/SelectField";
@@ -1063,23 +1064,12 @@ export function TransactionsPage() {
             />
           </label>
           <div ref={filterMenuRef} className="relative shrink-0">
-            <button
-              type="button"
-              aria-label={t("common.filter") || "Filter"}
+            <HeaderFilterButton
+              activeCount={activeAdvancedFilters}
               onClick={() => setFilterPanelOpen((current) => !current)}
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-kash-emerald/25 ${
-                activeAdvancedFilters > 0
-                  ? "border-kash-emerald bg-kash-emerald text-white shadow-sm hover:bg-kash-emeraldDark"
-                  : "border-slate-200/70 bg-white text-slate-700 hover:border-kash-emerald/40 hover:bg-kash-selected"
-              }`}
-            >
-              <ListFilter aria-hidden="true" size={17} />
-              {activeAdvancedFilters > 0 ? (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-kash-emeraldDark px-1 text-[10px] font-black text-white ring-2 ring-white">
-                  {activeAdvancedFilters}
-                </span>
-              ) : null}
-            </button>
+              label={t("common.filter") || "Filter"}
+              size="md"
+            />
             {filterPanelOpen ? (
               <AdvancedFilterPanel
                 categories={activeCategories}
