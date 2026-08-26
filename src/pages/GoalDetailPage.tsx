@@ -367,6 +367,10 @@ export function GoalDetailPage() {
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [closingGoal, setClosingGoal] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [archivingGoal, setArchivingGoal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingGoal, setDeletingGoal] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [closeDestinationWalletId, setCloseDestinationWalletId] = useState("");
   const [closeError, setCloseError] = useState<string | null>(null);
@@ -414,6 +418,34 @@ export function GoalDetailPage() {
     if (!goal) return [];
     return wallets.filter((wallet) => wallet.id !== goal.wallet_id && !wallet.is_archived);
   }, [goal, wallets]);
+
+  const handleArchiveGoal = async () => {
+    if (!goal) return;
+    setArchivingGoal(true);
+    const { error: rpcError } = await archiveGoal(goal.id, !goal.is_archived);
+    if (rpcError) {
+      setError(rpcError.message || "Gagal mengarsipkan target.");
+    } else {
+      emitGoalSaved();
+      navigate("/goals", { replace: true });
+    }
+    setArchivingGoal(false);
+    setShowArchiveDialog(false);
+  };
+
+  const handleDeleteGoal = async () => {
+    if (!goal) return;
+    setDeletingGoal(true);
+    const { error: rpcError } = await deleteGoalIfEmpty(goal.id);
+    if (rpcError) {
+      setError(rpcError.message || "Gagal menghapus target permanen. Pastikan tidak ada riwayat transaksi.");
+    } else {
+      emitGoalSaved();
+      navigate("/goals", { replace: true });
+    }
+    setDeletingGoal(false);
+    setShowDeleteDialog(false);
+  };
 
   const handleCloseGoal = async () => {
     if (!goal || !progress) return;
@@ -524,28 +556,51 @@ export function GoalDetailPage() {
         </div>
       </section>
 
-      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        <Button disabled={isCancelled} onClick={() => setShowContribution(true)} className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+      <div className="flex flex-wrap items-center justify-start gap-2 max-w-full py-0.5">
+        <Button disabled={isCancelled} onClick={() => setShowContribution(true)} className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
           <Plus aria-hidden="true" size={15} />
           {t("goals.addContribution") || "Tambah Tabungan"}
         </Button>
-        <Button disabled={isCancelled} onClick={() => setShowEdit(true)} variant="secondary" className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+        <Button disabled={isCancelled} onClick={() => setShowEdit(true)} variant="secondary" className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
           <Edit3 aria-hidden="true" size={15} />
           {t("common.edit")}
         </Button>
-        <Button
-          disabled={closingGoal || isCancelled}
-          onClick={() => {
-            setCloseError(null);
-            setCloseDestinationWalletId(availableDestinationWallets[0]?.id ?? "");
-            setShowCloseDialog(true);
-          }}
-          variant="secondary"
-          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-        >
-          <Trash2 aria-hidden="true" size={15} />
-          {t("goals.deleteGoal") || "Hapus Target"}
-        </Button>
+        {!isCancelled && (
+          <Button
+            disabled={archivingGoal}
+            onClick={() => setShowArchiveDialog(true)}
+            variant="secondary"
+            className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+          >
+            {t("goals.archiveGoal") || (goal.is_archived ? "Keluarkan dari Arsip" : "Arsipkan Target")}
+          </Button>
+        )}
+        {(!isCancelled || (isCancelled && progress.current > 0)) && (
+          <Button
+            disabled={closingGoal}
+            onClick={() => {
+              setCloseError(null);
+              setCloseDestinationWalletId("");
+              setShowCloseDialog(true);
+            }}
+            variant="secondary"
+            className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+          >
+            <Trash2 aria-hidden="true" size={15} />
+            {isCancelled ? "Kembalikan Sisa Dana" : "Batalkan & Kembalikan Dana"}
+          </Button>
+        )}
+        {goal.contributions.length === 0 && (
+          <Button
+            disabled={deletingGoal}
+            onClick={() => setShowDeleteDialog(true)}
+            variant="secondary"
+            className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-kash-expense hover:bg-kash-expense/10 border-transparent"
+          >
+            <Trash2 aria-hidden="true" size={15} />
+            {"Hapus Permanen"}
+          </Button>
+        )}
       </div>
 
       {/* Contribution History */}
@@ -609,9 +664,35 @@ export function GoalDetailPage() {
           wallets={wallets}
         />
       ) : null}
+      {showArchiveDialog ? (
+        <ConfirmationDialog
+          confirmLabel={t("goals.archiveGoal") || (goal.is_archived ? "Keluarkan dari Arsip" : "Arsipkan Target")}
+          description={goal.is_archived ? "Apakah Anda yakin ingin mengeluarkan target ini dari arsip?" : "Apakah Anda yakin ingin mengarsipkan target ini? Riwayat alokasi dan saldo akan tetap tersimpan, tetapi target akan disembunyikan dari daftar utama."}
+          icon={PiggyBank}
+          isLoading={archivingGoal}
+          itemLabel={goal.name}
+          onCancel={() => setShowArchiveDialog(false)}
+          onConfirm={() => void handleArchiveGoal()}
+          title={goal.is_archived ? "Keluarkan dari arsip?" : "Arsipkan target ini?"}
+          tone="primary"
+        />
+      ) : null}
+      {showDeleteDialog ? (
+        <ConfirmationDialog
+          confirmLabel={"Hapus Permanen"}
+          description={"Apakah Anda yakin ingin menghapus target ini secara permanen? Data target yang belum memiliki riwayat akan dihapus sepenuhnya dan tidak dapat dikembalikan."}
+          icon={Trash2}
+          isLoading={deletingGoal}
+          itemLabel={goal.name}
+          onCancel={() => setShowDeleteDialog(false)}
+          onConfirm={() => void handleDeleteGoal()}
+          title={"Hapus target ini permanen?"}
+          tone="danger"
+        />
+      ) : null}
       {showCloseDialog ? (
         <ConfirmationDialog
-          confirmLabel={progress.current > 0 ? (t("goals.transferAndClose") || "Pindahkan & Tutup Target") : (t("goals.deleteGoal") || "Hapus Target")}
+          confirmLabel={isCancelled ? "Kembalikan Sisa Dana" : (progress.current > 0 ? "Pindahkan & Batalkan Target" : "Batalkan Target")}
           description={
             progress.current > 0
               ? (t("goals.transferRemainingDesc", { amount: formatCurrency(progress.current, "IDR") }) || `Kantong target ini masih memiliki saldo ${formatCurrency(progress.current, "IDR")}. Pilih dompet tujuan aktif untuk menerima dana ini sebelum ditutup.`)
@@ -623,7 +704,7 @@ export function GoalDetailPage() {
           itemLabel={goal.name}
           onCancel={() => setShowCloseDialog(false)}
           onConfirm={() => void handleCloseGoal()}
-          title={progress.current > 0 ? (t("goals.transferRemainingTitle") || "Pindahkan Sisa Saldo untuk Menutup Target") : (t("goals.deleteGoalTitle") || "Hapus target ini?")}
+          title={isCancelled ? "Kembalikan Sisa Dana" : (progress.current > 0 ? "Pindahkan Sisa Saldo & Batalkan" : "Batalkan target ini?")}
           tone="danger"
         >
           {progress.current > 0 ? (

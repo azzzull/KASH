@@ -21,6 +21,7 @@ export type CreateGoalInput = {
   targetAmount: string;
   deadline: string | null;
   icon: string | null;
+  is_archived: boolean;
   imageUrl?: string | null;
   note: string | null;
   pocketInstitution?: string | null;

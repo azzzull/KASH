@@ -37,3 +37,6 @@ Kash Brand Guideline.pdf
 Thumbs.db
 .idea/
 .vscode/
+
+# Temporary AI/dev scratch files
+scratch/
