@@ -29,6 +29,7 @@ import {
   restoreWallet,
   deleteInvestmentActivity,
   deleteWalletPermanently,
+  parseWalletDeleteError,
   getInvestmentActivities,
   getInvestmentValuationHistory,
   getWalletById,
@@ -438,7 +439,14 @@ export function WalletDetailPage() {
         : await archiveWallet(wallet.id);
 
     if (result.error) {
-      setError(transactionCount === 0 ? (t("wallets.deleteError") || "Gagal menghapus dompet. Silakan coba lagi.") : (t("wallets.archiveError") || "Gagal mengarsipkan dompet. Silakan coba lagi."));
+      if (transactionCount === 0) {
+        // Hard delete path
+        const errorKey = parseWalletDeleteError(result.error.message);
+        setError(t(errorKey) || t("wallets.deleteError") || "Gagal menghapus dompet. Silakan coba lagi.");
+      } else {
+        // Archive path
+        setError(t("wallets.archiveError") || "Gagal mengarsipkan dompet. Silakan coba lagi.");
+      }
       setDeleting(false);
       setShowDelete(false);
       return;

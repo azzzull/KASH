@@ -510,6 +510,16 @@ export const en = {
     "wallets.archiveWalletConfirm": "Archive this wallet?",
     "wallets.deleteWalletPermanently": "Delete Permanently",
     "wallets.deleteWalletPermanentlyConfirm": "Permanently Delete Wallet?",
+    "wallets.errNonZeroCurrentBalance": "Wallet cannot be deleted because it has a non-zero current balance. Please keep it archived or empty it first.",
+    "wallets.errLinkedToGoal": "Wallet is referenced by a Goal. Delete the goal first.",
+    "wallets.errHasTransactionHistory": "Wallet cannot be deleted because it has transaction history.",
+    "wallets.errHasGoalContribution": "Wallet cannot be deleted because it has goal contribution history.",
+    "wallets.errHasDebtPayment": "Wallet cannot be deleted because it is referenced by debt payments.",
+    "wallets.errHasRecurringObligation": "Wallet cannot be deleted because it is referenced by recurring obligations.",
+    "wallets.errHasRecurringPayment": "Wallet cannot be deleted because it is referenced by recurring payments.",
+    "wallets.errHasBudget": "Wallet cannot be deleted because it is referenced by a budget.",
+    "wallets.errHasInvestmentActivity": "Wallet cannot be deleted because it has investment activity history.",
+    "wallets.errHasInvestmentValuation": "Wallet cannot be deleted because it has investment valuation history.",
 
     // Goals
     "goals.title": "Financial Goals",

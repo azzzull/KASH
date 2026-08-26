@@ -665,10 +665,11 @@ export function WalletsPage() {
     if (!deletingPermanentlyWallet) return;
     setDeletingPermanentlyLoading(true);
     try {
-      const { deleteWalletPermanently } = await import("../lib/wallets");
+      const { deleteWalletPermanently, parseWalletDeleteError } = await import("../lib/wallets");
       const { error: delError } = await deleteWalletPermanently(deletingPermanentlyWallet.id);
       if (delError) {
-        setError(delError.message || "Gagal menghapus dompet permanen.");
+        const errorKey = parseWalletDeleteError(delError.message);
+        setError(t(errorKey) || t("wallets.deleteError") || "Gagal menghapus dompet permanen.");
       } else {
         emitTransactionSaved();
         setDeletingPermanentlyWallet(null);

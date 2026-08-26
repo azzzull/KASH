@@ -1,5 +1,6 @@
 import type { CurrencyCode, InvestmentActivity, InvestmentActivityType, InvestmentValuation, Wallet, WalletBalance, WalletType } from "../types/domain";
 import type { Database } from "../types/database";
+import type { TranslationKey } from "../i18n/index";
 import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
@@ -234,6 +235,23 @@ export async function deleteWallet(id: string) {
 
 export async function deleteWalletPermanently(id: string) {
   return supabase.rpc("delete_wallet_permanently", { p_wallet_id: id });
+}
+
+export function parseWalletDeleteError(errorMessage: string | undefined): TranslationKey {
+  if (!errorMessage) return "wallets.deleteError";
+  
+  if (errorMessage.includes("non-zero current balance")) return "wallets.errNonZeroCurrentBalance";
+  if (errorMessage.includes("referenced by a Goal")) return "wallets.errLinkedToGoal";
+  if (errorMessage.includes("has transaction history")) return "wallets.errHasTransactionHistory";
+  if (errorMessage.includes("has goal contribution history")) return "wallets.errHasGoalContribution";
+  if (errorMessage.includes("referenced by debt payments")) return "wallets.errHasDebtPayment";
+  if (errorMessage.includes("referenced by recurring obligations")) return "wallets.errHasRecurringObligation";
+  if (errorMessage.includes("referenced by recurring payments")) return "wallets.errHasRecurringPayment";
+  if (errorMessage.includes("referenced by a budget")) return "wallets.errHasBudget";
+  if (errorMessage.includes("has investment activity history")) return "wallets.errHasInvestmentActivity";
+  if (errorMessage.includes("has investment valuation history")) return "wallets.errHasInvestmentValuation";
+  
+  return "wallets.deleteError";
 }
 
 export async function recordInvestmentValuation(input: {

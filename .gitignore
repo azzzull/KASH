@@ -20,7 +20,7 @@ vite-*.log
 *.log
 
 # Supabase private SQL/schema files
-supabase/**/*.sql
+# (Migrations are version controlled)
 supabase/.branches/
 supabase/.temp/
 

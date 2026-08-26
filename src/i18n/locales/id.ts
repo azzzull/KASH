@@ -518,6 +518,16 @@ export const id = {
     "wallets.archiveWalletConfirm": "Arsipkan dompet ini?",
     "wallets.deleteWalletPermanently": "Hapus Permanen",
     "wallets.deleteWalletPermanentlyConfirm": "Hapus Dompet Permanen?",
+    "wallets.errNonZeroCurrentBalance": "Dompet tidak dapat dihapus karena memiliki saldo saat ini. Silakan kosongkan atau arsipkan dompet ini.",
+    "wallets.errLinkedToGoal": "Dompet ini digunakan oleh Target Tabungan. Hapus target tersebut terlebih dahulu.",
+    "wallets.errHasTransactionHistory": "Dompet tidak dapat dihapus karena memiliki riwayat transaksi. Silakan arsipkan dompet ini.",
+    "wallets.errHasGoalContribution": "Dompet tidak dapat dihapus karena memiliki riwayat alokasi tabungan (Goal).",
+    "wallets.errHasDebtPayment": "Dompet tidak dapat dihapus karena terhubung dengan catatan utang/piutang.",
+    "wallets.errHasRecurringObligation": "Dompet tidak dapat dihapus karena digunakan pada kewajiban berulang.",
+    "wallets.errHasRecurringPayment": "Dompet tidak dapat dihapus karena digunakan pada riwayat pembayaran berulang.",
+    "wallets.errHasBudget": "Dompet tidak dapat dihapus karena digunakan pada anggaran (Budget).",
+    "wallets.errHasInvestmentActivity": "Dompet tidak dapat dihapus karena memiliki riwayat aktivitas investasi.",
+    "wallets.errHasInvestmentValuation": "Dompet tidak dapat dihapus karena memiliki riwayat valuasi investasi.",
 
     // Goals
     "goals.title": "Target Keuangan",
