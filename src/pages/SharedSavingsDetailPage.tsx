@@ -32,8 +32,9 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
@@ -91,6 +92,8 @@ export function SharedSavingsDetailPage() {
   const { t, formatCurrency, formatDate } = useI18n();
   const { id } = useParams<{ id: string }>();
   const { profile } = useAuth();
+  const { activeSpace, loading: spaceLoading } = useActiveSpace();
+  const isManaged = activeSpace?.space_type === "managed";
   const navigate = useNavigate();
 
   const [space, setSpace] = useState<SharedSavingsBalance | null>(null);
@@ -127,8 +130,15 @@ export function SharedSavingsDetailPage() {
   const [rejectingRequest, setRejectingRequest] = useState<SharedSavingsRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  const loadData = async () => {
-    if (!id) return;
+  const loadData = useCallback(async () => {
+    if (!id || spaceLoading || isManaged) {
+      setSpace(null);
+      setMembers([]);
+      setRequests([]);
+      setLedger([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -149,11 +159,21 @@ export function SharedSavingsDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, isManaged, spaceLoading, t]);
 
   useEffect(() => {
-    void loadData();
-  }, [id]);
+    if (!spaceLoading) {
+      if (isManaged) {
+        setSpace(null);
+        setMembers([]);
+        setRequests([]);
+        setLedger([]);
+        navigate("/dashboard", { replace: true });
+      } else {
+        void loadData();
+      }
+    }
+  }, [id, isManaged, loadData, navigate, spaceLoading]);
 
   const currency = profile?.default_currency ?? "IDR";
   const currentUserId = profile?.id ?? "";
@@ -275,7 +295,11 @@ export function SharedSavingsDetailPage() {
     }
   };
 
-  if (loading) {
+  if (isManaged) {
+    return null;
+  }
+
+  if (loading || spaceLoading) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-8 md:px-6">
         <div className="h-6 w-32 animate-pulse rounded-lg bg-slate-200" />

@@ -19,8 +19,9 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { FilterTabs } from "../components/ui/FilterTabs";
@@ -39,6 +40,8 @@ import { useI18n } from "../i18n";
 export function SharedSavingsPage() {
   const { profile } = useAuth();
   const { t, formatDate, formatCurrency: formatMoney } = useI18n();
+  const { activeSpace, loading: spaceLoading } = useActiveSpace();
+  const isManaged = activeSpace?.space_type === "managed";
   const navigate = useNavigate();
 
   const [spaces, setSpaces] = useState<SharedSavingsSpaceSummary[]>([]);
@@ -49,7 +52,13 @@ export function SharedSavingsPage() {
   const [respondingInviteId, setRespondingInviteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (spaceLoading || isManaged) {
+      setSpaces([]);
+      setInvites([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -64,11 +73,19 @@ export function SharedSavingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isManaged, spaceLoading]);
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    if (!spaceLoading) {
+      if (isManaged) {
+        setSpaces([]);
+        setInvites([]);
+        navigate("/dashboard", { replace: true });
+      } else {
+        void loadData();
+      }
+    }
+  }, [isManaged, loadData, navigate, spaceLoading]);
 
   const handleInviteAction = async (inviteId: string, action: "accept" | "reject") => {
     setRespondingInviteId(inviteId);
@@ -103,7 +120,9 @@ export function SharedSavingsPage() {
     { label: t("shared.invitationsTab"), value: "invites", count: invites.length },
   ], [spaces.length, invites.length, t]);
 
-  const createActionRef = useRef<HTMLDivElement>(null);
+  if (isManaged) {
+    return null;
+  }
 
   return (
     <div className="w-full min-w-0 space-y-4">

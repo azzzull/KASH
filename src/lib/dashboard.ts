@@ -537,8 +537,19 @@ export async function getDashboardSummary(
     .order("created_at", { ascending: false });
   if (targetSpaceId) goalQuery = goalQuery.eq("space_id", targetSpaceId);
 
-  let cpQuery = supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true });
-  if (targetSpaceId) cpQuery = cpQuery.eq("space_id", targetSpaceId);
+  let isManagedSpace = false;
+  if (targetSpaceId) {
+    const { data: spaceData } = await supabase
+      .from("financial_spaces")
+      .select("space_type")
+      .eq("id", targetSpaceId)
+      .maybeSingle();
+    isManagedSpace = spaceData?.space_type === "managed";
+  }
+
+  const sharedSavingsQuery = isManagedSpace
+    ? Promise.resolve({ data: [], error: null })
+    : supabase.from("shared_savings_member_shares_view").select("*").eq("user_id", userId);
 
   const [
     walletResult,
@@ -565,7 +576,7 @@ export async function getDashboardSummary(
     supabase.from("goal_progress_view").select("*").eq("user_id", userId),
     cpQuery,
     supabase.from("debt_progress_view").select("*").eq("user_id", userId),
-    supabase.from("shared_savings_member_shares_view").select("*").eq("user_id", userId),
+    sharedSavingsQuery,
   ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -674,16 +685,6 @@ export async function getDashboardSummary(
       lastValuationAt: wallet.balance?.last_valuation_at ?? null,
     }))
     .sort((a, b) => b.balance - a.balance);
-
-  let isManagedSpace = false;
-  if (targetSpaceId) {
-    const { data: spaceData } = await supabase
-      .from("financial_spaces")
-      .select("space_type")
-      .eq("id", targetSpaceId)
-      .maybeSingle();
-    isManagedSpace = spaceData?.space_type === "managed";
-  }
 
   const rawSharedSavingsShares = (sharedSavingsResult.data ?? []).reduce((sum, row: any) => {
     const s = moneyValue(row.current_share);

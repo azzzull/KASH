@@ -131,29 +131,35 @@ export function DesktopSidebar() {
 
       <nav className="mt-8 min-h-0 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar" aria-label="Main navigation">
         <div className="flex flex-col gap-7">
-          {navGroups.map((group) => (
-            <section key={group.label}>
-              <h2 className="px-3 text-xs font-bold uppercase tracking-normal text-kash-emeraldDark">{getLocalizedGroupLabel(group.label)}</h2>
-              <div className="mt-2 flex flex-col gap-1">
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    className={({ isActive }) =>
-                      `group/nav flex touch-manipulation items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition active:scale-[0.99] ${
-                        isActive
-                          ? "bg-kash-selected/70 text-kash-emeraldDark"
-                          : "text-slate-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
-                      }`
-                    }
-                  >
-                    <item.icon aria-hidden="true" className="shrink-0" size={19} strokeWidth={2} />
-                    <span>{getLocalizedNavLabel(item.path, item.label)}</span>
-                  </NavLink>
-                ))}
-              </div>
-            </section>
-          ))}
+          {navGroups.map((group) => {
+            const isManaged = activeSpace?.space_type === "managed";
+            const visibleItems = group.items.filter((item) => !isManaged || item.path !== "/shared-savings");
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <section key={group.label}>
+                <h2 className="px-3 text-xs font-bold uppercase tracking-normal text-kash-emeraldDark">{getLocalizedGroupLabel(group.label)}</h2>
+                <div className="mt-2 flex flex-col gap-1">
+                  {visibleItems.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        `group/nav flex touch-manipulation items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition active:scale-[0.99] ${
+                          isActive
+                            ? "bg-kash-selected/70 text-kash-emeraldDark"
+                            : "text-slate-700 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-selected/70 [@media(hover:hover)_and_(pointer:fine)]:hover:text-kash-emeraldDark"
+                        }`
+                      }
+                    >
+                      <item.icon aria-hidden="true" className="shrink-0" size={19} strokeWidth={2} />
+                      <span>{getLocalizedNavLabel(item.path, item.label)}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </nav>
 

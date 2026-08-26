@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType, type ReactElement } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { OnboardingRoute, ProtectedRoute, PublicRoute } from "../components/auth/AuthGate";
+import { PersonalOnlyRoute } from "../components/auth/PersonalOnlyRoute";
 import { RouteErrorBoundary } from "../components/errors/RouteErrorBoundary";
 import { AppShell } from "../layouts/AppShell";
 
@@ -94,9 +95,14 @@ export const router = createBrowserRouter([
           { path: "/debts/:counterpartyId", element: routeElement(<DebtDetailPage />) },
           { path: "/subscriptions", element: routeElement(<SubscriptionsPage />) },
           { path: "/subscriptions/:id", element: routeElement(<SubscriptionDetailPage />) },
-          { path: "/shared-savings", element: routeElement(<SharedSavingsPage />) },
-          { path: "/shared-savings/:id", element: routeElement(<SharedSavingsDetailPage />) },
-          { path: "/shared", element: <Navigate to="/shared-savings" replace /> },
+          {
+            element: <PersonalOnlyRoute />,
+            children: [
+              { path: "/shared-savings", element: routeElement(<SharedSavingsPage />) },
+              { path: "/shared-savings/:id", element: routeElement(<SharedSavingsDetailPage />) },
+              { path: "/shared", element: <Navigate to="/shared-savings" replace /> },
+            ],
+          },
           { path: "/notifications", element: routeElement(<NotificationsPage />) },
           { path: "/settings", element: routeElement(<SettingsPage />) },
           { path: "/settings/categories", element: routeElement(<CategoriesPage />) },
