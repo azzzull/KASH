@@ -547,6 +547,9 @@ export async function getDashboardSummary(
     isManagedSpace = spaceData?.space_type === "managed";
   }
 
+  let cpQuery = supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true });
+  if (targetSpaceId) cpQuery = cpQuery.eq("space_id", targetSpaceId);
+
   const sharedSavingsQuery = isManagedSpace
     ? Promise.resolve({ data: [], error: null })
     : supabase.from("shared_savings_member_shares_view").select("*").eq("user_id", userId);

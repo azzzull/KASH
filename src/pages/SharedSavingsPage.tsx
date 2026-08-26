@@ -120,6 +120,8 @@ export function SharedSavingsPage() {
     { label: t("shared.invitationsTab"), value: "invites", count: invites.length },
   ], [spaces.length, invites.length, t]);
 
+  const createActionRef = useRef<HTMLDivElement>(null);
+
   if (isManaged) {
     return null;
   }
