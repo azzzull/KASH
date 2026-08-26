@@ -61,7 +61,8 @@ export function EntityMoreActionsMenu({
 
       <MenuItems
         transition
-        className={`absolute ${alignClass} z-50 mt-1.5 min-w-[11rem] rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[closed]:pointer-events-none data-[enter]:duration-100 data-[leave]:duration-75`}
+        anchor={align === "left" ? "bottom start" : "bottom end"}
+        className="z-50 min-w-[11rem] rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[closed]:pointer-events-none data-[enter]:duration-100 data-[leave]:duration-75"
       >
         {visibleItems.map((item, index) => {
           const ItemIcon = item.icon;

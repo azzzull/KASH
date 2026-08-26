@@ -30,6 +30,7 @@ export const en = {
     "common.add": "Add",
     "common.create": "Create",
     "common.back": "Back",
+    "common.backToActive": "Back to Active",
     "common.close": "Close",
     "common.confirm": "Confirm",
     "common.filter": "Filter",

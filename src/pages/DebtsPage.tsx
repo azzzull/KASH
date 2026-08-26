@@ -23,8 +23,10 @@ import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
+import { HeaderFilterMenu } from "../components/ui/HeaderActionControls";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
@@ -66,6 +68,7 @@ export function DebtsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [preselectedCounterparty, setPreselectedCounterparty] = useState("");
   const [settlementTarget, setSettlementTarget] = useState<{
     counterparty: CounterpartyWithSummary;
     debtType: DebtType;
@@ -117,11 +120,30 @@ export function DebtsPage() {
         title={t("debts.title") || "Utang & Piutang"}
         description={t("debts.subtitle") || "Pantau kewajiban, piutang, pembayaran, dan riwayat pelunasan."}
         actions={
-          <div ref={createActionRef} className="hidden sm:block shrink-0">
-            <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
-              <Plus aria-hidden="true" size={15} />
-              {t("debts.createDebt") || "Catat Utang / Piutang"}
-            </Button>
+          <div className="flex items-center gap-2">
+            <HeaderFilterMenu
+              label={t("common.status") || "Status"}
+              value={statusFilter}
+              defaultValue="active"
+              options={[
+                { value: "active", label: t("common.active") || "Aktif" },
+                { value: "settled", label: t("debts.settled") || "Lunas" },
+                { value: "all", label: t("common.all") || "Semua" },
+              ]}
+              onChange={(val) => setStatusFilter(val as StatusFilter)}
+            />
+            <div ref={createActionRef} className="hidden sm:block shrink-0">
+              <Button
+                onClick={() => {
+                  setPreselectedCounterparty("");
+                  setCreateModalOpen(true);
+                }}
+                className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+              >
+                <Plus aria-hidden="true" size={15} />
+                {t("debts.createDebt") || "Catat Utang / Piutang"}
+              </Button>
+            </div>
           </div>
         }
       />
@@ -157,30 +179,16 @@ export function DebtsPage() {
           onChange={(val) => setTypeFilter(val as TypeFilter)}
         />
 
-        {/* Status & Search */}
-        <div className="flex flex-wrap items-end gap-3 sm:flex-nowrap">
-          <div className="min-w-[190px]">
-            <SelectField
-              label={t("common.status") || "Status"}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            >
-              <option value="active">{t("common.active")}</option>
-              <option value="settled">{t("debts.settled")}</option>
-              <option value="all">{t("common.all")}</option>
-            </SelectField>
-          </div>
-
-          <div className="relative w-full sm:w-64">
-            <input
-              type="text"
-              placeholder={t("common.search")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm font-semibold text-slate-900 placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-            />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-          </div>
+        {/* Search */}
+        <div className="relative w-full sm:w-72">
+          <input
+            type="text"
+            placeholder={t("common.search")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 w-full rounded-xl border border-slate-200/80 bg-white pl-9 pr-3 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-kash-emerald focus:outline-none focus:ring-2 focus:ring-kash-emerald/20"
+          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
         </div>
       </div>
 
@@ -205,7 +213,12 @@ export function DebtsPage() {
           </p>
           {!searchQuery && (
             <div className="mt-5">
-              <Button onClick={() => setCreateModalOpen(true)}>
+              <Button
+                onClick={() => {
+                  setPreselectedCounterparty("");
+                  setCreateModalOpen(true);
+                }}
+              >
                 <Plus aria-hidden="true" size={16} />
                 {t("debts.createDebt")}
               </Button>
@@ -253,12 +266,46 @@ export function DebtsPage() {
                           : t("debts.totalItems", { count: cp.totalItemCount })}
                       </p>
                     </div>
-                    {isAllSettled && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700">
-                        <CheckCircle2 size={12} />
-                        {t("debts.settled")}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {isAllSettled && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700">
+                          <CheckCircle2 size={12} />
+                          {t("debts.settled")}
+                        </span>
+                      )}
+                      <EntityMoreActionsMenu
+                        triggerVariant="ghost"
+                        ariaLabel={`Opsi ${cp.name}`}
+                        items={[
+                          {
+                            label: t("debts.createDebt") || "Catat Transaksi",
+                            icon: Plus,
+                            onClick: () => {
+                              setPreselectedCounterparty(cp.name);
+                              setCreateModalOpen(true);
+                            },
+                          },
+                          {
+                            label: t("debts.pay") || "Bayar Utang",
+                            icon: ArrowDownLeft,
+                            hidden: cp.debtTotal <= 0,
+                            onClick: () => setSettlementTarget({ counterparty: cp, debtType: "debt" }),
+                          },
+                          {
+                            label: t("debts.collect") || "Terima Piutang",
+                            icon: ArrowUpRight,
+                            hidden: cp.receivableTotal <= 0,
+                            onClick: () => setSettlementTarget({ counterparty: cp, debtType: "receivable" }),
+                          },
+                          {
+                            label: t("common.viewDetail") || "Lihat Detail",
+                            icon: History,
+                            separatorBefore: true,
+                            onClick: () => navigate(`/debts/${cp.id}`),
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
 
                   <div className="mt-4 space-y-3">
@@ -378,9 +425,14 @@ export function DebtsPage() {
       {createModalOpen && (
         <CreateObligationModal
           allCounterparties={allCounterparties}
-          onClose={() => setCreateModalOpen(false)}
+          initialCounterpartyName={preselectedCounterparty}
+          onClose={() => {
+            setCreateModalOpen(false);
+            setPreselectedCounterparty("");
+          }}
           onSaved={() => {
             setCreateModalOpen(false);
+            setPreselectedCounterparty("");
             emitDebtSaved();
           }}
         />
@@ -401,7 +453,10 @@ export function DebtsPage() {
       )}
       <ContextualCreateAction
         targetRef={createActionRef}
-        onClick={() => setCreateModalOpen(true)}
+        onClick={() => {
+          setPreselectedCounterparty("");
+          setCreateModalOpen(true);
+        }}
         label={t("debts.createDebt")}
       />
     </div>
@@ -410,16 +465,18 @@ export function DebtsPage() {
 
 function CreateObligationModal({
   allCounterparties,
+  initialCounterpartyName = "",
   onClose,
   onSaved,
 }: {
   allCounterparties: Counterparty[];
+  initialCounterpartyName?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { t, formatCurrency } = useI18n();
   const [type, setType] = useState<DebtType>("debt");
-  const [counterpartyName, setCounterpartyName] = useState("");
+  const [counterpartyName, setCounterpartyName] = useState(initialCounterpartyName);
   const [items, setItems] = useState<
     { id: string; title: string; originalAmount: string; dueDate: string; note: string }[]
   >([{ id: "1", title: "", originalAmount: "", dueDate: "", note: "" }]);

@@ -22,6 +22,7 @@ import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
+import { HeaderArchiveButton } from "../components/ui/HeaderActionControls";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { Modal } from "../components/ui/Modal";
@@ -734,14 +735,39 @@ export function GoalsPage() {
         title={t("goals.title")}
         description={t("goals.subtitle")}
         actions={
-          <div ref={createActionRef} className="hidden sm:block">
-            <Button onClick={() => setShowCreateGoal(true)}>
-              <Plus aria-hidden="true" size={18} />
-              {t("goals.create")}
-            </Button>
+          <div className="flex items-center gap-2">
+            <HeaderArchiveButton
+              count={archivedCount}
+              isActive={activeTab === "archived"}
+              onClick={() => setActiveTab((curr) => (curr === "archived" ? "active" : "archived"))}
+              label={activeTab === "archived" ? (t("goals.activeGoals") || "Target Aktif") : (t("goals.archivedGoals") || "Target Diarsipkan")}
+            />
+            <div ref={createActionRef} className="hidden sm:block">
+              <Button onClick={() => setShowCreateGoal(true)}>
+                <Plus aria-hidden="true" size={18} />
+                {t("goals.create")}
+              </Button>
+            </div>
           </div>
         }
       />
+
+      {/* Archived Banner if viewing archived goals */}
+      {activeTab === "archived" && (
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-100/90 px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs">
+          <div className="flex items-center gap-2">
+            <PiggyBank size={16} className="text-slate-500" />
+            <span>{t("goals.archivedGoals") || "Target Diarsipkan"} ({goals.length})</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("active")}
+            className="font-extrabold text-kash-emerald hover:text-kash-emeraldDark hover:underline transition"
+          >
+            ← {t("common.backToActive") || "Kembali ke Target Aktif"}
+          </button>
+        </div>
+      )}
 
       {/* Hero Summary Surface */}
       <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
@@ -763,15 +789,6 @@ export function GoalsPage() {
           ) : null}
         </div>
       </section>
-
-      {/* Filter Tabs for Active vs Archived */}
-      <div className="pt-1">
-        <FilterTabs
-          options={tabOptions}
-          value={activeTab}
-          onChange={(val) => setActiveTab(val as "active" | "archived")}
-        />
-      </div>
 
       {error ? (
         <section className="rounded-2xl border border-kash-expense/30 bg-white p-5 shadow-card">

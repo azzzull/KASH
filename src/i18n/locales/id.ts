@@ -30,6 +30,7 @@ export const id = {
     "common.add": "Tambah",
     "common.create": "Buat",
     "common.back": "Kembali",
+    "common.backToActive": "Kembali ke Aktif",
     "common.close": "Tutup",
     "common.confirm": "Konfirmasi",
     "common.filter": "Filter",

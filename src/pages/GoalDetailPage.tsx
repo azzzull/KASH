@@ -14,12 +14,13 @@ import {
   WalletCards,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
-import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
+import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { FormField } from "../components/ui/FormField";
 import { Modal } from "../components/ui/Modal";
 import { SelectField } from "../components/ui/SelectField";
@@ -497,15 +498,26 @@ export function GoalDetailPage() {
     );
   }
 
+  const createActionRef = useRef<HTMLDivElement>(null);
   const Icon = getGoalIcon(goal.icon);
   const isCancelled = goal.status === "cancelled";
 
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
-      <Link className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-kash-emerald" to="/goals">
-        <ArrowLeft aria-hidden="true" size={15} />
-        {t("goals.title") || "Target"}
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-kash-emerald transition" to="/goals">
+          <ArrowLeft aria-hidden="true" size={15} />
+          {t("goals.title") || "Target"}
+        </Link>
+        {!isCancelled && (
+          <div ref={createActionRef} className="hidden sm:block">
+            <Button onClick={() => setShowContribution(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+              <Plus aria-hidden="true" size={15} />
+              {t("goals.addContribution") || "Tambah Tabungan"}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {isCancelled ? (
         <section className="rounded-2xl border border-slate-200/60 bg-slate-50 p-4 text-xs font-semibold text-slate-600">
@@ -601,16 +613,6 @@ export function GoalDetailPage() {
           </div>
         </div>
       </section>
-
-      {/* Primary Financial Action Only */}
-      {!isCancelled && (
-        <div className="flex flex-wrap items-center justify-start gap-2 max-w-full py-0.5">
-          <Button onClick={() => setShowContribution(true)} className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
-            <Plus aria-hidden="true" size={15} />
-            {t("goals.addContribution") || "Tambah Tabungan"}
-          </Button>
-        </div>
-      )}
 
       {/* Contribution History */}
       <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">
@@ -737,6 +739,14 @@ export function GoalDetailPage() {
           ) : null}
         </ConfirmationDialog>
       ) : null}
+
+      {!isCancelled && (
+        <ContextualCreateAction
+          targetRef={createActionRef}
+          onClick={() => setShowContribution(true)}
+          label={t("goals.addContribution") || "Tambah Tabungan"}
+        />
+      )}
     </div>
   );
 }

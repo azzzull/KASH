@@ -1,20 +1,40 @@
-import { Loader2, Plus, WalletCards, TrendingUp, PiggyBank, Landmark, CreditCard, Banknote, RotateCcw } from "lucide-react";
+import {
+  Archive,
+  CreditCard,
+  Edit3,
+  Loader2,
+  Plus,
+  RotateCcw,
+  SlidersHorizontal,
+  Trash2,
+  WalletCards,
+} from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
-import { FilterTabs } from "../components/ui/FilterTabs";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { FormField } from "../components/ui/FormField";
+import { HeaderArchiveButton } from "../components/ui/HeaderActionControls";
 import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
+import {
+  AdjustmentModal,
+  EditWalletModal,
+} from "../components/wallets/WalletModals";
 import { useAuth } from "../context/AuthContext";
+import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
-import { useAppEvent } from "../hooks/useAppEvent";
-import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
+import {
+  formatCurrency,
+  formatMoneyDigits,
+  parseMoneyInputDigits,
+  toNumber,
+} from "../lib/money";
 import {
   getWalletIcon,
   getWalletTypeOption,
@@ -24,8 +44,10 @@ import {
   walletTypeOptions,
 } from "../lib/walletMeta";
 import {
+  archiveWallet,
   createWallet,
   getArchivedWalletsCount,
+  getWalletTransactionCount,
   getWallets,
   restoreWallet,
   type WalletWithBalance,
@@ -56,9 +78,15 @@ const defaultFormState: WalletFormState = {
 
 function WalletRow({
   wallet,
+  onEdit,
+  onAdjustBalance,
+  onArchive,
   onRestore,
 }: {
   wallet: WalletWithBalance;
+  onEdit?: () => void;
+  onAdjustBalance?: () => void;
+  onArchive?: () => void;
   onRestore?: () => void;
 }) {
   const { t, formatCurrency } = useI18n();
@@ -87,11 +115,24 @@ function WalletRow({
           <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className={`truncate text-sm font-extrabold ${wallet.is_archived ? "text-slate-700 line-through" : "text-slate-900 hover:text-kash-emerald transition"}`}>
+          <p
+            className={`truncate text-sm font-extrabold ${
+              wallet.is_archived
+                ? "text-slate-700 line-through"
+                : "text-slate-900 hover:text-kash-emerald transition"
+            }`}
+          >
             {wallet.name}
           </p>
           <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
-            {[wallet.institution_name, isGoalPocket ? (t("wallets.goalPocket") || "Kantong Target") : typeOption.label].filter(Boolean).join(" • ")}
+            {[
+              wallet.institution_name,
+              isGoalPocket
+                ? t("wallets.goalPocket") || "Kantong Target"
+                : typeOption.label,
+            ]
+              .filter(Boolean)
+              .join(" • ")}
           </p>
         </div>
       </Link>
@@ -110,23 +151,52 @@ function WalletRow({
               {t("wallets.savingsPocket") || "Tabungan"}
             </span>
           ) : isInvestment && wallet.balance?.return_percentage !== undefined ? (
-            <span className={`mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-bold ${Number(wallet.balance.return_percentage) >= 0 ? "text-kash-emerald" : "text-[#E50914]"}`}>
-              {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}{Number(wallet.balance.return_percentage).toFixed(2)}% {t("wallets.return") || "return"}
+            <span
+              className={`mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-bold ${
+                Number(wallet.balance.return_percentage) >= 0
+                  ? "text-kash-emerald"
+                  : "text-[#E50914]"
+              }`}
+            >
+              {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}
+              {Number(wallet.balance.return_percentage).toFixed(2)}%{" "}
+              {t("wallets.return") || "return"}
             </span>
           ) : null}
         </Link>
 
-        {wallet.is_archived && onRestore && (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onRestore}
-            className="shrink-0 gap-1 min-h-8 px-2.5 py-1 text-xs font-extrabold text-kash-emeraldDark hover:bg-kash-selected"
-          >
-            <RotateCcw size={13} />
-            {t("common.restore") || "Pulihkan"}
-          </Button>
-        )}
+        <EntityMoreActionsMenu
+          triggerVariant="ghost"
+          ariaLabel={`Opsi dompet ${wallet.name}`}
+          items={[
+            {
+              label: t("common.edit") || "Edit",
+              icon: Edit3,
+              hidden: wallet.is_archived || !onEdit,
+              onClick: onEdit ?? (() => {}),
+            },
+            {
+              label: t("wallets.adjustBalance") || "Sesuaikan Saldo",
+              icon: SlidersHorizontal,
+              hidden:
+                isInvestment ||
+                Boolean(wallet.goal_id) ||
+                wallet.is_archived ||
+                !onAdjustBalance,
+              onClick: onAdjustBalance ?? (() => {}),
+            },
+            {
+              label: wallet.is_archived
+                ? t("wallets.restoreWallet") || "Pulihkan Dompet"
+                : t("common.archive") || "Arsipkan",
+              icon: wallet.is_archived ? RotateCcw : Trash2,
+              isDestructive: !wallet.is_archived,
+              separatorBefore: true,
+              onClick:
+                (wallet.is_archived ? onRestore : onArchive) ?? (() => {}),
+            },
+          ]}
+        />
       </div>
     </div>
   );
@@ -142,7 +212,10 @@ function WalletFormModal({
   onSaved: () => void;
 }) {
   const { t } = useI18n();
-  const [form, setForm] = useState<WalletFormState>({ ...defaultFormState, currency: defaultCurrency });
+  const [form, setForm] = useState<WalletFormState>({
+    ...defaultFormState,
+    currency: defaultCurrency,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selectedType = getWalletTypeOption(form.walletType);
@@ -150,7 +223,9 @@ function WalletFormModal({
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = form.name.trim();
-    const institutionName = selectedType.needsInstitution ? form.institutionName.trim() : "";
+    const institutionName = selectedType.needsInstitution
+      ? form.institutionName.trim()
+      : "";
     const initialBalance = parseMoneyInputDigits(form.initialBalance);
 
     if (!name) {
@@ -159,12 +234,18 @@ function WalletFormModal({
     }
 
     if (selectedType.needsInstitution && !institutionName) {
-      setError(t("wallets.institutionRequired") || "Institusi / Bank wajib diisi untuk tipe dompet ini.");
+      setError(
+        t("wallets.institutionRequired") ||
+          "Institusi / Bank wajib diisi untuk tipe dompet ini.",
+      );
       return;
     }
 
     if (!initialBalance) {
-      setError(t("wallets.initialBalanceRequired") || "Saldo awal wajib diisi. Masukkan 0 jika kosong.");
+      setError(
+        t("wallets.initialBalanceRequired") ||
+          "Saldo awal wajib diisi. Masukkan 0 jika kosong.",
+      );
       return;
     }
 
@@ -184,14 +265,19 @@ function WalletFormModal({
       });
 
       if (createError) {
-        setError(t("wallets.createError") || "Gagal membuat dompet. Silakan periksa data dan coba lagi.");
+        setError(
+          t("wallets.createError") ||
+            "Gagal membuat dompet. Silakan periksa data dan coba lagi.",
+        );
         setSaving(false);
         return;
       }
 
       onSaved();
     } catch {
-      setError(t("wallets.createErrorAuth") || "Gagal membuat dompet. Silakan coba lagi.");
+      setError(
+        t("wallets.createErrorAuth") || "Gagal membuat dompet. Silakan coba lagi.",
+      );
       setSaving(false);
     }
   };
@@ -202,7 +288,10 @@ function WalletFormModal({
       onClose={onClose}
       maxWidth="lg"
       title={t("wallets.create") || "Tambah Dompet"}
-      description={t("wallets.initialBalanceHelp") || "Saldo awal dicatat pada dompet, bukan sebagai transaksi."}
+      description={
+        t("wallets.initialBalanceHelp") ||
+        "Saldo awal dicatat pada dompet, bukan sebagai transaksi."
+      }
     >
       <div>
         {error ? (
@@ -211,12 +300,20 @@ function WalletFormModal({
           </div>
         ) : null}
 
-        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+        <form
+          className="grid w-full max-w-full min-w-0 gap-4"
+          onSubmit={submit}
+        >
           <SelectField
             id="wallet-type"
             label={t("wallets.type") || "Tipe Dompet"}
             value={form.walletType}
-            onChange={(event) => setForm((current) => ({ ...current, walletType: event.target.value as WalletType }))}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                walletType: event.target.value as WalletType,
+              }))
+            }
           >
             {walletTypeOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -227,7 +324,12 @@ function WalletFormModal({
           <FormField
             id="wallet-name"
             label={t("wallets.name") || "Nama Dompet"}
-            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                name: event.target.value,
+              }))
+            }
             placeholder="BCA Utama"
             value={form.name}
           />
@@ -235,7 +337,12 @@ function WalletFormModal({
             <FormField
               id="institution-name"
               label={t("wallets.institution") || "Institusi / Bank"}
-              onChange={(event) => setForm((current) => ({ ...current, institutionName: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  institutionName: event.target.value,
+                }))
+              }
               placeholder="BCA"
               value={form.institutionName}
             />
@@ -244,14 +351,39 @@ function WalletFormModal({
             id="initial-balance"
             inputMode="numeric"
             label={t("wallets.initialBalance") || "Saldo Awal"}
-            onChange={(event) => setForm((current) => ({ ...current, initialBalance: formatMoneyDigits(event.target.value) }))}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                initialBalance: formatMoneyDigits(event.target.value),
+              }))
+            }
             placeholder="2.500.000"
             value={form.initialBalance}
           />
-          <SelectField id="currency" label={t("wallets.currency") || "Mata Uang"} onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))} value={form.currency}>
+          <SelectField
+            id="currency"
+            label={t("wallets.currency") || "Mata Uang"}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                currency: event.target.value,
+              }))
+            }
+            value={form.currency}
+          >
             <option value="IDR">IDR - Indonesian Rupiah</option>
           </SelectField>
-          <SelectField id="wallet-icon" label={t("wallets.icon") || "Ikon"} onChange={(event) => setForm((current) => ({ ...current, icon: event.target.value }))} value={form.icon}>
+          <SelectField
+            id="wallet-icon"
+            label={t("wallets.icon") || "Ikon"}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                icon: event.target.value,
+              }))
+            }
+            value={form.icon}
+          >
             {walletIconOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -259,14 +391,18 @@ function WalletFormModal({
             ))}
           </SelectField>
           <fieldset>
-            <legend className="text-sm font-bold text-slate-900">{t("wallets.colorAccent") || "Aksen Warna"}</legend>
+            <legend className="text-sm font-bold text-slate-900">
+              {t("wallets.colorAccent") || "Aksen Warna"}
+            </legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {walletColors.map((color) => (
                 <button
                   aria-label={`Use ${color}`}
                   className={`h-9 w-9 rounded-full border-2 ${form.color === color ? "border-slate-900" : "border-white"} shadow-sm ring-1 ring-slate-200`}
                   key={color}
-                  onClick={() => setForm((current) => ({ ...current, color }))}
+                  onClick={() =>
+                    setForm((current) => ({ ...current, color }))
+                  }
                   style={{ backgroundColor: color }}
                   type="button"
                 />
@@ -275,14 +411,29 @@ function WalletFormModal({
           </fieldset>
           <ToggleField
             checked={form.includeInNetWorth}
-            description={t("wallets.includeInNetWorthHelp") || "Dompet yang disertakan akan dihitung dalam Total Aset."}
+            description={
+              t("wallets.includeInNetWorthHelp") ||
+              "Dompet yang disertakan akan dihitung dalam Total Aset."
+            }
             id="include-net-worth"
-            label={t("wallets.includeInNetWorth") || "Sertakan dalam Kekayaan Bersih"}
-            onChange={(event) => setForm((current) => ({ ...current, includeInNetWorth: event.target.checked }))}
+            label={
+              t("wallets.includeInNetWorth") ||
+              "Sertakan dalam Kekayaan Bersih"
+            }
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                includeInNetWorth: event.target.checked,
+              }))
+            }
           />
           <Button disabled={saving} type="submit">
-            {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-            {saving ? (t("common.saving") || "Menyimpan...") : (t("wallets.create") || "Tambah Dompet")}
+            {saving ? (
+              <Loader2 aria-hidden="true" className="animate-spin" size={18} />
+            ) : null}
+            {saving
+              ? t("common.saving") || "Menyimpan..."
+              : t("wallets.create") || "Tambah Dompet"}
           </Button>
         </form>
       </div>
@@ -294,7 +445,10 @@ function WalletSkeleton() {
   return (
     <div className="grid gap-3">
       {[0, 1, 2].map((item) => (
-        <div className="h-16 animate-pulse rounded-2xl bg-slate-100 p-3.5" key={item} />
+        <div
+          className="h-16 animate-pulse rounded-2xl bg-slate-100 p-3.5"
+          key={item}
+        />
       ))}
     </div>
   );
@@ -308,8 +462,20 @@ export function WalletsPage() {
   const [archivedCount, setArchivedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modals & Action states
   const [showAddWallet, setShowAddWallet] = useState(false);
-  const [restoringWallet, setRestoringWallet] = useState<WalletWithBalance | null>(null);
+  const [editingWallet, setEditingWallet] = useState<WalletWithBalance | null>(
+    null,
+  );
+  const [canEditInitialBalance, setCanEditInitialBalance] = useState(false);
+  const [adjustingWallet, setAdjustingWallet] =
+    useState<WalletWithBalance | null>(null);
+  const [archivingWallet, setArchivingWallet] =
+    useState<WalletWithBalance | null>(null);
+  const [archivingLoading, setArchivingLoading] = useState(false);
+  const [restoringWallet, setRestoringWallet] =
+    useState<WalletWithBalance | null>(null);
   const [restoringLoading, setRestoringLoading] = useState(false);
 
   const loadWallets = async () => {
@@ -321,7 +487,9 @@ export function WalletsPage() {
     ]);
 
     if (loadError || !data) {
-      setError(t("wallets.loadError") || "Gagal memuat dompet. Silakan coba lagi.");
+      setError(
+        t("wallets.loadError") || "Gagal memuat dompet. Silakan coba lagi.",
+      );
       setLoading(false);
       return;
     }
@@ -342,7 +510,9 @@ export function WalletsPage() {
   const totals = useMemo(() => {
     return wallets.reduce(
       (summary, wallet) => {
-        const balance = toNumber(wallet.balance?.current_balance ?? wallet.initial_balance);
+        const balance = toNumber(
+          wallet.balance?.current_balance ?? wallet.initial_balance,
+        );
 
         if (wallet.include_in_net_worth) {
           summary.totalAssets += balance;
@@ -369,7 +539,14 @@ export function WalletsPage() {
 
         return summary;
       },
-      { available: 0, investments: 0, liquid: 0, savingsPockets: 0, goalPockets: 0, totalAssets: 0 },
+      {
+        available: 0,
+        investments: 0,
+        liquid: 0,
+        savingsPockets: 0,
+        goalPockets: 0,
+        totalAssets: 0,
+      },
     );
   }, [wallets]);
 
@@ -377,32 +554,57 @@ export function WalletsPage() {
     const groups: { group: string; wallets: WalletWithBalance[] }[] = [];
 
     // 1. Bank Accounts
-    const bankWallets = wallets.filter((w) => w.wallet_type === "bank" || w.wallet_type === "digital_bank");
-    if (bankWallets.length > 0) groups.push({ group: t("wallets.bank"), wallets: bankWallets });
+    const bankWallets = wallets.filter(
+      (w) => w.wallet_type === "bank" || w.wallet_type === "digital_bank",
+    );
+    if (bankWallets.length > 0)
+      groups.push({ group: t("wallets.bank"), wallets: bankWallets });
 
     // 2. E-Wallets
     const ewallets = wallets.filter((w) => w.wallet_type === "ewallet");
-    if (ewallets.length > 0) groups.push({ group: t("wallets.eWallet"), wallets: ewallets });
+    if (ewallets.length > 0)
+      groups.push({ group: t("wallets.eWallet"), wallets: ewallets });
 
     // 3. Cash
     const cashWallets = wallets.filter((w) => w.wallet_type === "cash");
-    if (cashWallets.length > 0) groups.push({ group: t("wallets.cash"), wallets: cashWallets });
+    if (cashWallets.length > 0)
+      groups.push({ group: t("wallets.cash"), wallets: cashWallets });
 
     // 4. Savings Pockets
-    const savingsPockets = wallets.filter((w) => w.wallet_type === "savings" && !w.goal_id);
-    if (savingsPockets.length > 0) groups.push({ group: `${t("wallets.savings")} (${t("wallets.savingsPocket") || "Kantong Tabungan"})`, wallets: savingsPockets });
+    const savingsPockets = wallets.filter(
+      (w) => w.wallet_type === "savings" && !w.goal_id,
+    );
+    if (savingsPockets.length > 0)
+      groups.push({
+        group: `${t("wallets.savings")} (${t("wallets.savingsPocket") || "Kantong Tabungan"})`,
+        wallets: savingsPockets,
+      });
 
     // 5. Goal Pockets
     const goalPockets = wallets.filter((w) => Boolean(w.goal_id));
-    if (goalPockets.length > 0) groups.push({ group: `${t("wallets.goalPockets") || "Goal Pockets"} (${t("wallets.goalPocket") || "Kantong Target"})`, wallets: goalPockets });
+    if (goalPockets.length > 0)
+      groups.push({
+        group: `${t("wallets.goalPockets") || "Goal Pockets"} (${t("wallets.goalPocket") || "Kantong Target"})`,
+        wallets: goalPockets,
+      });
 
     // 6. Investments
-    const investmentWallets = wallets.filter((w) => w.wallet_type === "investment");
-    if (investmentWallets.length > 0) groups.push({ group: t("wallets.investment"), wallets: investmentWallets });
+    const investmentWallets = wallets.filter(
+      (w) => w.wallet_type === "investment",
+    );
+    if (investmentWallets.length > 0)
+      groups.push({
+        group: t("wallets.investment"),
+        wallets: investmentWallets,
+      });
 
     // 7. Custom
     const customWallets = wallets.filter((w) => w.wallet_type === "custom");
-    if (customWallets.length > 0) groups.push({ group: t("wallets.custom") || "Custom", wallets: customWallets });
+    if (customWallets.length > 0)
+      groups.push({
+        group: t("wallets.custom") || "Custom",
+        wallets: customWallets,
+      });
 
     return groups;
   }, [wallets, t]);
@@ -410,17 +612,25 @@ export function WalletsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
   const defaultCurr = profile?.default_currency ?? "IDR";
 
-  const tabOptions = useMemo(
-    () => [
-      { value: "active" as const, label: t("wallets.activeWallets") || "Dompet Aktif" },
-      {
-        value: "archived" as const,
-        label: t("wallets.archivedWallets") || "Dompet Diarsipkan",
-        count: archivedCount > 0 ? archivedCount : null,
-      },
-    ],
-    [t, archivedCount],
-  );
+  const handleStartEdit = async (wallet: WalletWithBalance) => {
+    const { count } = await getWalletTransactionCount(wallet.id);
+    setCanEditInitialBalance(count === 0);
+    setEditingWallet(wallet);
+  };
+
+  const handleConfirmArchive = async () => {
+    if (!archivingWallet) return;
+    setArchivingLoading(true);
+    const { error: archError } = await archiveWallet(archivingWallet.id);
+    if (archError) {
+      setError(archError.message || "Gagal mengarsipkan dompet.");
+    } else {
+      emitTransactionSaved();
+      setArchivingWallet(null);
+      void loadWallets();
+    }
+    setArchivingLoading(false);
+  };
 
   const handleConfirmRestore = async () => {
     if (!restoringWallet) return;
@@ -444,14 +654,50 @@ export function WalletsPage() {
         title={t("wallets.title")}
         description={t("wallets.subtitle")}
         actions={
-          <div ref={createActionRef} className="hidden sm:block">
-            <Button onClick={() => setShowAddWallet(true)}>
-              <Plus aria-hidden="true" size={18} />
-              {t("wallets.create")}
-            </Button>
+          <div className="flex items-center gap-2">
+            <HeaderArchiveButton
+              count={archivedCount}
+              isActive={activeTab === "archived"}
+              onClick={() =>
+                setActiveTab((curr) =>
+                  curr === "archived" ? "active" : "archived",
+                )
+              }
+              label={
+                activeTab === "archived"
+                  ? t("wallets.activeWallets") || "Dompet Aktif"
+                  : t("wallets.archivedWallets") || "Dompet Diarsipkan"
+              }
+            />
+            <div ref={createActionRef} className="hidden sm:block">
+              <Button onClick={() => setShowAddWallet(true)}>
+                <Plus aria-hidden="true" size={18} />
+                {t("wallets.create")}
+              </Button>
+            </div>
           </div>
         }
       />
+
+      {/* Archived Banner if viewing archived wallets */}
+      {activeTab === "archived" && (
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-100/90 px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs">
+          <div className="flex items-center gap-2">
+            <WalletCards size={16} className="text-slate-500" />
+            <span>
+              {t("wallets.archivedWallets") || "Dompet Diarsipkan"} (
+              {wallets.length})
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("active")}
+            className="font-extrabold text-kash-emerald hover:text-kash-emeraldDark hover:underline transition"
+          >
+            ← {t("common.backToActive") || "Kembali ke Dompet Aktif"}
+          </button>
+        </div>
+      )}
 
       {/* Hero Header Summary */}
       <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
@@ -465,42 +711,51 @@ export function WalletsPage() {
         {/* Sub-breakdown badges inline */}
         <div className="mt-6 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
-            <span className="font-medium text-white/65">{t("wallets.availableBalance") || "Tersedia"}: </span>
-            <span className="font-extrabold text-white">{formatCurrency(totals.available, defaultCurr)}</span>
+            <span className="font-medium text-white/65">
+              {t("wallets.availableBalance") || "Tersedia"}:{" "}
+            </span>
+            <span className="font-extrabold text-white">
+              {formatCurrency(totals.available, defaultCurr)}
+            </span>
           </span>
           {totals.savingsPockets > 0 ? (
             <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
-              <span className="font-medium text-white/65">{t("wallets.savings") || "Tabungan"}: </span>
-              <span className="font-extrabold text-white">{formatCurrency(totals.savingsPockets, defaultCurr)}</span>
+              <span className="font-medium text-white/65">
+                {t("wallets.savings") || "Tabungan"}:{" "}
+              </span>
+              <span className="font-extrabold text-white">
+                {formatCurrency(totals.savingsPockets, defaultCurr)}
+              </span>
             </span>
           ) : null}
           {totals.goalPockets > 0 ? (
             <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
-              <span className="font-medium text-white/65">{t("wallets.allocatedToGoals") || "Target"}: </span>
-              <span className="font-extrabold text-white">{formatCurrency(totals.goalPockets, defaultCurr)}</span>
+              <span className="font-medium text-white/65">
+                {t("wallets.allocatedToGoals") || "Target"}:{" "}
+              </span>
+              <span className="font-extrabold text-white">
+                {formatCurrency(totals.goalPockets, defaultCurr)}
+              </span>
             </span>
           ) : null}
           {totals.investments > 0 ? (
             <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
-              <span className="font-medium text-white/65">{t("wallets.investment") || "Investasi"}: </span>
-              <span className="font-extrabold text-white">{formatCurrency(totals.investments, defaultCurr)}</span>
+              <span className="font-medium text-white/65">
+                {t("wallets.investment") || "Investasi"}:{" "}
+              </span>
+              <span className="font-extrabold text-white">
+                {formatCurrency(totals.investments, defaultCurr)}
+              </span>
             </span>
           ) : null}
         </div>
       </section>
 
-      {/* Filter Tabs for Active vs Archived */}
-      <div className="pt-1">
-        <FilterTabs
-          options={tabOptions}
-          value={activeTab}
-          onChange={(val) => setActiveTab(val as "active" | "archived")}
-        />
-      </div>
-
       {error ? (
         <section className="rounded-2xl border border-kash-expense/30 bg-white p-5 shadow-card">
-          <h3 className="text-base font-extrabold text-slate-900">{t("common.error")}</h3>
+          <h3 className="text-base font-extrabold text-slate-900">
+            {t("common.error")}
+          </h3>
           <p className="mt-2 text-sm font-semibold text-slate-700">{error}</p>
           <Button className="mt-4" onClick={() => void loadWallets()}>
             {t("common.retry")}
@@ -519,15 +774,19 @@ export function WalletsPage() {
                 <WalletCards aria-hidden="true" size={26} strokeWidth={2.4} />
               </div>
               <h4 className="mt-4 text-base font-extrabold text-slate-900">
-                {t("wallets.noArchivedWallets") || "Belum ada dompet yang diarsipkan"}
+                {t("wallets.noArchivedWallets") ||
+                  "Belum ada dompet yang diarsipkan"}
               </h4>
               <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-600">
-                {t("wallets.noArchivedWalletsDesc") || "Dompet yang Anda arsipkan akan tersimpan di sini dan dapat dipulihkan kapan saja."}
+                {t("wallets.noArchivedWalletsDesc") ||
+                  "Dompet yang Anda arsipkan akan tersimpan di sini dan dapat dipulihkan kapan saja."}
               </p>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-card">
-              <h4 className="text-base font-extrabold text-slate-900">{t("wallets.emptyTitle")}</h4>
+              <h4 className="text-base font-extrabold text-slate-900">
+                {t("wallets.emptyTitle")}
+              </h4>
               <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-600">
                 {t("wallets.emptyDesc")}
               </p>
@@ -541,13 +800,22 @@ export function WalletsPage() {
         {!loading
           ? groupedWallets.map((group) => (
               <div key={group.group} className="space-y-2">
-                <h4 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-500">{group.group}</h4>
+                <h4 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  {group.group}
+                </h4>
                 <div className="grid gap-2">
                   {group.wallets.map((wallet) => (
                     <WalletRow
                       key={wallet.id}
                       wallet={wallet}
-                      onRestore={wallet.is_archived ? () => setRestoringWallet(wallet) : undefined}
+                      onEdit={() => void handleStartEdit(wallet)}
+                      onAdjustBalance={() => setAdjustingWallet(wallet)}
+                      onArchive={() => setArchivingWallet(wallet)}
+                      onRestore={
+                        wallet.is_archived
+                          ? () => setRestoringWallet(wallet)
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -575,10 +843,57 @@ export function WalletsPage() {
         />
       ) : null}
 
+      {editingWallet ? (
+        <EditWalletModal
+          canEditInitialBalance={canEditInitialBalance}
+          wallet={editingWallet}
+          onClose={() => setEditingWallet(null)}
+          onSaved={() => {
+            setEditingWallet(null);
+            void loadWallets();
+          }}
+        />
+      ) : null}
+
+      {adjustingWallet ? (
+        <AdjustmentModal
+          currentBalance={
+            adjustingWallet.balance?.current_balance ??
+            adjustingWallet.initial_balance
+          }
+          wallet={adjustingWallet}
+          onClose={() => setAdjustingWallet(null)}
+          onSaved={() => {
+            setAdjustingWallet(null);
+            void loadWallets();
+          }}
+        />
+      ) : null}
+
+      {archivingWallet ? (
+        <ConfirmationDialog
+          confirmLabel={t("common.archive") || "Arsipkan"}
+          description={
+            t("wallets.archiveWalletConfirm") ||
+            "Apakah Anda yakin ingin mengarsipkan dompet ini? Riwayat transaksi dan saldo akan tetap tersimpan."
+          }
+          icon={Trash2}
+          isLoading={archivingLoading}
+          itemLabel={archivingWallet.name}
+          onCancel={() => setArchivingWallet(null)}
+          onConfirm={() => void handleConfirmArchive()}
+          title={t("wallets.archiveWallet") || "Arsipkan dompet ini?"}
+          tone="neutral"
+        />
+      ) : null}
+
       {restoringWallet ? (
         <ConfirmationDialog
           confirmLabel={t("wallets.restoreWallet") || "Pulihkan Dompet"}
-          description={t("wallets.restoreWalletConfirm") || "Pulihkan dompet ini ke daftar dompet aktif?"}
+          description={
+            t("wallets.restoreWalletConfirm") ||
+            "Pulihkan dompet ini ke daftar dompet aktif?"
+          }
           icon={RotateCcw}
           isLoading={restoringLoading}
           itemLabel={restoringWallet.name}

@@ -4,6 +4,7 @@ import {
   Calendar,
   CheckCircle2,
   CreditCard,
+  Edit3,
   History,
   Loader2,
   Plus,
@@ -21,6 +22,7 @@ import { CreateObligationModal } from "../components/subscriptions/CreateObligat
 import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -406,18 +408,38 @@ export function SubscriptionsPage() {
                     </span>
                   </div>
 
-                  {ob.status === "active" && ob.currentPayment && (
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPayingItem({ obligation: ob, payment: ob.currentPayment! });
-                      }}
-                      className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
-                    >
-                      <CheckCircle2 size={14} />
-                      {t("debts.pay") || "Bayar"}
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    {ob.status === "active" && ob.currentPayment && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPayingItem({ obligation: ob, payment: ob.currentPayment! });
+                        }}
+                        className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold"
+                      >
+                        <CheckCircle2 size={14} />
+                        {t("debts.pay") || "Bayar"}
+                      </Button>
+                    )}
+
+                    <EntityMoreActionsMenu
+                      triggerVariant="ghost"
+                      ariaLabel={`Opsi ${ob.name}`}
+                      items={[
+                        {
+                          label: t("debts.pay") || "Bayar",
+                          icon: CheckCircle2,
+                          hidden: !(ob.status === "active" && ob.currentPayment),
+                          onClick: () => setPayingItem({ obligation: ob, payment: ob.currentPayment! }),
+                        },
+                        {
+                          label: t("common.viewDetail") || "Lihat Detail",
+                          icon: History,
+                          onClick: () => navigate(`/subscriptions/${ob.id}`),
+                        },
+                      ]}
+                    />
+                  </div>
                 </div>
               </div>
             );
