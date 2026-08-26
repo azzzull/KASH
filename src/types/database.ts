@@ -562,6 +562,18 @@ export type Database = {
       };
     };
     Functions: {
+      delete_wallet_permanently: {
+        Args: {
+          p_wallet_id: string;
+        };
+        Returns: void;
+      };
+      delete_goal_if_empty: {
+        Args: {
+          p_goal_id: string;
+        };
+        Returns: void;
+      };
       update_investment_valuation: {
         Args: {
           p_wallet_id: string;
@@ -948,12 +960,7 @@ export type Database = {
           };
           Returns: undefined;
         };
-        delete_goal_if_empty: {
-          Args: {
-            p_goal_id: string;
-          };
-          Returns: undefined;
-        };
+
         remove_shared_savings_member: {
         Args: {
           p_shared_savings_id: string;

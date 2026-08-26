@@ -24,7 +24,6 @@ import { ContextualCreateAction } from "../components/ui/ContextualCreateAction"
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { HeaderArchiveButton } from "../components/ui/HeaderActionControls";
-import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -649,17 +648,7 @@ export function GoalsPage() {
 
   const createActionRef = useRef<HTMLDivElement>(null);
 
-  const tabOptions = useMemo(
-    () => [
-      { value: "active" as const, label: t("goals.activeGoals") || "Target Aktif" },
-      {
-        value: "archived" as const,
-        label: t("goals.archivedGoals") || "Target Diarsipkan",
-        count: archivedCount > 0 ? archivedCount : null,
-      },
-    ],
-    [t, archivedCount],
-  );
+
 
   const handleConfirmArchive = async () => {
     if (!archivingTarget) return;

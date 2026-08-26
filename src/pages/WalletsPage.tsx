@@ -83,12 +83,14 @@ function WalletRow({
   onAdjustBalance,
   onArchive,
   onRestore,
+  onDeletePermanently,
 }: {
   wallet: WalletWithBalance;
   onEdit?: () => void;
   onAdjustBalance?: () => void;
   onArchive?: () => void;
   onRestore?: () => void;
+  onDeletePermanently?: () => void;
 }) {
   const { t, formatCurrency } = useI18n();
   const typeOption = getWalletTypeOption(wallet.wallet_type);
@@ -195,6 +197,14 @@ function WalletRow({
               separatorBefore: true,
               onClick:
                 (wallet.is_archived ? onRestore : onArchive) ?? (() => {}),
+            },
+            {
+              label: t("wallets.deleteWalletPermanently") || "Hapus Permanen",
+              icon: Trash2,
+              isDestructive: true,
+              hidden: !wallet.is_archived || !onDeletePermanently,
+              separatorBefore: true,
+              onClick: onDeletePermanently ?? (() => {}),
             },
           ]}
         />
@@ -478,6 +488,10 @@ export function WalletsPage() {
   const [restoringWallet, setRestoringWallet] =
     useState<WalletWithBalance | null>(null);
   const [restoringLoading, setRestoringLoading] = useState(false);
+  const [deletingPermanentlyWallet, setDeletingPermanentlyWallet] =
+    useState<WalletWithBalance | null>(null);
+  const [deletingPermanentlyLoading, setDeletingPermanentlyLoading] =
+    useState(false);
 
   const loadWallets = async () => {
     setLoading(true);
@@ -647,6 +661,25 @@ export function WalletsPage() {
     setRestoringLoading(false);
   };
 
+  const handleConfirmDeletePermanently = async () => {
+    if (!deletingPermanentlyWallet) return;
+    setDeletingPermanentlyLoading(true);
+    try {
+      const { deleteWalletPermanently } = await import("../lib/wallets");
+      const { error: delError } = await deleteWalletPermanently(deletingPermanentlyWallet.id);
+      if (delError) {
+        setError(delError.message || "Gagal menghapus dompet permanen.");
+      } else {
+        emitTransactionSaved();
+        setDeletingPermanentlyWallet(null);
+        void loadWallets();
+      }
+    } catch (e: any) {
+      setError(e?.message || "Gagal menghapus dompet secara permanen.");
+    }
+    setDeletingPermanentlyLoading(false);
+  };
+
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
       <PageHeader
@@ -806,15 +839,16 @@ export function WalletsPage() {
                   {group.wallets.map((wallet) => (
                     <WalletRow
                       key={wallet.id}
-                      wallet={wallet}
-                      onEdit={() => void handleStartEdit(wallet)}
                       onAdjustBalance={() => setAdjustingWallet(wallet)}
                       onArchive={() => setArchivingWallet(wallet)}
+                      onEdit={() => void handleStartEdit(wallet)}
                       onRestore={
                         wallet.is_archived
                           ? () => setRestoringWallet(wallet)
                           : undefined
                       }
+                      onDeletePermanently={() => setDeletingPermanentlyWallet(wallet)}
+                      wallet={wallet}
                     />
                   ))}
                 </div>
@@ -900,6 +934,23 @@ export function WalletsPage() {
           onConfirm={() => void handleConfirmRestore()}
           title={t("wallets.restoreWallet") || "Pulihkan dompet ini?"}
           tone="neutral"
+        />
+      ) : null}
+
+      {deletingPermanentlyWallet ? (
+        <ConfirmationDialog
+          confirmLabel={t("wallets.deleteWalletPermanently") || "Hapus Permanen"}
+          description={
+            t("wallets.hardDeleteExplanation") ||
+            "Tindakan ini tidak dapat dibatalkan. Dompet ini akan dihapus secara permanen dari sistem."
+          }
+          icon={Trash2}
+          isLoading={deletingPermanentlyLoading}
+          itemLabel={deletingPermanentlyWallet.name}
+          onCancel={() => setDeletingPermanentlyWallet(null)}
+          onConfirm={() => void handleConfirmDeletePermanently()}
+          title={t("wallets.deleteWalletPermanentlyConfirm") || "Hapus Dompet Permanen?"}
+          tone="danger"
         />
       ) : null}
     </div>

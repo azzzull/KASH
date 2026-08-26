@@ -28,7 +28,7 @@ import {
   archiveWallet,
   restoreWallet,
   deleteInvestmentActivity,
-  deleteWallet,
+  deleteWalletPermanently,
   getInvestmentActivities,
   getInvestmentValuationHistory,
   getWalletById,
@@ -433,8 +433,8 @@ export function WalletDetailPage() {
 
     setDeleting(true);
     const result =
-      transactionCount === 0
-        ? await deleteWallet(wallet.id)
+      transactionCount === 0 && linkedGoalCount === 0
+        ? await deleteWalletPermanently(wallet.id)
         : await archiveWallet(wallet.id);
 
     if (result.error) {

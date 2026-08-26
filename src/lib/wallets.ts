@@ -232,6 +232,10 @@ export async function deleteWallet(id: string) {
   return supabase.from("wallets").delete().eq("id", id).select("*").single();
 }
 
+export async function deleteWalletPermanently(id: string) {
+  return supabase.rpc("delete_wallet_permanently", { p_wallet_id: id });
+}
+
 export async function recordInvestmentValuation(input: {
   walletId: string;
   marketValue: number | string;

@@ -508,6 +508,8 @@ export const en = {
         "This wallet has transaction history. KASH will archive it to maintain historical integrity.",
     "wallets.deleteWalletConfirm": "Delete this wallet?",
     "wallets.archiveWalletConfirm": "Archive this wallet?",
+    "wallets.deleteWalletPermanently": "Delete Permanently",
+    "wallets.deleteWalletPermanentlyConfirm": "Permanently Delete Wallet?",
 
     // Goals
     "goals.title": "Financial Goals",

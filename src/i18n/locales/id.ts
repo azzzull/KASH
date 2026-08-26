@@ -516,6 +516,8 @@ export const id = {
         "Dompet ini memiliki riwayat transaksi keuangan, sehingga KASH akan menyembunyikannya dari daftar aktif tanpa menghapus catatan historis.",
     "wallets.deleteWalletConfirm": "Hapus dompet ini?",
     "wallets.archiveWalletConfirm": "Arsipkan dompet ini?",
+    "wallets.deleteWalletPermanently": "Hapus Permanen",
+    "wallets.deleteWalletPermanentlyConfirm": "Hapus Dompet Permanen?",
 
     // Goals
     "goals.title": "Target Keuangan",
