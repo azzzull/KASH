@@ -1,5 +1,6 @@
 import {
   Archive,
+  ChevronLeft,
   CreditCard,
   Edit3,
   Loader2,
@@ -649,10 +650,26 @@ export function WalletsPage() {
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
       <PageHeader
-        eyebrow={t("wallets.title")}
-        icon={WalletCards}
-        title={t("wallets.title")}
-        description={t("wallets.subtitle")}
+        breadcrumb={
+          activeTab === "archived" ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab("active")}
+              className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-kash-emerald transition focus:outline-none"
+            >
+              <ChevronLeft aria-hidden="true" size={15} />
+              <span>{t("wallets.activeWallets") || "Dompet Aktif"}</span>
+            </button>
+          ) : null
+        }
+        eyebrow={activeTab === "archived" ? undefined : (t("wallets.title") || "Dompet")}
+        icon={activeTab === "archived" ? undefined : WalletCards}
+        title={
+          activeTab === "archived"
+            ? t("wallets.archivedWallets") || "Dompet Diarsipkan"
+            : t("wallets.title") || "Dompet"
+        }
+        description={activeTab === "archived" ? undefined : t("wallets.subtitle")}
         actions={
           <div className="flex items-center gap-2">
             <HeaderArchiveButton
@@ -669,35 +686,17 @@ export function WalletsPage() {
                   : t("wallets.archivedWallets") || "Dompet Diarsipkan"
               }
             />
-            <div ref={createActionRef} className="hidden sm:block">
-              <Button onClick={() => setShowAddWallet(true)}>
-                <Plus aria-hidden="true" size={18} />
-                {t("wallets.create")}
-              </Button>
-            </div>
+            {activeTab === "active" && (
+              <div ref={createActionRef} className="hidden sm:block">
+                <Button onClick={() => setShowAddWallet(true)}>
+                  <Plus aria-hidden="true" size={18} />
+                  {t("wallets.create")}
+                </Button>
+              </div>
+            )}
           </div>
         }
       />
-
-      {/* Archived Banner if viewing archived wallets */}
-      {activeTab === "archived" && (
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-100/90 px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs">
-          <div className="flex items-center gap-2">
-            <WalletCards size={16} className="text-slate-500" />
-            <span>
-              {t("wallets.archivedWallets") || "Dompet Diarsipkan"} (
-              {wallets.length})
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab("active")}
-            className="font-extrabold text-kash-emerald hover:text-kash-emeraldDark hover:underline transition"
-          >
-            ← {t("common.backToActive") || "Kembali ke Dompet Aktif"}
-          </button>
-        </div>
-      )}
 
       {/* Hero Header Summary */}
       <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">

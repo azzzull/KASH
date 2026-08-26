@@ -2,6 +2,7 @@ import {
   BadgeDollarSign,
   CalendarDays,
   Car,
+  ChevronLeft,
   Crosshair,
   Edit3,
   Home,
@@ -730,10 +731,22 @@ export function GoalsPage() {
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
       <PageHeader
-        eyebrow={t("goals.title")}
-        icon={Crosshair}
-        title={t("goals.title")}
-        description={t("goals.subtitle")}
+        breadcrumb={
+          activeTab === "archived" ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab("active")}
+              className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-kash-emerald transition focus:outline-none"
+            >
+              <ChevronLeft aria-hidden="true" size={15} />
+              <span>{t("goals.activeGoals") || "Target Aktif"}</span>
+            </button>
+          ) : null
+        }
+        eyebrow={activeTab === "archived" ? undefined : (t("goals.title") || "Target")}
+        icon={activeTab === "archived" ? undefined : Crosshair}
+        title={activeTab === "archived" ? (t("goals.archivedGoals") || "Target Diarsipkan") : (t("goals.title") || "Target")}
+        description={activeTab === "archived" ? undefined : t("goals.subtitle")}
         actions={
           <div className="flex items-center gap-2">
             <HeaderArchiveButton
@@ -742,32 +755,17 @@ export function GoalsPage() {
               onClick={() => setActiveTab((curr) => (curr === "archived" ? "active" : "archived"))}
               label={activeTab === "archived" ? (t("goals.activeGoals") || "Target Aktif") : (t("goals.archivedGoals") || "Target Diarsipkan")}
             />
-            <div ref={createActionRef} className="hidden sm:block">
-              <Button onClick={() => setShowCreateGoal(true)}>
-                <Plus aria-hidden="true" size={18} />
-                {t("goals.create")}
-              </Button>
-            </div>
+            {activeTab === "active" && (
+              <div ref={createActionRef} className="hidden sm:block">
+                <Button onClick={() => setShowCreateGoal(true)}>
+                  <Plus aria-hidden="true" size={18} />
+                  {t("goals.create")}
+                </Button>
+              </div>
+            )}
           </div>
         }
       />
-
-      {/* Archived Banner if viewing archived goals */}
-      {activeTab === "archived" && (
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-100/90 px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs">
-          <div className="flex items-center gap-2">
-            <PiggyBank size={16} className="text-slate-500" />
-            <span>{t("goals.archivedGoals") || "Target Diarsipkan"} ({goals.length})</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab("active")}
-            className="font-extrabold text-kash-emerald hover:text-kash-emeraldDark hover:underline transition"
-          >
-            ← {t("common.backToActive") || "Kembali ke Target Aktif"}
-          </button>
-        </div>
-      )}
 
       {/* Hero Summary Surface */}
       <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
