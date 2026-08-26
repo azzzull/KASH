@@ -400,7 +400,7 @@ function TransactionFormModal({
   };
   const [localCategories, setLocalCategories] = useState(categories);
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
-  const duplicateSourceWalletId = wallets.some((wallet) => wallet.id === transaction.wallet_id) ? transaction.wallet_id : wallets[0]?.id ?? "";
+  const duplicateSourceWalletId = wallets.some((wallet) => wallet.id === transaction.wallet_id) ? (transaction.wallet_id || "") : wallets[0]?.id ?? "";
   const duplicateDestinationWalletId =
     transaction.destination_wallet_id && wallets.some((wallet) => wallet.id === transaction.destination_wallet_id)
       ? transaction.destination_wallet_id
@@ -412,8 +412,8 @@ function TransactionFormModal({
   const [amount, setAmount] = useState(() =>
     transaction.type === "adjustment" ? formatSignedMoneyInput(String(transaction.amount)) : formatDatabaseMoneyDigits(transaction.amount),
   );
-  const [walletId, setWalletId] = useState(mode === "duplicate" ? duplicateSourceWalletId : transaction.wallet_id);
-  const [destinationWalletId, setDestinationWalletId] = useState(mode === "duplicate" ? duplicateDestinationWalletId : transaction.destination_wallet_id ?? "");
+  const [walletId, setWalletId] = useState<string>(mode === "duplicate" ? duplicateSourceWalletId : (transaction.wallet_id || ""));
+  const [destinationWalletId, setDestinationWalletId] = useState<string>(mode === "duplicate" ? duplicateDestinationWalletId : transaction.destination_wallet_id ?? "");
   const [categoryId, setCategoryId] = useState(mode === "duplicate" ? duplicateCategoryId : transaction.category_id ?? "");
   const [envelopeId, setEnvelopeId] = useState(transaction.envelope_id ?? "");
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);

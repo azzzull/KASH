@@ -1,6 +1,6 @@
 import type { Category, CategoryType, Envelope, Transaction, TransactionStatus, TransactionType, Wallet } from "../types/domain";
 import type { Database } from "../types/database";
-import { addMoneyValues, isMoneyGreaterThan } from "./money";
+import { addMoneyValues, isMoneyGreaterThan, toNumber } from "./money";
 import { toUtcIsoString } from "./datetime";
 import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
@@ -150,7 +150,7 @@ function attachTransactionMeta(
     category: transaction.category_id ? categoriesById.get(transaction.category_id) ?? null : null,
     envelope: transaction.envelope_id ? envelopesById.get(transaction.envelope_id) ?? null : null,
     destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
-    wallet: walletsById.get(transaction.wallet_id) ?? null,
+    wallet: walletsById.get(transaction.wallet_id || "") ?? null,
   }));
 }
 
@@ -248,6 +248,43 @@ export async function createExpense(input: CategoryTransactionInput) {
     wallet_id: input.walletId,
     space_id: input.spaceId,
   });
+}
+
+export async function createCrossSpaceExpense(input: CategoryTransactionInput & { personalWalletId: string; personalSpaceId: string; managedSpaceId: string }) {
+  const userId = await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc("record_cross_space_expense" as any, {
+    p_managed_space_id: input.managedSpaceId,
+    p_personal_space_id: input.personalSpaceId,
+    p_amount: toNumber(input.amount),
+    p_personal_wallet_id: input.personalWalletId,
+    p_managed_category_id: input.categoryId,
+    p_event_date: toUtcIsoString(input.transactionDate),
+    p_note: input.note ?? null,
+  });
+  if (error) throw error;
+  return { data, error: null };
+}
+
+export async function recordCrossSpaceSettlement(input: {
+  eventId: string;
+  amount: number;
+  managedWalletId: string;
+  personalWalletId: string;
+  settlementDate: string;
+  note?: string;
+}) {
+  const userId = await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc("record_cross_space_settlement" as any, {
+    p_client_request_id: crypto.randomUUID(),
+    p_event_id: input.eventId,
+    p_amount: input.amount,
+    p_managed_wallet_id: input.managedWalletId,
+    p_personal_wallet_id: input.personalWalletId,
+    p_settlement_date: input.settlementDate,
+    p_note: input.note ?? null,
+  });
+  if (error) throw error;
+  return { data, error: null };
 }
 
 export async function createTransfer(input: TransferInput) {

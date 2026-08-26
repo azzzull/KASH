@@ -12,8 +12,9 @@ import { SelectField } from "../ui/SelectField";
 import { useI18n } from "../../i18n";
 import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
+import { getPersonalSpace, getActiveSpaceId } from "../../lib/spaces";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
-import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../../lib/transactions";
+import { createExpense, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense } from "../../lib/transactions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
@@ -84,6 +85,9 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [paymentSource, setPaymentSource] = useState<"managed" | "personal">("managed");
+  const [personalWallets, setPersonalWallets] = useState<WalletWithBalance[]>([]);
+  const [personalSpaceId, setPersonalSpaceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLElement>(null);
 
@@ -91,10 +95,11 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setLoading(true);
     setError(null);
 
-    const [walletResult, categoryResult, envelopeResult] = await Promise.all([
+    const [walletResult, categoryResult, envelopeResult, personalSpaceResult] = await Promise.all([
       getWallets(),
       getActiveCategories(),
       getEnvelopes(),
+      terms.isManaged ? getPersonalSpace() : Promise.resolve({ data: null, error: null })
     ]);
 
     if (walletResult.error || categoryResult.error || !walletResult.data || !categoryResult.data) {
@@ -106,6 +111,15 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setWallets(walletResult.data);
     setCategories(categoryResult.data);
     setEnvelopes(envelopeResult.data ?? []);
+
+    if (terms.isManaged && personalSpaceResult.data) {
+      setPersonalSpaceId(personalSpaceResult.data.id);
+      const personalWalletsResult = await getWallets(personalSpaceResult.data.id);
+      if (personalWalletsResult.data) {
+        setPersonalWallets(personalWalletsResult.data);
+      }
+    }
+
     setLoading(false);
   };
 
@@ -118,7 +132,8 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     modalRef.current?.scrollTo({ behavior: "smooth", top: 0 });
   }, [error]);
 
-  const selectedWallet = wallets.find((wallet) => wallet.id === walletId) ?? null;
+  const activeWallets = paymentSource === "personal" ? personalWallets : wallets;
+  const selectedWallet = activeWallets.find((wallet) => wallet.id === walletId) ?? null;
   const destinationWallet = wallets.find((wallet) => wallet.id === destinationWalletId) ?? null;
   const filteredCategories = useMemo(
     () => filterCategoriesByType(categories, mode === "income" ? "income" : "expense"),
@@ -183,7 +198,17 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             walletId,
           })
           : mode === "expense"
-            ? await createExpense({
+            ? (paymentSource === "personal" && personalSpaceId) ? await createCrossSpaceExpense({
+              amount: amountDigits,
+              categoryId,
+              note: noteValue,
+              title: noteValue ?? categoryName,
+              transactionDate,
+              personalWalletId: walletId,
+              personalSpaceId,
+              managedSpaceId: getActiveSpaceId()!,
+              walletId,
+            }) : await createExpense({
               amount: amountDigits,
               categoryId,
               envelopeId: envelopeId || null,
@@ -326,6 +351,16 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </SelectField>
             ) : null}
 
+            {mode === "expense" && terms.isManaged ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">{t("transactions.paymentSource") || "Sumber Dana"}</label>
+                <div className="flex rounded-lg bg-slate-100 p-1">
+                  <button type="button" onClick={() => { setPaymentSource("managed"); setWalletId(""); }} className={`flex-1 rounded-md py-1.5 text-xs font-bold transition ${paymentSource === "managed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dana Managed</button>
+                  <button type="button" onClick={() => { setPaymentSource("personal"); setWalletId(""); }} className={`flex-1 rounded-md py-1.5 text-xs font-bold transition ${paymentSource === "personal" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dana Pribadi</button>
+                </div>
+              </div>
+            ) : null}
+
             <SelectField
               id={`${mode}-wallet`}
               label={
@@ -333,13 +368,14 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                   ? t("transactions.fromWallet") || "Dari Dompet"
                   : mode === "income" && terms.isManaged
                   ? t("transactions.fundingWalletDestination") || "Pilih Dompet Penerima Dana"
+                  : paymentSource === "personal" ? t("transactions.personalWallet") || "Pilih Dompet Pribadi"
                   : t("wallets.title") || "Dompet"
               }
               onChange={(event) => setWalletId(event.target.value)}
               value={walletId}
             >
               <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
-              {wallets.map((wallet) => (
+              {activeWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
                   {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
                 </option>

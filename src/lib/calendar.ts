@@ -82,7 +82,7 @@ function attachTransactionMeta(transactions: Transaction[], wallets: Wallet[], c
     ...transaction,
     category: transaction.category_id ? categoriesById.get(transaction.category_id) ?? null : null,
     destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
-    wallet: walletsById.get(transaction.wallet_id) ?? null,
+    wallet: walletsById.get(transaction.wallet_id || "") ?? null,
   }));
 }
 

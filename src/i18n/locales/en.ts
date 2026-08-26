@@ -149,6 +149,9 @@ export const en = {
     "transactions.allStatus": "All Status",
     "transactions.completed": "Completed",
     "transactions.voided": "Voided",
+    "transactions.paidWithPersonalFunds": "Paid with personal funds",
+    "transactions.paymentSource": "Payment Source",
+    "transactions.personalWallet": "Select Personal Wallet",
     "transactions.filterTitle": "Filter Transactions",
     "transactions.filterSubtitle":
         "Narrow your cash book by date, wallet, category, or status.",
@@ -1457,8 +1460,11 @@ export const en = {
         "Realization: {{spent}} / {{limit}} ({{percent}}%)",
     "budgets.viewBudgetDetail": "View Budget Details",
     "budgets.monthlyBudgetTarget": "Monthly Budget Target",
+    "budgets.deleteConfirmDesc":
+        "This action cannot be undone. This budget target will be deleted from the system.",
     "budgets.totalAllocated": "Total Allocated",
     "budgets.actualCashOutflow": "Actual Cash Outflow",
+    "budgets.economicRealization": "Economic Realization",
     "budgets.netRemainingAllocation": "Net Remaining Allocation",
     "budgets.actualCashBreakdown": "Actual Cash Outflow Breakdown",
     "budgets.debtPayment": "Debt Payment",

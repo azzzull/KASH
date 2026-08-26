@@ -345,7 +345,7 @@ function walletInitialBalanceAt(wallet: Wallet, cutoffExclusive: Date) {
 function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: Set<string>) {
   if (transaction.status === "void") return 0;
 
-  const sourceIncluded = includedWalletIds.has(transaction.wallet_id);
+  const sourceIncluded = includedWalletIds.has(transaction.wallet_id || "");
   const destinationIncluded = transaction.destination_wallet_id ? includedWalletIds.has(transaction.destination_wallet_id) : false;
 
   if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;
@@ -430,7 +430,7 @@ function buildDashboardGoals(goals: Goal[], progressRows: GoalProgress[]) {
 }
 
 function describeTransaction(transaction: Transaction, walletsById: Map<string, Wallet>, categoriesById: Map<string, Category>) {
-  const sourceWallet = walletsById.get(transaction.wallet_id);
+  const sourceWallet = walletsById.get(transaction.wallet_id || "");
   const destinationWallet = transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) : null;
   const category = transaction.category_id ? categoriesById.get(transaction.category_id) : null;
   const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(

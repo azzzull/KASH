@@ -16,6 +16,8 @@ export type TransactionRowData = {
   transaction_date: string;
   transfer_fee?: string | number | null;
   type: TransactionType;
+  wallet_id?: string | null;
+  cross_space_role?: "personal_cash_out" | "managed_spending" | null;
   wallet?: { name?: string | null } | null;
 };
 
@@ -56,7 +58,7 @@ export function TransactionRow({
       ? adjustmentTitle(transaction.related_entity_type, t)
       : transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori"));
   const categoryLabel = transaction.type === "transfer" ? (t("transactions.transfer") || "Transfer") : transaction.type === "adjustment" ? adjustmentCategory(transaction.related_entity_type, t) : transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
-  const walletLabel = transaction.type === "transfer" ? `${transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} -> ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}` : transaction.wallet?.name ?? (t("wallets.title") || "Dompet");
+  const walletLabel = transaction.type === "transfer" ? `${transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} -> ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}` : transaction.wallet_id === null && transaction.cross_space_role === "managed_spending" ? (t("transactions.paidWithPersonalFunds") || "Dibayar dengan dana pribadi") : transaction.wallet?.name ?? (t("wallets.title") || "Dompet");
   const displayAmount = hideAmounts ? "••••••" : transaction.type === "transfer" ? formatCurrency(amount, currency) : transaction.type === "adjustment" ? `${amount > 0 ? "+" : ""}${formatCurrency(amount, currency)}` : formatCurrency(transaction.type === "income" ? amount : -amount, currency);
   const rowClass = `kash-activity-row block w-full text-left transition ${isSelected ? "bg-kash-selected/60" : ""} ${isVoid ? "opacity-60" : ""}`;
   const padding = density === "compact" ? "px-1 py-2" : "px-1 py-2.5";

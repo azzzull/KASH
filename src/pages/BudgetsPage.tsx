@@ -205,10 +205,10 @@ export function BudgetsPage() {
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold text-white/60 uppercase tracking-wide">
-                {t("budgets.actualCashOutflow") || "Realisasi Kas Keluar"} / {t("budgets.totalAllocated") || "Total Dialokasikan"}
+                {t("budgets.economicRealization") || "Realisasi Ekonomi"} / {t("budgets.totalAllocated") || "Total Dialokasikan"}
               </p>
               <p className="mt-0.5 break-words text-2xl font-extrabold text-white sm:text-3xl">
-                {formatCurrency(overview.total_actual_cash_outflow)}{" "}
+                {formatCurrency(overview.total_economic_realization)}{" "}
                 <span className="text-lg font-semibold text-white/70">
                   / {formatCurrency(overview.total_allocated)}
                 </span>

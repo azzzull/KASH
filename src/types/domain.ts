@@ -114,7 +114,7 @@ export type Transaction = {
   space_id?: string;
   type: TransactionType;
   amount: MoneyAmount;
-  wallet_id: string;
+  wallet_id: string | null;
   category_id: string | null;
   envelope_id: string | null;
   destination_wallet_id: string | null;
@@ -126,6 +126,8 @@ export type Transaction = {
   status: TransactionStatus;
   related_entity_type: string | null;
   related_entity_id: string | null;
+  cross_space_event_id?: string | null;
+  cross_space_role?: "personal_cash_out" | "managed_spending" | null;
   created_at: string;
   updated_at: string;
 };
@@ -248,6 +250,8 @@ export type Debt = {
   note: string | null;
   status: DebtStatus;
   category_id?: string | null;
+  cross_space_event_id?: string | null;
+  cross_space_role?: "personal_receivable" | "managed_payable" | null;
   created_at: string;
   updated_at: string;
 };
@@ -263,6 +267,8 @@ export type DebtPayment = {
   wallet_id: string | null;
   transaction_id: string | null;
   note: string | null;
+  cross_space_settlement_id?: string | null;
+  cross_space_role?: "personal_receivable_collection" | "managed_payable_payment" | null;
   created_at: string;
 };
 
@@ -292,6 +298,8 @@ export type DebtProgress = {
   total_paid: MoneyAmount;
   remaining_amount: MoneyAmount;
   percentage: MoneyAmount;
+  cross_space_event_id?: string | null;
+  cross_space_role?: "personal_receivable" | "managed_payable" | null;
 };
 
 export type CounterpartySummary = {
@@ -473,6 +481,7 @@ export type MonthlyBudgetOverview = {
   actual_debt_payments: MoneyAmount;
   actual_goal_contributions: MoneyAmount;
   total_actual_cash_outflow: MoneyAmount;
+  total_economic_realization: MoneyAmount;
   remaining_allocation: MoneyAmount;
   overall_usage_percentage: number;
   budget_count: number;

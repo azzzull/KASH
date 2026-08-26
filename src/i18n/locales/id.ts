@@ -149,6 +149,9 @@ export const id = {
     "transactions.allStatus": "Semua Status",
     "transactions.completed": "Selesai",
     "transactions.voided": "Dibatalkan",
+    "transactions.paidWithPersonalFunds": "Dibayar dengan dana pribadi",
+    "transactions.paymentSource": "Sumber Dana",
+    "transactions.personalWallet": "Pilih Dompet Pribadi",
     "transactions.filterTitle": "Filter Transaksi",
     "transactions.filterSubtitle":
         "Persempit buku kas berdasarkan tanggal, dompet, kategori, atau status.",
@@ -1465,8 +1468,11 @@ export const id = {
         "Realisasi: {{spent}} / {{limit}} ({{percent}}%)",
     "budgets.viewBudgetDetail": "Lihat Detail Budget",
     "budgets.monthlyBudgetTarget": "Target Budget Bulanan",
+    "budgets.deleteConfirmDesc":
+        "Tindakan ini tidak dapat dibatalkan. Target budget ini akan dihapus dari sistem.",
     "budgets.totalAllocated": "Total Dialokasikan",
     "budgets.actualCashOutflow": "Realisasi Kas Keluar",
+    "budgets.economicRealization": "Realisasi Ekonomi",
     "budgets.netRemainingAllocation": "Sisa Alokasi Bersih",
     "budgets.actualCashBreakdown": "Rincian Realisasi Kas Keluar",
     "budgets.debtPayment": "Pembayaran Utang",

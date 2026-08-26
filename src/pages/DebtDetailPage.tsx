@@ -51,6 +51,8 @@ import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } fr
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
 import type { Counterparty, Debt, DebtProgress, DebtType, PaymentMode } from "../types/domain";
 import { SettlementModal } from "./DebtsPage";
+import { getPersonalSpace } from "../lib/spaces";
+import { recordCrossSpaceSettlement } from "../lib/transactions";
 
 type ActiveTab = "active" | "settled" | "history";
 
@@ -1446,6 +1448,202 @@ function ItemSettlementModal({
             <Button disabled={saving} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
               {isDebt ? (t("debts.confirmPayThisItem") || "Konfirmasi Pembayaran Item Ini") : (t("debts.confirmCollectThisItem") || "Konfirmasi Penerimaan Item Ini")}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
+
+function CrossSpaceItemSettlementModal({
+  item,
+  counterparty,
+  onClose,
+  onSaved,
+}: {
+  item: DebtProgress;
+  counterparty: Counterparty;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t, formatCurrency } = useI18n();
+  const remaining = toNumber(item.remaining_amount);
+  const [amount, setAmount] = useState(() => formatMoneyDigits(remaining.toString()));
+  const [managedWalletId, setManagedWalletId] = useState("");
+  const [personalWalletId, setPersonalWalletId] = useState("");
+  
+  const [paymentDate, setPaymentDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  });
+  const [note, setNote] = useState("");
+  const [managedWallets, setManagedWallets] = useState<WalletWithBalance[]>([]);
+  const [personalWallets, setPersonalWallets] = useState<WalletWithBalance[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchWallets = async () => {
+      const currentSpaceWalletsRes = await getWallets();
+      const personalSpaceRes = await getPersonalSpace();
+      
+      if (personalSpaceRes.data) {
+         const pWalletsRes = await getWallets(personalSpaceRes.data.id);
+         setPersonalWallets(pWalletsRes.data ?? []);
+      }
+      setManagedWallets(currentSpaceWalletsRes.data ?? []);
+    };
+    void fetchWallets();
+  }, []);
+
+  const parsedAmount = toNumber(parseMoneyInputDigits(amount));
+  const remainingAfterPayment = Math.max(0, remaining - parsedAmount);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (parsedAmount <= 0) {
+      setError(t("debts.amountGreaterThanZero") || "Nominal pelunasan harus lebih besar dari 0.");
+      return;
+    }
+    if (parsedAmount > remaining) {
+      setError(t("debts.amountExceedsItemBalance", { remaining: formatCurrency(remaining, "IDR") }) || `Nominal tidak boleh melebihi sisa tagihan item (${formatCurrency(remaining, "IDR")}).`);
+      return;
+    }
+    if (!managedWalletId) {
+      setError("Pilih dompet Managed.");
+      return;
+    }
+    if (!personalWalletId) {
+      setError("Pilih dompet Pribadi.");
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await recordCrossSpaceSettlement({
+        eventId: item.cross_space_event_id!,
+        amount: parsedAmount,
+        managedWalletId,
+        personalWalletId,
+        settlementDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
+        note: note.trim() || undefined,
+      });
+
+      onSaved();
+    } catch (err: any) {
+      setError(err?.message ?? (t("common.errorOccurred") || "Terjadi kesalahan tidak terduga."));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="lg"
+      title={
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-black uppercase text-purple-700">
+              Settlement Cross-Space
+            </span>
+          </div>
+          <h2 className="mt-1 text-xl font-extrabold text-slate-900">
+            {item.title}
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-slate-700">
+            {t("debts.remainingItemBill") || "Sisa Tagihan Item"}:{" "}
+            <span className="font-bold text-slate-900">{formatCurrency(remaining, "IDR")}</span>
+          </p>
+        </div>
+      }
+    >
+      <div>
+        {error ? (
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          <div className="w-full max-w-full min-w-0">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-bold text-slate-900" htmlFor="cross-space-amount">
+                {t("debts.settlementAmountLabel") || "Nominal Pelunasan"} *
+              </label>
+              <button
+                type="button"
+                onClick={() => setAmount(formatMoneyDigits(remaining.toString()))}
+                className="text-xs font-bold text-kash-emerald transition hover:text-kash-emeraldDark hover:underline"
+              >
+                {t("debts.payFull") || "Bayar Penuh"} ({formatCurrency(remaining, "IDR")})
+              </button>
+            </div>
+            <input
+              id="cross-space-amount"
+              inputMode="numeric"
+              type="text"
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(formatMoneyDigits(e.target.value))}
+              className="mt-2 block h-12 w-full max-w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-base font-semibold text-slate-900 transition placeholder:text-slate-600 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-[rgba(16,185,129,0.20)] md:text-sm"
+              required
+            />
+          </div>
+
+          <SelectField
+            id="cross-space-managed-wallet"
+            label="Pilih Dompet Pembayar (Managed) *"
+            value={managedWalletId}
+            onChange={(e) => setManagedWalletId(e.target.value)}
+            required
+          >
+            <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
+            {managedWallets.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})
+              </option>
+            ))}
+          </SelectField>
+          
+          <SelectField
+            id="cross-space-personal-wallet"
+            label="Pilih Dompet Penerima (Pribadi) *"
+            value={personalWalletId}
+            onChange={(e) => setPersonalWalletId(e.target.value)}
+            required
+          >
+            <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
+            {personalWallets.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})
+              </option>
+            ))}
+          </SelectField>
+
+          <DatePickerField
+            id="cross-space-date"
+            label={`${t("debts.settlementDateLabel") || "Tanggal & Waktu Pelunasan"} *`}
+            enableTime
+            value={paymentDate}
+            onChange={(val) => setPaymentDate(val)}
+          />
+
+          <FormField
+            id="cross-space-note"
+            label={t("debts.noteOptional") || "Catatan (Opsional)"}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+
+          <div className="mt-2">
+            <Button disabled={saving} type="submit">
+              {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
+              {t("debts.confirmPayThisItem") || "Konfirmasi Pembayaran Item Ini"}
             </Button>
           </div>
         </form>

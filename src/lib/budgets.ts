@@ -132,6 +132,7 @@ export async function getMonthlyBudgetOverview(periodStart?: string, spaceId?: s
   const actualDebtPayments = toNumber(row.actual_debt_payments ?? 0);
   const actualGoalContributions = toNumber(row.actual_goal_contributions ?? 0);
   const totalActualCashOutflow = toNumber(row.total_actual_cash_outflow ?? (actualExpenses + actualDebtPayments + actualGoalContributions));
+  const totalEconomicRealization = toNumber(row.total_economic_realization ?? totalActualCashOutflow);
   const remainingAllocation = toNumber(row.remaining_allocation ?? Math.max(totalAllocated - totalActualCashOutflow, 0));
 
   return {
@@ -145,6 +146,7 @@ export async function getMonthlyBudgetOverview(periodStart?: string, spaceId?: s
     actual_debt_payments: actualDebtPayments,
     actual_goal_contributions: actualGoalContributions,
     total_actual_cash_outflow: totalActualCashOutflow,
+    total_economic_realization: totalEconomicRealization,
     remaining_allocation: remainingAllocation,
     overall_usage_percentage: Number(row.overall_usage_percentage) || 0,
     budget_count: Number(row.budget_count ?? row.total_budgets_count) || 0,
@@ -478,7 +480,7 @@ export async function getBudgetMatchingTransactions(
 
       return (txs ?? []).map((t) => ({
         id: t.id,
-        title: t.type === "transfer" ? `Transfer ke ${(t as any).destination_wallet?.name || "Kantong"}` : t.title || "Pemasukan Tabungan",
+        title: t.type === "transfer" ? `Transfer ke ${(t as any).destination_wallet?.name || "Kantong"}` : t.title || "Alokasi Dana",
         amount: t.amount,
         type: t.type,
         transaction_date: t.transaction_date,

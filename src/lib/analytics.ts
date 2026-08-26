@@ -397,7 +397,7 @@ function walletInitialBalanceAt(wallet: Wallet, cutoffExclusive: Date) {
 function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: Set<string>) {
   if (transaction.status === "void") return 0;
 
-  const sourceIncluded = includedWalletIds.has(transaction.wallet_id);
+  const sourceIncluded = includedWalletIds.has(transaction.wallet_id || "");
   const destinationIncluded = transaction.destination_wallet_id ? includedWalletIds.has(transaction.destination_wallet_id) : false;
 
   if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;

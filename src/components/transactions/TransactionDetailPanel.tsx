@@ -73,7 +73,9 @@ export function transactionWalletLabel(transaction: TransactionWithMeta) {
   if (transaction.type === "transfer") {
     return `${transaction.wallet?.name ?? "Wallet"} -> ${transaction.destinationWallet?.name ?? "Wallet"}`;
   }
-
+  if (transaction.wallet_id === null && transaction.cross_space_role === "managed_spending") {
+    return "Paid with personal funds";
+  }
   return transaction.wallet?.name ?? "Wallet";
 }
 
@@ -228,7 +230,7 @@ export function TransactionDetailModal({
         <dl className="divide-y divide-slate-100 border-y border-slate-100">
           <DetailLine label={t("common.date") || "Tanggal"} value={dateLabel} />
           <DetailLine label={t("transactions.type") || "Tipe Transaksi"} value={terms.getTransactionTypeLabel(transaction.type)} />
-          <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
+          <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet_id === null && transaction.cross_space_role === "managed_spending" ? (t("transactions.paidWithPersonalFunds") || "Dibayar dengan dana pribadi") : transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
           {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
           {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}
           {transaction.envelope ? <DetailLine label={t("envelopes.title") || "Amplop"} value={transaction.envelope.name} /> : null}
