@@ -33,6 +33,7 @@ import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { SelectField } from "../components/ui/SelectField";
 import { useI18n } from "../i18n";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { getCategoryIcon } from "../lib/categoryMeta";
 import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../lib/transactions";
 import {
@@ -811,6 +812,7 @@ function AdvancedFilterContent({
 
 export function TransactionsPage() {
   const { t, formatDate, formatCurrency: formatLocalizedCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const [searchParams] = useSearchParams();
 
   const [activeMonth, setActiveMonth] = useState(() => {
@@ -856,8 +858,8 @@ export function TransactionsPage() {
 
   const typeOptions: Array<{ label: string; value: TransactionTypeFilter }> = [
     { label: t("common.all") || "Semua", value: "all" },
-    { label: t("transactions.income") || "Pemasukan", value: "income" },
-    { label: t("transactions.expense") || "Pengeluaran", value: "expense" },
+    { label: terms.isManaged ? terms.incomeLabel : (t("transactions.income") || "Pemasukan"), value: "income" },
+    { label: terms.isManaged ? terms.expenseLabel : (t("transactions.expense") || "Pengeluaran"), value: "expense" },
     { label: t("transactions.transfer") || "Transfer", value: "transfer" },
     { label: t("wallets.adjustment") || "Penyesuaian", value: "adjustment" },
   ];
@@ -1182,7 +1184,11 @@ export function TransactionsPage() {
               <ReceiptText className="mx-auto text-slate-400" size={32} strokeWidth={1.5} />
               <p className="mt-3 text-sm font-bold text-slate-800">{clearableFilters(filters) ? (t("transactions.noMatching") || "Tidak ada transaksi yang cocok.") : (t("transactions.emptyStateTitle") || "Belum ada transaksi.")}</p>
               <p className="mt-1 text-xs font-medium text-slate-500">
-                {clearableFilters(filters) ? (t("transactions.noMatchingDesc") || "Coba ubah kata kunci pencarian atau filter Anda.") : (t("transactions.emptyStateDesc") || "Tambah pemasukan atau pengeluaran pertama Anda.")}
+                {clearableFilters(filters)
+                  ? t("transactions.noMatchingDesc") || "Coba ubah kata kunci pencarian atau filter Anda."
+                  : terms.isManaged
+                  ? t("transactions.managedEmptyStateDesc") || "Tambah dana masuk atau pengeluaran pertama di space ini untuk mulai mencatat keuangan."
+                  : t("transactions.emptyStateDesc") || "Tambah pemasukan atau pengeluaran pertama Anda."}
               </p>
               {clearableFilters(filters) ? <Button className="mt-4" variant="secondary" size="sm" onClick={clearFilters}>{t("transactions.clearFilters") || "Hapus Filter"}</Button> : null}
             </div>

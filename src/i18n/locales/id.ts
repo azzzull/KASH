@@ -178,6 +178,17 @@ export const id = {
     "transactions.saveIncome": "Simpan Pemasukan",
     "transactions.newIncome": "Pemasukan Baru",
     "transactions.newTransfer": "Transfer Baru",
+    "transactions.managedIncome": "Dana Masuk",
+    "transactions.managedExpense": "Pengeluaran",
+    "transactions.saveFunding": "Simpan Dana Masuk",
+    "transactions.saveSpending": "Simpan Pengeluaran",
+    "transactions.newFunding": "Tambah Dana",
+    "transactions.newSpending": "Pengeluaran Baru",
+    "transactions.fundingCategory": "Kategori Dana Masuk",
+    "transactions.spendingCategory": "Kategori Pengeluaran",
+    "transactions.fundingWalletDestination": "Pilih Dompet Penerima Dana",
+    "transactions.managedEmptyStateDesc":
+        "Tambah dana masuk atau pengeluaran pertama di space ini untuk mulai mencatat keuangan.",
     "transactions.loadError": "Gagal memuat data dompet atau kategori.",
     "transactions.insufficientBalanceTransfer":
         "Saldo dompet asal tidak mencukupi untuk transfer nominal dan biaya ini.",
@@ -198,6 +209,9 @@ export const id = {
     "categories.selectCategory": "Pilih Kategori",
     "categories.create": "Buat Kategori",
     "categories.createNewOption": "+ Buat Kategori Baru...",
+    "categories.cancel": "Batal",
+    "categories.save": "Simpan Kategori",
+    "categories.createSuccess": "Kategori baru berhasil dibuat.",
     "envelopes.title": "Amplop",
     "envelopes.create": "Tambah Amplop",
     "envelopes.createNewOption": "+ Buat Amplop Baru",
@@ -221,6 +235,11 @@ export const id = {
     "quickAdd.incomeHelper": "Catat gaji / pemasukan lain",
     "quickAdd.transfer": "Transfer",
     "quickAdd.transferHelper": "Pindahkan uang antar dompet",
+    "quickAdd.managedIncome": "Tambah Dana",
+    "quickAdd.managedIncomeHelper": "Catat dana masuk atau alokasi saldo",
+    "quickAdd.managedExpense": "Tambah Pengeluaran",
+    "quickAdd.managedExpenseHelper": "Catat pengeluaran operasional / belanja",
+    "quickAdd.managedTransferHelper": "Pindahkan dana antar dompet di space ini",
     "quickAdd.reimbursable": "Pengeluaran Talangan",
     "quickAdd.reimbursableHelper":
         "Catat talangan kantor / orang lain yang akan diganti",
@@ -252,6 +271,7 @@ export const id = {
 
     // Dashboard
     "dashboard.title": "Berikut ringkasan keuangan Anda",
+    "dashboard.managedTitle": "Berikut ringkasan saldo kelolaan space ini",
     "dashboard.netWorth": "Kekayaan Bersih (Net Worth)",
     "dashboard.managedBalance": "Saldo Kelolaan",
     "dashboard.availableBalance": "Saldo Tersedia",
@@ -261,6 +281,17 @@ export const id = {
     "dashboard.managedExpense": "Pengeluaran Bulan Ini",
     "dashboard.netCashFlow": "Arus Kas Bersih",
     "dashboard.managedNetFlow": "Arus Bersih",
+    "dashboard.managedCashflow": "Dana Masuk vs Pengeluaran",
+    "dashboard.managedIncomeLabel": "Dana Masuk",
+    "dashboard.managedExpenseLabel": "Pengeluaran",
+    "dashboard.managedSpendingByCategory": "Pengeluaran per Kategori",
+    "dashboard.managedTotalExpense": "Total Pengeluaran",
+    "dashboard.managedNoCashflowDesc":
+        "Data dana masuk dan pengeluaran akan tampil di sini seiring pencatatan transaksi.",
+    "dashboard.managedNoSpendingDesc":
+        "Catat transaksi pengeluaran untuk melihat rincian kategori di space ini.",
+    "dashboard.managedNoTransactionsDesc":
+        "Catat dana masuk atau pengeluaran pertama di space ini.",
     "dashboard.transferFees": "Biaya Transfer",
     "dashboard.recentTransactions": "Transaksi Terakhir",
     "dashboard.activeDebts": "Utang Aktif",

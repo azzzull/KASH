@@ -7,6 +7,7 @@ import {
 import type { QuickTransactionMode } from "../transactions/TransactionModal";
 import { Modal } from "../ui/Modal";
 import { useI18n } from "../../i18n";
+import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 
 export type QuickAddMode =
   | QuickTransactionMode
@@ -24,6 +25,7 @@ export function QuickAddMenu({
   onSelect,
 }: QuickAddMenuProps) {
   const { t } = useI18n();
+  const terms = useSpaceTerminology();
 
   const actions: Array<{
     helper: string;
@@ -33,22 +35,28 @@ export function QuickAddMenu({
     tone: string;
   }> = [
     {
-      label: t("quickAdd.expense"),
-      helper: t("quickAdd.expenseHelper"),
+      label: terms.isManaged ? terms.addExpenseLabel : t("quickAdd.expense"),
+      helper: terms.isManaged
+        ? t("quickAdd.managedExpenseHelper")
+        : t("quickAdd.expenseHelper"),
       icon: ArrowDown,
       mode: "expense",
       tone: "text-kash-expense",
     },
     {
-      label: t("quickAdd.income"),
-      helper: t("quickAdd.incomeHelper"),
+      label: terms.isManaged ? terms.addIncomeLabel : t("quickAdd.income"),
+      helper: terms.isManaged
+        ? t("quickAdd.managedIncomeHelper")
+        : t("quickAdd.incomeHelper"),
       icon: ArrowUp,
       mode: "income",
       tone: "text-kash-income",
     },
     {
       label: t("quickAdd.transfer"),
-      helper: t("quickAdd.transferHelper"),
+      helper: terms.isManaged
+        ? t("quickAdd.managedTransferHelper")
+        : t("quickAdd.transferHelper"),
       icon: ArrowRightLeft,
       mode: "transfer",
       tone: "text-kash-transfer",

@@ -18,7 +18,7 @@ import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
 import type { Category, Envelope } from "../../types/domain";
-import { useActiveSpace } from "../../context/ActiveSpaceContext";
+import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 
 export type QuickTransactionMode = "expense" | "income" | "transfer";
 
@@ -26,20 +26,6 @@ type TransactionModalProps = {
   mode: QuickTransactionMode;
   onClose: () => void;
   onSaved?: () => void;
-};
-
-const modeCopy: Record<
-  QuickTransactionMode,
-  {
-    accent: string;
-    icon: typeof ArrowDown;
-    title: string;
-    submitLabel: string;
-  }
-> = {
-  expense: { accent: "text-kash-expense", icon: ArrowDown, submitLabel: "Save Expense", title: "New Expense" },
-  income: { accent: "text-kash-income", icon: ArrowUp, submitLabel: "Save Income", title: "New Income" },
-  transfer: { accent: "text-kash-transfer", icon: ArrowRightLeft, submitLabel: "Transfer", title: "Transfer" },
 };
 
 function isAmountError(error: string | null) {
@@ -50,8 +36,7 @@ function isAmountError(error: string | null) {
 
 export function TransactionModal({ mode, onClose, onSaved }: TransactionModalProps) {
   const { t, formatCurrency } = useI18n();
-  const { activeSpace } = useActiveSpace();
-  const isManaged = activeSpace?.space_type === "managed";
+  const terms = useSpaceTerminology();
 
   const modeCopy: Record<
     QuickTransactionMode,
@@ -62,9 +47,24 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       submitLabel: string;
     }
   > = {
-    expense: { accent: "text-kash-expense", icon: ArrowDown, submitLabel: isManaged ? (t("transactions.saveSpending" as any) || "Simpan Pengeluaran") : (t("transactions.saveExpense") || "Simpan Pengeluaran"), title: isManaged ? (t("transactions.newSpending" as any) || "Pengeluaran Baru") : (t("transactions.newExpense") || "Pengeluaran Baru") },
-    income: { accent: "text-kash-income", icon: ArrowUp, submitLabel: isManaged ? (t("transactions.saveFunding" as any) || "Simpan Dana Masuk") : (t("transactions.saveIncome") || "Simpan Pemasukan"), title: isManaged ? (t("transactions.newFunding" as any) || "Dana Masuk") : (t("transactions.newIncome") || "Pemasukan Baru") },
-    transfer: { accent: "text-kash-transfer", icon: ArrowRightLeft, submitLabel: t("transactions.transfer") || "Transfer", title: t("transactions.newTransfer") || "Transfer Baru" },
+    expense: {
+      accent: "text-kash-expense",
+      icon: ArrowDown,
+      submitLabel: terms.saveExpenseLabel,
+      title: terms.newExpenseTitle,
+    },
+    income: {
+      accent: "text-kash-income",
+      icon: ArrowUp,
+      submitLabel: terms.saveIncomeLabel,
+      title: terms.newIncomeTitle,
+    },
+    transfer: {
+      accent: "text-kash-transfer",
+      icon: ArrowRightLeft,
+      submitLabel: t("transactions.transfer") || "Transfer",
+      title: t("transactions.newTransfer") || "Transfer Baru",
+    },
   };
 
   const copy = modeCopy[mode];
@@ -263,7 +263,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             {mode !== "transfer" ? (
               <SelectField
                 id={`${mode}-category`}
-                label={t("categories.title") || "Kategori"}
+                label={mode === "income" ? terms.incomeCategoryLabel : (t("categories.title") || "Kategori")}
                 action={
                   <button
                     type="button"
@@ -326,7 +326,18 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </SelectField>
             ) : null}
 
-            <SelectField id={`${mode}-wallet`} label={mode === "transfer" ? (t("transactions.fromWallet") || "Dari Dompet") : (t("wallets.title") || "Dompet")} onChange={(event) => setWalletId(event.target.value)} value={walletId}>
+            <SelectField
+              id={`${mode}-wallet`}
+              label={
+                mode === "transfer"
+                  ? t("transactions.fromWallet") || "Dari Dompet"
+                  : mode === "income" && terms.isManaged
+                  ? t("transactions.fundingWalletDestination") || "Pilih Dompet Penerima Dana"
+                  : t("wallets.title") || "Dompet"
+              }
+              onChange={(event) => setWalletId(event.target.value)}
+              value={walletId}
+            >
               <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
               {wallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>

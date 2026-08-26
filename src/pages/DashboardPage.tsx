@@ -42,6 +42,7 @@ import { useAppEvent } from "../hooks/useAppEvent";
 import { useAuth } from "../context/AuthContext";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useI18n } from "../i18n";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import type { TransactionType } from "../types/domain";
 import { CashFlowChart as SharedCashFlowChart } from "../components/analytics/CashFlowChart";
 import { UpcomingTimeline } from "../components/financial/UpcomingTimeline";
@@ -502,6 +503,7 @@ function HeroCard({
     summary: DashboardSummary;
 }) {
     const { t, locale } = useI18n();
+    const terms = useSpaceTerminology();
     const previousMonthLabel = getPreviousMonthLabel(selectedMonth, locale);
     const breakdown = summary.netWorthBreakdown;
     const assetTotal = breakdown
@@ -548,18 +550,13 @@ function HeroCard({
           ]
         : [];
 
-    const { activeSpace } = useActiveSpace();
-    const isManaged = activeSpace?.space_type === "managed";
-
     return (
         <div className="kash-hero-card p-4 md:p-6">
             {/* Top row: label + controls */}
             <div className="relative flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                     <p className="text-[11px] font-extrabold uppercase tracking-wide text-white/70">
-                        {isManaged
-                            ? t("dashboard.managedBalance") || "Managed Balance"
-                            : t("dashboard.netWorth") || "Net Worth"}
+                        {terms.balanceLabel}
                     </p>
                     <Info
                         aria-hidden="true"
@@ -737,15 +734,12 @@ function CashFlowRow({
     summary: DashboardSummary;
 }) {
     const { t, locale } = useI18n();
-    const { activeSpace } = useActiveSpace();
-    const isManaged = activeSpace?.space_type === "managed";
+    const terms = useSpaceTerminology();
     const previousMonthLabel = getPreviousMonthLabel(selectedMonth, locale);
     const items = [
         {
             key: "income",
-            label: isManaged
-                ? t("dashboard.managedIncome") || "Funding"
-                : t("common.typeIncome") || t("dashboard.income") || "Income",
+            label: terms.monthlyIncomeLabel,
             value: summary.monthlyIncome.amount,
             change: summary.monthComparison.income,
             metric: "income" as const,
@@ -754,9 +748,7 @@ function CashFlowRow({
         },
         {
             key: "expense",
-            label: isManaged
-                ? t("dashboard.managedExpense") || "Spending"
-                : t("common.typeExpense") || t("dashboard.expense") || "Expense",
+            label: terms.monthlyExpenseLabel,
             value: summary.monthlyExpense.amount,
             change: summary.monthComparison.expense,
             metric: "expense" as const,
@@ -765,9 +757,7 @@ function CashFlowRow({
         },
         {
             key: "cashflow",
-            label: isManaged
-                ? t("dashboard.managedNetFlow") || "Net Flow"
-                : t("dashboard.netCashFlow") || "Cash Flow",
+            label: terms.netCashFlowLabel,
             value: summary.netCashFlow.amount,
             change: summary.monthComparison.netCashFlow,
             metric: "netCashFlow" as const,
@@ -835,6 +825,7 @@ function SpendingDonut({
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
+    const terms = useSpaceTerminology();
     const navigate = useNavigate();
     const categories = summary.spendingByCategory;
     const totalExpense = categories.reduce(
@@ -846,8 +837,7 @@ function SpendingDonut({
         return (
             <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
                 <h2 className="text-sm font-extrabold text-slate-900">
-                    {t("dashboard.spendingByCategory") ||
-                        "Spending by Category"}
+                    {terms.spendingByCategoryTitle}
                 </h2>
                 <div className="mt-4 flex flex-col items-center justify-center gap-4 md:flex-row md:items-start">
                     <div className="relative mx-auto flex h-32 w-32 shrink-0 items-center justify-center">
@@ -872,10 +862,7 @@ function SpendingDonut({
                             t("dashboard.noSpendingTitle") ||
                             "No spending data yet"
                         }
-                        description={
-                            t("dashboard.noSpendingDesc") ||
-                            "Completed expense categories will build this chart."
-                        }
+                        description={terms.noSpendingDesc}
                         className="flex-1"
                     />
                 </div>
@@ -907,7 +894,7 @@ function SpendingDonut({
     return (
         <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
             <h2 className="text-sm font-extrabold text-slate-900">
-                {t("dashboard.spendingByCategory") || "Spending by Category"}
+                {terms.spendingByCategoryTitle}
             </h2>
             <div className="mt-4 flex flex-col items-center justify-center gap-6 md:flex-row md:items-center">
                 {/* Donut - Larger ring & vertically centered on desktop */}
@@ -935,7 +922,7 @@ function SpendingDonut({
                     <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
                         <div className="min-w-0 max-w-full">
                             <p className="text-[11px] font-bold text-slate-500">
-                                {t("dashboard.totalExpense") || "Total Spend"}
+                                {terms.totalExpenseLabel}
                             </p>
                             <PrivacyAmount onToggle={onToggleBalances}>
                                 <p className="mt-0.5 max-w-[7rem] truncate text-xs sm:text-sm md:text-base font-extrabold leading-tight text-slate-900">
@@ -1024,6 +1011,7 @@ function CashFlowChart({
     summary: DashboardSummary;
 }) {
     const { t } = useI18n();
+    const terms = useSpaceTerminology();
     const mobileScrollRef = useRef<HTMLDivElement>(null);
     const hasData = summary.cashflow.some(
         (point) => point.income > 0 || point.expense > 0,
@@ -1077,10 +1065,7 @@ function CashFlowChart({
                     t("dashboard.noCashflowData") ||
                     "No cash flow data this month"
                 }
-                description={
-                    t("dashboard.noCashflowDesc") ||
-                    "Income and expense activity will appear as a daily chart."
-                }
+                description={terms.noCashflowDesc}
                 className="min-h-48"
             />
         );
@@ -1261,6 +1246,7 @@ function RecentTransactions({
     summary: DashboardSummary;
 }) {
     const { t, locale } = useI18n();
+    const terms = useSpaceTerminology();
     if (summary.recentTransactions.length === 0)
         return (
             <EmptyPanel
@@ -1268,10 +1254,7 @@ function RecentTransactions({
                     t("dashboard.noTransactionsTitle") ||
                     "No recent transactions"
                 }
-                description={
-                    t("dashboard.noTransactionsDesc") ||
-                    "Saved ledger activity will appear here."
-                }
+                description={terms.noTransactionsDesc}
                 className="min-h-36"
             />
         );
@@ -1800,6 +1783,7 @@ function DashboardSkeleton() {
 /* ─── Main Page ─── */
 export function DashboardPage() {
     const { t, locale } = useI18n();
+    const terms = useSpaceTerminology();
     const navigate = useNavigate();
     const { profile } = useAuth();
     const [selectedMonth, setSelectedMonth] = useState(() =>
@@ -1899,7 +1883,7 @@ export function DashboardPage() {
                     {getLocalizedGreeting(locale, firstName)}
                 </h1>
                 <p className="mt-0.5 text-sm font-medium text-slate-500">
-                    {t("dashboard.title") || "Here's your financial overview."}
+                    {terms.dashboardOverviewTitle}
                 </p>
             </div>
 
@@ -1940,7 +1924,7 @@ export function DashboardPage() {
                 <DashboardCard className="p-5">
                     <div className="mb-3 flex items-center justify-between gap-4">
                         <h2 className="text-sm font-extrabold text-slate-900">
-                            {t("dashboard.cashflow") || "Cash Flow"}{" "}
+                            {terms.cashflowTitle}{" "}
                             <span className="font-medium text-slate-500">
                                 ({summary.period.label})
                             </span>
@@ -1953,7 +1937,7 @@ export function DashboardPage() {
                                         backgroundColor: CASHFLOW_INCOME_COLOR,
                                     }}
                                 />
-                                {t("common.typeIncome") || "Income"}
+                                {terms.incomeLabel}
                             </span>
                             <span className="inline-flex items-center gap-1.5">
                                 <span
@@ -1962,7 +1946,7 @@ export function DashboardPage() {
                                         backgroundColor: CASHFLOW_EXPENSE_COLOR,
                                     }}
                                 />
-                                {t("common.typeExpense") || "Expense"}
+                                {terms.expenseLabel}
                             </span>
                         </div>
                     </div>
@@ -1981,7 +1965,7 @@ export function DashboardPage() {
                     ) : (
                         <EmptyPanel
                             title={t("dashboard.noCashflowData") || "No cash flow data this month"}
-                            description={t("dashboard.noCashflowDesc") || "Income and expense activity will appear as a daily chart."}
+                            description={terms.noCashflowDesc}
                             className="min-h-28"
                         />
                     )}

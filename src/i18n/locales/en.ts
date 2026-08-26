@@ -178,6 +178,17 @@ export const en = {
     "transactions.saveIncome": "Save Income",
     "transactions.newIncome": "New Income",
     "transactions.newTransfer": "New Transfer",
+    "transactions.managedIncome": "Funding",
+    "transactions.managedExpense": "Spending",
+    "transactions.saveFunding": "Save Funds",
+    "transactions.saveSpending": "Save Spending",
+    "transactions.newFunding": "Add Funds",
+    "transactions.newSpending": "New Spending",
+    "transactions.fundingCategory": "Funding Category",
+    "transactions.spendingCategory": "Spending Category",
+    "transactions.fundingWalletDestination": "Select Destination Wallet for Funds",
+    "transactions.managedEmptyStateDesc":
+        "Add the first funding or spending in this space to start tracking finances.",
     "transactions.loadError": "Failed to load wallets or categories.",
     "transactions.insufficientBalanceTransfer":
         "Source wallet balance is insufficient for this transfer amount and fee.",
@@ -196,6 +207,9 @@ export const en = {
     "categories.selectCategory": "Select Category",
     "categories.create": "Create Category",
     "categories.createNewOption": "+ Create New Category...",
+    "categories.cancel": "Cancel",
+    "categories.save": "Save Category",
+    "categories.createSuccess": "New category created successfully.",
     "envelopes.title": "Envelopes",
     "envelopes.create": "Create Envelope",
     "envelopes.createNewOption": "+ Create New Envelope",
@@ -219,6 +233,11 @@ export const en = {
     "quickAdd.incomeHelper": "Record salary or other income",
     "quickAdd.transfer": "Transfer",
     "quickAdd.transferHelper": "Move funds between wallets",
+    "quickAdd.managedIncome": "Add Funds",
+    "quickAdd.managedIncomeHelper": "Record funding or capital injection",
+    "quickAdd.managedExpense": "Add Spending",
+    "quickAdd.managedExpenseHelper": "Record operational or purchase spending",
+    "quickAdd.managedTransferHelper": "Move funds between wallets in this space",
     "quickAdd.reimbursable": "Reimbursable Expense",
     "quickAdd.reimbursableHelper": "Record advance expense to be reimbursed",
 
@@ -249,6 +268,7 @@ export const en = {
 
     // Dashboard
     "dashboard.title": "Here's your financial overview",
+    "dashboard.managedTitle": "Here's the financial overview for this space",
     "dashboard.netWorth": "Net Worth",
     "dashboard.managedBalance": "Managed Balance",
     "dashboard.availableBalance": "Available Balance",
@@ -258,6 +278,17 @@ export const en = {
     "dashboard.managedExpense": "Spending This Month",
     "dashboard.netCashFlow": "Net Cash Flow",
     "dashboard.managedNetFlow": "Net Flow",
+    "dashboard.managedCashflow": "Funding vs Spending",
+    "dashboard.managedIncomeLabel": "Funding",
+    "dashboard.managedExpenseLabel": "Spending",
+    "dashboard.managedSpendingByCategory": "Spending by Category",
+    "dashboard.managedTotalExpense": "Total Spending",
+    "dashboard.managedNoCashflowDesc":
+        "Funding and spending activity will appear here as transactions are recorded.",
+    "dashboard.managedNoSpendingDesc":
+        "Record spending transactions to see category breakdowns in this space.",
+    "dashboard.managedNoTransactionsDesc":
+        "Record the first funding or spending in this space.",
     "dashboard.transferFees": "Transfer Fees",
     "dashboard.recentTransactions": "Recent Transactions",
     "dashboard.activeDebts": "Active Debts",
