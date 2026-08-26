@@ -1108,7 +1108,7 @@ function CashFlowChart({
         return (
             <svg
                 role="img"
-                aria-label={`Income and expense chart for ${summary.period.label}`}
+                aria-label={`${terms.incomeLabel} and ${terms.expenseLabel} chart for ${summary.period.label}`}
                 viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                 className={barClassName}
                 style={style}
@@ -1156,7 +1156,7 @@ function CashFlowChart({
                     return (
                         <g key={point.key}>
                             <title>
-                                {`${point.title}: Income ${formatPrivateAmount(point.income, currency, balancesVisible)}, Expense ${formatPrivateAmount(point.expense, currency, balancesVisible)}`}
+                                {`${point.title}: ${terms.incomeLabel} ${formatPrivateAmount(point.income, currency, balancesVisible)}, ${terms.expenseLabel} ${formatPrivateAmount(point.expense, currency, balancesVisible)}`}
                             </title>
                             <rect
                                 x={centerX - barWidth - 1.5}

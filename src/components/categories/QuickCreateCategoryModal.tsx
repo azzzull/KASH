@@ -11,6 +11,7 @@ import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { useI18n } from "../../i18n";
+import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 
 type QuickCreateCategoryModalProps = {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export function QuickCreateCategoryModal({
   onCreated,
 }: QuickCreateCategoryModalProps) {
   const { t } = useI18n();
+  const terms = useSpaceTerminology();
   const [name, setName] = useState(initialName);
   const [icon, setIcon] = useState(() => (categoryType === "income" ? "briefcase" : "utensils"));
   const [color, setColor] = useState(() => (categoryType === "income" ? "#10B981" : "#E50914"));
@@ -131,7 +133,7 @@ export function QuickCreateCategoryModal({
           </span>
           <div>
             <h2 className="text-base font-extrabold text-slate-900">
-              {t("categories.addCategoryTitle", { type: categoryType === "income" ? (t("common.typeIncome") || "Pemasukan") : (t("common.typeExpense") || "Pengeluaran") }) || `Tambah Kategori ${categoryType === "income" ? "Pemasukan" : "Pengeluaran"}`}
+              {t("categories.addCategoryTitle", { type: categoryType === "income" ? terms.incomeLabel : terms.expenseLabel }) || `Tambah Kategori ${categoryType === "income" ? terms.incomeLabel : terms.expenseLabel}`}
             </h2>
             <p className="text-xs font-semibold text-slate-600">
               {t("categories.quickCreateDesc") || "Buat kategori baru secara cepat tanpa keluar dari form"}

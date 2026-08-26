@@ -456,8 +456,8 @@ function describeTransaction(transaction: Transaction, walletsById: Map<string, 
   }
 
   return {
-    categoryName: category?.name ?? (transaction.type === "income" ? "Income" : "Expense"),
-    title: transaction.title ?? category?.name ?? (transaction.type === "income" ? "Income" : "Expense"),
+    categoryName: category?.name ?? "Uncategorized",
+    title: transaction.title ?? category?.name ?? "Uncategorized",
     subtitle: `${date} - ${sourceWallet?.name ?? "Wallet"}`,
     walletName: sourceWallet?.name ?? "Wallet",
   };

@@ -44,7 +44,7 @@ export function transactionTitle(transaction: TransactionWithMeta) {
     if (transaction.related_entity_type === "goal_refund") return "Goal Refund";
     return "Balance Adjustment";
   }
-  return transaction.category?.name ?? (transaction.type === "income" ? "Income" : "Expense");
+  return transaction.category?.name ?? "Uncategorized";
 }
 
 export function transactionCategoryLabel(transaction: TransactionWithMeta) {
@@ -143,7 +143,7 @@ export function TransactionDetailModal({
       if (transaction.related_entity_type === "goal_refund") return t("goals.refund") || "Pengembalian Target";
       return t("wallets.balanceAdjustment") || "Penyesuaian Saldo";
     }
-    return transaction.category?.name ?? (transaction.type === "income" ? (isManaged ? (t("transactions.funding" as any) || "Dana Masuk") : (t("transactions.income") || "Pemasukan")) : (isManaged ? (t("transactions.spending" as any) || "Pengeluaran") : (t("transactions.expense") || "Pengeluaran")));
+    return transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
   };
 
   const getTranslatedCategoryLabel = () => {
@@ -227,6 +227,7 @@ export function TransactionDetailModal({
 
         <dl className="divide-y divide-slate-100 border-y border-slate-100">
           <DetailLine label={t("common.date") || "Tanggal"} value={dateLabel} />
+          <DetailLine label={t("transactions.type") || "Tipe Transaksi"} value={terms.getTransactionTypeLabel(transaction.type)} />
           <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
           {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
           {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}

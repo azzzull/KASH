@@ -1733,6 +1733,10 @@ export const en = {
         "Transaction linked to a Funding Goal. Changes and cancellations are managed from the Goals page.",
     "transactions.funding": "Funding",
     "transactions.spending": "Spending",
+    "analytics.managedNoFundingInPeriod": "No funding in this period.",
+    "analytics.managedNoSpendingInPeriod": "No spending in this period.",
+    "analytics.managedNoActivityInPeriod": "No activity in this period.",
+    "analytics.managedNoBalanceYet": "No managed balance yet.",
 
     // Statuses
     "status.active": "Active",

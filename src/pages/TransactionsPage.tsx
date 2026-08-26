@@ -110,7 +110,7 @@ function transactionTitle(transaction: TransactionWithMeta) {
     if (transaction.related_entity_type === "goal_refund") return "Goal Refund";
     return "Balance Adjustment";
   }
-  return transaction.category?.name ?? (transaction.type === "income" ? "Income" : "Expense");
+  return transaction.category?.name ?? "Uncategorized";
 }
 
 function transactionCategoryLabel(transaction: TransactionWithMeta) {
@@ -392,6 +392,7 @@ function TransactionFormModal({
   wallets: Wallet[];
 }) {
   const { t, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const isAmountError = (message: string | null) => {
     if (!message) return false;
     const normalizedMessage = message.toLowerCase();
@@ -543,7 +544,7 @@ function TransactionFormModal({
       onClose={onClose}
       maxWidth="lg"
       title={mode === "duplicate" ? (t("transactions.duplicateTitle") || "Duplikat Transaksi") : (t("transactions.editTitle") || "Edit Transaksi")}
-      description={`${t("transactions.type") || "Tipe"}: ${transaction.type}`}
+      description={`${t("transactions.type") || "Tipe"}: ${terms.getTransactionTypeLabel(transaction.type)}`}
     >
       <div>
         {error ? <div className="mb-4 rounded-xl border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</div> : null}

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
 
 export type SpaceTerminology = {
   isManaged: boolean;
@@ -64,7 +64,64 @@ export type SpaceTerminology = {
   subscriptionsNoObligations: string;
   // Transactions
   linkedGoalMessage: string;
+  getTransactionTypeLabel: (type: string) => string;
+  // Reporting & Empty States
+  noFundingInPeriod: string;
+  noSpendingInPeriod: string;
+  noActivityInPeriod: string;
+  noBalanceYet: string;
 };
+
+export function getTransactionTypeLabel(
+  type: string,
+  isManaged: boolean,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
+): string {
+  if (type === "income") {
+    return isManaged
+      ? t("transactions.funding") || "Dana Masuk"
+      : t("transactions.income") || "Pemasukan";
+  }
+  if (type === "expense") {
+    return isManaged
+      ? t("transactions.spending") || "Pengeluaran"
+      : t("transactions.expense") || "Pengeluaran";
+  }
+  if (type === "transfer") {
+    return t("transactions.transfer") || "Transfer";
+  }
+  if (type === "adjustment") {
+    return t("wallets.balanceAdjustment") || "Penyesuaian Saldo";
+  }
+  return type;
+}
+
+export function getSpaceReportingLabels(
+  isManaged: boolean,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
+) {
+  if (isManaged) {
+    return {
+      balanceLabel: t("dashboard.managedBalance") || "Saldo Kelolaan",
+      incomeLabel: t("dashboard.managedIncomeLabel") || "Dana Masuk",
+      expenseLabel: t("dashboard.managedExpenseLabel") || "Pengeluaran",
+      netFlowLabel: t("dashboard.managedNetFlow") || "Arus Bersih",
+      incomeByCategoryLabel: t("analytics.managedIncomeByCategory") || "Dana Masuk per Kategori",
+      spendingByCategoryLabel: t("dashboard.managedSpendingByCategory") || "Pengeluaran per Kategori",
+      cashflowComparisonLabel: t("dashboard.managedCashflow") || "Dana Masuk vs Pengeluaran",
+    };
+  }
+
+  return {
+    balanceLabel: t("dashboard.netWorth") || "Kekayaan Bersih (Net Worth)",
+    incomeLabel: t("dashboard.income") || "Pemasukan",
+    expenseLabel: t("dashboard.expense") || "Pengeluaran",
+    netFlowLabel: t("dashboard.netCashFlow") || "Arus Kas Bersih",
+    incomeByCategoryLabel: t("analytics.incomeByCategory") || "Pemasukan per Kategori",
+    spendingByCategoryLabel: t("dashboard.spendingByCategory") || "Pengeluaran per Kategori",
+    cashflowComparisonLabel: t("dashboard.cashflow") || "Arus Kas",
+  };
+}
 
 export function useSpaceTerminology(): SpaceTerminology {
   const { activeSpace } = useActiveSpace();
@@ -186,6 +243,21 @@ export function useSpaceTerminology(): SpaceTerminology {
         linkedGoalMessage:
           t("transactions.managedLinkedGoal") ||
           "Transaksi terhubung dengan Target Dana. Perubahan dan pembatalan dikelola dari halaman Target.",
+        getTransactionTypeLabel: (type: string) => getTransactionTypeLabel(type, true, t),
+
+        // Reporting & Empty States
+        noFundingInPeriod:
+          t("analytics.managedNoFundingInPeriod") ||
+          "Belum ada dana masuk pada periode ini.",
+        noSpendingInPeriod:
+          t("analytics.managedNoSpendingInPeriod") ||
+          "Belum ada pengeluaran pada periode ini.",
+        noActivityInPeriod:
+          t("analytics.managedNoActivityInPeriod") ||
+          "Belum ada aktivitas pada periode ini.",
+        noBalanceYet:
+          t("analytics.managedNoBalanceYet") ||
+          "Belum ada saldo kelolaan.",
       };
     }
 
@@ -302,6 +374,21 @@ export function useSpaceTerminology(): SpaceTerminology {
       linkedGoalMessage:
         t("transactions.linkedGoal") ||
         "Transaksi terhubung dengan Target Tabungan. Perubahan dan pembatalan dikelola dari halaman Target Tabungan.",
+      getTransactionTypeLabel: (type: string) => getTransactionTypeLabel(type, false, t),
+
+      // Reporting & Empty States
+      noFundingInPeriod:
+        t("analytics.noIncomeYet") ||
+        "Belum ada pemasukan pada periode ini.",
+      noSpendingInPeriod:
+        t("analytics.noSpendingTitle") ||
+        "Belum ada pengeluaran pada periode ini.",
+      noActivityInPeriod:
+        t("analytics.noTrendData") ||
+        "Belum ada aktivitas pada periode ini.",
+      noBalanceYet:
+        t("analytics.noNetWorthTrend") ||
+        "Belum ada data kekayaan bersih.",
     };
   }, [isManaged, t]);
 }

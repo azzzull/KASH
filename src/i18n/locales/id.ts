@@ -1744,6 +1744,10 @@ export const id = {
         "Transaksi terhubung dengan Target Dana. Perubahan dan pembatalan dikelola dari halaman Target.",
     "transactions.funding": "Dana Masuk",
     "transactions.spending": "Pengeluaran",
+    "analytics.managedNoFundingInPeriod": "Belum ada dana masuk pada periode ini.",
+    "analytics.managedNoSpendingInPeriod": "Belum ada pengeluaran pada periode ini.",
+    "analytics.managedNoActivityInPeriod": "Belum ada aktivitas pada periode ini.",
+    "analytics.managedNoBalanceYet": "Belum ada saldo kelolaan.",
 
     // Statuses
     "status.active": "Aktif",

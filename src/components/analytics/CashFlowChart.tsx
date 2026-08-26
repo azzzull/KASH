@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../../i18n";
+import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 
 const INCOME_COLOR = "#10B981";
 const EXPENSE_COLOR = "#E50914";
@@ -33,6 +34,7 @@ export function CashFlowChart({
   variant: "compact" | "detailed";
 }) {
   const { formatCompactCurrency, formatCurrency, t } = useI18n();
+  const terms = useSpaceTerminology();
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
   const focusIndex = Math.max(0, points.findIndex((point) => point.key === (focusKey ?? todayKey())));
@@ -115,7 +117,7 @@ export function CashFlowChart({
                 const isToday = point.key === todayKey();
                 const incomeHeight = point.income > 0 ? Math.max(2, Math.round((point.income / scale) * 70)) : 0;
                 const expenseHeight = point.expense > 0 ? Math.max(2, Math.round((point.expense / scale) * 70)) : 0;
-                return <button key={point.key} type="button" onClick={() => setSelectedKey(point.key)} aria-pressed={isSelected} aria-label={`${point.label}: ${t("common.typeIncome") || "Income"} ${formatCurrency(point.income, currency)}, ${t("common.typeExpense") || "Expense"} ${formatCurrency(point.expense, currency)}`} className="absolute top-0 h-[198px] cursor-pointer" style={{ left: `${index * DAY_COLUMN_WIDTH}px`, width: `${DAY_COLUMN_WIDTH}px` }}>
+                return <button key={point.key} type="button" onClick={() => setSelectedKey(point.key)} aria-pressed={isSelected} aria-label={`${point.label}: ${terms.incomeLabel} ${formatCurrency(point.income, currency)}, ${terms.expenseLabel} ${formatCurrency(point.expense, currency)}`} className="absolute top-0 h-[198px] cursor-pointer" style={{ left: `${index * DAY_COLUMN_WIDTH}px`, width: `${DAY_COLUMN_WIDTH}px` }}>
                   <span className={`absolute inset-x-1 top-1 h-[158px] rounded-lg ${isSelected ? "bg-white/80" : isToday ? "bg-kash-emerald/10" : ""}`} />
                   {point.income > 0 ? <span className="absolute bottom-[118px] left-1/2 z-10 w-3 -translate-x-1/2 rounded-t-md bg-kash-emerald transition-[height] duration-300 ease-out" style={{ height: `${incomeHeight}px` }} /> : null}
                   {point.expense > 0 ? <span className="absolute left-1/2 top-[80px] z-10 w-3 -translate-x-1/2 rounded-b-md bg-[#E50914] transition-[height] duration-300 ease-out" style={{ height: `${expenseHeight}px` }} /> : null}
@@ -126,7 +128,7 @@ export function CashFlowChart({
           </div>
         </div>
       </div>
-      {selectedPoint ? <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200/70 bg-white px-3 py-2 text-xs font-semibold text-slate-600"><span className="font-extrabold text-slate-900">{selectedPoint.label}</span><span>{t("common.typeIncome") || "Income"}: {formatCurrency(selectedPoint.income, currency)}</span><span>{t("common.typeExpense") || "Expense"}: {formatCurrency(selectedPoint.expense, currency)}</span><span>{t("dashboard.netCashFlow") || "Net"}: {formatCurrency(selectedPoint.income - selectedPoint.expense, currency)}</span></div> : null}
+      {selectedPoint ? <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200/70 bg-white px-3 py-2 text-xs font-semibold text-slate-600"><span className="font-extrabold text-slate-900">{selectedPoint.label}</span><span>{terms.incomeLabel}: {formatCurrency(selectedPoint.income, currency)}</span><span>{terms.expenseLabel}: {formatCurrency(selectedPoint.expense, currency)}</span><span>{terms.netCashFlowLabel}: {formatCurrency(selectedPoint.income - selectedPoint.expense, currency)}</span></div> : null}
     </div>
   );
 }
