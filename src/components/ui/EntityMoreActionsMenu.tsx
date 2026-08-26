@@ -50,68 +50,55 @@ export function EntityMoreActionsMenu({
   const alignClass = align === "left" ? "left-0 origin-top-left" : "right-0 origin-top-right";
 
   return (
-    <div
-      className={`relative inline-block text-left ${className}`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <Menu>
-        {({ open }) => (
-          <>
-            <MenuButton
-              type="button"
-              className={`${triggerStyles[triggerVariant]} ${buttonClassName}`}
-              aria-label={ariaLabel}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              <MoreVertical size={iconSize} />
-            </MenuButton>
+    <Menu as="div" className={`relative inline-block text-left ${className}`}>
+      <MenuButton
+        type="button"
+        className={`${triggerStyles[triggerVariant]} ${buttonClassName}`}
+        aria-label={ariaLabel}
+      >
+        <MoreVertical size={iconSize} />
+      </MenuButton>
 
-            <MenuItems
-              transition
-              className={`absolute ${alignClass} z-50 mt-1.5 min-w-[11rem] rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75`}
-            >
-              {visibleItems.map((item, index) => {
-                const ItemIcon = item.icon;
-                return (
-                  <React.Fragment key={item.id ?? `${item.label}-${index}`}>
-                    {item.separatorBefore && index > 0 ? (
-                      <div className="my-1 border-t border-slate-100" />
-                    ) : null}
-                    <MenuItem disabled={item.disabled}>
-                      {({ focus, disabled }) => (
-                        <button
-                          type="button"
-                          disabled={disabled}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            item.onClick(e);
-                          }}
-                          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition text-left ${
-                            disabled
-                              ? "opacity-40 cursor-not-allowed text-slate-400"
-                              : item.isDestructive
-                              ? focus
-                                ? "bg-red-50 text-kash-expense"
-                                : "text-kash-expense"
-                              : focus
-                              ? "bg-slate-50 text-slate-900"
-                              : "text-slate-700"
-                          }`}
-                        >
-                          {ItemIcon ? <ItemIcon size={14} className="shrink-0" /> : null}
-                          <span className="truncate">{item.label}</span>
-                        </button>
-                      )}
-                    </MenuItem>
-                  </React.Fragment>
-                );
-              })}
-            </MenuItems>
-          </>
-        )}
-      </Menu>
-    </div>
+      <MenuItems
+        transition
+        className={`absolute ${alignClass} z-50 mt-1.5 min-w-[11rem] rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[closed]:pointer-events-none data-[enter]:duration-100 data-[leave]:duration-75`}
+      >
+        {visibleItems.map((item, index) => {
+          const ItemIcon = item.icon;
+          return (
+            <React.Fragment key={item.id ?? `${item.label}-${index}`}>
+              {item.separatorBefore && index > 0 ? (
+                <div className="my-1 border-t border-slate-100" />
+              ) : null}
+              <MenuItem disabled={item.disabled}>
+                {({ focus, disabled }) => (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={(e) => {
+                      item.onClick(e);
+                    }}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold transition text-left ${
+                      disabled
+                        ? "opacity-40 cursor-not-allowed text-slate-400"
+                        : item.isDestructive
+                        ? focus
+                          ? "bg-red-50 text-kash-expense"
+                          : "text-kash-expense"
+                        : focus
+                        ? "bg-slate-50 text-slate-900"
+                        : "text-slate-700"
+                    }`}
+                  >
+                    {ItemIcon ? <ItemIcon size={14} className="shrink-0" /> : null}
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                )}
+              </MenuItem>
+            </React.Fragment>
+          );
+        })}
+      </MenuItems>
+    </Menu>
   );
 }

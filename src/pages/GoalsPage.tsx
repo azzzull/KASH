@@ -114,17 +114,17 @@ function GoalCard({
   const isCancelled = goal.status === "cancelled";
 
   return (
-    <Link
-      className="kash-activity-row block rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md active:bg-slate-50 min-w-0 max-w-full"
-      to={`/goals/${goal.id}`}
-    >
+    <div className="group/card relative rounded-2xl border border-slate-200/60 bg-white p-4 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md min-w-0 max-w-full">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald">
+        <Link
+          to={`/goals/${goal.id}`}
+          className="flex min-w-0 flex-1 items-center gap-3"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emerald transition group-hover/card:bg-kash-emerald/20">
             <Icon aria-hidden="true" size={21} strokeWidth={2.2} />
           </span>
-          <div className="min-w-0">
-            <p className="truncate text-base font-extrabold text-slate-900">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-extrabold text-slate-900 group-hover/card:text-kash-emerald transition">
               {goal.name}
             </p>
             <p className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
@@ -134,15 +134,9 @@ function GoalCard({
                 : (t("goals.noDeadline") || "Tanpa tenggat")}
             </p>
           </div>
-        </div>
+        </Link>
 
-        <div
-          className="flex items-center gap-1.5 shrink-0"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
+        <div className="flex items-center gap-1.5 shrink-0">
           {isCompleted ? (
             <span className="shrink-0 rounded-full bg-kash-emerald/10 px-2.5 py-1 text-xs font-extrabold text-kash-emeraldDark">
               {t("goals.completed") || "Tercapai"}
@@ -189,7 +183,7 @@ function GoalCard({
         </div>
       </div>
 
-      <div className="mt-4">
+      <Link to={`/goals/${goal.id}`} className="mt-4 block">
         <div className="flex items-baseline justify-between gap-3">
           <div>
             <p className="text-lg font-extrabold text-slate-900">
@@ -214,8 +208,8 @@ function GoalCard({
         <p className="mt-2 text-xs font-semibold text-slate-500">
           {t("debts.remaining") || "Sisa"} {formatCurrency(progress.remaining, "IDR")}
         </p>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 

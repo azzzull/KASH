@@ -516,18 +516,61 @@ export function GoalDetailPage() {
       {/* Progress Hero Surface */}
       <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
               <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
             </span>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-wide text-white/60">{t("goals.progress") || "Kemajuan Target"}</p>
-              <p className="text-sm font-extrabold text-white">{goal.name}</p>
+              <p className="text-sm font-extrabold text-white truncate">{goal.name}</p>
             </div>
           </div>
-          <span className="rounded-lg bg-white/15 px-3 py-1 text-sm font-extrabold text-white">
-            {progress.percentage.toFixed(0)}%
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="rounded-lg bg-white/15 px-3 py-1 text-sm font-extrabold text-white">
+              {progress.percentage.toFixed(0)}%
+            </span>
+            <EntityMoreActionsMenu
+              triggerVariant="hero"
+              ariaLabel={`Aksi target ${goal.name}`}
+              items={[
+                {
+                  label: t("common.edit") || "Edit",
+                  icon: Edit3,
+                  hidden: isCancelled || goal.is_archived,
+                  onClick: () => setShowEdit(true),
+                },
+                {
+                  label: goal.is_archived
+                    ? (t("goals.unarchiveGoal") || "Keluarkan dari Arsip")
+                    : (t("goals.archiveGoal") || "Arsipkan Target"),
+                  icon: PiggyBank,
+                  hidden: isCancelled,
+                  onClick: () => setShowArchiveDialog(true),
+                },
+                {
+                  label: isCancelled
+                    ? (t("goals.returnRemaining") || "Kembalikan Sisa Dana")
+                    : (t("goals.cancelAndRefund") || "Batalkan & Kembalikan Dana"),
+                  icon: Trash2,
+                  isDestructive: true,
+                  hidden: goal.is_archived || (isCancelled && progress.current <= 0),
+                  onClick: () => {
+                    setCloseError(null);
+                    setCloseDestinationWalletId("");
+                    setShowCloseDialog(true);
+                  },
+                },
+                {
+                  label: t("goals.deletePermanent") || "Hapus Permanen",
+                  icon: Trash2,
+                  isDestructive: true,
+                  separatorBefore: true,
+                  hidden: goal.contributions.length > 0 || progress.current > 0,
+                  onClick: () => setShowDeleteDialog(true),
+                },
+              ]}
+            />
+          </div>
         </div>
 
         {/* Amount Hero */}
@@ -559,52 +602,15 @@ export function GoalDetailPage() {
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center justify-start gap-2 max-w-full py-0.5">
-        <Button disabled={isCancelled} onClick={() => setShowContribution(true)} className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
-          <Plus aria-hidden="true" size={15} />
-          {t("goals.addContribution") || "Tambah Tabungan"}
-        </Button>
-        <Button disabled={isCancelled} onClick={() => setShowEdit(true)} variant="secondary" className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
-          <Edit3 aria-hidden="true" size={15} />
-          {t("common.edit")}
-        </Button>
-        {!isCancelled && (
-          <Button
-            disabled={archivingGoal}
-            onClick={() => setShowArchiveDialog(true)}
-            variant="secondary"
-            className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-          >
-            {t("goals.archiveGoal") || (goal.is_archived ? "Keluarkan dari Arsip" : "Arsipkan Target")}
+      {/* Primary Financial Action Only */}
+      {!isCancelled && (
+        <div className="flex flex-wrap items-center justify-start gap-2 max-w-full py-0.5">
+          <Button onClick={() => setShowContribution(true)} className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
+            <Plus aria-hidden="true" size={15} />
+            {t("goals.addContribution") || "Tambah Tabungan"}
           </Button>
-        )}
-        {(!isCancelled || (isCancelled && progress.current > 0)) && (
-          <Button
-            disabled={closingGoal}
-            onClick={() => {
-              setCloseError(null);
-              setCloseDestinationWalletId("");
-              setShowCloseDialog(true);
-            }}
-            variant="secondary"
-            className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-          >
-            <Trash2 aria-hidden="true" size={15} />
-            {isCancelled ? "Kembalikan Sisa Dana" : "Batalkan & Kembalikan Dana"}
-          </Button>
-        )}
-        {goal.contributions.length === 0 && (
-          <Button
-            disabled={deletingGoal}
-            onClick={() => setShowDeleteDialog(true)}
-            variant="secondary"
-            className="shrink-0 gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-kash-expense hover:bg-kash-expense/10 border-transparent"
-          >
-            <Trash2 aria-hidden="true" size={15} />
-            {"Hapus Permanen"}
-          </Button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Contribution History */}
       <section className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card">

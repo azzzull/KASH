@@ -71,13 +71,15 @@ function WalletRow({
   const currentBal = wallet.balance?.current_balance ?? wallet.initial_balance;
 
   return (
-    <Link
-      className={`kash-activity-row flex items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md active:bg-slate-50 min-w-0 max-w-full ${
+    <div
+      className={`kash-activity-row flex items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md min-w-0 max-w-full ${
         wallet.is_archived ? "opacity-80" : ""
       }`}
-      to={`/wallets/${wallet.id}`}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <Link
+        to={`/wallets/${wallet.id}`}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
           style={{ backgroundColor: `${accent}15`, color: accent }}
@@ -85,17 +87,17 @@ function WalletRow({
           <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className={`truncate text-sm font-extrabold ${wallet.is_archived ? "text-slate-700 line-through" : "text-slate-900"}`}>
+          <p className={`truncate text-sm font-extrabold ${wallet.is_archived ? "text-slate-700 line-through" : "text-slate-900 hover:text-kash-emerald transition"}`}>
             {wallet.name}
           </p>
           <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
             {[wallet.institution_name, isGoalPocket ? (t("wallets.goalPocket") || "Kantong Target") : typeOption.label].filter(Boolean).join(" • ")}
           </p>
         </div>
-      </div>
+      </Link>
 
       <div className="flex items-center gap-2.5 shrink-0">
-        <div className="text-right">
+        <Link to={`/wallets/${wallet.id}`} className="text-right">
           <p className="text-sm font-extrabold text-slate-900 md:text-base">
             {formatCurrency(currentBal, wallet.currency)}
           </p>
@@ -112,17 +114,13 @@ function WalletRow({
               {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}{Number(wallet.balance.return_percentage).toFixed(2)}% {t("wallets.return") || "return"}
             </span>
           ) : null}
-        </div>
+        </Link>
 
         {wallet.is_archived && onRestore && (
           <Button
             type="button"
             variant="secondary"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onRestore();
-            }}
+            onClick={onRestore}
             className="shrink-0 gap-1 min-h-8 px-2.5 py-1 text-xs font-extrabold text-kash-emeraldDark hover:bg-kash-selected"
           >
             <RotateCcw size={13} />
@@ -130,7 +128,7 @@ function WalletRow({
           </Button>
         )}
       </div>
-    </Link>
+    </div>
   );
 }
 
