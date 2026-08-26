@@ -22,6 +22,7 @@ import { UpcomingTimeline } from "../components/financial/UpcomingTimeline";
 import { getRecurringObligations, type RecurringObligationWithMeta } from "../lib/subscriptions";
 import { TransactionRow } from "../components/transactions/TransactionRow";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 
 const activityOrder = ["income", "expense", "transfer", "adjustment"] as const;
 const activityDotClass = {
@@ -73,6 +74,7 @@ function CalendarGrid({
   todayKey: string;
 }) {
   const { locale, formatDate, t } = useI18n();
+  const terms = useSpaceTerminology();
   const calendarCells = useMemo(() => buildCalendarCells(activeMonth), [activeMonth]);
   const obligationDates = useMemo(() => new Set(obligations.filter((item) => item.status === "active").map((item) => (item.currentPayment?.due_date ?? item.next_due_date)?.slice(0, 10)).filter((dateKey): dateKey is string => Boolean(dateKey))), [obligations]);
   const weekdays = useMemo(() => {
@@ -127,8 +129,8 @@ function CalendarGrid({
       </div>
 
       <div className="mt-2 flex items-center justify-center gap-4 text-[10px] font-bold text-slate-500">
-        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-kash-emerald" />{t("transactions.income") || "Income"}</span>
-        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#E50914]" />{t("transactions.expense") || "Expense"}</span>
+        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-kash-emerald" />{terms.incomeLabel}</span>
+        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-[#E50914]" />{terms.expenseLabel}</span>
         <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{t("subscriptions.tabDueSoon") || "Due"}</span>
       </div>
     </>
@@ -153,6 +155,7 @@ function SelectedDatePanel({
   upcomingObligations: RecurringObligationWithMeta[];
 }) {
   const { t, formatDate, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const formattedDate = formatDate(parseLocalDateKey(selectedDateKey));
 
   return (
@@ -175,7 +178,7 @@ function SelectedDatePanel({
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
             <ReceiptText className="mx-auto text-slate-400" size={24} />
             <p className="mt-2 text-xs font-extrabold text-slate-700">{t("calendar.noTransactions") || "Tidak ada transaksi pada tanggal ini."}</p>
-            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">{t("dashboard.noTransactionsDesc") || "Tanggal yang memiliki aktivitas transaksi ditandai pada kalender."}</p>
+            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">{terms.noTransactionsDesc}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100 px-1">
@@ -202,6 +205,7 @@ function SelectedDatePanel({
 
 export function CalendarPage() {
   const { t, formatMonthYear } = useI18n();
+  const terms = useSpaceTerminology();
   const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const [searchParams] = useSearchParams();
   const today = useMemo(() => new Date(), []);
@@ -271,7 +275,7 @@ export function CalendarPage() {
         eyebrow={t("nav.calendar") || "Kalender"}
         icon={CalendarDays}
         title={t("nav.calendar") || "Kalender Keuangan"}
-        description={t("calendar.subtitle") || "Lihat aktivitas dan jadwal transaksi dalam tampilan bulanan."}
+        description={terms.calendarDescription}
       />
 
       {isLoading && !monthData ? (

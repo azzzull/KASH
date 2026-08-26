@@ -13,6 +13,7 @@ import { useI18n } from "../../i18n";
 import { formatCurrency, toNumber } from "../../lib/money";
 import { Modal } from "../ui/Modal";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
+import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 import type { TransactionType } from "../../types/domain";
 import type { TransactionWithMeta } from "../../lib/transactions";
 
@@ -177,6 +178,7 @@ export function TransactionDetailModal({
     transaction.related_entity_type === "shared_savings_contribution" ||
     transaction.related_entity_type === "shared_savings_withdrawal";
 
+  const terms = useSpaceTerminology();
   const linkedMessage =
     transaction.related_entity_type === "shared_savings_contribution" ||
     transaction.related_entity_type === "shared_savings_withdrawal"
@@ -186,7 +188,7 @@ export function TransactionDetailModal({
         transaction.related_entity_type === "debt_creation" ||
         transaction.related_entity_type === "receivable_creation"
         ? (t("transactions.linkedDebt") || "Transaksi terhubung dengan Utang & Piutang. Dikelola langsung dari halaman Utang & Piutang.")
-        : (t("transactions.linkedGoal") || "Transaksi terhubung dengan Target Tabungan. Perubahan dan pembatalan dikelola dari halaman Target Tabungan.");
+        : terms.linkedGoalMessage;
 
   return (
     <Modal

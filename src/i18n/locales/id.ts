@@ -1177,6 +1177,8 @@ export const id = {
     "calendar.title": "Kalender Transaksi",
     "calendar.subtitle":
         "Pantau aktivitas keuangan harian dalam tampilan kalender visual.",
+    "calendar.managedSubtitle":
+        "Lihat aktivitas dan jadwal dana masuk serta pengeluaran dalam tampilan bulanan.",
     "calendar.transactionsOnDate": "Transaksi pada Tanggal Ini",
     "calendar.noTransactions": "Tidak ada transaksi pada tanggal ini.",
     "calendar.netSummary": "Ringkasan Bersih",
@@ -1196,6 +1198,7 @@ export const id = {
     "analytics.cashFlow": "Arus Kas",
     "analytics.expenseDistribution": "Distribusi Pengeluaran",
     "analytics.netWorthTrend": "Tren Kekayaan Bersih",
+    "analytics.managedBalanceTrend": "Tren Saldo Kelolaan",
     "analytics.budgetVsActual": "Budget vs Realisasi",
     "analytics.incomeVsExpense": "Pemasukan vs Pengeluaran",
     "analytics.netWorthTrendDesc":
@@ -1204,6 +1207,8 @@ export const id = {
     "analytics.currentBalances": "Saldo Terkini",
     "analytics.footerNote":
         "Data analitik diperbarui secara otomatis berdasarkan seluruh catatan keuangan Anda.",
+    "analytics.managedFooterNote":
+        "Biaya transfer termasuk dalam Pengeluaran. Pokok transfer dan penyesuaian saldo dikecualikan dari Dana Masuk, Pengeluaran, dan Arus Bersih.",
     "analytics.increasedOverPeriod": "naik dibanding periode lalu",
     "analytics.decreasedOverPeriod": "turun dibanding periode lalu",
     "analytics.quickInsights": "Wawasan Cepat",
@@ -1222,9 +1227,14 @@ export const id = {
     "analytics.noNetWorthTrend": "Belum ada data kekayaan bersih",
     "analytics.noNetWorthTrendDesc":
         "Riwayat kekayaan bersih akan dihitung seiring berjalannya transaksi.",
+    "analytics.managedNoBalanceTrend": "Belum ada tren saldo kelolaan",
+    "analytics.managedNoBalanceTrendDesc":
+        "Saldo dompet dan transaksi di space ini akan membentuk grafik tren.",
     "analytics.noWalletDistTitle": "Belum ada distribusi dompet",
     "analytics.noWalletDistDesc":
         "Tambah dan isi saldo dompet untuk melihat distribusi dana.",
+    "analytics.managedNoWalletDistDesc":
+        "Dompet aktif di space ini akan tampil di sini.",
     "analytics.3Months": "3 Bulan",
     "analytics.6Months": "6 Bulan",
     "analytics.startDate": "Tanggal Mulai",
@@ -1232,6 +1242,8 @@ export const id = {
     "analytics.description":
         "Wawasan mendalam seputar arus kas, distribusi pengeluaran, dan tren kekayaan bersih.",
     "analytics.cashFlowOverview": "Ringkasan Arus Kas",
+    "analytics.managedCashFlowOverview":
+        "Pantau tren dana masuk, pengeluaran, arus bersih, dan alokasi dana kelolaan.",
     "analytics.dailyAggregation": "Harian",
     "analytics.monthlyAggregation": "Bulanan",
     "analytics.newInPeriod": "baru pada periode ini",
@@ -1239,10 +1251,15 @@ export const id = {
     "analytics.avgMonthlyExpenseDesc": "Rata-rata pengeluaran bulanan Anda",
     "analytics.avgMonthlyIncome": "Rata-rata Pemasukan",
     "analytics.avgMonthlyIncomeDesc": "Rata-rata pemasukan bulanan Anda",
+    "analytics.averageIncome": "Rata-rata Pemasukan",
+    "analytics.managedAverageIncome": "Rata-rata Dana Masuk",
+    "analytics.incomeByCategory": "Pemasukan per Kategori",
+    "analytics.managedIncomeByCategory": "Dana Masuk per Kategori",
     "analytics.avgMonthlyCashFlow": "Rata-rata Arus Kas",
     "analytics.surplusPace": "Surplus bulanan",
     "analytics.deficitPace": "Defisit bulanan",
     "analytics.savingsRate": "Rasio Tabungan",
+    "analytics.managedSurplusRatio": "Rasio Surplus",
     "analytics.savingsRateDesc": "Persentase pendapatan yang berhasil disimpan",
     "analytics.expenseIncome": "Rasio Beban/Pendapatan",
     "analytics.expenseIncomeDesc": "Persentase pengeluaran terhadap pemasukan",
@@ -1274,7 +1291,9 @@ export const id = {
     "analytics.currentPeriod": "Saat ini",
     "analytics.ofTotalExpense": "dari total pengeluaran",
     "analytics.noIncomeYet": "Belum ada pemasukan",
+    "analytics.managedNoIncomeYet": "Belum ada dana masuk",
     "analytics.savingsRateUnavailable": "Rasio tabungan belum dapat dihitung untuk periode ini.",
+    "analytics.managedSurplusUnavailable": "Rasio surplus belum dapat dihitung untuk periode ini.",
     "analytics.avgMonthlyExpenseStory": "Laju pengeluaran rutin per bulan",
     "analytics.avgMonthlyIncomeStory": "Kecepatan arus masuk dana",
     "analytics.healthySavingsPace": "Diatas target ideal 20%",
@@ -1690,6 +1709,41 @@ export const id = {
     "onboarding.firstWalletTracked":
         "Dompet pertama Anda kini tercatat di KASH.",
     "onboarding.goToDashboard": "Buka Dashboard",
+
+    // Managed Budgets / Goals / Debts / Subscriptions / Transactions
+    "budgets.managedSubtitle":
+        "Rencanakan dan pantau alokasi pengeluaran space ini secara terarah.",
+    "budgets.managedEmptyDesc":
+        "Atur batas alokasi untuk mengendalikan pengeluaran space ini.",
+    "budgets.managedNoBudgetsInMonthDesc":
+        "Kelola batas alokasi, amplop, cicilan, dan target dana per bulan.",
+    "goals.managedSubtitle":
+        "Rencanakan pos target dan pantau progres dana kelolaan secara terstruktur.",
+    "goals.managedEmptyDesc": "Buat rencana target dana untuk space ini.",
+    "goals.managedAddContribution": "Tambah Alokasi Dana",
+    "goals.managedContributionHistory": "Riwayat Alokasi Dana",
+    "goals.managedNoContributionsDesc":
+        "Tambahkan alokasi saat ingin memindahkan saldo ke kantong target space ini.",
+    "goals.managedClosedGoalBanner":
+        "Target ini sudah ditutup. Riwayat alokasi dan catatan transaksi tetap tersimpan dalam riwayat space ini.",
+    "goals.managedTrackProgressHint":
+        "KASH akan memantau progres alokasi dana menuju tenggat waktu ini.",
+    "debts.managedSubtitle":
+        "Pantau pinjaman, talangan, dan progres pelunasan pada space ini.",
+    "debts.managedEmptyDesc":
+        "Catat pinjaman atau talangan untuk memantau sisa pembayarannya pada space ini.",
+    "debts.managedTabDebts": "Daftar Utang",
+    "debts.managedTabReceivables": "Daftar Piutang",
+    "subscriptions.managedSubtitle":
+        "Kelola pengeluaran rutin, langganan operasional, dan cicilan pada space ini.",
+    "subscriptions.managedEmptyDesc":
+        "Catat pengeluaran rutin operasional atau tagihan space ini untuk mendapatkan pengingat jatuh tempo.",
+    "subscriptions.managedNoObligationsFound":
+        "Tidak ada tagihan atau kewajiban pada space ini.",
+    "transactions.managedLinkedGoal":
+        "Transaksi terhubung dengan Target Dana. Perubahan dan pembatalan dikelola dari halaman Target.",
+    "transactions.funding": "Dana Masuk",
+    "transactions.spending": "Pengeluaran",
 
     // Statuses
     "status.active": "Aktif",

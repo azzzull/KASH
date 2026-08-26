@@ -36,6 +36,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { CashFlowChart } from "../components/analytics/CashFlowChart";
 
 import { useI18n, type TranslationKey } from "../i18n";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 
 const INCOME_COLOR = "#10B981";
 const EXPENSE_COLOR = "#E50914";
@@ -228,8 +229,7 @@ function AnalyticsHeroStory({
   summary: AnalyticsSummary;
 }) {
   const { t, formatCurrency } = useI18n();
-  const { activeSpace } = useActiveSpace();
-  const isManaged = activeSpace?.space_type === "managed";
+  const terms = useSpaceTerminology();
   const netCashFlow = summary.netCashFlow.amount;
   const isSurplus = netCashFlow >= 0;
   const savingsRate = summary.income.amount > 0 ? (netCashFlow / summary.income.amount) * 100 : 0;
@@ -245,9 +245,7 @@ function AnalyticsHeroStory({
       {/* Top Row: Title Left + Period Picker Right */}
       <div className="flex items-start justify-between gap-3">
         <span className="text-xs font-bold uppercase tracking-wider text-white/70">
-          {isManaged
-            ? t("dashboard.managedNetFlow") || "ARUS BERSIH"
-            : t("dashboard.netCashFlow") || "ARUS KAS BERSIH"}
+          {terms.netCashFlowLabel}
         </span>
         <div className="shrink-0">{periodControls}</div>
       </div>
@@ -279,7 +277,7 @@ function AnalyticsHeroStory({
       <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-3 text-xs">
         <div>
           <span className="text-white/60 font-semibold">
-            {isManaged ? t("dashboard.managedIncome") || "Dana Masuk" : t("common.typeIncome") || "Pemasukan"}
+            {terms.incomeLabel}
           </span>
           <p className="mt-0.5 text-sm font-extrabold text-white">
             {formatCurrency(summary.income.amount, currency)}
@@ -295,7 +293,7 @@ function AnalyticsHeroStory({
         </div>
         <div>
           <span className="text-white/60 font-semibold">
-            {isManaged ? t("dashboard.managedExpense") || "Pengeluaran" : t("common.typeExpense") || "Pengeluaran"}
+            {terms.expenseLabel}
           </span>
           <p className="mt-0.5 text-sm font-extrabold text-white">
             {formatCurrency(summary.expense.amount, currency)}
@@ -317,6 +315,7 @@ function AnalyticsHeroStory({
 
 function AnalyticsInsights({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const savingsRate = summary.income.amount > 0 ? (summary.netCashFlow.amount / summary.income.amount) * 100 : null;
   const topCategory = summary.categorySpending[0] ?? null;
   const previousSpending = summary.expense.change.previous;
@@ -378,13 +377,13 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
 
         <InsightCard>
           <div className="flex items-start justify-between gap-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("analytics.savingsRate") || "Rasio Tabungan"}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{terms.surplusRatioTitle}</span>
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emeraldDark"><CircleDollarSign size={16} /></span>
           </div>
           {savingsRate == null ? (
-            <div className="mt-auto"><p className="text-2xl font-extrabold text-slate-900">-</p><p className="mt-1 text-sm font-bold text-slate-700">{t("analytics.noIncomeYet") || "Belum ada pemasukan"}</p><p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{t("analytics.savingsRateUnavailable") || "Rasio tabungan belum dapat dihitung untuk periode ini."}</p></div>
+            <div className="mt-auto"><p className="text-2xl font-extrabold text-slate-900">-</p><p className="mt-1 text-sm font-bold text-slate-700">{terms.noIncomeYetTitle}</p><p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{terms.surplusRateUnavailableDesc}</p></div>
           ) : (
-            <div className="mt-auto"><div className="flex items-baseline justify-between gap-3"><p className={`text-2xl font-extrabold ${savingsRate >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]"}`}>{savingsRate.toFixed(1)}%</p><span className="text-xs font-semibold text-slate-500">{t("analytics.savingsRate") || "Rasio Tabungan"}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-[width] duration-300 ease-out ${savingsRate >= 0 ? "bg-kash-emerald" : "bg-[#E50914]"}`} style={{ width: `${savingsProgress}%` }} /></div></div>
+            <div className="mt-auto"><div className="flex items-baseline justify-between gap-3"><p className={`text-2xl font-extrabold ${savingsRate >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]"}`}>{savingsRate.toFixed(1)}%</p><span className="text-xs font-semibold text-slate-500">{terms.surplusRatioTitle}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-[width] duration-300 ease-out ${savingsRate >= 0 ? "bg-kash-emerald" : "bg-[#E50914]"}`} style={{ width: `${savingsProgress}%` }} /></div></div>
           )}
         </InsightCard>
 
@@ -539,6 +538,7 @@ function linePath(points: { x: number; y: number }[]) {
 
 function NetWorthTrend({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const mobileScrollRef = useRef<HTMLDivElement>(null);
   const hasData = summary.netWorthTrend.some((point) => point.amount !== 0);
   const pointsData = summary.netWorthTrend;
@@ -551,7 +551,7 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
   }, [pointsData]);
 
   if (!hasData) {
-    return <EmptyPanel title={t("analytics.noNetWorthTrend") || "No net worth trend yet"} description={t("analytics.noNetWorthTrendDesc") || "Wallet balances and ledger activity will build this trend."} className="mt-4 min-h-56" />;
+    return <EmptyPanel title={terms.noBalanceTrendTitle} description={terms.noBalanceTrendDesc} className="mt-4 min-h-56" />;
   }
 
   const desktopWidth = 1040;
@@ -631,12 +631,11 @@ function NetWorthTrend({ currency, summary }: { currency: string; summary: Analy
 
 function WalletDistribution({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
-  const { activeSpace } = useActiveSpace();
-  const isManaged = activeSpace?.space_type === "managed";
+  const terms = useSpaceTerminology();
   const totalAssets = summary.walletDistribution.reduce((sum, item) => sum + item.amount, 0);
 
   if (summary.walletDistribution.length === 0 || totalAssets <= 0) {
-    return <EmptyPanel title={t("analytics.noWalletDistTitle") || "No wallet distribution"} description={t("analytics.noWalletDistDesc") || "Active wallets included in net worth will appear here."} className="mt-4 min-h-40" />;
+    return <EmptyPanel title={t("analytics.noWalletDistTitle") || "No wallet distribution"} description={terms.isManaged ? (t("analytics.managedNoWalletDistDesc") || "Dompet aktif di space ini akan tampil di sini.") : (t("analytics.noWalletDistDesc") || "Active wallets included in net worth will appear here.")} className="mt-4 min-h-40" />;
   }
 
   return (
@@ -664,7 +663,7 @@ function WalletDistribution({ currency, summary }: { currency: string; summary: 
         ))}
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-slate-200 pt-3 text-sm">
           <p className="font-extrabold text-slate-900">
-            {isManaged ? t("dashboard.managedBalance") || "Saldo Kelolaan" : t("dashboard.netWorth") || "Net Worth"}
+            {terms.balanceLabel}
           </p>
           <div className="min-w-0 text-right">
             <p className="font-extrabold text-slate-900">{formatCurrency(summary.walletNetWorth, currency)}</p>
@@ -921,6 +920,7 @@ function BudgetVsActualCard({ currency }: { currency: string }) {
 
 export function AnalyticsPage() {
   const { t } = useI18n();
+  const terms = useSpaceTerminology();
   const { profile } = useAuth();
   const { activeSpace, activeSpaceId } = useActiveSpace();
   const currency = profile?.default_currency ?? "IDR";
@@ -996,7 +996,7 @@ export function AnalyticsPage() {
         eyebrow={t("analytics.period") || "Analisis"}
         icon={BarChart3}
         title={t("nav.analytics") || "Analitik Keuangan"}
-        description={t("analytics.cashFlowOverview") || "Pantau tren pemasukan, pengeluaran, arus kas, dan kesehatan keuangan."}
+        description={terms.analyticsDescription}
       />
 
       {/* 2. Main Emerald Financial Hero */}
@@ -1018,24 +1018,24 @@ export function AnalyticsPage() {
       {/* 3. Main Visual Charts Grid (Donut Ring + Cash Flow Line Chart in 2 Columns) */}
       <div className="grid gap-4 lg:grid-cols-2 min-w-0 max-w-full">
         <AnalyticsCard className="p-5 flex flex-col justify-between h-full">
-          <h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingByCategory") || "Spending by Category"}</h2>
+          <h2 className="text-base font-extrabold text-slate-900">{terms.spendingByCategoryTitle}</h2>
           <SpendingByCategory summary={summary} currency={currency} />
         </AnalyticsCard>
 
         <AnalyticsCard className="p-5 flex flex-col justify-between h-full">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-extrabold text-slate-900">{t("analytics.cashFlowOverview") || "Cash Flow Overview"}</h2>
+              <h2 className="text-base font-extrabold text-slate-900">{terms.cashflowTitle}</h2>
               <p className="mt-0.5 text-xs font-semibold text-slate-500">{summary.period.aggregation === "daily" ? (t("analytics.dailyAggregation") || "Daily aggregation") : (t("analytics.monthlyAggregation") || "Monthly aggregation")}</p>
             </div>
             <div className="flex items-center gap-4 text-xs font-bold text-slate-600">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: INCOME_COLOR }} />
-                {t("common.typeIncome") || t("dashboard.income") || "Income"}
+                {terms.incomeLabel}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EXPENSE_COLOR }} />
-                {t("common.typeExpense") || t("dashboard.expense") || "Expense"}
+                {terms.expenseLabel}
               </span>
             </div>
           </div>
@@ -1050,13 +1050,11 @@ export function AnalyticsPage() {
       <AnalyticsCard className="p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-900">{t("analytics.netWorthTrend") || "Net Worth Trend"}</h2>
+            <h2 className="text-base font-extrabold text-slate-900">{terms.balanceTrendTitle}</h2>
           </div>
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: NET_WORTH_COLOR }} />
-            {activeSpace?.space_type === "managed"
-              ? t("dashboard.managedBalance") || "Saldo Kelolaan"
-              : t("dashboard.netWorth") || "Net Worth"}
+            {terms.balanceLabel}
           </div>
         </div>
         <NetWorthTrend summary={summary} currency={currency} />
@@ -1080,7 +1078,7 @@ export function AnalyticsPage() {
       </AnalyticsCard>
 
       <p className="text-xs font-semibold text-slate-500">
-        {t("analytics.footerNote") || "Transfer fees are included in Expense. Transfer principal and balance adjustments are excluded from Income, Expense, and Cash Flow."}
+        {terms.analyticsFooterNote}
       </p>
     </div>
   );

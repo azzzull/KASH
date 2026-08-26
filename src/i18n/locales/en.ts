@@ -1169,6 +1169,8 @@ export const en = {
     "calendar.title": "Transaction Calendar",
     "calendar.subtitle":
         "Review daily financial activities in a visual calendar grid.",
+    "calendar.managedSubtitle":
+        "View monthly activity and schedule of funding and spending.",
     "calendar.transactionsOnDate": "Transactions on this Date",
     "calendar.noTransactions": "No transactions on this date.",
     "calendar.netSummary": "Net Summary",
@@ -1188,6 +1190,7 @@ export const en = {
     "analytics.cashFlow": "Cash Flow",
     "analytics.expenseDistribution": "Expense Distribution",
     "analytics.netWorthTrend": "Net Worth Trend",
+    "analytics.managedBalanceTrend": "Managed Balance Trend",
     "analytics.budgetVsActual": "Budget vs Actual",
     "analytics.incomeVsExpense": "Income vs Expense",
     "analytics.netWorthTrendDesc":
@@ -1196,6 +1199,8 @@ export const en = {
     "analytics.currentBalances": "Current Balances",
     "analytics.footerNote":
         "Analytics data updates automatically based on all recorded financial activity.",
+    "analytics.managedFooterNote":
+        "Transfer fees are included in Spending. Transfer principal and balance adjustments are excluded from Funding, Spending, and Net Flow.",
     "analytics.increasedOverPeriod": "increased compared to last period",
     "analytics.decreasedOverPeriod": "decreased compared to last period",
     "analytics.quickInsights": "Quick Insights",
@@ -1213,9 +1218,14 @@ export const en = {
     "analytics.noNetWorthTrend": "No net worth data yet",
     "analytics.noNetWorthTrendDesc":
         "Net worth trend will calculate as transactions and balances accumulate.",
+    "analytics.managedNoBalanceTrend": "No managed balance trend yet",
+    "analytics.managedNoBalanceTrendDesc":
+        "Wallet balances and transactions in this space will build the trend chart.",
     "analytics.noWalletDistTitle": "No wallet distribution data",
     "analytics.noWalletDistDesc":
         "Add and fund wallets to view fund distribution.",
+    "analytics.managedNoWalletDistDesc":
+        "Active wallets in this space will appear here.",
     "analytics.3Months": "3 Months",
     "analytics.6Months": "6 Months",
     "analytics.startDate": "Start Date",
@@ -1223,6 +1233,8 @@ export const en = {
     "analytics.description":
         "In-depth insights into cash flow, spending distribution, and net worth growth.",
     "analytics.cashFlowOverview": "Cash Flow Overview",
+    "analytics.managedCashFlowOverview":
+        "Monitor funding trends, spending, net flow, and managed allocations.",
     "analytics.dailyAggregation": "Daily",
     "analytics.monthlyAggregation": "Monthly",
     "analytics.newInPeriod": "new in this period",
@@ -1231,10 +1243,15 @@ export const en = {
         "Based on actual transaction history in selected range.",
     "analytics.avgMonthlyIncome": "Avg Monthly Income",
     "analytics.avgMonthlyIncomeDesc": "Average net income per month.",
+    "analytics.averageIncome": "Average Income",
+    "analytics.managedAverageIncome": "Average Funding",
+    "analytics.incomeByCategory": "Income by Category",
+    "analytics.managedIncomeByCategory": "Funding by Category",
     "analytics.avgMonthlyCashFlow": "Avg Monthly Cash Flow",
     "analytics.surplusPace": "Average monthly surplus",
     "analytics.deficitPace": "Average monthly deficit",
     "analytics.savingsRate": "Savings Rate",
+    "analytics.managedSurplusRatio": "Surplus Ratio",
     "analytics.savingsRateDesc":
         "Percentage of surplus cash flow from total income.",
     "analytics.expenseIncome": "Expense-to-Income Ratio",
@@ -1267,7 +1284,9 @@ export const en = {
     "analytics.currentPeriod": "Current",
     "analytics.ofTotalExpense": "of total spending",
     "analytics.noIncomeYet": "No income yet",
+    "analytics.managedNoIncomeYet": "No funding yet",
     "analytics.savingsRateUnavailable": "Savings rate cannot be calculated for this period yet.",
+    "analytics.managedSurplusUnavailable": "Surplus ratio cannot be calculated for this period yet.",
     "analytics.avgMonthlyExpenseStory": "Routine monthly spending pace",
     "analytics.avgMonthlyIncomeStory": "Inflow rate of funds",
     "analytics.healthySavingsPace": "Above ideal 20% target",
@@ -1679,6 +1698,41 @@ export const en = {
     "onboarding.firstWalletTracked":
         "Your first wallet is now tracked in KASH.",
     "onboarding.goToDashboard": "Go to Dashboard",
+
+    // Managed Budgets / Goals / Debts / Subscriptions / Transactions
+    "budgets.managedSubtitle":
+        "Plan and monitor spending allocations for this space.",
+    "budgets.managedEmptyDesc":
+        "Set allocation limits to control spending for this space.",
+    "budgets.managedNoBudgetsInMonthDesc":
+        "Manage allocation limits, envelopes, installments, and funding targets per month.",
+    "goals.managedSubtitle":
+        "Plan funding goals and track target progress for this space.",
+    "goals.managedEmptyDesc": "Create a funding goal plan for this space.",
+    "goals.managedAddContribution": "Add Fund Allocation",
+    "goals.managedContributionHistory": "Fund Allocation History",
+    "goals.managedNoContributionsDesc":
+        "Add an allocation to transfer balance into this goal pocket.",
+    "goals.managedClosedGoalBanner":
+        "This goal is closed. Allocation history and transactions remain saved in this space.",
+    "goals.managedTrackProgressHint":
+        "KASH will track funding progress towards this deadline.",
+    "debts.managedSubtitle":
+        "Monitor loans, advances, and settlement progress in this space.",
+    "debts.managedEmptyDesc":
+        "Record loans or advances to track remaining payments in this space.",
+    "debts.managedTabDebts": "Debts",
+    "debts.managedTabReceivables": "Receivables",
+    "subscriptions.managedSubtitle":
+        "Manage recurring bills, operational subscriptions, and installments in this space.",
+    "subscriptions.managedEmptyDesc":
+        "Track recurring bills or operational subscriptions in this space to get due date reminders.",
+    "subscriptions.managedNoObligationsFound":
+        "No recurring obligations found in this space.",
+    "transactions.managedLinkedGoal":
+        "Transaction linked to a Funding Goal. Changes and cancellations are managed from the Goals page.",
+    "transactions.funding": "Funding",
+    "transactions.spending": "Spending",
 
     // Statuses
     "status.active": "Active",

@@ -21,6 +21,7 @@ import { FilterTabs } from "../components/ui/FilterTabs";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useAppEvent } from "../hooks/useAppEvent";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { useI18n } from "../i18n";
 import { appEvents } from "../lib/appEvents";
 import { getMonthlyBudgetOverview, getMonthlyBudgets } from "../lib/budgets";
@@ -28,6 +29,7 @@ import type { BudgetWithProgress, MonthlyBudgetOverview } from "../types/domain"
 
 export function BudgetsPage() {
   const { t, formatMonthYear, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const { activeSpaceId } = useActiveSpace();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -138,8 +140,8 @@ export function BudgetsPage() {
     { label: t("budgets.categories"), value: "category", count: categoryBudgets.length },
     { label: t("budgets.envelopes"), value: "envelope", count: envelopeBudgets.length },
     { label: t("budgets.debtPayment") || "Cicil Utang", value: "debt", count: debtBudgets.length },
-    { label: t("dashboard.savings") || "Tabungan", value: "goal", count: goalBudgets.length },
-  ], [budgets.length, categoryBudgets.length, envelopeBudgets.length, debtBudgets.length, goalBudgets.length, t]);
+    { label: terms.budgetGoalTabLabel, value: "goal", count: goalBudgets.length },
+  ], [budgets.length, categoryBudgets.length, envelopeBudgets.length, debtBudgets.length, goalBudgets.length, t, terms.budgetGoalTabLabel]);
 
   const currentMonthLabel = useMemo(() => {
     const [year, month] = currentMonth.split("-").map(Number);
@@ -154,7 +156,7 @@ export function BudgetsPage() {
         eyebrow={t("budgets.unifiedFinancialPlan") || "Rencana Keuangan"}
         icon={Scale}
         title={t("nav.budgets") || "Target & Budget"}
-        description={t("budgets.noBudgetsInMonthDesc") || "Kelola batas anggaran, amplop, cicilan, dan target tabungan per bulan."}
+        description={terms.budgetOverviewDesc}
         actions={
           <div ref={createActionRef} className="hidden shrink-0 sm:block">
             <Button onClick={() => setShowCreateModal(true)} className="gap-1.5 min-h-9 px-3 py-1.5 text-xs font-extrabold">
@@ -291,7 +293,7 @@ export function BudgetsPage() {
           </div>
           <h3 className="text-base font-extrabold text-slate-900">{t("budgets.noBudgetsInMonth") || "Belum Ada Budget di Bulan Ini"}</h3>
           <p className="mt-1 max-w-sm text-xs font-semibold text-slate-600">
-            {t("budgets.noBudgetsInMonthDesc") || "Buat batas anggaran untuk kategori favorit atau kelompokkan kategori ke dalam amplop belanja."}
+            {terms.budgetEmptyDesc}
           </p>
           <Button onClick={() => setShowCreateModal(true)} className="mt-4 gap-2">
             <Plus size={16} />

@@ -5,6 +5,7 @@ import { useI18n } from "../i18n";
 export type SpaceTerminology = {
   isManaged: boolean;
   spaceType: "personal" | "managed";
+  // Balances & Cash Flow
   balanceLabel: string;
   incomeLabel: string;
   expenseLabel: string;
@@ -26,6 +27,43 @@ export type SpaceTerminology = {
   noCashflowDesc: string;
   noSpendingDesc: string;
   noTransactionsDesc: string;
+  // Analytics
+  analyticsDescription: string;
+  averageIncomeLabel: string;
+  incomeByCategoryLabel: string;
+  balanceTrendTitle: string;
+  noBalanceTrendTitle: string;
+  noBalanceTrendDesc: string;
+  surplusRatioTitle: string;
+  noIncomeYetTitle: string;
+  surplusRateUnavailableDesc: string;
+  analyticsFooterNote: string;
+  // Calendar
+  calendarDescription: string;
+  // Budget
+  budgetSubtitle: string;
+  budgetEmptyDesc: string;
+  budgetOverviewDesc: string;
+  budgetGoalTabLabel: string;
+  // Goals
+  goalsSubtitle: string;
+  goalsEmptyDesc: string;
+  goalsAddContribution: string;
+  goalsContributionHistory: string;
+  goalsNoContributionsDesc: string;
+  goalsClosedBanner: string;
+  goalsTrackProgressHint: string;
+  // Debts
+  debtsSubtitle: string;
+  debtsEmptyDesc: string;
+  debtsTabLabel: string;
+  receivablesTabLabel: string;
+  // Subscriptions
+  subscriptionsSubtitle: string;
+  subscriptionsEmptyDesc: string;
+  subscriptionsNoObligations: string;
+  // Transactions
+  linkedGoalMessage: string;
 };
 
 export function useSpaceTerminology(): SpaceTerminology {
@@ -65,6 +103,89 @@ export function useSpaceTerminology(): SpaceTerminology {
         noTransactionsDesc:
           t("dashboard.managedNoTransactionsDesc") ||
           "Catat dana masuk atau pengeluaran pertama di space ini.",
+
+        // Analytics
+        analyticsDescription:
+          t("analytics.managedCashFlowOverview") ||
+          "Pantau tren dana masuk, pengeluaran, arus bersih, dan alokasi dana kelolaan.",
+        averageIncomeLabel: t("analytics.managedAverageIncome") || "Rata-rata Dana Masuk",
+        incomeByCategoryLabel: t("analytics.managedIncomeByCategory") || "Dana Masuk per Kategori",
+        balanceTrendTitle: t("analytics.managedBalanceTrend") || "Tren Saldo Kelolaan",
+        noBalanceTrendTitle: t("analytics.managedNoBalanceTrend") || "Belum ada tren saldo kelolaan",
+        noBalanceTrendDesc:
+          t("analytics.managedNoBalanceTrendDesc") ||
+          "Saldo dompet dan transaksi di space ini akan membentuk grafik tren.",
+        surplusRatioTitle: t("analytics.managedSurplusRatio") || "Rasio Surplus",
+        noIncomeYetTitle: t("analytics.managedNoIncomeYet") || "Belum ada dana masuk",
+        surplusRateUnavailableDesc:
+          t("analytics.managedSurplusUnavailable") ||
+          "Rasio surplus belum dapat dihitung untuk periode ini.",
+        analyticsFooterNote:
+          t("analytics.managedFooterNote") ||
+          "Biaya transfer termasuk dalam Pengeluaran. Pokok transfer dan penyesuaian saldo dikecualikan dari Dana Masuk, Pengeluaran, dan Arus Bersih.",
+
+        // Calendar
+        calendarDescription:
+          t("calendar.managedSubtitle") ||
+          "Lihat aktivitas dan jadwal dana masuk serta pengeluaran dalam tampilan bulanan.",
+
+        // Budget
+        budgetSubtitle:
+          t("budgets.managedSubtitle") ||
+          "Rencanakan dan pantau alokasi pengeluaran space ini secara terarah.",
+        budgetEmptyDesc:
+          t("budgets.managedEmptyDesc") ||
+          "Atur batas alokasi untuk mengendalikan pengeluaran space ini.",
+        budgetOverviewDesc:
+          t("budgets.managedNoBudgetsInMonthDesc") ||
+          "Kelola batas alokasi, amplop, cicilan, dan target dana per bulan.",
+        budgetGoalTabLabel: t("goals.title") || "Target",
+
+        // Goals
+        goalsSubtitle:
+          t("goals.managedSubtitle") ||
+          "Rencanakan pos target dan pantau progres dana kelolaan secara terstruktur.",
+        goalsEmptyDesc:
+          t("goals.managedEmptyDesc") ||
+          "Buat rencana target dana untuk space ini.",
+        goalsAddContribution: t("goals.managedAddContribution") || "Tambah Alokasi Dana",
+        goalsContributionHistory:
+          t("goals.managedContributionHistory") || "Riwayat Alokasi Dana",
+        goalsNoContributionsDesc:
+          t("goals.managedNoContributionsDesc") ||
+          "Tambahkan alokasi saat ingin memindahkan saldo ke kantong target space ini.",
+        goalsClosedBanner:
+          t("goals.managedClosedGoalBanner") ||
+          "Target ini sudah ditutup. Riwayat alokasi dan catatan transaksi tetap tersimpan dalam riwayat space ini.",
+        goalsTrackProgressHint:
+          t("goals.managedTrackProgressHint") ||
+          "KASH akan memantau progres alokasi dana menuju tenggat waktu ini.",
+
+        // Debts
+        debtsSubtitle:
+          t("debts.managedSubtitle") ||
+          "Pantau pinjaman, talangan, dan progres pelunasan pada space ini.",
+        debtsEmptyDesc:
+          t("debts.managedEmptyDesc") ||
+          "Catat pinjaman atau talangan untuk memantau sisa pembayarannya pada space ini.",
+        debtsTabLabel: t("debts.managedTabDebts") || "Daftar Utang",
+        receivablesTabLabel: t("debts.managedTabReceivables") || "Daftar Piutang",
+
+        // Subscriptions
+        subscriptionsSubtitle:
+          t("subscriptions.managedSubtitle") ||
+          "Kelola pengeluaran rutin, langganan operasional, dan cicilan pada space ini.",
+        subscriptionsEmptyDesc:
+          t("subscriptions.managedEmptyDesc") ||
+          "Catat pengeluaran rutin operasional atau tagihan space ini untuk mendapatkan pengingat jatuh tempo.",
+        subscriptionsNoObligations:
+          t("subscriptions.managedNoObligationsFound") ||
+          "Tidak ada tagihan atau kewajiban pada space ini.",
+
+        // Transactions
+        linkedGoalMessage:
+          t("transactions.managedLinkedGoal") ||
+          "Transaksi terhubung dengan Target Dana. Perubahan dan pembatalan dikelola dari halaman Target.",
       };
     }
 
@@ -98,6 +219,89 @@ export function useSpaceTerminology(): SpaceTerminology {
       noTransactionsDesc:
         t("dashboard.noTransactionsDesc") ||
         "Catat pemasukan atau pengeluaran pertama Anda.",
+
+      // Analytics
+      analyticsDescription:
+        t("analytics.cashFlowOverview") ||
+        "Pantau tren pemasukan, pengeluaran, arus kas, dan kesehatan keuangan.",
+      averageIncomeLabel: t("analytics.averageIncome") || "Rata-rata Pemasukan",
+      incomeByCategoryLabel: t("analytics.incomeByCategory") || "Pemasukan per Kategori",
+      balanceTrendTitle: t("analytics.netWorthTrend") || "Tren Kekayaan Bersih",
+      noBalanceTrendTitle: t("analytics.noNetWorthTrend") || "Belum ada tren kekayaan bersih",
+      noBalanceTrendDesc:
+        t("analytics.noNetWorthTrendDesc") ||
+        "Saldo dompet dan pencatatan transaksi akan membentuk grafik tren.",
+      surplusRatioTitle: t("analytics.savingsRate") || "Rasio Tabungan",
+      noIncomeYetTitle: t("analytics.noIncomeYet") || "Belum ada pemasukan",
+      surplusRateUnavailableDesc:
+        t("analytics.savingsRateUnavailable") ||
+        "Rasio tabungan belum dapat dihitung untuk periode ini.",
+      analyticsFooterNote:
+        t("analytics.footerNote") ||
+        "Biaya transfer termasuk dalam Pengeluaran. Pokok transfer dan penyesuaian saldo dikecualikan dari Pemasukan, Pengeluaran, dan Arus Kas.",
+
+      // Calendar
+      calendarDescription:
+        t("calendar.subtitle") ||
+        "Lihat aktivitas dan jadwal transaksi dalam tampilan bulanan.",
+
+      // Budget
+      budgetSubtitle:
+        t("budgets.subtitle") ||
+        "Rencanakan dan pantau alokasi pengeluaran bulanan Anda secara terarah.",
+      budgetEmptyDesc:
+        t("budgets.emptyDesc") ||
+        "Atur batas pengeluaran untuk mengendalikan keuangan Anda.",
+      budgetOverviewDesc:
+        t("budgets.noBudgetsInMonthDesc") ||
+        "Kelola batas anggaran, amplop, cicilan, dan target tabungan per bulan.",
+      budgetGoalTabLabel: t("dashboard.savings") || "Tabungan",
+
+      // Goals
+      goalsSubtitle:
+        t("goals.subtitle") ||
+        "Rencanakan tabungan untuk impian masa depan atau dana darurat.",
+      goalsEmptyDesc:
+        t("goals.emptyDesc") ||
+        "Buat rencana tabungan untuk impian atau dana darurat Anda.",
+      goalsAddContribution: t("goals.addContribution") || "Tambah Alokasi Tabungan",
+      goalsContributionHistory:
+        t("goals.contributionHistory") || "Riwayat Alokasi Tabungan",
+      goalsNoContributionsDesc:
+        t("goals.noContributionsDesc") ||
+        "Tambahkan alokasi saat Anda ingin memindahkan uang dari dompet ke kantong tabungan target ini.",
+      goalsClosedBanner:
+        t("goals.closedGoalBanner") ||
+        "Target ini sudah ditutup. Riwayat alokasi dan catatan transaksi tetap tersimpan dalam riwayat Anda.",
+      goalsTrackProgressHint:
+        t("goals.trackProgressHint") ||
+        "KASH akan memantau progres tabungan menuju tenggat waktu ini.",
+
+      // Debts
+      debtsSubtitle:
+        t("debts.subtitle") ||
+        "Pantau kewajiban, piutang, pembayaran, dan riwayat pelunasan.",
+      debtsEmptyDesc:
+        t("debts.emptyDesc") ||
+        "Catat pinjaman atau talangan untuk memantau sisa pembayarannya.",
+      debtsTabLabel: t("debts.tabDebts") || "Utang Saya",
+      receivablesTabLabel: t("debts.tabReceivables") || "Piutang Saya",
+
+      // Subscriptions
+      subscriptionsSubtitle:
+        t("subscriptions.subtitle") ||
+        "Kelola seluruh pengeluaran rutin, cicilan, dan langganan berkala secara otomatis.",
+      subscriptionsEmptyDesc:
+        t("subscriptions.emptyDesc") ||
+        "Pantau tagihan bulanan Netflix, Spotify, listrik PLN, atau cicilan dengan mudah.",
+      subscriptionsNoObligations:
+        t("subscriptions.noObligationsFound") ||
+        "Tidak ada tagihan atau langganan.",
+
+      // Transactions
+      linkedGoalMessage:
+        t("transactions.linkedGoal") ||
+        "Transaksi terhubung dengan Target Tabungan. Perubahan dan pembatalan dikelola dari halaman Target Tabungan.",
     };
   }, [isManaged, t]);
 }

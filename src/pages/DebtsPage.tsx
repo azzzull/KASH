@@ -34,6 +34,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { SelectField } from "../components/ui/SelectField";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { useI18n } from "../i18n";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitDebtSaved, emitTransactionSaved } from "../lib/appEvents";
@@ -55,8 +56,9 @@ type TypeFilter = "all" | "debt" | "receivable";
 type StatusFilter = "active" | "settled" | "all";
 
 export function DebtsPage() {
-  const navigate = useNavigate();
   const { t } = useI18n();
+  const terms = useSpaceTerminology();
+  const navigate = useNavigate();
   const { activeSpaceId } = useActiveSpace();
   const [loading, setLoading] = useState(true);
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
@@ -106,9 +108,9 @@ export function DebtsPage() {
 
   const typeFilterOptions = useMemo(() => [
     { label: t("debts.tabAll"), value: "all" },
-    { label: t("debts.tabDebts"), value: "debt" },
-    { label: t("debts.tabReceivables"), value: "receivable" },
-  ], [t]);
+    { label: terms.debtsTabLabel, value: "debt" },
+    { label: terms.receivablesTabLabel, value: "receivable" },
+  ], [t, terms.debtsTabLabel, terms.receivablesTabLabel]);
 
   const createActionRef = useRef<HTMLDivElement>(null);
 
@@ -118,7 +120,7 @@ export function DebtsPage() {
         eyebrow={t("debts.financeEyebrow") || "Keuangan"}
         icon={HandCoins}
         title={t("debts.title") || "Utang & Piutang"}
-        description={t("debts.subtitle") || "Pantau kewajiban, piutang, pembayaran, dan riwayat pelunasan."}
+        description={terms.debtsSubtitle}
         actions={
           <div className="flex items-center gap-2">
             <HeaderFilterMenu
@@ -204,12 +206,12 @@ export function DebtsPage() {
             <HandCoins size={28} />
           </div>
           <h3 className="mt-4 text-base font-extrabold text-slate-900">
-            {t("debts.emptyTitle")}
+            {t("debts.emptyTitle") || "Belum ada catatan utang atau piutang"}
           </h3>
-          <p className="mt-1 text-xs font-semibold text-slate-600">
+          <p className="mt-1 max-w-sm text-xs font-semibold text-slate-500 mx-auto">
             {searchQuery
               ? (t("debts.noMatchingDebts", { query: searchQuery }) || `Tidak ditemukan hasil yang cocok dengan "${searchQuery}".`)
-              : t("debts.emptyDesc")}
+              : terms.debtsEmptyDesc}
           </p>
           {!searchQuery && (
             <div className="mt-5">

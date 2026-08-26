@@ -29,6 +29,7 @@ import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SelectField } from "../components/ui/SelectField";
 import { useAppEvent } from "../hooks/useAppEvent";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { useI18n } from "../i18n";
 import { appEvents, emitGoalSaved, emitTransactionSaved } from "../lib/appEvents";
 import {
@@ -415,6 +416,7 @@ function EditGoalModal({
   onSaved: () => void;
 }) {
   const { t } = useI18n();
+  const terms = useSpaceTerminology();
   const [form, setForm] = useState<GoalFormState>({
     name: goal.name,
     targetAmount: formatMoneyDigits(goal.target_amount),
@@ -535,7 +537,7 @@ function EditGoalModal({
             />
             <span className="mt-1.5 block text-xs font-medium text-slate-600">
               {form.deadline
-                ? (t("goals.trackProgressHint") || "KASH akan memantau progres tabungan menuju tenggat waktu ini.")
+                ? terms.goalsTrackProgressHint
                 : (t("goals.deadlineOptionalHint") || "Opsional. Kosongkan jika tanpa batas waktu.")}
             </span>
           </div>
@@ -582,6 +584,7 @@ function GoalsSkeleton() {
 
 export function GoalsPage() {
   const { t, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [goals, setGoals] = useState<GoalWithProgress[]>([]);
   const [archivedCount, setArchivedCount] = useState(0);
@@ -735,7 +738,7 @@ export function GoalsPage() {
         eyebrow={activeTab === "archived" ? undefined : (t("goals.title") || "Target")}
         icon={activeTab === "archived" ? undefined : Crosshair}
         title={activeTab === "archived" ? (t("goals.archivedGoals") || "Target Diarsipkan") : (t("goals.title") || "Target")}
-        description={activeTab === "archived" ? undefined : t("goals.subtitle")}
+        description={activeTab === "archived" ? undefined : terms.goalsSubtitle}
         actions={
           <div className="flex items-center gap-2">
             <HeaderArchiveButton
@@ -819,7 +822,7 @@ export function GoalsPage() {
               {t("goals.emptyTitle")}
             </h3>
             <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-slate-600">
-              {t("goals.emptyDesc")}
+              {terms.goalsEmptyDesc}
             </p>
             <Button
               className="mt-5"

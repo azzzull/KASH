@@ -37,6 +37,7 @@ import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents, emitGoalSaved, emitTransactionSaved } from "../lib/appEvents";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { useI18n } from "../i18n";
 
 type GoalFormState = {
@@ -367,6 +368,7 @@ export function GoalDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, formatDate: formatI18nDate, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const [goal, setGoal] = useState<GoalDetail | null>(null);
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -513,7 +515,7 @@ export function GoalDetailPage() {
           <div ref={createActionRef} className="hidden sm:block">
             <Button onClick={() => setShowContribution(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
               <Plus aria-hidden="true" size={15} />
-              {t("goals.addContribution") || "Tambah Tabungan"}
+              {terms.goalsAddContribution}
             </Button>
           </div>
         )}
@@ -521,7 +523,7 @@ export function GoalDetailPage() {
 
       {isCancelled ? (
         <section className="rounded-2xl border border-slate-200/60 bg-slate-50 p-4 text-xs font-semibold text-slate-600">
-          {t("goals.closedGoalBanner") || "Target ini sudah ditutup. Riwayat alokasi dan catatan transaksi tetap tersimpan dalam riwayat Anda."}
+          {terms.goalsClosedBanner}
         </section>
       ) : null}
 
@@ -619,7 +621,7 @@ export function GoalDetailPage() {
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2">
             <WalletCards aria-hidden="true" className="text-slate-500" size={17} />
-            <h3 className="text-sm font-extrabold text-slate-900">{t("goals.contributionHistory") || "Riwayat Alokasi Tabungan"}</h3>
+            <h3 className="text-sm font-extrabold text-slate-900">{terms.goalsContributionHistory}</h3>
           </div>
           <span className="text-xs font-bold text-slate-500">{goal.contributions.length} {t("goals.entries") || "catatan"}</span>
         </div>
@@ -628,7 +630,7 @@ export function GoalDetailPage() {
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
             <h4 className="text-sm font-extrabold text-slate-900">{t("goals.noContributionsYet") || "Belum ada alokasi dana."}</h4>
             <p className="mx-auto mt-1 max-w-sm text-xs font-semibold leading-5 text-slate-500">
-              {t("goals.noContributionsDesc") || "Tambahkan alokasi saat Anda ingin memindahkan uang dari dompet ke kantong tabungan target ini."}
+              {terms.goalsNoContributionsDesc}
             </p>
           </div>
         ) : (

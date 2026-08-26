@@ -28,6 +28,7 @@ import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { appEvents } from "../lib/appEvents";
+import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { useI18n } from "../i18n";
 import { formatCurrency, toNumber } from "../../src/lib/money";
 import {
@@ -42,6 +43,7 @@ type TabFilter = "all" | "subscriptions" | "installments" | "due_soon";
 export function SubscriptionsPage() {
   const navigate = useNavigate();
   const { t, formatDate, formatCurrency } = useI18n();
+  const terms = useSpaceTerminology();
   const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const [obligations, setObligations] = useState<RecurringObligationWithMeta[]>([]);
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
@@ -175,7 +177,7 @@ export function SubscriptionsPage() {
         eyebrow={t("subscriptions.eyebrow") || "Keuangan"}
         icon={Repeat}
         title={t("subscriptions.title") || "Tagihan & Langganan"}
-        description={t("subscriptions.subtitle") || "Kelola tagihan rutin, langganan, cicilan, dan jatuh tempo pembayaran."}
+        description={terms.subscriptionsSubtitle}
         actions={
           <div ref={createActionRef} className="hidden sm:block shrink-0">
             <Button onClick={() => setCreateModalOpen(true)} className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold">
@@ -253,11 +255,11 @@ export function SubscriptionsPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-kash-selected text-kash-emerald">
             <Repeat size={22} />
           </div>
-          <h4 className="mt-4 text-base font-extrabold text-slate-900">{t("subscriptions.noObligationsFound") || "Tidak ada kewajiban rutin ditemukan"}</h4>
+          <h4 className="mt-4 text-base font-extrabold text-slate-900">{terms.subscriptionsNoObligations}</h4>
           <p className="mt-1 text-xs font-semibold text-slate-600">
             {searchQuery
               ? (t("subscriptions.adjustSearchHint") || "Coba sesuaikan pencarian atau filter aktif Anda.")
-              : (t("subscriptions.emptyDesc") || "Pantau tagihan bulanan Netflix, Spotify, listrik PLN, atau cicilan dengan mudah.")}
+              : terms.subscriptionsEmptyDesc}
           </p>
           {!searchQuery && (
             <Button onClick={() => setCreateModalOpen(true)} className="mt-4 gap-2">
