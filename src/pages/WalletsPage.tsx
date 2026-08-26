@@ -1,8 +1,10 @@
-import { Loader2, Plus, WalletCards, TrendingUp, PiggyBank, Landmark, CreditCard, Banknote } from "lucide-react";
+import { Loader2, Plus, WalletCards, TrendingUp, PiggyBank, Landmark, CreditCard, Banknote, RotateCcw } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
+import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -10,7 +12,7 @@ import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../i18n";
-import { appEvents } from "../lib/appEvents";
+import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import {
@@ -21,7 +23,13 @@ import {
   walletIconOptions,
   walletTypeOptions,
 } from "../lib/walletMeta";
-import { createWallet, getWallets, type WalletWithBalance } from "../lib/wallets";
+import {
+  createWallet,
+  getArchivedWalletsCount,
+  getWallets,
+  restoreWallet,
+  type WalletWithBalance,
+} from "../lib/wallets";
 import type { WalletType } from "../types/domain";
 
 type WalletFormState = {
@@ -46,7 +54,13 @@ const defaultFormState: WalletFormState = {
   color: "#10B981",
 };
 
-function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
+function WalletRow({
+  wallet,
+  onRestore,
+}: {
+  wallet: WalletWithBalance;
+  onRestore?: () => void;
+}) {
   const { t, formatCurrency } = useI18n();
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
@@ -58,7 +72,9 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
 
   return (
     <Link
-      className="kash-activity-row flex items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md active:bg-slate-50 min-w-0 max-w-full"
+      className={`kash-activity-row flex items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md active:bg-slate-50 min-w-0 max-w-full ${
+        wallet.is_archived ? "opacity-80" : ""
+      }`}
       to={`/wallets/${wallet.id}`}
     >
       <div className="flex min-w-0 items-center gap-3">
@@ -69,30 +85,50 @@ function WalletRow({ wallet }: { wallet: WalletWithBalance }) {
           <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-extrabold text-slate-900">{wallet.name}</p>
+          <p className={`truncate text-sm font-extrabold ${wallet.is_archived ? "text-slate-700 line-through" : "text-slate-900"}`}>
+            {wallet.name}
+          </p>
           <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
             {[wallet.institution_name, isGoalPocket ? (t("wallets.goalPocket") || "Kantong Target") : typeOption.label].filter(Boolean).join(" • ")}
           </p>
         </div>
       </div>
 
-      <div className="shrink-0 text-right">
-        <p className="text-sm font-extrabold text-slate-900 md:text-base">
-          {formatCurrency(currentBal, wallet.currency)}
-        </p>
-        {isGoalPocket ? (
-          <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/50">
-            {t("goals.goal") || "Goal"}: {wallet.goal_name}
-          </span>
-        ) : isSavingsPocket ? (
-          <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[10px] font-bold text-kash-emeraldDark border border-kash-emerald/20">
-            {t("wallets.savingsPocket") || "Tabungan"}
-          </span>
-        ) : isInvestment && wallet.balance?.return_percentage !== undefined ? (
-          <span className={`mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-bold ${Number(wallet.balance.return_percentage) >= 0 ? "text-kash-emerald" : "text-[#E50914]"}`}>
-            {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}{Number(wallet.balance.return_percentage).toFixed(2)}% {t("wallets.return") || "return"}
-          </span>
-        ) : null}
+      <div className="flex items-center gap-2.5 shrink-0">
+        <div className="text-right">
+          <p className="text-sm font-extrabold text-slate-900 md:text-base">
+            {formatCurrency(currentBal, wallet.currency)}
+          </p>
+          {isGoalPocket ? (
+            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/50">
+              {t("goals.goal") || "Goal"}: {wallet.goal_name}
+            </span>
+          ) : isSavingsPocket ? (
+            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[10px] font-bold text-kash-emeraldDark border border-kash-emerald/20">
+              {t("wallets.savingsPocket") || "Tabungan"}
+            </span>
+          ) : isInvestment && wallet.balance?.return_percentage !== undefined ? (
+            <span className={`mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-bold ${Number(wallet.balance.return_percentage) >= 0 ? "text-kash-emerald" : "text-[#E50914]"}`}>
+              {Number(wallet.balance.return_percentage) >= 0 ? "+" : ""}{Number(wallet.balance.return_percentage).toFixed(2)}% {t("wallets.return") || "return"}
+            </span>
+          ) : null}
+        </div>
+
+        {wallet.is_archived && onRestore && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRestore();
+            }}
+            className="shrink-0 gap-1 min-h-8 px-2.5 py-1 text-xs font-extrabold text-kash-emeraldDark hover:bg-kash-selected"
+          >
+            <RotateCcw size={13} />
+            {t("common.restore") || "Pulihkan"}
+          </Button>
+        )}
       </div>
     </Link>
   );
@@ -269,15 +305,22 @@ function WalletSkeleton() {
 export function WalletsPage() {
   const { profile } = useAuth();
   const { t, formatCurrency } = useI18n();
+  const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
+  const [archivedCount, setArchivedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddWallet, setShowAddWallet] = useState(false);
+  const [restoringWallet, setRestoringWallet] = useState<WalletWithBalance | null>(null);
+  const [restoringLoading, setRestoringLoading] = useState(false);
 
   const loadWallets = async () => {
     setLoading(true);
     setError(null);
-    const { data, error: loadError } = await getWallets();
+    const [{ data, error: loadError }, { count: archCount }] = await Promise.all([
+      getWallets(undefined, activeTab === "archived"),
+      getArchivedWalletsCount(),
+    ]);
 
     if (loadError || !data) {
       setError(t("wallets.loadError") || "Gagal memuat dompet. Silakan coba lagi.");
@@ -286,12 +329,13 @@ export function WalletsPage() {
     }
 
     setWallets(data);
+    setArchivedCount(archCount);
     setLoading(false);
   };
 
   useEffect(() => {
     void loadWallets();
-  }, []);
+  }, [activeTab]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadWallets());
   useAppEvent(appEvents.goalSaved, () => void loadWallets());
@@ -368,6 +412,32 @@ export function WalletsPage() {
   const createActionRef = useRef<HTMLDivElement>(null);
   const defaultCurr = profile?.default_currency ?? "IDR";
 
+  const tabOptions = useMemo(
+    () => [
+      { value: "active" as const, label: t("wallets.activeWallets") || "Dompet Aktif" },
+      {
+        value: "archived" as const,
+        label: t("wallets.archivedWallets") || "Dompet Diarsipkan",
+        count: archivedCount > 0 ? archivedCount : null,
+      },
+    ],
+    [t, archivedCount],
+  );
+
+  const handleConfirmRestore = async () => {
+    if (!restoringWallet) return;
+    setRestoringLoading(true);
+    const { error: resError } = await restoreWallet(restoringWallet.id);
+    if (resError) {
+      setError(resError.message || "Gagal memulihkan dompet.");
+    } else {
+      emitTransactionSaved();
+      setRestoringWallet(null);
+      void loadWallets();
+    }
+    setRestoringLoading(false);
+  };
+
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
       <PageHeader
@@ -421,6 +491,15 @@ export function WalletsPage() {
         </div>
       </section>
 
+      {/* Filter Tabs for Active vs Archived */}
+      <div className="pt-1">
+        <FilterTabs
+          options={tabOptions}
+          value={activeTab}
+          onChange={(val) => setActiveTab(val as "active" | "archived")}
+        />
+      </div>
+
       {error ? (
         <section className="rounded-2xl border border-kash-expense/30 bg-white p-5 shadow-card">
           <h3 className="text-base font-extrabold text-slate-900">{t("common.error")}</h3>
@@ -434,16 +513,31 @@ export function WalletsPage() {
       {/* Wallets List Section */}
       <section className="space-y-4">
         {loading ? <WalletSkeleton /> : null}
+
         {!loading && wallets.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-card">
-            <h4 className="text-base font-extrabold text-slate-900">{t("wallets.emptyTitle")}</h4>
-            <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-600">
-              {t("wallets.emptyDesc")}
-            </p>
-            <Button className="mt-5" onClick={() => setShowAddWallet(true)}>
-              {t("wallets.create")}
-            </Button>
-          </div>
+          activeTab === "archived" ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-card">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                <WalletCards aria-hidden="true" size={26} strokeWidth={2.4} />
+              </div>
+              <h4 className="mt-4 text-base font-extrabold text-slate-900">
+                {t("wallets.noArchivedWallets") || "Belum ada dompet yang diarsipkan"}
+              </h4>
+              <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-600">
+                {t("wallets.noArchivedWalletsDesc") || "Dompet yang Anda arsipkan akan tersimpan di sini dan dapat dipulihkan kapan saja."}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-card">
+              <h4 className="text-base font-extrabold text-slate-900">{t("wallets.emptyTitle")}</h4>
+              <p className="mx-auto mt-2 max-w-sm text-sm font-semibold leading-6 text-slate-600">
+                {t("wallets.emptyDesc")}
+              </p>
+              <Button className="mt-5" onClick={() => setShowAddWallet(true)}>
+                {t("wallets.create")}
+              </Button>
+            </div>
+          )
         ) : null}
 
         {!loading
@@ -452,7 +546,11 @@ export function WalletsPage() {
                 <h4 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-500">{group.group}</h4>
                 <div className="grid gap-2">
                   {group.wallets.map((wallet) => (
-                    <WalletRow key={wallet.id} wallet={wallet} />
+                    <WalletRow
+                      key={wallet.id}
+                      wallet={wallet}
+                      onRestore={wallet.is_archived ? () => setRestoringWallet(wallet) : undefined}
+                    />
                   ))}
                 </div>
               </div>
@@ -460,11 +558,13 @@ export function WalletsPage() {
           : null}
       </section>
 
-      <ContextualCreateAction
-        targetRef={createActionRef}
-        onClick={() => setShowAddWallet(true)}
-        label={t("wallets.create")}
-      />
+      {activeTab === "active" && (
+        <ContextualCreateAction
+          targetRef={createActionRef}
+          onClick={() => setShowAddWallet(true)}
+          label={t("wallets.create")}
+        />
+      )}
 
       {showAddWallet ? (
         <WalletFormModal
@@ -474,6 +574,20 @@ export function WalletsPage() {
             setShowAddWallet(false);
             void loadWallets();
           }}
+        />
+      ) : null}
+
+      {restoringWallet ? (
+        <ConfirmationDialog
+          confirmLabel={t("wallets.restoreWallet") || "Pulihkan Dompet"}
+          description={t("wallets.restoreWalletConfirm") || "Pulihkan dompet ini ke daftar dompet aktif?"}
+          icon={RotateCcw}
+          isLoading={restoringLoading}
+          itemLabel={restoringWallet.name}
+          onCancel={() => setRestoringWallet(null)}
+          onConfirm={() => void handleConfirmRestore()}
+          title={t("wallets.restoreWallet") || "Pulihkan dompet ini?"}
+          tone="neutral"
         />
       ) : null}
     </div>

@@ -1,8 +1,9 @@
-import { ArrowLeft, ArrowRight, Archive, Edit3, History, LineChart, Loader2, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
+import { ArrowLeft, RotateCcw, ArrowRight, Archive, Edit3, History, LineChart, Loader2, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
@@ -25,6 +26,7 @@ import {
 } from "../lib/walletMeta";
 import {
   archiveWallet,
+  restoreWallet,
   deleteInvestmentActivity,
   deleteWallet,
   getInvestmentActivities,
@@ -711,6 +713,17 @@ export function WalletDetailPage() {
   useAppEvent(appEvents.transactionSaved, () => void loadWallet());
   useAppEvent(appEvents.goalSaved, () => void loadWallet());
 
+  const handleRestoreWallet = async () => {
+    if (!wallet) return;
+    const { error: resError } = await restoreWallet(wallet.id);
+    if (resError) {
+      setError(resError.message || "Gagal memulihkan dompet.");
+    } else {
+      emitTransactionSaved();
+      void loadWallet();
+    }
+  };
+
   const handleDeleteWallet = async () => {
     if (!wallet) return;
 
@@ -822,16 +835,46 @@ export function WalletDetailPage() {
       {/* Hero Performance/Balance Card */}
       {isInvestment ? (
         <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
-              <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-white/60">
-                {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
-              </p>
-              <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
+                <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                  {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
+                </p>
+                <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
+              </div>
             </div>
+            <EntityMoreActionsMenu
+              triggerVariant="hero"
+              ariaLabel={`Opsi ${wallet.name}`}
+              items={[
+                {
+                  label: t("common.edit") || "Edit",
+                  icon: Edit3,
+                  onClick: () => setShowEdit(true),
+                },
+                {
+                  label: wallet.is_archived
+                    ? (t("wallets.restoreWallet") || "Pulihkan Dompet")
+                    : canHardDelete
+                    ? (t("common.delete") || "Hapus")
+                    : (t("common.archive") || "Arsipkan"),
+                  icon: wallet.is_archived ? RotateCcw : Trash2,
+                  isDestructive: !wallet.is_archived,
+                  separatorBefore: true,
+                  onClick: () => {
+                    if (wallet.is_archived) {
+                      void handleRestoreWallet();
+                    } else {
+                      setShowDelete(true);
+                    }
+                  },
+                },
+              ]}
+            />
           </div>
 
           <div className="mt-5 flex items-center justify-between gap-2">
@@ -870,16 +913,46 @@ export function WalletDetailPage() {
         </section>
       ) : (
         <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
-              <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-white/60">
-                {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
-              </p>
-              <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
+                <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wide text-white/60">
+                  {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
+                </p>
+                <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
+              </div>
             </div>
+            <EntityMoreActionsMenu
+              triggerVariant="hero"
+              ariaLabel={`Opsi ${wallet.name}`}
+              items={[
+                {
+                  label: t("common.edit") || "Edit",
+                  icon: Edit3,
+                  onClick: () => setShowEdit(true),
+                },
+                {
+                  label: wallet.is_archived
+                    ? (t("wallets.restoreWallet") || "Pulihkan Dompet")
+                    : canHardDelete
+                    ? (t("common.delete") || "Hapus")
+                    : (t("common.archive") || "Arsipkan"),
+                  icon: wallet.is_archived ? RotateCcw : Trash2,
+                  isDestructive: !wallet.is_archived,
+                  separatorBefore: true,
+                  onClick: () => {
+                    if (wallet.is_archived) {
+                      void handleRestoreWallet();
+                    } else {
+                      setShowDelete(true);
+                    }
+                  },
+                },
+              ]}
+            />
           </div>
 
           <p className="mt-5 text-xs font-bold uppercase tracking-wide text-white/60">
@@ -908,58 +981,41 @@ export function WalletDetailPage() {
       ) : null}
 
       {/* Action Bar Directly BELOW Hero Card */}
-      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {isInvestment ? (
-          <>
-            <Button
-              type="button"
-              onClick={() => setShowValuation(true)}
-              className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-            >
-              <LineChart aria-hidden="true" size={15} />
-              {t("wallets.updateInvestmentValuation") || "Update Nilai"}
-            </Button>
+      {(!wallet.is_archived && (isInvestment || !isInvestment)) && (
+        <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {isInvestment ? (
+            <>
+              <Button
+                type="button"
+                onClick={() => setShowValuation(true)}
+                className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+              >
+                <LineChart aria-hidden="true" size={15} />
+                {t("wallets.updateInvestmentValuation") || "Update Nilai"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowActivityModal(true)}
+                className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+              >
+                <TrendingUp aria-hidden="true" size={15} />
+                {t("wallets.recordActivity") || "Catat Aktivitas"}
+              </Button>
+            </>
+          ) : (
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setShowActivityModal(true)}
+              onClick={() => setShowAdjustment(true)}
               className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
             >
-              <TrendingUp aria-hidden="true" size={15} />
-              {t("wallets.recordActivity") || "Catat Aktivitas"}
+              <SlidersHorizontal aria-hidden="true" size={15} />
+              {t("wallets.adjustBalance") || "Sesuaikan Saldo"}
             </Button>
-          </>
-        ) : null}
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setShowEdit(true)}
-          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-        >
-          <Edit3 aria-hidden="true" size={15} />
-          {t("common.edit") || "Edit"}
-        </Button>
-        {!isInvestment ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setShowAdjustment(true)}
-            className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-          >
-            <SlidersHorizontal aria-hidden="true" size={15} />
-            {t("wallets.adjustBalance") || "Sesuaikan Saldo"}
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="danger"
-          onClick={() => setShowDelete(true)}
-          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-        >
-          <Trash2 aria-hidden="true" size={15} />
-          {canHardDelete ? (t("common.delete") || "Hapus") : (t("common.archive") || "Arsipkan")}
-        </Button>
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Investment Activity Ledger */}
       {isInvestment ? (

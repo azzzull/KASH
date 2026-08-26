@@ -22,6 +22,7 @@ import { QuickCreateEnvelopeModal } from "../components/envelopes/QuickCreateEnv
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
@@ -271,27 +272,30 @@ export function EnvelopeDetailPage() {
 
           {/* Envelope Action Buttons */}
           <div className="flex items-center gap-2 self-start sm:self-center">
-            <Button
-              variant="secondary"
-              onClick={() => setShowEditModal(true)}
-              className="gap-1.5 min-h-9 px-3 text-xs"
-            >
-              <Edit3 size={14} />
-              {t("common.edit")}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setShowArchiveDialog(true)}
-              className="gap-1.5 min-h-9 px-3 text-xs text-slate-600"
-            >
-              <Archive size={14} />
-              {t("common.archive")}
-            </Button>
-            <IconButton
-              icon={Trash2}
-              label={t("common.delete")}
-              onClick={() => setShowDeleteDialog(true)}
-              className="h-9 w-9 text-slate-500 hover:text-kash-expense hover:bg-red-50"
+            <EntityMoreActionsMenu
+              triggerVariant="default"
+              ariaLabel={`Opsi amplop ${envelope.name}`}
+              items={[
+                {
+                  label: t("common.edit") || "Edit",
+                  icon: Edit3,
+                  onClick: () => setShowEditModal(true),
+                },
+                {
+                  label: envelope.is_archived
+                    ? (t("common.unarchive") || "Keluarkan dari Arsip")
+                    : (t("common.archive") || "Arsipkan"),
+                  icon: Archive,
+                  onClick: () => setShowArchiveDialog(true),
+                },
+                {
+                  label: t("common.delete") || "Hapus",
+                  icon: Trash2,
+                  isDestructive: true,
+                  separatorBefore: true,
+                  onClick: () => setShowDeleteDialog(true),
+                },
+              ]}
             />
           </div>
         </div>

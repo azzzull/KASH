@@ -58,11 +58,12 @@ function attachProgress(goals: Goal[], progressRows: GoalProgress[]): GoalWithPr
   }));
 }
 
-export async function getGoals(spaceId?: string) {
+export async function getGoals(spaceId?: string, isArchived: boolean = false) {
   const targetSpaceId = spaceId ?? getActiveSpaceId();
   let query = supabase
     .from("goals")
     .select("*")
+    .eq("is_archived", isArchived)
     .neq("status", "cancelled")
     .order("created_at", { ascending: false });
 
@@ -91,6 +92,22 @@ export async function getGoals(spaceId?: string) {
   }
 
   return { data: attachProgress(goals, progress), error: null };
+}
+
+export async function getArchivedGoalsCount(spaceId?: string) {
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+  let query = supabase
+    .from("goals")
+    .select("id", { count: "exact", head: true })
+    .eq("is_archived", true)
+    .neq("status", "cancelled");
+
+  if (targetSpaceId) {
+    query = query.eq("space_id", targetSpaceId);
+  }
+
+  const { count, error } = await query;
+  return { count: count ?? 0, error };
 }
 
 export async function getGoalById(id: string) {

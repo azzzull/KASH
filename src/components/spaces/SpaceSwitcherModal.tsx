@@ -1,4 +1,4 @@
-import { Check, Plus, User, Briefcase, MoreVertical, Edit2, Archive, X, Trash2, Edit3 } from "lucide-react";
+import { Check, Plus, User, Briefcase, Archive, Trash2, Edit3, ChevronDown, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
@@ -7,6 +7,7 @@ import type { FinancialSpace } from "../../types/domain";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
 import { Modal } from "../ui/Modal";
+import { EntityMoreActionsMenu } from "../ui/EntityMoreActionsMenu";
 import { ConfirmationDialog } from "../ui/ConfirmationDialog";
 import { CreateSpaceModal } from "./CreateSpaceModal";
 
@@ -40,32 +41,7 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
   const [deletingSpace, setDeletingSpace] = useState<FinancialSpace | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
-  const [openMenuSpaceId, setOpenMenuSpaceId] = useState<string | null>(null);
-  const menuContainerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!openMenuSpaceId) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (menuContainerRef.current && menuContainerRef.current.contains(event.target as Node)) {
-        return;
-      }
-      setOpenMenuSpaceId(null);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpenMenuSpaceId(null);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [openMenuSpaceId]);
+  const [showArchivedSpaces, setShowArchivedSpaces] = useState(false);
 
   const managedSpaces = spaces.filter((s) => s.space_type === "managed" && !s.is_archived);
   const archivedSpaces = spaces.filter((s) => s.space_type === "managed" && s.is_archived);
@@ -265,70 +241,30 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                             <Check size={14} strokeWidth={3} />
                           </span>
                         ) : null}
-                        <div
-                          ref={openMenuSpaceId === space.id ? menuContainerRef : undefined}
-                          className="relative inline-block text-left"
-                        >
-                          <button
-                            type="button"
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-700 focus:outline-none"
-                            aria-label="Aksi Space"
-                            aria-haspopup="menu"
-                            aria-expanded={openMenuSpaceId === space.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuSpaceId((current) => (current === space.id ? null : space.id));
-                            }}
-                          >
-                            <MoreVertical size={16} />
-                          </button>
-                          {openMenuSpaceId === space.id ? (
-                            <div
-                              role="menu"
-                              className="absolute right-0 top-full z-50 mt-1 w-44 origin-top-right rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100"
-                            >
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenMenuSpaceId(null);
-                                  handleStartRename(e, space);
-                                }}
-                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
-                              >
-                                <Edit3 size={14} />
-                                {t("spaces.renameSpace")}
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenMenuSpaceId(null);
-                                  handleStartArchive(e, space);
-                                }}
-                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-kash-expense/10 hover:text-kash-expense"
-                              >
-                                <Archive size={14} />
-                                {t("spaces.archiveSpace")}
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenMenuSpaceId(null);
-                                  handleStartDelete(e, space);
-                                }}
-                                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-kash-expense/10 hover:text-kash-expense"
-                              >
-                                <Trash2 size={14} />
-                                {t("spaces.deleteSpace")}
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
+                        <EntityMoreActionsMenu
+                          triggerVariant="ghost"
+                          ariaLabel={`Aksi space ${space.name}`}
+                          items={[
+                            {
+                              label: t("spaces.renameSpace") || "Ubah Nama",
+                              icon: Edit3,
+                              onClick: (e) => handleStartRename(e, space),
+                            },
+                            {
+                              label: t("spaces.archiveSpace") || "Arsipkan Space",
+                              icon: Archive,
+                              isDestructive: true,
+                              onClick: (e) => handleStartArchive(e, space),
+                            },
+                            {
+                              label: t("spaces.deleteSpace") || "Hapus Space",
+                              icon: Trash2,
+                              isDestructive: true,
+                              separatorBefore: true,
+                              onClick: (e) => handleStartDelete(e, space),
+                            },
+                          ]}
+                        />
                       </div>
                     </div>
                   );
@@ -338,55 +274,69 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
           </div>
 
           {/* Archived Section */}
-          {archivedSpaces.length > 0 && (
-            <div className="border-t border-slate-100 pt-3">
-              <div className="flex items-center justify-between px-1">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  {`${t("spaces.archivedSpaces")} (${archivedSpaces.length})`}
-                </p>
-              </div>
-              <div className="mt-2 flex flex-col gap-1">
-                {archivedSpaces.map((space) => (
-                  <div
-                    key={space.id}
-                    className="flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left transition bg-slate-50 opacity-80"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
-                        <Archive size={18} strokeWidth={2.2} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-extrabold text-slate-600 line-through">
-                          {space.name}
-                        </p>
-                      </div>
-                    </div>
+          <div className="border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowArchivedSpaces((current) => !current)}
+              className="flex w-full items-center justify-between px-1 py-1 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition"
+            >
+              <span>{`${t("spaces.archivedSpaces") || "Space Diarsipkan"} (${archivedSpaces.length})`}</span>
+              <ChevronDown
+                size={14}
+                className={`transition-transform duration-200 ${showArchivedSpaces ? "rotate-180" : ""}`}
+              />
+            </button>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => handleRestore(e, space)}
-                        disabled={restoreLoading}
-                        className="h-8 px-2.5 text-xs text-slate-500"
-                      >
-                        {t("spaces.restore")}
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={(e) => handleStartDelete(e, space)}
-                        aria-label={t("spaces.deleteSpace")}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-kash-expense/10 hover:text-kash-expense active:bg-kash-expense/20"
-                      >
-                        <X size={14} strokeWidth={2.5} />
-                      </button>
-                    </div>
+            {showArchivedSpaces && (
+              <div className="mt-2 flex flex-col gap-1">
+                {archivedSpaces.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-3 text-center text-xs font-semibold text-slate-400">
+                    {t("spaces.noArchivedSpaces") || "Belum ada space yang diarsipkan"}
                   </div>
-                ))}
+                ) : (
+                  archivedSpaces.map((space) => (
+                    <div
+                      key={space.id}
+                      className="flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left transition bg-slate-50 opacity-85 border border-slate-200/60"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+                          <Archive size={18} strokeWidth={2.2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-extrabold text-slate-600 line-through">
+                            {space.name}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => handleRestore(e, space)}
+                          disabled={restoreLoading}
+                          className="h-8 px-2.5 text-xs text-kash-emeraldDark hover:bg-kash-selected font-extrabold"
+                        >
+                          <RotateCcw size={12} className="mr-1 inline" />
+                          {t("spaces.restore") || "Pulihkan"}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleStartDelete(e, space)}
+                          aria-label={t("spaces.deleteSpace")}
+                          className="rounded-lg p-1.5 text-slate-400 transition hover:bg-kash-expense/10 hover:text-kash-expense active:bg-kash-expense/20"
+                        >
+                          <Trash2 size={15} strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Add Space Action */}
           <div className="border-t border-slate-100 pt-3">

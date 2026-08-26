@@ -20,6 +20,7 @@ import { EditBudgetModal } from "../components/budgets/EditBudgetModal";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { IconButton } from "../components/ui/IconButton";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
@@ -280,24 +281,50 @@ export function BudgetDetailPage() {
 
       {/* Main Dominant Hero Progress Surface (Directly below Month Picker) */}
       <section className="kash-hero-card p-5 sm:p-6 min-w-0 max-w-full">
-        <div className="flex items-start gap-3 min-w-0">
-          <span
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg font-extrabold text-sm shadow-xs bg-white/15 text-white"
-          >
-            <IconComp size={22} />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-xl font-extrabold text-white truncate">{budget.name}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-white/15 px-2 py-0.5 text-xs font-bold text-white/90">
-                {targetLabel}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
-                {isOverBudget || isNearLimit ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
-                {budget.usage_percentage.toFixed(1)}%
-              </span>
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="flex items-start gap-3 min-w-0">
+            <span
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg font-extrabold text-sm shadow-xs bg-white/15 text-white"
+            >
+              <IconComp size={22} />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-xl font-extrabold text-white truncate">{budget.name}</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="rounded-lg bg-white/15 px-2 py-0.5 text-xs font-bold text-white/90">
+                  {targetLabel}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
+                  {isOverBudget || isNearLimit ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
+                  {budget.usage_percentage.toFixed(1)}%
+                </span>
+              </div>
             </div>
           </div>
+
+          <EntityMoreActionsMenu
+            triggerVariant="hero"
+            ariaLabel={`Opsi budget ${budget.name}`}
+            items={[
+              {
+                label: t("budgets.editBudget") || "Edit Budget",
+                icon: Edit2,
+                onClick: () => setShowEditModal(true),
+              },
+              {
+                label: t("budgets.stopArchive") || "Hentikan / Arsipkan",
+                icon: Archive,
+                onClick: () => setShowArchiveDialog(true),
+              },
+              {
+                label: t("common.deletePermanently") || "Hapus Permanen",
+                icon: Trash2,
+                isDestructive: true,
+                separatorBefore: true,
+                onClick: () => setShowDeleteDialog(true),
+              },
+            ]}
+          />
         </div>
 
         {/* Big Primary Spent Hero Value */}
@@ -341,36 +368,6 @@ export function BudgetDetailPage() {
           </span>
         </div>
       </section>
-
-      {/* Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
-      <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        <Button
-          variant="secondary"
-          onClick={() => setShowEditModal(true)}
-          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-        >
-          <Edit2 size={14} />
-          {t("budgets.editBudget") || "Edit Budget"}
-        </Button>
-
-        <Button
-          variant="secondary"
-          onClick={() => setShowArchiveDialog(true)}
-          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-slate-600 hover:text-amber-800"
-        >
-          <Archive size={14} />
-          {t("budgets.stopArchive") || "Hentikan / Arsipkan"}
-        </Button>
-
-        <Button
-          variant="danger"
-          onClick={() => setShowDeleteDialog(true)}
-          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
-        >
-          <Trash2 size={14} />
-          {t("common.deletePermanently") || "Hapus Permanen"}
-        </Button>
-      </div>
 
         {/* Target Meta Pill List */}
         {targetType === "category" && budget.included_category_names && budget.included_category_names.length > 0 ? (

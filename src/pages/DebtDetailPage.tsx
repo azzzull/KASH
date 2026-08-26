@@ -26,6 +26,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { FormField } from "../components/ui/FormField";
 import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
@@ -172,17 +173,30 @@ export function DebtDetailPage() {
         eyebrow={summary.totalDebtRemaining > 0 ? (t("debts.totalDebt") || "Utang") : (t("debts.totalReceivable") || "Piutang")}
         title={counterparty.name}
         badge={
-          <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
-            {summary.totalDebtRemaining === 0 && summary.totalReceivableRemaining === 0 ? (
-              <>
-                <CheckCircle2 size={13} /> {t("debts.settled") || "Lunas"}
-              </>
-            ) : (
-              <>
-                <Clock size={13} /> {t("common.active") || "Belum Lunas"}
-              </>
-            )}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
+              {summary.totalDebtRemaining === 0 && summary.totalReceivableRemaining === 0 ? (
+                <>
+                  <CheckCircle2 size={13} /> {t("debts.settled") || "Lunas"}
+                </>
+              ) : (
+                <>
+                  <Clock size={13} /> {t("common.active") || "Belum Lunas"}
+                </>
+              )}
+            </span>
+            <EntityMoreActionsMenu
+              triggerVariant="hero"
+              ariaLabel={`Opsi ${counterparty.name}`}
+              items={[
+                {
+                  label: t("debts.renamePerson") || "Ubah Nama",
+                  icon: Edit2,
+                  onClick: () => setRenameModalOpen(true),
+                },
+              ]}
+            />
+          </div>
         }
         primaryMetricLabel={summary.totalDebtRemaining > 0 ? (t("debts.remainingDebt") || "Sisa Utang") : (t("debts.remainingReceivable") || "Sisa Piutang")}
         primaryMetricValue={formatCurrency(summary.totalDebtRemaining > 0 ? summary.totalDebtRemaining : summary.totalReceivableRemaining, "IDR")}
@@ -246,15 +260,6 @@ export function DebtDetailPage() {
         >
           <Plus size={15} />
           {t("debts.addItem") || "Tambah Item"}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => setRenameModalOpen(true)}
-          className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold text-slate-600 hover:text-slate-900"
-        >
-          <Edit2 size={14} />
-          {t("debts.renamePerson") || "Ubah Nama"}
         </Button>
       </div>
 

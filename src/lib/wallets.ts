@@ -54,12 +54,12 @@ function attachBalances(wallets: any[], balances: WalletBalance[]): WalletWithBa
   }));
 }
 
-export async function getWallets(spaceId?: string) {
+export async function getWallets(spaceId?: string, isArchived: boolean = false) {
   const targetSpaceId = spaceId ?? getActiveSpaceId();
   let query = supabase
     .from("wallets")
     .select("*, goals!goals_wallet_id_fkey(id, name, target_amount, deadline, status)")
-    .eq("is_archived", false)
+    .eq("is_archived", isArchived)
     .order("created_at", { ascending: true });
 
   if (targetSpaceId) {
@@ -89,6 +89,21 @@ export async function getWallets(spaceId?: string) {
   });
 
   return { data: attachBalances(mappedWallets, balances), error: null };
+}
+
+export async function getArchivedWalletsCount(spaceId?: string) {
+  const targetSpaceId = spaceId ?? getActiveSpaceId();
+  let query = supabase
+    .from("wallets")
+    .select("id", { count: "exact", head: true })
+    .eq("is_archived", true);
+
+  if (targetSpaceId) {
+    query = query.eq("space_id", targetSpaceId);
+  }
+
+  const { count, error } = await query;
+  return { count: count ?? 0, error };
 }
 
 export async function getWalletById(id: string) {
@@ -207,6 +222,10 @@ export async function updateWallet(id: string, input: UpdateWalletInput) {
 
 export async function archiveWallet(id: string) {
   return supabase.from("wallets").update({ is_archived: true }).eq("id", id).select("*").single();
+}
+
+export async function restoreWallet(id: string) {
+  return supabase.from("wallets").update({ is_archived: false }).eq("id", id).select("*").single();
 }
 
 export async function deleteWallet(id: string) {

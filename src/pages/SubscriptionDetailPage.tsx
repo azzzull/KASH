@@ -20,6 +20,7 @@ import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { SettleInstallmentModal } from "../components/subscriptions/SettleInstallmentModal";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { FinancialHeroCard } from "../components/ui/FinancialHeroCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAppEvent } from "../hooks/useAppEvent";
@@ -179,21 +180,43 @@ export function SubscriptionDetailPage() {
         eyebrow={obligation.provider || obligation.category?.name || (t("subscriptions.title") || "Tagihan & Langganan")}
         title={obligation.name}
         badge={
-          <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
-            {obligation.status === "active" ? (
-              <>
-                <Clock size={13} /> {t("common.active") || "Aktif"}
-              </>
-            ) : obligation.status === "completed" ? (
-              <>
-                <CheckCircle2 size={13} /> {t("goals.completed") || "Selesai"}
-              </>
-            ) : (
-              <>
-                <XCircle size={13} /> {t("debts.cancelled") || "Dibatalkan"}
-              </>
-            )}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-extrabold text-white border border-white/15 backdrop-blur-xs">
+              {obligation.status === "active" ? (
+                <>
+                  <Clock size={13} /> {t("common.active") || "Aktif"}
+                </>
+              ) : obligation.status === "completed" ? (
+                <>
+                  <CheckCircle2 size={13} /> {t("goals.completed") || "Selesai"}
+                </>
+              ) : (
+                <>
+                  <XCircle size={13} /> {t("debts.cancelled") || "Dibatalkan"}
+                </>
+              )}
+            </span>
+            <EntityMoreActionsMenu
+              triggerVariant="hero"
+              ariaLabel={`Opsi ${obligation.name}`}
+              items={[
+                {
+                  label: t("subscriptions.cancelPlan") || "Batalkan Layanan",
+                  icon: XCircle,
+                  isDestructive: true,
+                  hidden: isInstallment || obligation.status !== "active",
+                  onClick: () => setCancelModalOpen(true),
+                },
+                {
+                  label: t("common.delete") || "Hapus",
+                  icon: Trash2,
+                  isDestructive: true,
+                  separatorBefore: !isInstallment && obligation.status === "active",
+                  onClick: () => setDeleteModalOpen(true),
+                },
+              ]}
+            />
+          </div>
         }
         primaryMetricLabel={
           isInstallment
@@ -383,36 +406,6 @@ export function SubscriptionDetailPage() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Secondary Management Actions Section */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-          {t("subscriptions.managementActions") || "Pengaturan & Tindakan Layanan"}
-        </h4>
-        <div className="flex flex-wrap items-center gap-2">
-          {!isInstallment && obligation.status === "active" && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setCancelModalOpen(true)}
-              className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold border-kash-expense/30 text-kash-expense hover:bg-kash-expense/10"
-            >
-              <XCircle size={15} />
-              {t("subscriptions.cancelPlan") || "Batalkan Layanan"}
-            </Button>
-          )}
-
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setDeleteModalOpen(true)}
-            className="gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold border-slate-200 text-slate-600 hover:border-kash-expense/30 hover:bg-kash-expense/10 hover:text-kash-expense"
-          >
-            <Trash2 size={15} />
-            {t("common.delete") || "Hapus"}
-          </Button>
-        </div>
       </div>
 
       {/* Payment Modal */}
