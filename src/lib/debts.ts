@@ -14,6 +14,23 @@ import { addMoneyValues, formatMoneyDigits, parseMoneyInputDigits, toNumber } fr
 import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 
+async function appendCrossSpaceMeta(items: DebtProgress[]): Promise<DebtProgress[]> {
+  if (!items || items.length === 0) return items;
+  const ids = items.map(i => i.debt_id);
+  const { data } = await supabase.from("debts").select("id, cross_space_event_id, cross_space_role").in("id", ids);
+  if (!data) return items;
+
+  const metaMap = new Map(data.map(d => [d.id, d]));
+  return items.map(item => {
+    const meta = metaMap.get(item.debt_id);
+    if (meta) {
+      item.cross_space_event_id = meta.cross_space_event_id;
+      item.cross_space_role = meta.cross_space_role;
+    }
+    return item;
+  });
+}
+
 export type CounterpartyWithSummary = Counterparty & {
   debtTotal: number;
   debtOriginalTotal: number;
@@ -138,9 +155,10 @@ export async function getCounterparties(
   });
 
   const validCpIds = new Set(counterparties.map((c) => c.id));
-  const progressItems = ((progressResult.data ?? []) as DebtProgress[]).filter((item) =>
+  let progressItems = ((progressResult.data ?? []) as DebtProgress[]).filter((item) =>
     validCpIds.has(item.counterparty_id)
   );
+  progressItems = await appendCrossSpaceMeta(progressItems);
 
   const progressByCounterparty = new Map<string, DebtProgress[]>();
   for (const item of progressItems) {
@@ -261,7 +279,8 @@ export async function getActiveDebts(spaceId?: string): Promise<DebtProgress[]> 
 
   if (error) throw error;
   const list = (data as DebtProgress[]) ?? [];
-  return list.filter((item) => validCpIds.has(item.counterparty_id));
+  const filteredList = list.filter((item) => validCpIds.has(item.counterparty_id));
+  return appendCrossSpaceMeta(filteredList);
 }
 
 export async function getCounterpartyDetail(counterpartyId: string): Promise<CounterpartyDetail> {
@@ -292,15 +311,12 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   if (walletsResult.error) throw walletsResult.error;
 
   const rawCounterparty = counterpartyResult.data as any;
-  let cpDisplayName = rawCounterparty.name;
-  if (rawCounterparty.linked_space) {
-    const profileRes = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
-    const userFullName = profileRes.data?.full_name || "Personal Funds";
-    cpDisplayName = rawCounterparty.linked_space.space_type === "personal" ? userFullName : rawCounterparty.linked_space.name;
-  }
+  const profileRes = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
+  const profileFullName = profileRes.data?.full_name || "Personal Funds";
+  const cpDisplayName = rawCounterparty.linked_space?.space_type === "personal" ? profileFullName : (rawCounterparty.linked_space?.name || rawCounterparty.name);
   const counterparty = { ...rawCounterparty, name: cpDisplayName } as Counterparty;
 
-  const debts = (progressResult.data ?? []) as DebtProgress[];
+  const debts = await appendCrossSpaceMeta((progressResult.data ?? []) as DebtProgress[]);
   const payments = (paymentsResult.data ?? []) as DebtPayment[];
   const allocations = (allocationsResult.data ?? []) as DebtPaymentAllocation[];
   const wallets = (walletsResult.data ?? []) as Wallet[];
@@ -628,5 +644,5 @@ export async function getOpenDebtItems(counterpartyId: string, debtType: DebtTyp
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (error) throw error;
-  return (data ?? []) as DebtProgress[];
+  return appendCrossSpaceMeta((data ?? []) as DebtProgress[]);
 }
