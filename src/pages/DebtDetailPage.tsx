@@ -53,6 +53,7 @@ import type { Counterparty, Debt, DebtProgress, DebtType, PaymentMode } from "..
 import { SettlementModal } from "./DebtsPage";
 import { getPersonalSpace } from "../lib/spaces";
 import { recordCrossSpaceSettlement } from "../lib/transactions";
+import { supabase } from "../lib/supabase";
 
 type ActiveTab = "active" | "settled" | "history";
 
@@ -374,16 +375,29 @@ export function DebtDetailPage() {
       )}
 
       {settlingItem && (
-        <ItemSettlementModal
-          counterparty={counterparty}
-          item={settlingItem}
-          onClose={() => setSettlingItem(null)}
-          onSaved={() => {
-            setSettlingItem(null);
-            emitDebtSaved();
-            emitTransactionSaved();
-          }}
-        />
+        settlingItem.cross_space_event_id ? (
+          <CrossSpaceItemSettlementModal
+            counterparty={counterparty}
+            item={settlingItem}
+            onClose={() => setSettlingItem(null)}
+            onSaved={() => {
+              setSettlingItem(null);
+              emitDebtSaved();
+              emitTransactionSaved();
+            }}
+          />
+        ) : (
+          <ItemSettlementModal
+            counterparty={counterparty}
+            item={settlingItem}
+            onClose={() => setSettlingItem(null)}
+            onSaved={() => {
+              setSettlingItem(null);
+              emitDebtSaved();
+              emitTransactionSaved();
+            }}
+          />
+        )
       )}
 
       {createItemModalOpen && (
@@ -1486,17 +1500,21 @@ function CrossSpaceItemSettlementModal({
 
   useEffect(() => {
     const fetchWallets = async () => {
-      const currentSpaceWalletsRes = await getWallets();
-      const personalSpaceRes = await getPersonalSpace();
-      
-      if (personalSpaceRes.data) {
-         const pWalletsRes = await getWallets(personalSpaceRes.data.id);
+      const eventRes = await supabase.from("cross_space_events").select("managed_space_id, personal_space_id").eq("id", item.cross_space_event_id!).single();
+      const managedSpaceId = eventRes.data?.managed_space_id;
+      const personalSpaceId = eventRes.data?.personal_space_id;
+
+      if (personalSpaceId) {
+         const pWalletsRes = await getWallets(personalSpaceId);
          setPersonalWallets(pWalletsRes.data ?? []);
       }
-      setManagedWallets(currentSpaceWalletsRes.data ?? []);
+      if (managedSpaceId) {
+         const mWalletsRes = await getWallets(managedSpaceId);
+         setManagedWallets(mWalletsRes.data ?? []);
+      }
     };
     void fetchWallets();
-  }, []);
+  }, [item.cross_space_event_id]);
 
   const parsedAmount = toNumber(parseMoneyInputDigits(amount));
   const remainingAfterPayment = Math.max(0, remaining - parsedAmount);

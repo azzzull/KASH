@@ -112,20 +112,31 @@ export async function getCounterparties(
   const userId = await getAuthenticatedUserId();
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
-  let cpQuery = supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true });
+  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").eq("user_id", userId).order("name", { ascending: true });
   if (targetSpaceId) {
     cpQuery = cpQuery.eq("space_id", targetSpaceId);
   }
 
-  const [counterpartiesResult, progressResult] = await Promise.all([
+  const [counterpartiesResult, progressResult, profileResult] = await Promise.all([
     cpQuery,
     supabase.from("debt_progress_view").select("*").eq("user_id", userId),
+    supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
   ]);
 
   if (counterpartiesResult.error) throw counterpartiesResult.error;
   if (progressResult.error) throw progressResult.error;
 
-  const counterparties = counterpartiesResult.data ?? [];
+  const userFullName = profileResult.data?.full_name || "Personal Funds";
+
+  const rawCounterparties = counterpartiesResult.data ?? [];
+  const counterparties = rawCounterparties.map((c: any) => {
+    let displayName = c.name;
+    if (c.linked_space) {
+      displayName = c.linked_space.space_type === "personal" ? userFullName : c.linked_space.name;
+    }
+    return { ...c, name: displayName } as Counterparty;
+  });
+
   const validCpIds = new Set(counterparties.map((c) => c.id));
   const progressItems = ((progressResult.data ?? []) as DebtProgress[]).filter((item) =>
     validCpIds.has(item.counterparty_id)
@@ -257,7 +268,7 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   const userId = await getAuthenticatedUserId();
 
   const [counterpartyResult, progressResult, paymentsResult, allocationsResult, walletsResult] = await Promise.all([
-    supabase.from("counterparties").select("*").eq("id", counterpartyId).eq("user_id", userId).single(),
+    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").eq("id", counterpartyId).eq("user_id", userId).single(),
     supabase
       .from("debt_progress_view")
       .select("*")
@@ -280,7 +291,15 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   if (allocationsResult.error) throw allocationsResult.error;
   if (walletsResult.error) throw walletsResult.error;
 
-  const counterparty = counterpartyResult.data as Counterparty;
+  const rawCounterparty = counterpartyResult.data as any;
+  let cpDisplayName = rawCounterparty.name;
+  if (rawCounterparty.linked_space) {
+    const profileRes = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
+    const userFullName = profileRes.data?.full_name || "Personal Funds";
+    cpDisplayName = rawCounterparty.linked_space.space_type === "personal" ? userFullName : rawCounterparty.linked_space.name;
+  }
+  const counterparty = { ...rawCounterparty, name: cpDisplayName } as Counterparty;
+
   const debts = (progressResult.data ?? []) as DebtProgress[];
   const payments = (paymentsResult.data ?? []) as DebtPayment[];
   const allocations = (allocationsResult.data ?? []) as DebtPaymentAllocation[];

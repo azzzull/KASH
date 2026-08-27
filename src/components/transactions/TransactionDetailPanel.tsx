@@ -130,6 +130,7 @@ export function TransactionDetailModal({
   const { t, formatDate, formatCurrency } = useI18n();
   const { activeSpace } = useActiveSpace();
   const isManaged = activeSpace?.space_type === "managed";
+  const terms = useSpaceTerminology();
 
   const [crossSpaceDetails, setCrossSpaceDetails] = useState<{
     eventType: string;
@@ -279,7 +280,6 @@ export function TransactionDetailModal({
     transaction.related_entity_type === "shared_savings_contribution" ||
     transaction.related_entity_type === "shared_savings_withdrawal";
 
-  const terms = useSpaceTerminology();
   const linkedMessage =
     transaction.related_entity_type === "shared_savings_contribution" ||
     transaction.related_entity_type === "shared_savings_withdrawal"

@@ -234,6 +234,7 @@ export type Counterparty = {
   user_id: string;
   space_id?: string;
   name: string;
+  linked_space_id?: string | null;
   created_at: string;
   updated_at: string;
 };

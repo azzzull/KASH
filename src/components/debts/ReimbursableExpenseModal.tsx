@@ -212,7 +212,7 @@ export function ReimbursableExpenseModal({
         }
 
         if (cpRes && cpRes.allCounterparties) {
-          setCounterparties(cpRes.allCounterparties);
+          setCounterparties(cpRes.allCounterparties.filter((cp) => !cp.linked_space_id));
         }
       } catch (err: any) {
         if (!isMounted) return;
