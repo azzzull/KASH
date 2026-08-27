@@ -13,6 +13,20 @@ export type FinancialSpace = {
   updated_at: string;
 };
 
+export type ManagedSpaceRole = "owner" | "admin" | "member" | "viewer";
+export type ManagedSpaceMemberStatus = "invited" | "active";
+
+export type ManagedSpaceMember = {
+  id: string;
+  space_id: string;
+  user_id: string;
+  role: ManagedSpaceRole;
+  status: ManagedSpaceMemberStatus;
+  invited_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Profile = {
   id: string;
   email: string;

@@ -20,6 +20,9 @@ import type {
   Envelope,
   FinancialSpace,
   FinancialSpaceType,
+  ManagedSpaceMember,
+  ManagedSpaceRole,
+  ManagedSpaceMemberStatus,
   Goal,
   GoalContribution,
   GoalProgress,
@@ -79,6 +82,21 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Omit<FinancialSpace, "id" | "owner_user_id" | "created_at">>;
+        Relationships: [];
+      };
+      managed_space_members: {
+        Row: ManagedSpaceMember;
+        Insert: {
+          id?: string;
+          space_id: string;
+          user_id: string;
+          role: ManagedSpaceRole;
+          status?: ManagedSpaceMemberStatus;
+          invited_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<ManagedSpaceMember, "id" | "space_id" | "user_id" | "created_at">>;
         Relationships: [];
       };
       profiles: {
