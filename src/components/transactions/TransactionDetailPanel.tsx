@@ -143,7 +143,10 @@ export function TransactionDetailModal({
 
   // Load cross space event & debt details if present
   useEffect(() => {
-    if (!isOpen || !transaction?.cross_space_event_id) {
+    const eventId = transaction?.cross_space_event_id;
+    const relatedEntityId = transaction?.related_entity_id;
+
+    if (!isOpen || !transaction || !eventId) {
       setCrossSpaceDetails(null);
       return;
     }
@@ -156,13 +159,13 @@ export function TransactionDetailModal({
           supabase
             .from("cross_space_events")
             .select("id, event_type, managed_space_id, personal_space_id, amount, status, managed_category_id")
-            .eq("id", transaction!.cross_space_event_id!)
+            .eq("id", eventId as string)
             .maybeSingle(),
-          transaction!.related_entity_id
+          relatedEntityId
             ? supabase
                 .from("debt_progress_view")
                 .select("*")
-                .eq("debt_id", transaction!.related_entity_id!)
+                .eq("debt_id", relatedEntityId)
                 .maybeSingle()
             : Promise.resolve({ data: null, error: null }),
         ]);

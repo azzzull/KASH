@@ -153,6 +153,17 @@ export function ReimbursableExpenseModal({
     setSaving(false);
   };
 
+  const handleTargetModeChange = (mode: "managed" | "contact") => {
+    setTargetMode(mode);
+    setCounterpartyName("");
+    setCategoryId("");
+    if (mode === "managed" && managedSpaces.length > 0) {
+      setSelectedManagedSpaceId(managedSpaces[0].id);
+    } else {
+      setSelectedManagedSpaceId("");
+    }
+  };
+
   // Load initial prerequisite data when modal opens
   useEffect(() => {
     if (!isOpen) return;
@@ -396,7 +407,7 @@ export function ReimbursableExpenseModal({
               <div className="flex rounded-lg bg-slate-100 p-1">
                 <button
                   type="button"
-                  onClick={() => setTargetMode("managed")}
+                  onClick={() => handleTargetModeChange("managed")}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-bold transition ${
                     targetMode === "managed"
                       ? "bg-white text-slate-900 shadow-sm"
@@ -408,7 +419,7 @@ export function ReimbursableExpenseModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTargetMode("contact")}
+                  onClick={() => handleTargetModeChange("contact")}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-bold transition ${
                     targetMode === "contact"
                       ? "bg-white text-slate-900 shadow-sm"
