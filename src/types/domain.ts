@@ -127,7 +127,7 @@ export type Transaction = {
   related_entity_type: string | null;
   related_entity_id: string | null;
   cross_space_event_id?: string | null;
-  cross_space_role?: "personal_cash_out" | "managed_spending" | null;
+  cross_space_role?: "personal_cash_out" | "managed_spending" | "managed_advance_cash_in" | null;
   created_at: string;
   updated_at: string;
 };
@@ -652,3 +652,51 @@ export type SharedSavingsSpaceSummary = {
   ownerName: string;
   accountHolderName: string;
 };
+
+export type CrossSpaceEventType =
+  | "managed_expense_paid_personally"
+  | "personal_advance_to_managed";
+
+export type CrossSpaceTxRole =
+  | "personal_cash_out"
+  | "managed_spending"
+  | "managed_advance_cash_in";
+
+export type CrossSpaceDebtRole =
+  | "personal_receivable"
+  | "managed_payable";
+
+export type CrossSpacePaymentRole =
+  | "personal_receivable_collection"
+  | "managed_payable_payment";
+
+export type CrossSpaceEvent = {
+  id: string;
+  user_id: string;
+  event_type: CrossSpaceEventType;
+  personal_space_id: string;
+  managed_space_id: string;
+  amount: MoneyAmount;
+  managed_category_id?: string | null;
+  event_date: string;
+  title?: string | null;
+  note?: string | null;
+  status: string;
+  client_request_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrossSpaceSettlement = {
+  id: string;
+  user_id: string;
+  event_id: string;
+  amount: MoneyAmount;
+  managed_wallet_id: string;
+  personal_wallet_id: string;
+  settlement_date: string;
+  status: string;
+  client_request_id?: string | null;
+  created_at: string;
+};
+

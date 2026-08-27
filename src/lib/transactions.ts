@@ -265,6 +265,31 @@ export async function createCrossSpaceExpense(input: CategoryTransactionInput & 
   return { data, error: null };
 }
 
+export async function recordCrossSpaceAdvance(input: {
+  amount: string;
+  managedSpaceId: string;
+  managedWalletId: string;
+  personalSpaceId: string;
+  personalWalletId: string;
+  title: string;
+  transactionDate: string;
+  note?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("record_cross_space_advance" as any, {
+    p_client_request_id: crypto.randomUUID(),
+    p_personal_space_id: input.personalSpaceId,
+    p_managed_space_id: input.managedSpaceId,
+    p_amount: toNumber(input.amount),
+    p_personal_wallet_id: input.personalWalletId,
+    p_managed_wallet_id: input.managedWalletId,
+    p_title: input.title,
+    p_note: input.note ?? null,
+    p_event_date: toUtcIsoString(input.transactionDate),
+  });
+  if (error) throw error;
+  return { data, error: null };
+}
+
 export async function recordCrossSpaceSettlement(input: {
   eventId: string;
   amount: number;

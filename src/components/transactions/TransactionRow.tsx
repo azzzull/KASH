@@ -17,7 +17,7 @@ export type TransactionRowData = {
   transfer_fee?: string | number | null;
   type: TransactionType;
   wallet_id?: string | null;
-  cross_space_role?: "personal_cash_out" | "managed_spending" | null;
+  cross_space_role?: "personal_cash_out" | "managed_spending" | "managed_advance_cash_in" | null;
   wallet?: { name?: string | null } | null;
 };
 

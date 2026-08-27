@@ -14,7 +14,7 @@ import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
 import { getPersonalSpace, getActiveSpaceId } from "../../lib/spaces";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
-import { createExpense, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense } from "../../lib/transactions";
+import { createExpense, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense, recordCrossSpaceAdvance } from "../../lib/transactions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
@@ -163,6 +163,12 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       return null;
     }
 
+    if (mode === "income" && terms.isManaged && paymentSource === "personal") {
+      if (!walletId) return "Pilih dompet pribadi sumber dana.";
+      if (!destinationWalletId) return "Pilih dompet tujuan.";
+      return null;
+    }
+
     if (!categoryId) return t("transactions.chooseCategory") || "Pilih kategori.";
     if (mode === "expense" && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
       return t("transactions.insufficientBalanceExpense") || "Saldo dompet tidak mencukupi. Periksa kembali nominal transaksi.";
@@ -189,7 +195,16 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     try {
       const result =
         mode === "income"
-          ? await createIncome({
+          ? (paymentSource === "personal" && personalSpaceId) ? await recordCrossSpaceAdvance({
+              amount: amountDigits,
+              managedSpaceId: getActiveSpaceId()!,
+              managedWalletId: destinationWalletId,
+              personalSpaceId,
+              personalWalletId: walletId,
+              title: noteValue || "Talangan Dana Pribadi",
+              transactionDate,
+              note: noteValue,
+            }) : await createIncome({
             amount: amountDigits,
             categoryId,
             note: noteValue,
@@ -285,7 +300,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               value={amount}
             />
 
-            {mode !== "transfer" ? (
+            {mode !== "transfer" && !(mode === "income" && terms.isManaged && paymentSource === "personal") ? (
               <SelectField
                 id={`${mode}-category`}
                 label={mode === "income" ? terms.incomeCategoryLabel : (t("categories.title") || "Kategori")}
@@ -361,11 +376,23 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </div>
             ) : null}
 
+            {mode === "income" && terms.isManaged ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700">{t("transactions.paymentSource") || "Sumber Dana"}</label>
+                <div className="flex rounded-lg bg-slate-100 p-1">
+                  <button type="button" onClick={() => { setPaymentSource("managed"); setWalletId(""); }} className={`flex-1 rounded-md py-1.5 text-xs font-bold transition ${paymentSource === "managed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dana Masuk</button>
+                  <button type="button" onClick={() => { setPaymentSource("personal"); setWalletId(""); }} className={`flex-1 rounded-md py-1.5 text-xs font-bold transition ${paymentSource === "personal" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dana Pribadi (Talangan)</button>
+                </div>
+              </div>
+            ) : null}
+
             <SelectField
               id={`${mode}-wallet`}
               label={
                 mode === "transfer"
                   ? t("transactions.fromWallet") || "Dari Dompet"
+                  : mode === "income" && terms.isManaged && paymentSource === "personal"
+                  ? "Pilih Dompet Pribadi (Sumber Talangan)"
                   : mode === "income" && terms.isManaged
                   ? t("transactions.fundingWalletDestination") || "Pilih Dompet Penerima Dana"
                   : paymentSource === "personal" ? t("transactions.personalWallet") || "Pilih Dompet Pribadi"
@@ -381,6 +408,17 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
                 </option>
               ))}
             </SelectField>
+
+            {mode === "income" && terms.isManaged && paymentSource === "personal" ? (
+              <SelectField id="income-destination" label="Pilih Dompet Penerima Dana" onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
+                <option value="">Pilih Dompet Tujuan</option>
+                {wallets.map((wallet) => (
+                  <option key={wallet.id} value={wallet.id}>
+                    {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
+                  </option>
+                ))}
+              </SelectField>
+            ) : null}
 
             {mode === "transfer" ? (
               <>

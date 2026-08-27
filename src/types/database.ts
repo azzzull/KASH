@@ -54,6 +54,12 @@ import type {
   SharedSavingsMemberAllocation,
   SharedSavingsBalance,
   SharedSavingsMemberShare,
+  CrossSpaceEvent,
+  CrossSpaceSettlement,
+  CrossSpaceEventType,
+  CrossSpaceTxRole,
+  CrossSpaceDebtRole,
+  CrossSpacePaymentRole,
 } from "./domain";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -560,6 +566,18 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      cross_space_events: {
+        Row: CrossSpaceEvent;
+        Insert: Partial<CrossSpaceEvent>;
+        Update: Partial<CrossSpaceEvent>;
+        Relationships: [];
+      };
+      cross_space_settlements: {
+        Row: CrossSpaceSettlement;
+        Insert: Partial<CrossSpaceSettlement>;
+        Update: Partial<CrossSpaceSettlement>;
+        Relationships: [];
+      };
     };
     Functions: {
       delete_wallet_permanently: {
@@ -968,6 +986,52 @@ export type Database = {
         };
         Returns: boolean;
       };
+      record_cross_space_advance: {
+        Args: {
+          p_client_request_id: string;
+          p_personal_space_id: string;
+          p_managed_space_id: string;
+          p_amount: number;
+          p_personal_wallet_id: string;
+          p_managed_wallet_id: string;
+          p_title: string;
+          p_note?: string | null;
+          p_event_date: string;
+        };
+        Returns: Json;
+      };
+      record_cross_space_expense: {
+        Args: {
+          p_client_request_id: string;
+          p_personal_space_id: string;
+          p_managed_space_id: string;
+          p_amount: number;
+          p_personal_wallet_id: string;
+          p_managed_category_id?: string | null;
+          p_title?: string | null;
+          p_note?: string | null;
+          p_event_date: string;
+        };
+        Returns: Json;
+      };
+      record_cross_space_settlement: {
+        Args: {
+          p_client_request_id: string;
+          p_event_id: string;
+          p_amount: number;
+          p_managed_wallet_id: string;
+          p_personal_wallet_id: string;
+          p_settlement_date: string;
+          p_note?: string | null;
+        };
+        Returns: Json;
+      };
+      void_cross_space_event: {
+        Args: {
+          p_event_id: string;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       wallet_type: Wallet["wallet_type"];
@@ -981,6 +1045,10 @@ export type Database = {
       recurring_frequency: RecurringFrequency;
       recurring_obligation_status: RecurringObligationStatus;
       recurring_payment_status: RecurringPaymentStatus;
+      cross_space_debt_role: CrossSpaceDebtRole;
+      cross_space_event_type: CrossSpaceEventType;
+      cross_space_payment_role: CrossSpacePaymentRole;
+      cross_space_tx_role: CrossSpaceTxRole;
     };
     CompositeTypes: Record<string, never>;
   };
