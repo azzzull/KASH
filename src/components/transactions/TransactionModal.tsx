@@ -222,7 +222,6 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               personalWalletId: walletId,
               personalSpaceId,
               managedSpaceId: getActiveSpaceId()!,
-              walletId,
             }) : await createExpense({
               amount: amountDigits,
               categoryId,

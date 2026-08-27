@@ -50,11 +50,23 @@ export type TransactionFilters = {
   spaceId?: string;
 };
 
+export type CrossSpaceEventMeta = {
+  id: string;
+  event_type: "managed_expense_paid_personally" | "personal_advance_to_managed";
+  managed_space_id: string;
+  personal_space_id: string;
+  managedSpaceName?: string;
+  personalSpaceName?: string;
+  amount: number;
+  status: string;
+};
+
 export type TransactionWithMeta = Transaction & {
   category: Category | null;
   envelope?: Envelope | null;
   destinationWallet: Wallet | null;
   wallet: Wallet | null;
+  crossSpaceEvent?: CrossSpaceEventMeta | null;
 };
 
 export type UpdateTransactionInput = {
@@ -139,11 +151,13 @@ function attachTransactionMeta(
   transactions: Transaction[],
   wallets: Wallet[],
   categories: Category[],
-  envelopes: Envelope[] = []
+  envelopes: Envelope[] = [],
+  crossSpaceEvents: CrossSpaceEventMeta[] = []
 ): TransactionWithMeta[] {
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
   const envelopesById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
+  const crossSpaceEventsById = new Map(crossSpaceEvents.map((e) => [e.id, e]));
 
   return transactions.map((transaction) => ({
     ...transaction,
@@ -151,6 +165,7 @@ function attachTransactionMeta(
     envelope: transaction.envelope_id ? envelopesById.get(transaction.envelope_id) ?? null : null,
     destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
     wallet: walletsById.get(transaction.wallet_id || "") ?? null,
+    crossSpaceEvent: transaction.cross_space_event_id ? crossSpaceEventsById.get(transaction.cross_space_event_id) ?? null : null,
   }));
 }
 
@@ -250,16 +265,26 @@ export async function createExpense(input: CategoryTransactionInput) {
   });
 }
 
-export async function createCrossSpaceExpense(input: CategoryTransactionInput & { personalWalletId: string; personalSpaceId: string; managedSpaceId: string }) {
-  const userId = await getAuthenticatedUserId();
+export async function createCrossSpaceExpense(input: {
+  amount: string;
+  categoryId?: string | null;
+  note?: string | null;
+  title?: string | null;
+  transactionDate: string;
+  personalWalletId: string;
+  personalSpaceId: string;
+  managedSpaceId: string;
+}) {
   const { data, error } = await supabase.rpc("record_cross_space_expense" as any, {
-    p_managed_space_id: input.managedSpaceId,
+    p_client_request_id: crypto.randomUUID(),
     p_personal_space_id: input.personalSpaceId,
+    p_managed_space_id: input.managedSpaceId,
     p_amount: toNumber(input.amount),
     p_personal_wallet_id: input.personalWalletId,
-    p_managed_category_id: input.categoryId,
-    p_event_date: toUtcIsoString(input.transactionDate),
+    p_managed_category_id: input.categoryId || null,
+    p_title: input.title ?? "Pengeluaran Reimburse",
     p_note: input.note ?? null,
+    p_event_date: toUtcIsoString(input.transactionDate),
   });
   if (error) throw error;
   return { data, error: null };
@@ -423,7 +448,46 @@ export async function getTransactions(filters: TransactionFilters = {}) {
 
   if (error) throw error;
 
-  const rows = attachTransactionMeta(data ?? [], supportData.wallets, supportData.categories, supportData.envelopes);
+  const crossSpaceEventIds = Array.from(
+    new Set(
+      (data ?? [])
+        .map((tx) => tx.cross_space_event_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  let crossSpaceEventsMeta: CrossSpaceEventMeta[] = [];
+  if (crossSpaceEventIds.length > 0) {
+    const { data: eventsData } = await supabase
+      .from("cross_space_events")
+      .select("id, event_type, managed_space_id, personal_space_id, amount, status")
+      .in("id", crossSpaceEventIds);
+
+    if (eventsData && eventsData.length > 0) {
+      const spaceIds = Array.from(
+        new Set(eventsData.flatMap((e) => [e.managed_space_id, e.personal_space_id]).filter(Boolean))
+      );
+      const { data: spacesData } = await supabase
+        .from("financial_spaces")
+        .select("id, name, space_type")
+        .in("id", spaceIds);
+
+      const spacesById = new Map((spacesData ?? []).map((s) => [s.id, s.name]));
+
+      crossSpaceEventsMeta = eventsData.map((e) => ({
+        id: e.id,
+        event_type: e.event_type as "managed_expense_paid_personally" | "personal_advance_to_managed",
+        managed_space_id: e.managed_space_id,
+        personal_space_id: e.personal_space_id,
+        managedSpaceName: spacesById.get(e.managed_space_id) ?? "Managed Space",
+        personalSpaceName: spacesById.get(e.personal_space_id) ?? "Personal Space",
+        amount: toNumber(e.amount),
+        status: e.status,
+      }));
+    }
+  }
+
+  const rows = attachTransactionMeta(data ?? [], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta);
   const filteredRows = filters.query ? rows.filter((transaction) => searchMatches(transaction, filters.query ?? "")) : rows;
 
   return {
@@ -445,7 +509,39 @@ export async function getTransactionById(id: string) {
 
   if (transactionResult.error) throw transactionResult.error;
 
-  return attachTransactionMeta([transactionResult.data], supportData.wallets, supportData.categories, supportData.envelopes)[0];
+  let crossSpaceEventsMeta: CrossSpaceEventMeta[] = [];
+  if (transactionResult.data.cross_space_event_id) {
+    const { data: eventData } = await supabase
+      .from("cross_space_events")
+      .select("id, event_type, managed_space_id, personal_space_id, amount, status")
+      .eq("id", transactionResult.data.cross_space_event_id)
+      .single();
+
+    if (eventData) {
+      const spaceIds = [eventData.managed_space_id, eventData.personal_space_id].filter(Boolean);
+      const { data: spacesData } = await supabase
+        .from("financial_spaces")
+        .select("id, name, space_type")
+        .in("id", spaceIds);
+
+      const spacesById = new Map((spacesData ?? []).map((s) => [s.id, s.name]));
+
+      crossSpaceEventsMeta = [
+        {
+          id: eventData.id,
+          event_type: eventData.event_type as "managed_expense_paid_personally" | "personal_advance_to_managed",
+          managed_space_id: eventData.managed_space_id,
+          personal_space_id: eventData.personal_space_id,
+          managedSpaceName: spacesById.get(eventData.managed_space_id) ?? "Managed Space",
+          personalSpaceName: spacesById.get(eventData.personal_space_id) ?? "Personal Space",
+          amount: toNumber(eventData.amount),
+          status: eventData.status,
+        },
+      ];
+    }
+  }
+
+  return attachTransactionMeta([transactionResult.data], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta)[0];
 }
 
 export async function updateTransaction(transaction: Transaction, input: UpdateTransactionInput) {

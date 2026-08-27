@@ -178,7 +178,7 @@ export function AppShell() {
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
         {transactionMode === "reimbursable_expense" ? (
-          <ReimbursableExpenseModal isOpen={true} onClose={() => setTransactionMode(null)} />
+          <ReimbursableExpenseModal isOpen={true} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
         ) : transactionMode ? (
           <TransactionModal mode={transactionMode} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
         ) : null}

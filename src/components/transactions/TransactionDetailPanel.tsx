@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowDown,
   ArrowDownLeft,
@@ -14,6 +15,7 @@ import { formatCurrency, toNumber } from "../../lib/money";
 import { Modal } from "../ui/Modal";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
+import { supabase } from "../../lib/supabase";
 import type { TransactionType } from "../../types/domain";
 import type { TransactionWithMeta } from "../../lib/transactions";
 
@@ -82,12 +84,16 @@ export function transactionWalletLabel(transaction: TransactionWithMeta) {
 export function signedTransactionAmount(transaction: TransactionWithMeta) {
   const amount = toNumber(transaction.amount);
   if (transaction.type === "income") return amount;
-  if (transaction.type === "expense") return -amount;
+  if (transaction.type === "expense" || transaction.cross_space_role === "personal_cash_out") return -amount;
   return amount;
 }
 
 export function displayTransactionAmount(transaction: TransactionWithMeta, currency = "IDR") {
   if (transaction.type === "transfer") return formatCurrency(transaction.amount, currency);
+  if (transaction.cross_space_role === "personal_cash_out") {
+    const amount = toNumber(transaction.amount);
+    return formatCurrency(-amount, currency);
+  }
   if (transaction.type === "adjustment") {
     const amount = toNumber(transaction.amount);
     return `${amount > 0 ? "+" : ""}${formatCurrency(amount, currency)}`;
@@ -97,7 +103,7 @@ export function displayTransactionAmount(transaction: TransactionWithMeta, curre
 
 function DetailLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[120px_1fr] gap-4 py-3 text-sm">
+    <div className="grid grid-cols-[130px_1fr] gap-4 py-3 text-sm">
       <dt className="font-bold text-slate-600">{label}</dt>
       <dd className="break-words font-bold text-slate-900">{value}</dd>
     </div>
@@ -125,6 +131,89 @@ export function TransactionDetailModal({
   const { activeSpace } = useActiveSpace();
   const isManaged = activeSpace?.space_type === "managed";
 
+  const [crossSpaceDetails, setCrossSpaceDetails] = useState<{
+    eventType: string;
+    managedSpaceName: string;
+    categoryName?: string;
+    originalAmount: number;
+    totalPaid: number;
+    remainingAmount: number;
+    statusLabel: string;
+  } | null>(null);
+
+  // Load cross space event & debt details if present
+  useEffect(() => {
+    if (!isOpen || !transaction?.cross_space_event_id) {
+      setCrossSpaceDetails(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadCrossSpaceData() {
+      try {
+        const [eventRes, debtRes] = await Promise.all([
+          supabase
+            .from("cross_space_events")
+            .select("id, event_type, managed_space_id, personal_space_id, amount, status, managed_category_id")
+            .eq("id", transaction!.cross_space_event_id!)
+            .maybeSingle(),
+          transaction!.related_entity_id
+            ? supabase
+                .from("debt_progress_view")
+                .select("*")
+                .eq("debt_id", transaction!.related_entity_id!)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+        ]);
+
+        if (!isMounted || !eventRes.data) return;
+
+        const [spaceRes, catRes] = await Promise.all([
+          supabase.from("financial_spaces").select("name").eq("id", eventRes.data.managed_space_id).maybeSingle(),
+          eventRes.data.managed_category_id
+            ? supabase.from("categories").select("name").eq("id", eventRes.data.managed_category_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+        ]);
+
+        if (!isMounted) return;
+
+        const managedSpaceName = spaceRes.data?.name ?? (t("spaces.managed") || "Managed Space");
+        const categoryName = catRes.data?.name ?? undefined;
+        const origAmount = debtRes.data ? toNumber(debtRes.data.original_amount) : toNumber(eventRes.data.amount);
+        const totalPaid = debtRes.data ? toNumber(debtRes.data.total_paid) : 0;
+        const remaining = debtRes.data ? toNumber(debtRes.data.remaining_amount) : toNumber(eventRes.data.amount);
+
+        let statusLabel: string;
+        if (debtRes.data?.status === "settled" || remaining === 0) {
+          statusLabel = t("reimbursable.reimbursed") || "Sudah direimburse";
+        } else if (debtRes.data?.status === "partially_paid" || totalPaid > 0) {
+          statusLabel = t("reimbursable.partiallyReimbursed") || "Direimburse sebagian";
+        } else {
+          statusLabel = t("reimbursable.awaitingReimbursement") || "Menunggu reimbursement";
+        }
+
+        setCrossSpaceDetails({
+          eventType: eventRes.data.event_type,
+          managedSpaceName,
+          categoryName,
+          originalAmount: origAmount,
+          totalPaid,
+          remainingAmount: remaining,
+          statusLabel,
+        });
+      } catch (err) {
+        console.error("Failed to load cross-space details", err);
+      }
+    }
+
+    void loadCrossSpaceData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, transaction?.id, transaction?.cross_space_event_id, transaction?.related_entity_id, t]);
+
   if (!transaction) return null;
 
   const Icon = transactionIcon(transaction.type);
@@ -133,8 +222,13 @@ export function TransactionDetailModal({
   const amount = toNumber(transaction.amount);
   const fee = toNumber(transaction.transfer_fee);
 
+  const isReimbursableEvent = crossSpaceDetails?.eventType === "managed_expense_paid_personally";
+  const isAdvanceEvent = crossSpaceDetails?.eventType === "personal_advance_to_managed";
+
   const getTranslatedTitle = () => {
     if (transaction.title) return transaction.title;
+    if (isReimbursableEvent) return t("reimbursable.title") || "Pengeluaran Reimburse";
+    if (isAdvanceEvent) return t("spaces.personalAdvance") || "Talangan ke Managed";
     if (transaction.type === "transfer") return `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`;
     if (transaction.type === "adjustment") {
       if (transaction.related_entity_type === "debt_payment") return t("debts.debtPayment") || "Pembayaran Utang";
@@ -149,6 +243,8 @@ export function TransactionDetailModal({
   };
 
   const getTranslatedCategoryLabel = () => {
+    if (isReimbursableEvent) return t("reimbursable.title") || "Pengeluaran Reimburse";
+    if (isAdvanceEvent) return t("spaces.personalAdvance") || "Talangan ke Managed";
     if (transaction.type === "transfer") return t("transactions.transfer") || "Transfer";
     if (transaction.type === "adjustment") {
       if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return t("debts.debt") || "Utang";
@@ -192,6 +288,12 @@ export function TransactionDetailModal({
         ? (t("transactions.linkedDebt") || "Transaksi terhubung dengan Utang & Piutang. Dikelola langsung dari halaman Utang & Piutang.")
         : terms.linkedGoalMessage;
 
+  const amountTone = isVoid
+    ? "text-slate-600 line-through"
+    : transaction.cross_space_role === "personal_cash_out"
+      ? "text-[#E50914]"
+      : transactionTone[transaction.type];
+
   return (
     <Modal
       isOpen={isOpen}
@@ -199,7 +301,7 @@ export function TransactionDetailModal({
       maxWidth="md"
       title={
         <div className="flex items-center gap-3">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${transactionTone[transaction.type]}`}>
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${amountTone}`}>
             <Icon aria-hidden="true" size={20} />
           </span>
           <div className="min-w-0">
@@ -215,13 +317,13 @@ export function TransactionDetailModal({
     >
       <div className="space-y-4">
         <div>
-          <p className={`break-words text-3xl font-extrabold ${isVoid ? "text-slate-600 line-through" : transactionTone[transaction.type]}`}>
+          <p className={`break-words text-3xl font-extrabold ${amountTone}`}>
             {displayTransactionAmount(transaction, currency)}
           </p>
           {isVoid ? <p className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">{t("transactions.voided") || "Dibatalkan"}</p> : null}
         </div>
 
-        {isLinked ? (
+        {isLinked && !isReimbursableEvent && !isAdvanceEvent ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
             {linkedMessage}
           </div>
@@ -229,16 +331,43 @@ export function TransactionDetailModal({
 
         <dl className="divide-y divide-slate-100 border-y border-slate-100">
           <DetailLine label={t("common.date") || "Tanggal"} value={dateLabel} />
-          <DetailLine label={t("transactions.type") || "Tipe Transaksi"} value={terms.getTransactionTypeLabel(transaction.type)} />
-          <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet_id === null && transaction.cross_space_role === "managed_spending" ? (t("transactions.paidWithPersonalFunds") || "Dibayar dengan dana pribadi") : transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
-          {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
-          {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}
-          {transaction.envelope ? <DetailLine label={t("envelopes.title") || "Amplop"} value={transaction.envelope.name} /> : null}
-          {transaction.type === "transfer" ? <DetailLine label={t("transactions.transferFee") || "Biaya Transfer"} value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
-          {transaction.type === "transfer" ? <DetailLine label={t("transactions.totalDeducted") || "Total Terpotong"} value={formatCurrency(amount + fee, currency)} /> : null}
-          {transaction.type === "transfer" ? <DetailLine label={t("transactions.destinationReceived") || "Diterima Tujuan"} value={formatCurrency(amount, currency)} /> : null}
+          
+          {isReimbursableEvent && crossSpaceDetails ? (
+            <>
+              <DetailLine label={t("reimbursable.paidFrom") || "Dibayar dari"} value={transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
+              <DetailLine label={t("reimbursable.reimbursedBy") || "Direimburse oleh"} value={crossSpaceDetails.managedSpaceName} />
+              <DetailLine label={t("reimbursable.expenseCategory") || "Kategori pengeluaran"} value={crossSpaceDetails.categoryName ?? (t("categories.uncategorized") || "Tanpa Kategori")} />
+              <DetailLine label={t("common.status") || "Status"} value={crossSpaceDetails.statusLabel} />
+              {crossSpaceDetails.totalPaid > 0 ? (
+                <DetailLine label={t("reimbursable.reimbursedAmount") || "Sudah direimburse"} value={formatCurrency(crossSpaceDetails.totalPaid, currency)} />
+              ) : null}
+              <DetailLine label={t("reimbursable.outstanding") || "Sisa reimbursement"} value={formatCurrency(crossSpaceDetails.remainingAmount, currency)} />
+            </>
+          ) : isAdvanceEvent && crossSpaceDetails ? (
+            <>
+              <DetailLine label={t("reimbursable.paidFrom") || "Dibayar dari"} value={transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
+              <DetailLine label={t("spaces.managed") || "Space Tujuan"} value={crossSpaceDetails.managedSpaceName} />
+              <DetailLine label={t("common.status") || "Status"} value={crossSpaceDetails.statusLabel} />
+              {crossSpaceDetails.totalPaid > 0 ? (
+                <DetailLine label={t("reimbursable.reimbursedAmount") || "Sudah dikembalikan"} value={formatCurrency(crossSpaceDetails.totalPaid, currency)} />
+              ) : null}
+              <DetailLine label={t("reimbursable.outstanding") || "Sisa talangan"} value={formatCurrency(crossSpaceDetails.remainingAmount, currency)} />
+            </>
+          ) : (
+            <>
+              <DetailLine label={t("transactions.type") || "Tipe Transaksi"} value={terms.getTransactionTypeLabel(transaction.type)} />
+              <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet_id === null && transaction.cross_space_role === "managed_spending" ? (t("transactions.paidWithPersonalFunds") || "Dibayar dengan dana pribadi") : transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
+              {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
+              {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}
+              {transaction.envelope ? <DetailLine label={t("envelopes.title") || "Amplop"} value={transaction.envelope.name} /> : null}
+              {transaction.type === "transfer" ? <DetailLine label={t("transactions.transferFee") || "Biaya Transfer"} value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
+              {transaction.type === "transfer" ? <DetailLine label={t("transactions.totalDeducted") || "Total Terpotong"} value={formatCurrency(amount + fee, currency)} /> : null}
+              {transaction.type === "transfer" ? <DetailLine label={t("transactions.destinationReceived") || "Diterima Tujuan"} value={formatCurrency(amount, currency)} /> : null}
+              <DetailLine label={t("common.status") || "Status"} value={isVoid ? (t("transactions.voided") || "Dibatalkan") : (t("transactions.completed") || "Selesai")} />
+            </>
+          )}
+
           <DetailLine label={t("transactions.note") || "Catatan"} value={transaction.note || "-"} />
-          <DetailLine label={t("common.status") || "Status"} value={isVoid ? (t("transactions.voided") || "Dibatalkan") : (t("transactions.completed") || "Selesai")} />
           <DetailLine label={t("transactions.transactionId") || "ID Transaksi"} value={transaction.id} />
         </dl>
 

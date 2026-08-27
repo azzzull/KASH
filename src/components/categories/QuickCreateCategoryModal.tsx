@@ -17,6 +17,7 @@ type QuickCreateCategoryModalProps = {
   isOpen: boolean;
   categoryType: CategoryType; // "expense" | "income"
   initialName?: string;
+  spaceId?: string;
   onClose: () => void;
   onCreated: (category: Category) => void;
 };
@@ -25,6 +26,7 @@ export function QuickCreateCategoryModal({
   isOpen,
   categoryType,
   initialName = "",
+  spaceId,
   onClose,
   onCreated,
 }: QuickCreateCategoryModalProps) {
@@ -84,6 +86,7 @@ export function QuickCreateCategoryModal({
       categoryType,
       icon,
       color,
+      spaceId,
     });
 
     setSaving(false);

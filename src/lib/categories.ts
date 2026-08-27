@@ -161,6 +161,7 @@ export async function quickCreateCategory(input: {
   categoryType: CategoryType;
   icon?: string;
   color?: string;
+  spaceId?: string;
 }): Promise<QuickCreateCategoryResult> {
   const name = input.name.trim();
   if (!name) {
@@ -169,13 +170,21 @@ export async function quickCreateCategory(input: {
 
   try {
     const userId = await getAuthenticatedUserId();
+    const targetSpaceId = input.spaceId ?? getActiveSpaceId() ?? undefined;
 
     // Fetch all user and system categories for this type (including archived)
-    const { data: allCategories, error: fetchError } = await supabase
+    let categoryQuery = supabase
       .from("categories")
       .select("*")
-      .or(`user_id.eq.${userId},is_system.eq.true`)
       .eq("category_type", input.categoryType);
+
+    if (targetSpaceId) {
+      categoryQuery = categoryQuery.or(`is_system.eq.true,and(user_id.eq.${userId},space_id.eq.${targetSpaceId})`);
+    } else {
+      categoryQuery = categoryQuery.or(`is_system.eq.true,and(user_id.eq.${userId},space_id.is.null)`);
+    }
+
+    const { data: allCategories, error: fetchError } = await categoryQuery;
 
     if (fetchError) {
       return { success: false, error: fetchError.message || "Gagal memeriksa kategori yang sudah ada." };
@@ -207,6 +216,7 @@ export async function quickCreateCategory(input: {
       .from("categories")
       .insert({
         user_id: userId,
+        space_id: targetSpaceId,
         name,
         category_type: input.categoryType,
         icon: defaultIcon,

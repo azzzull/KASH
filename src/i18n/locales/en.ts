@@ -242,7 +242,29 @@ export const en = {
     "quickAdd.managedExpenseHelper": "Record operational or purchase spending",
     "quickAdd.managedTransferHelper": "Move funds between wallets in this space",
     "quickAdd.reimbursable": "Reimbursable Expense",
-    "quickAdd.reimbursableHelper": "Record advance expense to be reimbursed",
+    "quickAdd.reimbursableHelper": "Record expense paid personally to be reimbursed",
+
+    // Reimbursable Expense
+    "reimbursable.title": "Reimbursable Expense",
+    "reimbursable.desc": "Record an expense paid with personal funds to be reimbursed by a Managed Space.",
+    "reimbursable.paidFrom": "Paid from",
+    "reimbursable.reimbursedBy": "Reimbursed by",
+    "reimbursable.reimbursedBySpace": "Reimbursed by {{name}}",
+    "reimbursable.selectManagedSpace": "Select Managed Space",
+    "reimbursable.noManagedSpaces": "No active Managed Space found. Please create a Managed Space (e.g. Office/Business) first.",
+    "reimbursable.expenseCategory": "Expense category",
+    "reimbursable.selectCategory": "Select Space Category",
+    "reimbursable.preview": "Reimbursement Preview",
+    "reimbursable.cashMovement": "Cash movement",
+    "reimbursable.cashMovementZero": "Rp0 (No cash outflow in this space until settlement)",
+    "reimbursable.awaitingReimbursement": "Awaiting reimbursement",
+    "reimbursable.partiallyReimbursed": "Partially reimbursed",
+    "reimbursable.reimbursed": "Reimbursed",
+    "reimbursable.reimbursedAmount": "Reimbursed",
+    "reimbursable.outstanding": "Outstanding",
+    "reimbursable.totalAmount": "Total Amount",
+    "reimbursable.targetModeManaged": "Financial Space (Managed)",
+    "reimbursable.targetModeContact": "External Contact",
 
     // Financial Spaces
     "spaces.title": "Financial Space",
@@ -268,6 +290,7 @@ export const en = {
     "spaces.archivedSpaces": "Archived Spaces",
     "spaces.restore": "Restore",
     "spaces.initialWallet": "Initial Wallet",
+    "spaces.personalAdvance": "Personal Advance",
 
     // Dashboard
     "dashboard.title": "Here's your financial overview",

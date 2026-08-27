@@ -87,7 +87,7 @@ export const id = {
     "tx.expense": "Pengeluaran",
     "tx.transfer": "Transfer",
     "tx.adjustment": "Penyesuaian",
-    "tx.reimbursable": "Pengeluaran Talangan",
+    "tx.reimbursable": "Pengeluaran Reimburse",
     "tx.addTransaction": "Catat Transaksi",
     "tx.newExpense": "Pengeluaran Baru",
     "tx.newIncome": "Pemasukan Baru",
@@ -243,9 +243,31 @@ export const id = {
     "quickAdd.managedExpense": "Tambah Pengeluaran",
     "quickAdd.managedExpenseHelper": "Catat pengeluaran operasional / belanja",
     "quickAdd.managedTransferHelper": "Pindahkan dana antar dompet di space ini",
-    "quickAdd.reimbursable": "Pengeluaran Talangan",
+    "quickAdd.reimbursable": "Pengeluaran Reimburse",
     "quickAdd.reimbursableHelper":
-        "Catat talangan kantor / orang lain yang akan diganti",
+        "Catat pengeluaran pribadi untuk diganti oleh Managed Space / pihak lain",
+
+    // Reimbursable Expense
+    "reimbursable.title": "Pengeluaran Reimburse",
+    "reimbursable.desc": "Catat pengeluaran yang dibayar dengan dana pribadi untuk diganti oleh Managed Space.",
+    "reimbursable.paidFrom": "Dibayar dari",
+    "reimbursable.reimbursedBy": "Direimburse oleh",
+    "reimbursable.reimbursedBySpace": "Direimburse oleh {{name}}",
+    "reimbursable.selectManagedSpace": "Pilih Managed Space",
+    "reimbursable.noManagedSpaces": "Belum ada Financial Space kelolaan aktif. Buat space kelolaan (misal: Kantor/Bisnis) terlebih dahulu.",
+    "reimbursable.expenseCategory": "Kategori pengeluaran",
+    "reimbursable.selectCategory": "Pilih Kategori Space",
+    "reimbursable.preview": "Pratinjau Reimbursement",
+    "reimbursable.cashMovement": "Pergerakan kas",
+    "reimbursable.cashMovementZero": "Rp0 (Belum ada kas keluar sampai pelunasan)",
+    "reimbursable.awaitingReimbursement": "Menunggu reimbursement",
+    "reimbursable.partiallyReimbursed": "Direimburse sebagian",
+    "reimbursable.reimbursed": "Sudah direimburse",
+    "reimbursable.reimbursedAmount": "Sudah direimburse",
+    "reimbursable.outstanding": "Sisa reimbursement",
+    "reimbursable.totalAmount": "Total Pengeluaran",
+    "reimbursable.targetModeManaged": "Financial Space (Managed)",
+    "reimbursable.targetModeContact": "Kontak / Pihak Luar",
 
     // Financial Spaces
     "spaces.title": "Financial Space",
@@ -271,6 +293,7 @@ export const id = {
     "spaces.archivedSpaces": "Arsip Space",
     "spaces.restore": "Pulihkan",
     "spaces.initialWallet": "Dompet Awal",
+    "spaces.personalAdvance": "Talangan ke Managed",
 
     // Dashboard
     "dashboard.title": "Berikut ringkasan keuangan Anda",
