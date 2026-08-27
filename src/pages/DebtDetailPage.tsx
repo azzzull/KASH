@@ -1486,7 +1486,6 @@ function CrossSpaceItemSettlementModal({
   const remaining = toNumber(item.remaining_amount);
   const [amount, setAmount] = useState("");
   const [managedWalletId, setManagedWalletId] = useState("");
-  const [personalWalletId, setPersonalWalletId] = useState("");
   
   const [paymentDate, setPaymentDate] = useState(() => {
     const now = new Date();
@@ -1494,20 +1493,14 @@ function CrossSpaceItemSettlementModal({
   });
   const [note, setNote] = useState("");
   const [managedWallets, setManagedWallets] = useState<WalletWithBalance[]>([]);
-  const [personalWallets, setPersonalWallets] = useState<WalletWithBalance[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchWallets = async () => {
-      const eventRes = await supabase.from("cross_space_events").select("managed_space_id, personal_space_id").eq("id", item.cross_space_event_id!).single();
+      const eventRes = await supabase.from("cross_space_events").select("managed_space_id").eq("id", item.cross_space_event_id!).single();
       const managedSpaceId = eventRes.data?.managed_space_id;
-      const personalSpaceId = eventRes.data?.personal_space_id;
 
-      if (personalSpaceId) {
-         const pWalletsRes = await getWallets(personalSpaceId);
-         setPersonalWallets(pWalletsRes.data ?? []);
-      }
       if (managedSpaceId) {
          const mWalletsRes = await getWallets(managedSpaceId);
          setManagedWallets(mWalletsRes.data ?? []);
@@ -1530,11 +1523,7 @@ function CrossSpaceItemSettlementModal({
       return;
     }
     if (!managedWalletId) {
-      setError("Pilih dompet Managed.");
-      return;
-    }
-    if (!personalWalletId) {
-      setError("Pilih dompet Pribadi.");
+      setError(t("debts.selectWalletError") || "Pilih dompet Managed.");
       return;
     }
 
@@ -1546,7 +1535,7 @@ function CrossSpaceItemSettlementModal({
         eventId: item.cross_space_event_id!,
         amount: parsedAmount,
         managedWalletId,
-        personalWalletId,
+        personalWalletId: managedWalletId,
         settlementDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
         note: note.trim() || undefined,
       });
@@ -1615,28 +1604,13 @@ function CrossSpaceItemSettlementModal({
 
           <SelectField
             id="cross-space-managed-wallet"
-            label="Pilih Dompet Pembayar (Managed) *"
+            label={`${t("debts.payFromWalletLabel") || "Pilih Dompet Pembayar (Managed)"} *`}
             value={managedWalletId}
             onChange={(e) => setManagedWalletId(e.target.value)}
             required
           >
             <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
             {managedWallets.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})
-              </option>
-            ))}
-          </SelectField>
-          
-          <SelectField
-            id="cross-space-personal-wallet"
-            label="Pilih Dompet Penerima (Pribadi) *"
-            value={personalWalletId}
-            onChange={(e) => setPersonalWalletId(e.target.value)}
-            required
-          >
-            <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
-            {personalWallets.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})
               </option>

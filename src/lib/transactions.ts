@@ -319,7 +319,7 @@ export async function recordCrossSpaceSettlement(input: {
   eventId: string;
   amount: number;
   managedWalletId: string;
-  personalWalletId: string;
+  personalWalletId?: string | null;
   settlementDate: string;
   note?: string;
 }) {
@@ -329,7 +329,7 @@ export async function recordCrossSpaceSettlement(input: {
     p_event_id: input.eventId,
     p_amount: input.amount,
     p_managed_wallet_id: input.managedWalletId,
-    p_personal_wallet_id: input.personalWalletId,
+    p_personal_wallet_id: input.personalWalletId || input.managedWalletId,
     p_settlement_date: input.settlementDate,
     p_note: input.note ?? null,
   });
