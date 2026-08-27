@@ -1470,7 +1470,7 @@ function CrossSpaceItemSettlementModal({
 }) {
   const { t, formatCurrency } = useI18n();
   const remaining = toNumber(item.remaining_amount);
-  const [amount, setAmount] = useState(() => formatMoneyDigits(remaining.toString()));
+  const [amount, setAmount] = useState("");
   const [managedWalletId, setManagedWalletId] = useState("");
   const [personalWalletId, setPersonalWalletId] = useState("");
   
