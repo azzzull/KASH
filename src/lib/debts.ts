@@ -133,30 +133,51 @@ export async function getCounterparties(
   if (progressResult.error) throw progressResult.error;
 
   const rawCounterparties = counterpartiesResult.data ?? [];
+  const rawProgressItems = (progressResult.data ?? []) as DebtProgress[];
 
-  // Collect all distinct personal-space owner IDs that need profile resolution
-  const personalOwnerIds = new Set<string>();
-  for (const c of rawCounterparties as any[]) {
-    if (c.linked_space?.space_type === "personal" && c.linked_space?.owner_user_id) {
-      personalOwnerIds.add(c.linked_space.owner_user_id as string);
+  // Map any cross_space_event_id available for each counterparty
+  const eventIdByCounterpartyId = new Map<string, string>();
+  for (const item of rawProgressItems) {
+    if (item.counterparty_id && item.cross_space_event_id) {
+      eventIdByCounterpartyId.set(item.counterparty_id, item.cross_space_event_id);
     }
   }
-  // Fall back to current user's own profile as well (for personal-space own linked counterparties)
-  personalOwnerIds.add(userId);
 
-  const profilesResult = personalOwnerIds.size > 0
-    ? await supabase.from("profiles").select("id, full_name").in("id", [...personalOwnerIds])
-    : { data: [] };
-  const profileById = new Map<string, string>(
-    ((profilesResult as any).data ?? []).map((p: any) => [p.id, p.full_name || "Personal Funds"])
-  );
+  // Resolve cross-space payer profiles via event-scoped SECURITY DEFINER RPC to respect RLS
+  const profileByEventId = new Map<string, string>();
+  const resolutionPromises: Promise<void>[] = [];
+  const resolvedEvents = new Set<string>();
+
+  for (const c of rawCounterparties as any[]) {
+    if (c.linked_space?.space_type === "personal") {
+      const eventId = eventIdByCounterpartyId.get(c.id);
+      if (eventId && !resolvedEvents.has(eventId)) {
+        resolvedEvents.add(eventId);
+        resolutionPromises.push(
+          (async () => {
+            const { data: payerProfile } = await supabase.rpc("get_cross_space_payer_profile" as any, {
+              p_event_id: eventId,
+            });
+            const profileName = (payerProfile as any)?.[0]?.full_name;
+            if (profileName) {
+              profileByEventId.set(eventId, profileName);
+            }
+          })()
+        );
+      }
+    }
+  }
+
+  if (resolutionPromises.length > 0) {
+    await Promise.all(resolutionPromises);
+  }
 
   const counterparties = rawCounterparties.map((c: any) => {
     let displayName = c.name;
     if (c.linked_space) {
       if (c.linked_space.space_type === "personal") {
-        const ownerId = c.linked_space.owner_user_id as string | undefined;
-        displayName = ownerId ? (profileById.get(ownerId) ?? "Personal Funds") : "Personal Funds";
+        const eventId = eventIdByCounterpartyId.get(c.id);
+        displayName = (eventId ? profileByEventId.get(eventId) : null) ?? c.name ?? "Personal Funds";
       } else {
         displayName = c.linked_space.name;
       }
@@ -325,21 +346,21 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   if (walletsResult.error) throw walletsResult.error;
 
   const rawCounterparty = counterpartyResult.data as any;
+  const debts = (progressResult.data ?? []) as DebtProgress[];
+
   // Resolve the display name: for cross-space payables, the linked_space is the payer's Personal space.
-  // Fetch the Personal space owner's profile, NOT the current viewer's profile.
+  // Fetch the Personal space owner's profile via event-scoped RPC to respect RLS.
   let cpDisplayName = rawCounterparty.linked_space?.name || rawCounterparty.name;
   if (rawCounterparty.linked_space?.space_type === "personal") {
-    const personalOwnerId = rawCounterparty.linked_space?.owner_user_id as string | undefined;
-    if (personalOwnerId) {
-      const ownerProfileRes = await supabase.from("profiles").select("full_name").eq("id", personalOwnerId).maybeSingle();
-      cpDisplayName = ownerProfileRes.data?.full_name || "Personal Funds";
-    } else {
-      cpDisplayName = "Personal Funds";
+    const crossSpaceEventId = debts.find((d) => d.cross_space_event_id)?.cross_space_event_id;
+    if (crossSpaceEventId) {
+      const { data: payerProfile } = await supabase.rpc("get_cross_space_payer_profile" as any, {
+        p_event_id: crossSpaceEventId,
+      });
+      cpDisplayName = (payerProfile as any)?.[0]?.full_name || rawCounterparty.name || "Personal Funds";
     }
   }
   const counterparty = { ...rawCounterparty, name: cpDisplayName } as Counterparty;
-
-  const debts = (progressResult.data ?? []) as DebtProgress[];
   const payments = (paymentsResult.data ?? []) as DebtPayment[];
   const allocations = (allocationsResult.data ?? []) as DebtPaymentAllocation[];
   const wallets = (walletsResult.data ?? []) as Wallet[];
