@@ -27,6 +27,15 @@ export type ManagedSpaceMember = {
   updated_at: string;
 };
 
+export type ManagedSpaceMemberItem = {
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: ManagedSpaceRole;
+  status: string;
+  created_at: string;
+};
+
 export type Profile = {
   id: string;
   email: string;

@@ -30,6 +30,7 @@ const LoginPage = lazyPage(() => import("../pages/LoginPage"), "LoginPage");
 const NotificationsPage = lazyPage(() => import("../pages/NotificationsPage"), "NotificationsPage");
 const OnboardingPage = lazyPage(() => import("../pages/OnboardingPage"), "OnboardingPage");
 const SettingsPage = lazyPage(() => import("../pages/SettingsPage"), "SettingsPage");
+const SpaceMembersPage = lazyPage(() => import("../pages/SpaceMembersPage"), "SpaceMembersPage");
 const SharedSavingsPage = lazyPage(() => import("../pages/SharedSavingsPage"), "SharedSavingsPage");
 const SharedSavingsDetailPage = lazyPage(() => import("../pages/SharedSavingsDetailPage"), "SharedSavingsDetailPage");
 const SubscriptionsPage = lazyPage(() => import("../pages/SubscriptionsPage"), "SubscriptionsPage");
@@ -106,6 +107,7 @@ export const router = createBrowserRouter([
           { path: "/notifications", element: routeElement(<NotificationsPage />) },
           { path: "/settings", element: routeElement(<SettingsPage />) },
           { path: "/settings/categories", element: routeElement(<CategoriesPage />) },
+          { path: "/settings/members", element: routeElement(<SpaceMembersPage />) },
           { path: "/envelopes/:id", element: routeElement(<EnvelopeDetailPage />) },
         ],
       },

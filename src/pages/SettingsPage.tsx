@@ -13,6 +13,7 @@ import {
   Smartphone,
   Tags,
   User as UserIcon,
+  Users,
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAuth } from "../context/AuthContext";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useI18n } from "../i18n";
 import { updateProfileFullName } from "../lib/auth";
 import {
@@ -36,6 +38,7 @@ import { supabase } from "../lib/supabase";
 
 export function SettingsPage() {
   const { profile, refreshProfile, user } = useAuth();
+  const { activeSpace } = useActiveSpace();
   const { locale, setLocale, t } = useI18n();
 
   const [displayName, setDisplayName] = useState(profile?.full_name ?? "");
@@ -275,6 +278,32 @@ export function SettingsPage() {
           </span>
           <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />
         </Link>
+
+        {/* Managed Space Members Link (Only for Managed Space) */}
+        {activeSpace?.space_type === "managed" ? (
+          <Link
+            className="grid grid-cols-[auto_1fr_auto] items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
+            to="/settings/members"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark">
+              <Users aria-hidden="true" size={19} />
+            </span>
+            <span>
+              <div className="flex items-center gap-2">
+                <span className="block text-sm font-extrabold text-slate-900">
+                  {t("spaces.members") || "Anggota Space"}
+                </span>
+                <span className="rounded-full bg-kash-selected px-2 py-0.5 text-[10px] font-extrabold text-kash-emeraldDark">
+                  {activeSpace.name}
+                </span>
+              </div>
+              <span className="mt-0.5 block text-xs font-semibold text-slate-700">
+                {t("spaces.membersDesc") || "Kelola anggota dan hak akses untuk Financial Space ini."}
+              </span>
+            </span>
+            <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />
+          </Link>
+        ) : null}
 
         {/* Device Push Notifications Card */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

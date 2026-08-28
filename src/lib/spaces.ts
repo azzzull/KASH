@@ -1,4 +1,4 @@
-import type { FinancialSpace } from "../types/domain";
+import type { FinancialSpace, ManagedSpaceMemberItem, ManagedSpaceRole } from "../types/domain";
 import { supabase } from "./supabase";
 
 export const ACTIVE_SPACE_STORAGE_KEY = "kash_active_space_id";
@@ -43,7 +43,6 @@ export async function getFinancialSpaces(): Promise<{
     const { data, error } = await supabase
       .from("financial_spaces")
       .select("*")
-      .eq("owner_user_id", user.id)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
@@ -221,6 +220,80 @@ export async function deleteManagedSpace(spaceId: string): Promise<{
     const { error } = await supabase.rpc("delete_managed_space" as any, { p_space_id: spaceId });
     if (error) throw error;
     
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+}
+
+export async function getManagedSpaceMembers(spaceId: string): Promise<{
+  data: ManagedSpaceMemberItem[] | null;
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc("get_managed_space_members", {
+      p_space_id: spaceId,
+    });
+    if (error) throw error;
+    return { data: (data as ManagedSpaceMemberItem[]) ?? [], error: null };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
+}
+
+export async function addManagedSpaceMember(
+  spaceId: string,
+  email: string,
+  role: ManagedSpaceRole
+): Promise<{
+  data: { success: boolean; user_id: string } | null;
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc("add_managed_space_member", {
+      p_space_id: spaceId,
+      p_email: email,
+      p_role: role,
+    });
+    if (error) throw error;
+    return { data: data ?? null, error: null };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
+}
+
+export async function updateManagedSpaceMemberRole(
+  spaceId: string,
+  userId: string,
+  newRole: ManagedSpaceRole
+): Promise<{
+  error: Error | null;
+}> {
+  try {
+    const { error } = await supabase.rpc("update_managed_space_member_role", {
+      p_space_id: spaceId,
+      p_user_id: userId,
+      p_new_role: newRole,
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+}
+
+export async function removeManagedSpaceMember(
+  spaceId: string,
+  userId: string
+): Promise<{
+  error: Error | null;
+}> {
+  try {
+    const { error } = await supabase.rpc("remove_managed_space_member", {
+      p_space_id: spaceId,
+      p_user_id: userId,
+    });
+    if (error) throw error;
     return { error: null };
   } catch (err: any) {
     return { error: err };

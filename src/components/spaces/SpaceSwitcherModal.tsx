@@ -1,4 +1,4 @@
-import { Check, Plus, User, Briefcase, Archive, Trash2, Edit3, ChevronDown, RotateCcw } from "lucide-react";
+import { Check, Plus, User, Briefcase, Archive, Trash2, Edit3, ChevronDown, RotateCcw, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
@@ -245,6 +245,15 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                           triggerVariant="ghost"
                           ariaLabel={`Aksi space ${space.name}`}
                           items={[
+                            {
+                              label: t("spaces.manageMembers") || "Kelola Anggota",
+                              icon: Users,
+                              onClick: () => {
+                                setActiveSpace(space.id);
+                                onClose();
+                                navigate("/settings/members");
+                              },
+                            },
                             {
                               label: t("spaces.renameSpace") || "Ubah Nama",
                               icon: Edit3,

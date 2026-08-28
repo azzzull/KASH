@@ -1050,6 +1050,45 @@ export type Database = {
         };
         Returns: undefined;
       };
+      get_managed_space_members: {
+        Args: {
+          p_space_id: string;
+        };
+        Returns: {
+          user_id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          role: ManagedSpaceRole;
+          status: string;
+          created_at: string;
+        }[];
+      };
+      add_managed_space_member: {
+        Args: {
+          p_space_id: string;
+          p_email: string;
+          p_role: ManagedSpaceRole;
+        };
+        Returns: {
+          success: boolean;
+          user_id: string;
+        };
+      };
+      update_managed_space_member_role: {
+        Args: {
+          p_space_id: string;
+          p_user_id: string;
+          p_new_role: ManagedSpaceRole;
+        };
+        Returns: void;
+      };
+      remove_managed_space_member: {
+        Args: {
+          p_space_id: string;
+          p_user_id: string;
+        };
+        Returns: void;
+      };
     };
     Enums: {
       wallet_type: Wallet["wallet_type"];
