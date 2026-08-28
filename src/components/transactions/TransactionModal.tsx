@@ -242,7 +242,9 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
       if (result.error) {
         console.error("Failed to create transaction", result.error);
-        setError(t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.");
+        const errMsg = result.error.message || "";
+        const isAuthError = errMsg.includes("JWT") || errMsg.includes("session expired") || errMsg.includes("not authenticated");
+        setError(isAuthError ? (t("transactions.saveErrorAuth") || "Sesi masuk telah berakhir. Silakan login kembali.") : (errMsg || t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi."));
         setSaving(false);
         return;
       }
@@ -250,9 +252,21 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       emitTransactionSaved();
       onSaved?.();
       onClose();
-    } catch (transactionError) {
+    } catch (transactionError: any) {
       console.error("Failed to create transaction", transactionError);
-      setError(transactionError instanceof Error ? transactionError.message : (t("transactions.saveErrorAuth") || "Gagal menyimpan transaksi. Silakan coba lagi."));
+      const errMsg =
+        transactionError instanceof Error
+          ? transactionError.message
+          : typeof transactionError === "object" && transactionError !== null && "message" in transactionError
+            ? String(transactionError.message)
+            : "";
+
+      const isAuthError = errMsg.includes("JWT") || errMsg.includes("session expired") || errMsg.includes("not authenticated");
+      setError(
+        isAuthError
+          ? (t("transactions.saveErrorAuth") || "Sesi masuk telah berakhir. Silakan login kembali.")
+          : (errMsg || t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.")
+      );
       setSaving(false);
     }
   };

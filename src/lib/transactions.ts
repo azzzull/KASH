@@ -175,20 +175,19 @@ function outgoingAmountFor(type: TransactionType, amount: string | number, trans
   return null;
 }
 
-async function getWalletCurrentBalance(userId: string, walletId: string) {
+async function getWalletCurrentBalance(walletId: string) {
   const { data, error } = await supabase
     .from("wallet_balance_view")
     .select("current_balance")
-    .eq("user_id", userId)
     .eq("wallet_id", walletId)
     .single();
 
-  if (error) throw error;
-  return data.current_balance;
+  if (error) throw new Error(error.message || "Failed to retrieve wallet balance");
+  return data?.current_balance ?? "0";
 }
 
-async function assertWalletCanCover(userId: string, walletId: string, outgoingAmount: string, restoredAmount = "0") {
-  const currentBalance = await getWalletCurrentBalance(userId, walletId);
+async function assertWalletCanCover(walletId: string, outgoingAmount: string, restoredAmount = "0") {
+  const currentBalance = await getWalletCurrentBalance(walletId);
   const spendableBalance = addMoneyValues(currentBalance, restoredAmount);
 
   if (isMoneyGreaterThan(outgoingAmount, spendableBalance)) {
@@ -214,7 +213,7 @@ async function createTransaction(payload: {
   const outgoingAmount = outgoingAmountFor(payload.type, payload.amount, payload.transfer_fee ?? "0");
 
   if (outgoingAmount) {
-    await assertWalletCanCover(userId, payload.wallet_id, outgoingAmount);
+    await assertWalletCanCover(payload.wallet_id, outgoingAmount);
   }
 
   return supabase
@@ -588,7 +587,7 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
         ? outgoingAmountFor(transaction.type, transaction.amount, transaction.transfer_fee ?? "0") ?? "0"
         : "0";
 
-    await assertWalletCanCover(userId, input.walletId, nextOutgoingAmount, restoredOutgoingAmount);
+    await assertWalletCanCover(input.walletId, nextOutgoingAmount, restoredOutgoingAmount);
   }
 
   const updatePayload: Database["public"]["Tables"]["transactions"]["Update"] = {
