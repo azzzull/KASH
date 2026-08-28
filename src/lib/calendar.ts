@@ -152,7 +152,6 @@ export async function getCalendarMonthTransactions(monthDate: Date, spaceId?: st
   let query = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", user.id)
     .eq("status", "completed")
     .gte("transaction_date", range.start.toISOString())
     .lt("transaction_date", range.end.toISOString())
@@ -160,6 +159,8 @@ export async function getCalendarMonthTransactions(monthDate: Date, spaceId?: st
 
   if (targetSpaceId) {
     query = query.eq("space_id", targetSpaceId);
+  } else {
+    query = query.eq("user_id", user.id);
   }
 
   const { data, error } = await query;

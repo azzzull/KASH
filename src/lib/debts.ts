@@ -112,14 +112,20 @@ export async function getCounterparties(
   const userId = await getAuthenticatedUserId();
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
-  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").eq("user_id", userId).order("name", { ascending: true });
+  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").order("name", { ascending: true });
   if (targetSpaceId) {
     cpQuery = cpQuery.eq("space_id", targetSpaceId);
+  } else {
+    cpQuery = cpQuery.eq("user_id", userId);
   }
+
+  const progressQuery = targetSpaceId
+    ? supabase.from("debt_progress_view").select("*")
+    : supabase.from("debt_progress_view").select("*").eq("user_id", userId);
 
   const [counterpartiesResult, progressResult, profileResult] = await Promise.all([
     cpQuery,
-    supabase.from("debt_progress_view").select("*").eq("user_id", userId),
+    progressQuery,
     supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
   ]);
 
@@ -229,9 +235,10 @@ export async function getCounterparties(
 
   return {
     counterparties: filtered,
-    allCounterparties: counterparties,
+    allCounterparties: summaries,
     totalDebt,
     totalReceivable,
+    totalCount: summaries.length,
   };
 }
 
@@ -239,9 +246,11 @@ export async function getActiveDebts(spaceId?: string): Promise<DebtProgress[]> 
   const userId = await getAuthenticatedUserId();
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
-  let cpQuery = supabase.from("counterparties").select("id").eq("user_id", userId);
+  let cpQuery = supabase.from("counterparties").select("id");
   if (targetSpaceId) {
     cpQuery = cpQuery.eq("space_id", targetSpaceId);
+  } else {
+    cpQuery = cpQuery.eq("user_id", userId);
   }
   const { data: cpData, error: cpError } = await cpQuery;
   if (cpError) throw cpError;
@@ -250,14 +259,19 @@ export async function getActiveDebts(spaceId?: string): Promise<DebtProgress[]> 
     return [];
   }
 
-  const { data, error } = await supabase
+  let debtProgressQuery = supabase
     .from("debt_progress_view")
     .select("*")
-    .eq("user_id", userId)
     .eq("type", "debt")
     .neq("status", "settled")
     .neq("status", "cancelled")
     .order("created_at", { ascending: false });
+
+  if (!targetSpaceId) {
+    debtProgressQuery = debtProgressQuery.eq("user_id", userId);
+  }
+
+  const { data, error } = await debtProgressQuery;
 
   if (error) throw error;
   const list = (data as DebtProgress[]) ?? [];
@@ -268,21 +282,19 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   const userId = await getAuthenticatedUserId();
 
   const [counterpartyResult, progressResult, paymentsResult, allocationsResult, walletsResult] = await Promise.all([
-    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").eq("id", counterpartyId).eq("user_id", userId).single(),
+    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").eq("id", counterpartyId).single(),
     supabase
       .from("debt_progress_view")
       .select("*")
       .eq("counterparty_id", counterpartyId)
-      .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     supabase
       .from("debt_payments")
       .select("*")
       .eq("counterparty_id", counterpartyId)
-      .eq("user_id", userId)
       .order("payment_date", { ascending: false }),
-    supabase.from("debt_payment_allocations").select("*").eq("user_id", userId),
-    supabase.from("wallets").select("*").eq("user_id", userId),
+    supabase.from("debt_payment_allocations").select("*"),
+    supabase.from("wallets").select("*"),
   ]);
 
   if (counterpartyResult.error) throw counterpartyResult.error;

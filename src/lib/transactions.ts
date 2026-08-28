@@ -366,9 +366,11 @@ export async function getTransactionSupportData(spaceId?: string) {
   const userId = await getAuthenticatedUserId();
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
-  let walletQuery = supabase.from("wallets").select("*").eq("user_id", userId).order("created_at", { ascending: true });
+  let walletQuery = supabase.from("wallets").select("*").order("created_at", { ascending: true });
   if (targetSpaceId) {
     walletQuery = walletQuery.eq("space_id", targetSpaceId);
+  } else {
+    walletQuery = walletQuery.eq("user_id", userId);
   }
 
   let categoryQuery = supabase
@@ -382,9 +384,11 @@ export async function getTransactionSupportData(spaceId?: string) {
     categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.is.null`);
   }
 
-  let envelopeQuery = supabase.from("envelopes").select("*").eq("user_id", userId).eq("is_archived", false).order("name", { ascending: true });
+  let envelopeQuery = supabase.from("envelopes").select("*").eq("is_archived", false).order("name", { ascending: true });
   if (targetSpaceId) {
     envelopeQuery = envelopeQuery.eq("space_id", targetSpaceId);
+  } else {
+    envelopeQuery = envelopeQuery.eq("user_id", userId);
   }
 
   const [walletResult, categoryResult, envelopeResult] = await Promise.all([
@@ -421,9 +425,12 @@ export async function getTransactions(filters: TransactionFilters = {}) {
   const range = exactDayRange ?? (filters.monthDate ? monthRange(filters.monthDate) : periodRange(filters.period));
   const supportData = await getTransactionSupportData(targetSpaceId ?? undefined);
 
-  let query = supabase.from("transactions").select("*", { count: "exact" }).eq("user_id", userId);
-
-  if (targetSpaceId) query = query.eq("space_id", targetSpaceId);
+  let query = supabase.from("transactions").select("*", { count: "exact" });
+  if (targetSpaceId) {
+    query = query.eq("space_id", targetSpaceId);
+  } else {
+    query = query.eq("user_id", userId);
+  }
   if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
   if (filters.status && filters.status !== "all") query = query.eq("status", filters.status);
   if (filters.categoryId === "uncategorized") {
@@ -501,20 +508,22 @@ export async function getTransactions(filters: TransactionFilters = {}) {
 }
 
 export async function getTransactionById(id: string) {
-  const userId = await getAuthenticatedUserId();
-  const [transactionResult, supportData] = await Promise.all([
-    supabase.from("transactions").select("*").eq("id", id).eq("user_id", userId).single(),
-    getTransactionSupportData(),
-  ]);
+  const { data: transaction, error: txError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  if (transactionResult.error) throw transactionResult.error;
+  if (txError || !transaction) throw txError || new Error("Transaction not found");
+
+  const supportData = await getTransactionSupportData(transaction.space_id ?? undefined);
 
   let crossSpaceEventsMeta: CrossSpaceEventMeta[] = [];
-  if (transactionResult.data.cross_space_event_id) {
+  if (transaction.cross_space_event_id) {
     const { data: eventData } = await supabase
       .from("cross_space_events")
       .select("id, event_type, managed_space_id, personal_space_id, amount, status")
-      .eq("id", transactionResult.data.cross_space_event_id)
+      .eq("id", transaction.cross_space_event_id)
       .single();
 
     if (eventData) {
@@ -541,7 +550,7 @@ export async function getTransactionById(id: string) {
     }
   }
 
-  return attachTransactionMeta([transactionResult.data], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta)[0];
+  return attachTransactionMeta([transaction], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta)[0];
 }
 
 export async function updateTransaction(transaction: Transaction, input: UpdateTransactionInput) {
@@ -598,18 +607,15 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     .from("transactions")
     .update(updatePayload)
     .eq("id", transaction.id)
-    .eq("user_id", userId)
     .select("*")
     .single();
 }
 
 export async function voidTransaction(id: string) {
-  const userId = await getAuthenticatedUserId();
   const { data: transaction, error: loadError } = await supabase
     .from("transactions")
     .select("related_entity_type")
     .eq("id", id)
-    .eq("user_id", userId)
     .single();
 
   if (loadError) {
@@ -640,7 +646,6 @@ export async function voidTransaction(id: string) {
     .from("transactions")
     .update({ status: "void" })
     .eq("id", id)
-    .eq("user_id", userId)
     .select("*")
     .single();
 }

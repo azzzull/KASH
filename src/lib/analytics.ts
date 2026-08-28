@@ -493,10 +493,13 @@ export async function getAnalyticsSummary(
   let walletQuery = supabase
     .from("wallets")
     .select("*")
-    .eq("user_id", userId)
     .eq("is_archived", false)
     .order("created_at", { ascending: true });
-  if (targetSpaceId) walletQuery = walletQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    walletQuery = walletQuery.eq("space_id", targetSpaceId);
+  } else {
+    walletQuery = walletQuery.eq("user_id", userId);
+  }
 
   let categoryQuery = supabase
     .from("categories")
@@ -513,36 +516,49 @@ export async function getAnalyticsSummary(
   let currentTxnQuery = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "completed")
     .gte("transaction_date", currentStart)
     .lt("transaction_date", currentEnd)
     .order("transaction_date", { ascending: true });
-  if (targetSpaceId) currentTxnQuery = currentTxnQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    currentTxnQuery = currentTxnQuery.eq("space_id", targetSpaceId);
+  } else {
+    currentTxnQuery = currentTxnQuery.eq("user_id", userId);
+  }
 
   let prevTxnQuery = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "completed")
     .gte("transaction_date", period.previousStart)
     .lt("transaction_date", period.previousEnd)
     .order("transaction_date", { ascending: true });
-  if (targetSpaceId) prevTxnQuery = prevTxnQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    prevTxnQuery = prevTxnQuery.eq("space_id", targetSpaceId);
+  } else {
+    prevTxnQuery = prevTxnQuery.eq("user_id", userId);
+  }
 
   let histTxnQuery = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "completed")
     .lt("transaction_date", currentEnd)
     .order("transaction_date", { ascending: true });
-  if (targetSpaceId) histTxnQuery = histTxnQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    histTxnQuery = histTxnQuery.eq("space_id", targetSpaceId);
+  } else {
+    histTxnQuery = histTxnQuery.eq("user_id", userId);
+  }
+
+  const walletBalanceQuery = targetSpaceId
+    ? supabase.from("wallet_balance_view").select("*")
+    : supabase.from("wallet_balance_view").select("*").eq("user_id", userId);
 
   const [walletResult, balanceResult, categoryResult, currentTransactionResult, previousTransactionResult, historicalTransactionResult] =
     await Promise.all([
       walletQuery,
-      supabase.from("wallet_balance_view").select("*").eq("user_id", userId),
+      walletBalanceQuery,
       categoryQuery,
       currentTxnQuery,
       prevTxnQuery,

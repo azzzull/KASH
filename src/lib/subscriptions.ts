@@ -90,16 +90,19 @@ export async function getRecurringObligations(spaceId?: string): Promise<{
     let obligationsQuery = supabase
       .from("recurring_obligations_summary_view")
       .select("*")
-      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (targetSpaceId) {
       obligationsQuery = obligationsQuery.eq("space_id", targetSpaceId);
+    } else {
+      obligationsQuery = obligationsQuery.eq("user_id", userId);
     }
 
-    let walletsQuery = supabase.from("wallets").select("*").eq("user_id", userId);
+    let walletsQuery = supabase.from("wallets").select("*");
     if (targetSpaceId) {
       walletsQuery = walletsQuery.eq("space_id", targetSpaceId);
+    } else {
+      walletsQuery = walletsQuery.eq("user_id", userId);
     }
 
     let categoriesQuery = supabase.from("categories").select("*");
@@ -109,16 +112,20 @@ export async function getRecurringObligations(spaceId?: string): Promise<{
       categoriesQuery = categoriesQuery.or(`is_system.eq.true,space_id.is.null`);
     }
 
+    let openPaymentsQuery = supabase
+      .from("recurring_payments")
+      .select("*")
+      .in("status", ["pending", "overdue"])
+      .order("due_date", { ascending: true });
+    if (!targetSpaceId) {
+      openPaymentsQuery = openPaymentsQuery.eq("user_id", userId);
+    }
+
     const [obligationsRes, categoriesRes, walletsRes, openPaymentsRes] = await Promise.all([
       obligationsQuery,
       categoriesQuery,
       walletsQuery,
-      supabase
-        .from("recurring_payments")
-        .select("*")
-        .eq("user_id", userId)
-        .in("status", ["pending", "overdue"])
-        .order("due_date", { ascending: true }),
+      openPaymentsQuery,
     ]);
 
     if (obligationsRes.error) throw obligationsRes.error;
@@ -160,23 +167,19 @@ export async function getRecurringObligationById(id: string): Promise<{
   error: Error | null;
 }> {
   try {
-    const userId = await getAuthenticatedUserId();
-
     const [obligationRes, paymentsRes, categoriesRes, walletsRes] = await Promise.all([
       supabase
         .from("recurring_obligations_summary_view")
         .select("*")
         .eq("id", id)
-        .eq("user_id", userId)
         .single(),
       supabase
         .from("recurring_payments")
         .select("*")
         .eq("obligation_id", id)
-        .eq("user_id", userId)
         .order("due_date", { ascending: true }),
       supabase.from("categories").select("*"),
-      supabase.from("wallets").select("*").eq("user_id", userId),
+      supabase.from("wallets").select("*"),
     ]);
 
     if (obligationRes.error) throw obligationRes.error;

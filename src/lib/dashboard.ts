@@ -475,10 +475,13 @@ export async function getDashboardSummary(
   let walletQuery = supabase
     .from("wallets")
     .select("*")
-    .eq("user_id", userId)
     .eq("is_archived", false)
     .order("created_at", { ascending: true });
-  if (targetSpaceId) walletQuery = walletQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    walletQuery = walletQuery.eq("space_id", targetSpaceId);
+  } else {
+    walletQuery = walletQuery.eq("user_id", userId);
+  }
 
   let categoryQuery = supabase
     .from("categories")
@@ -495,47 +498,62 @@ export async function getDashboardSummary(
   let monthTxnQuery = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "completed")
     .gte("transaction_date", month.start.toISOString())
     .lt("transaction_date", month.end.toISOString())
     .order("transaction_date", { ascending: true });
-  if (targetSpaceId) monthTxnQuery = monthTxnQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    monthTxnQuery = monthTxnQuery.eq("space_id", targetSpaceId);
+  } else {
+    monthTxnQuery = monthTxnQuery.eq("user_id", userId);
+  }
 
   let prevMonthTxnQuery = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "completed")
     .gte("transaction_date", previousMonth.start.toISOString())
     .lt("transaction_date", previousMonth.end.toISOString())
     .order("transaction_date", { ascending: true });
-  if (targetSpaceId) prevMonthTxnQuery = prevMonthTxnQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    prevMonthTxnQuery = prevMonthTxnQuery.eq("space_id", targetSpaceId);
+  } else {
+    prevMonthTxnQuery = prevMonthTxnQuery.eq("user_id", userId);
+  }
 
   let recentTxnQuery = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
     .order("transaction_date", { ascending: false })
     .limit(12);
-  if (targetSpaceId) recentTxnQuery = recentTxnQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    recentTxnQuery = recentTxnQuery.eq("space_id", targetSpaceId);
+  } else {
+    recentTxnQuery = recentTxnQuery.eq("user_id", userId);
+  }
 
   let netWorthTxnQuery = supabase
     .from("transactions")
     .select("*")
-    .eq("user_id", userId)
     .eq("status", "completed")
     .lt("transaction_date", month.end.toISOString())
     .order("transaction_date", { ascending: true });
-  if (targetSpaceId) netWorthTxnQuery = netWorthTxnQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    netWorthTxnQuery = netWorthTxnQuery.eq("space_id", targetSpaceId);
+  } else {
+    netWorthTxnQuery = netWorthTxnQuery.eq("user_id", userId);
+  }
 
   let goalQuery = supabase
     .from("goals")
     .select("*")
-    .eq("user_id", userId)
     .neq("status", "cancelled")
     .order("created_at", { ascending: false });
-  if (targetSpaceId) goalQuery = goalQuery.eq("space_id", targetSpaceId);
+  if (targetSpaceId) {
+    goalQuery = goalQuery.eq("space_id", targetSpaceId);
+  } else {
+    goalQuery = goalQuery.eq("user_id", userId);
+  }
 
   let isManagedSpace = false;
   if (targetSpaceId) {
@@ -547,12 +565,28 @@ export async function getDashboardSummary(
     isManagedSpace = spaceData?.space_type === "managed";
   }
 
-  let cpQuery = supabase.from("counterparties").select("*").eq("user_id", userId).order("name", { ascending: true });
-  if (targetSpaceId) cpQuery = cpQuery.eq("space_id", targetSpaceId);
+  let cpQuery = supabase.from("counterparties").select("*").order("name", { ascending: true });
+  if (targetSpaceId) {
+    cpQuery = cpQuery.eq("space_id", targetSpaceId);
+  } else {
+    cpQuery = cpQuery.eq("user_id", userId);
+  }
 
   const sharedSavingsQuery = isManagedSpace
     ? Promise.resolve({ data: [], error: null })
     : supabase.from("shared_savings_member_shares_view").select("*").eq("user_id", userId);
+
+  const walletBalanceQuery = targetSpaceId
+    ? supabase.from("wallet_balance_view").select("*")
+    : supabase.from("wallet_balance_view").select("*").eq("user_id", userId);
+
+  const goalProgressQuery = targetSpaceId
+    ? supabase.from("goal_progress_view").select("*")
+    : supabase.from("goal_progress_view").select("*").eq("user_id", userId);
+
+  const debtProgressQuery = targetSpaceId
+    ? supabase.from("debt_progress_view").select("*")
+    : supabase.from("debt_progress_view").select("*").eq("user_id", userId);
 
   const [
     walletResult,
@@ -569,16 +603,16 @@ export async function getDashboardSummary(
     sharedSavingsResult,
   ] = await Promise.all([
     walletQuery,
-    supabase.from("wallet_balance_view").select("*").eq("user_id", userId),
+    walletBalanceQuery,
     categoryQuery,
     monthTxnQuery,
     prevMonthTxnQuery,
     recentTxnQuery,
     netWorthTxnQuery,
     goalQuery,
-    supabase.from("goal_progress_view").select("*").eq("user_id", userId),
+    goalProgressQuery,
     cpQuery,
-    supabase.from("debt_progress_view").select("*").eq("user_id", userId),
+    debtProgressQuery,
     sharedSavingsQuery,
   ]);
 
