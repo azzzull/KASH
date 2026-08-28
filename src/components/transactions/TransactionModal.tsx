@@ -14,11 +14,12 @@ import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
 import { getPersonalSpace, getActiveSpaceId } from "../../lib/spaces";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
-import { createExpense, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense, recordCrossSpaceAdvance } from "../../lib/transactions";
+import { createExpense, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense, recordCrossSpaceAdvance, canCreateTransaction } from "../../lib/transactions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
 import type { Category, Envelope } from "../../types/domain";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 
 export type QuickTransactionMode = "expense" | "income" | "transfer";
@@ -37,7 +38,9 @@ function isAmountError(error: string | null) {
 
 export function TransactionModal({ mode, onClose, onSaved }: TransactionModalProps) {
   const { t, formatCurrency } = useI18n();
+  const { activeSpace, userRole } = useActiveSpace();
   const terms = useSpaceTerminology();
+  const canCreate = canCreateTransaction(activeSpace, userRole);
 
   const modeCopy: Record<
     QuickTransactionMode,
@@ -149,6 +152,9 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const amountHasError = isAmountError(error);
 
   const validate = () => {
+    if (!canCreate) {
+      return t("transactions.createUnauthorizedViewer") || "Viewer tidak memiliki izin untuk menambah transaksi.";
+    }
     if (!walletId) return t("transactions.chooseWallet") || "Pilih dompet.";
     if (!amountDigits || amountNumber <= 0) return t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.";
     if (!transactionDate) return t("transactions.chooseDate") || "Pilih tanggal transaksi.";
@@ -179,6 +185,11 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (saving) return;
+
+    if (!canCreate) {
+      setError(t("transactions.createUnauthorizedViewer") || "Viewer tidak memiliki izin untuk menambah transaksi.");
+      return;
+    }
 
     const validationError = validate();
     if (validationError) {
@@ -244,7 +255,14 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
         console.error("Failed to create transaction", result.error);
         const errMsg = result.error.message || "";
         const isAuthError = errMsg.includes("JWT") || errMsg.includes("session expired") || errMsg.includes("not authenticated");
-        setError(isAuthError ? (t("transactions.saveErrorAuth") || "Sesi masuk telah berakhir. Silakan login kembali.") : (errMsg || t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi."));
+        const isViewerError = !canCreate || (activeSpace?.space_type === "managed" && userRole === "viewer") || errMsg.includes("Unauthorized for managed space") || (errMsg.includes("row-level security") && userRole === "viewer");
+        setError(
+          isViewerError
+            ? (t("transactions.createUnauthorizedViewer") || "Viewer tidak memiliki izin untuk menambah transaksi.")
+            : isAuthError
+              ? (t("transactions.saveErrorAuth") || "Sesi masuk telah berakhir. Silakan login kembali.")
+              : (errMsg || t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.")
+        );
         setSaving(false);
         return;
       }
@@ -262,10 +280,13 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             : "";
 
       const isAuthError = errMsg.includes("JWT") || errMsg.includes("session expired") || errMsg.includes("not authenticated");
+      const isViewerError = !canCreate || (activeSpace?.space_type === "managed" && userRole === "viewer") || errMsg.includes("Unauthorized for managed space") || (errMsg.includes("row-level security") && userRole === "viewer");
       setError(
-        isAuthError
-          ? (t("transactions.saveErrorAuth") || "Sesi masuk telah berakhir. Silakan login kembali.")
-          : (errMsg || t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.")
+        isViewerError
+          ? (t("transactions.createUnauthorizedViewer") || "Viewer tidak memiliki izin untuk menambah transaksi.")
+          : isAuthError
+            ? (t("transactions.saveErrorAuth") || "Sesi masuk telah berakhir. Silakan login kembali.")
+            : (errMsg || t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.")
       );
       setSaving(false);
     }

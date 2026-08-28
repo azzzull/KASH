@@ -27,6 +27,7 @@ import {
   EditWalletModal,
 } from "../components/wallets/WalletModals";
 import { useAuth } from "../context/AuthContext";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { useI18n } from "../i18n";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
@@ -468,6 +469,8 @@ function WalletSkeleton() {
 export function WalletsPage() {
   const { profile } = useAuth();
   const { t, formatCurrency } = useI18n();
+  const { activeSpace, userRole } = useActiveSpace();
+  const canManageWallet = !activeSpace || activeSpace.space_type === "personal" || userRole === "owner" || userRole === "admin";
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
   const [archivedCount, setArchivedCount] = useState(0);
@@ -840,15 +843,15 @@ export function WalletsPage() {
                   {group.wallets.map((wallet) => (
                     <WalletRow
                       key={wallet.id}
-                      onAdjustBalance={() => setAdjustingWallet(wallet)}
-                      onArchive={() => setArchivingWallet(wallet)}
-                      onEdit={() => void handleStartEdit(wallet)}
+                      onAdjustBalance={canManageWallet ? () => setAdjustingWallet(wallet) : undefined}
+                      onArchive={canManageWallet ? () => setArchivingWallet(wallet) : undefined}
+                      onEdit={canManageWallet ? () => void handleStartEdit(wallet) : undefined}
                       onRestore={
-                        wallet.is_archived
+                        wallet.is_archived && canManageWallet
                           ? () => setRestoringWallet(wallet)
                           : undefined
                       }
-                      onDeletePermanently={() => setDeletingPermanentlyWallet(wallet)}
+                      onDeletePermanently={canManageWallet ? () => setDeletingPermanentlyWallet(wallet) : undefined}
                       wallet={wallet}
                     />
                   ))}
@@ -858,7 +861,7 @@ export function WalletsPage() {
           : null}
       </section>
 
-      {activeTab === "active" && (
+      {activeTab === "active" && canManageWallet && (
         <ContextualCreateAction
           targetRef={createActionRef}
           onClick={() => setShowAddWallet(true)}

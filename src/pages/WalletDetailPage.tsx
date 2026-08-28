@@ -11,6 +11,7 @@ import { Modal } from "../components/ui/Modal";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import { useI18n } from "../i18n";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
@@ -344,6 +345,8 @@ export function WalletDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, formatDate, formatCurrency } = useI18n();
+  const { activeSpace, userRole } = useActiveSpace();
+  const canManageWallet = !activeSpace || activeSpace.space_type === "personal" || userRole === "owner" || userRole === "admin";
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
   const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
   const [activities, setActivities] = useState<InvestmentActivity[]>([]);
@@ -638,12 +641,13 @@ export function WalletDetailPage() {
                 {
                   label: t("common.edit") || "Edit",
                   icon: Edit3,
+                  hidden: !canManageWallet,
                   onClick: () => setShowEdit(true),
                 },
                 {
                   label: t("wallets.adjustBalance") || "Sesuaikan Saldo",
                   icon: SlidersHorizontal,
-                  hidden: isInvestment || wallet.is_archived,
+                  hidden: isInvestment || wallet.is_archived || !canManageWallet,
                   onClick: () => setShowAdjustment(true),
                 },
                 {
@@ -655,6 +659,7 @@ export function WalletDetailPage() {
                   icon: wallet.is_archived ? RotateCcw : Trash2,
                   isDestructive: !wallet.is_archived,
                   separatorBefore: true,
+                  hidden: !canManageWallet,
                   onClick: () => {
                     if (wallet.is_archived) {
                       void handleRestoreWallet();
@@ -693,7 +698,7 @@ export function WalletDetailPage() {
       ) : null}
 
       {/* Action Bar Directly BELOW Hero Card (Investment Wallets Only) */}
-      {!wallet.is_archived && isInvestment && (
+      {!wallet.is_archived && isInvestment && canManageWallet && (
         <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <Button
             type="button"

@@ -106,6 +106,16 @@ export function canEditTransaction(
   return false;
 }
 
+export function canCreateTransaction(
+  activeSpace: FinancialSpace | null,
+  userRole?: ManagedSpaceRole | "owner" | null
+): boolean {
+  if (!activeSpace || activeSpace.space_type === "personal") {
+    return true;
+  }
+  return userRole === "owner" || userRole === "admin" || userRole === "member";
+}
+
 export type UpdateTransactionInput = {
   amount: string;
   categoryId?: string | null;

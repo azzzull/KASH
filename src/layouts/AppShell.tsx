@@ -17,6 +17,7 @@ import {
 import { TransactionModal } from "../components/transactions/TransactionModal";
 import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpenseModal";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
+import { canCreateTransaction } from "../lib/transactions";
 
 export function AppShell() {
   const location = useLocation();
@@ -24,7 +25,8 @@ export function AppShell() {
   const contentRef = useRef<HTMLElement | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { activeSpaceId } = useActiveSpace();
+  const { activeSpace, userRole, activeSpaceId } = useActiveSpace();
+  const canCreate = canCreateTransaction(activeSpace, userRole);
   const [transactionMode, setTransactionMode] =
     useState<QuickAddMode | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -134,6 +136,7 @@ export function AppShell() {
 
   const openTransaction = (mode: QuickAddMode) => {
     setQuickAddOpen(false);
+    if (!canCreate) return;
     setTransactionMode(mode);
   };
 
@@ -173,7 +176,9 @@ export function AppShell() {
 
         <MobileBottomNav
           onMore={() => setMoreOpen(true)}
-          onQuickAdd={() => setQuickAddOpen(true)}
+          onQuickAdd={() => {
+            if (canCreate) setQuickAddOpen(true);
+          }}
         />
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />

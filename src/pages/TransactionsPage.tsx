@@ -39,6 +39,7 @@ import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { getCategoryIcon } from "../lib/categoryMeta";
 import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../lib/transactions";
 import {
+  canCreateTransaction,
   canEditTransaction,
   createAdjustment,
   getTransactions,
@@ -1275,15 +1276,23 @@ export function TransactionsPage() {
               }
             : undefined
         }
-        onDuplicate={() => {
-          const tx = selectedTransaction;
-          setSelectedTransaction(null);
-          if (tx) setEditState({ mode: "duplicate", transaction: tx });
-        }}
-        onVoid={() => {
-          const tx = selectedTransaction;
-          if (tx) setVoidTarget(tx);
-        }}
+        onDuplicate={
+          canCreateTransaction(activeSpace, userRole)
+            ? () => {
+                const tx = selectedTransaction;
+                setSelectedTransaction(null);
+                if (tx) setEditState({ mode: "duplicate", transaction: tx });
+              }
+            : undefined
+        }
+        onVoid={
+          canEditTransaction(selectedTransaction, activeSpace, user?.id, userRole)
+            ? () => {
+                const tx = selectedTransaction;
+                if (tx) setVoidTarget(tx);
+              }
+            : undefined
+        }
       />
 
       {editState ? (

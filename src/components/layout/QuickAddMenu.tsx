@@ -7,7 +7,9 @@ import {
 import type { QuickTransactionMode } from "../transactions/TransactionModal";
 import { Modal } from "../ui/Modal";
 import { useI18n } from "../../i18n";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
+import { canCreateTransaction } from "../../lib/transactions";
 
 export type QuickAddMode =
   | QuickTransactionMode
@@ -25,7 +27,9 @@ export function QuickAddMenu({
   onSelect,
 }: QuickAddMenuProps) {
   const { t } = useI18n();
+  const { activeSpace, userRole } = useActiveSpace();
   const terms = useSpaceTerminology();
+  const canCreate = canCreateTransaction(activeSpace, userRole);
 
   const actions: Array<{
     helper: string;
@@ -69,6 +73,16 @@ export function QuickAddMenu({
       tone: "text-teal-600",
     },
   ];
+
+  if (!canCreate) {
+    return (
+      <Modal isOpen={open} onClose={onClose} maxWidth="sm" title={t("quickAdd.title")}>
+        <div className="py-6 text-center text-sm font-medium text-slate-500">
+          {t("transactions.createUnauthorizedViewer") || "Viewer tidak memiliki izin untuk menambah transaksi."}
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal

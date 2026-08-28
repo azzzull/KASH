@@ -205,6 +205,8 @@ export const en = {
         "You can only edit transactions that you created yourself.",
     "transactions.editUnauthorizedViewer":
         "Viewers do not have permission to edit transactions.",
+    "transactions.createUnauthorizedViewer":
+        "Viewers do not have permission to add transactions.",
     "transactions.transferDesc": "Transfer balance between your wallets.",
     "transactions.singleTransactionDesc":
         "Record an income or expense into your wallet.",

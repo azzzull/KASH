@@ -209,10 +209,13 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     return spaces.find((s) => s.id === activeSpaceId && !s.is_archived) ?? personalSpace;
   }, [spaces, activeSpaceId, personalSpace]);
 
-  const [userRole, setUserRole] = useState<ManagedSpaceRole | "owner" | null>("owner");
+  const [userRole, setUserRole] = useState<ManagedSpaceRole | "owner" | null>(() => {
+    if (!user || !activeSpace) return null;
+    if (activeSpace.space_type === "personal" || activeSpace.owner_user_id === user.id) return "owner";
+    return null;
+  });
 
-  useEffect(() => {
-    let isMounted = true;
+  const refreshUserRole = useCallback(async () => {
     if (!user || !activeSpace) {
       setUserRole(null);
       return;
@@ -221,21 +224,62 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       setUserRole("owner");
       return;
     }
-    supabase
-      .from("managed_space_members")
-      .select("role")
-      .eq("space_id", activeSpace.id)
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (isMounted) {
-          setUserRole((data?.role as ManagedSpaceRole) ?? null);
-        }
-      });
-    return () => {
-      isMounted = false;
-    };
+    try {
+      const { data, error } = await supabase
+        .from("managed_space_members")
+        .select("role")
+        .eq("space_id", activeSpace.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Failed to load user role in active space:", error);
+        return;
+      }
+      setUserRole((data?.role as ManagedSpaceRole) ?? null);
+    } catch (err) {
+      console.error("Error refreshing user role:", err);
+    }
   }, [activeSpace, user]);
+
+  useEffect(() => {
+    refreshUserRole();
+
+    const handleRoleRefresh = () => {
+      refreshUserRole();
+    };
+    window.addEventListener("kash:space-changed", handleRoleRefresh);
+    window.addEventListener("kash:membership-changed", handleRoleRefresh);
+
+    if (activeSpace?.id && activeSpace.space_type === "managed" && user?.id) {
+      const channel = supabase
+        .channel(`managed-space-role-${activeSpace.id}-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "managed_space_members",
+            filter: `space_id=eq.${activeSpace.id}`,
+          },
+          () => {
+            refreshUserRole();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        window.removeEventListener("kash:space-changed", handleRoleRefresh);
+        window.removeEventListener("kash:membership-changed", handleRoleRefresh);
+        supabase.removeChannel(channel);
+      };
+    }
+
+    return () => {
+      window.removeEventListener("kash:space-changed", handleRoleRefresh);
+      window.removeEventListener("kash:membership-changed", handleRoleRefresh);
+    };
+  }, [activeSpace, user, refreshUserRole]);
 
   const value = useMemo<ActiveSpaceContextValue>(
     () => ({
@@ -251,7 +295,9 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       archiveManagedSpace,
       restoreManagedSpace,
       deleteManagedSpace,
-      refreshSpaces: loadSpaces,
+      refreshSpaces: async () => {
+        await Promise.all([loadSpaces(), refreshUserRole()]);
+      },
     }),
     [
       spaces,

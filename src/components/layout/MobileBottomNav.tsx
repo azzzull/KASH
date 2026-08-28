@@ -2,6 +2,8 @@ import { Menu, Plus } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { mobilePrimaryItems } from "../../app/navigation";
 import { useI18n } from "../../i18n";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
+import { canCreateTransaction } from "../../lib/transactions";
 
 type MobileBottomNavProps = {
   onMore: () => void;
@@ -10,6 +12,8 @@ type MobileBottomNavProps = {
 
 export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
   const { t } = useI18n();
+  const { activeSpace, userRole } = useActiveSpace();
+  const canCreate = canCreateTransaction(activeSpace, userRole);
   const [home, transactions, analytics] = mobilePrimaryItems;
 
   const getLocalizedNavLabel = (path: string, defaultLabel: string) => {
@@ -26,7 +30,7 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
       aria-label="Mobile navigation"
       className="fixed inset-x-0 bottom-0 z-30 border-t border-kash-emerald/15 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-soft backdrop-blur lg:hidden"
     >
-      <div className="mx-auto grid max-w-md grid-cols-5 items-center gap-1">
+      <div className={`mx-auto grid max-w-md ${canCreate ? "grid-cols-5" : "grid-cols-4"} items-center gap-1`}>
         {[home, transactions].map((item) => (
           <NavLink
             key={item.path}
@@ -42,14 +46,16 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
           </NavLink>
         ))}
 
-        <button
-          aria-label="Add transaction"
-          className="mx-auto flex h-12 w-12 touch-manipulation items-center justify-center rounded-full bg-kash-emerald text-white shadow-soft transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:scale-95 active:bg-kash-emeraldPressed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
-          onClick={onQuickAdd}
-          type="button"
-        >
-          <Plus aria-hidden="true" size={22} strokeWidth={2.4} />
-        </button>
+        {canCreate ? (
+          <button
+            aria-label="Add transaction"
+            className="mx-auto flex h-12 w-12 touch-manipulation items-center justify-center rounded-full bg-kash-emerald text-white shadow-soft transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:scale-95 active:bg-kash-emeraldPressed focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
+            onClick={onQuickAdd}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={22} strokeWidth={2.4} />
+          </button>
+        ) : null}
 
         <NavLink
           to={analytics.path}

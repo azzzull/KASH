@@ -206,6 +206,8 @@ export const id = {
         "Kamu hanya dapat mengedit transaksi yang kamu buat sendiri.",
     "transactions.editUnauthorizedViewer":
         "Viewer tidak memiliki izin untuk mengedit transaksi.",
+    "transactions.createUnauthorizedViewer":
+        "Viewer tidak memiliki izin untuk menambah transaksi.",
     "transactions.transferDesc": "Pindahkan saldo antar dompet Anda.",
     "transactions.singleTransactionDesc":
         "Catat pemasukan atau pengeluaran ke dalam dompet Anda.",

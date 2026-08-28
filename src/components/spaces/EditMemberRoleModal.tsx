@@ -4,6 +4,7 @@ import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { Button } from "../ui/Button";
 import { updateManagedSpaceMemberRole } from "../../lib/spaces";
+import { emitMembershipChanged, emitSpaceChanged } from "../../lib/appEvents";
 import { useI18n } from "../../i18n";
 import type { ManagedSpaceMemberItem, ManagedSpaceRole } from "../../types/domain";
 
@@ -64,6 +65,8 @@ export function EditMemberRoleModal({
         return;
       }
 
+      emitMembershipChanged();
+      emitSpaceChanged();
       onRoleUpdated();
       onClose();
     } catch (err: any) {

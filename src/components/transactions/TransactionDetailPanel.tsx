@@ -18,7 +18,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 import { supabase } from "../../lib/supabase";
 import type { TransactionType } from "../../types/domain";
-import { canEditTransaction, type TransactionWithMeta } from "../../lib/transactions";
+import { canCreateTransaction, canEditTransaction, type TransactionWithMeta } from "../../lib/transactions";
 
 export const transactionTone: Record<TransactionType, string> = {
   adjustment: "text-slate-700",
@@ -133,7 +133,10 @@ export function TransactionDetailModal({
   const { activeSpace, userRole } = useActiveSpace();
   const isManaged = activeSpace?.space_type === "managed";
   const terms = useSpaceTerminology();
+  const canCreate = canCreateTransaction(activeSpace, userRole);
   const canEdit = Boolean(onEdit && canEditTransaction(transaction, activeSpace, user?.id, userRole));
+  const canDuplicate = Boolean(onDuplicate && canCreate);
+  const canVoid = Boolean(onVoid && canEditTransaction(transaction, activeSpace, user?.id, userRole));
 
   const [crossSpaceDetails, setCrossSpaceDetails] = useState<{
     eventType: string;
@@ -380,12 +383,12 @@ export function TransactionDetailModal({
           <DetailLine label={t("transactions.transactionId") || "ID Transaksi"} value={transaction.id} />
         </dl>
 
-        {canEdit || onDuplicate || onVoid ? (
+        {canEdit || canDuplicate || canVoid ? (
           <div
             className={`grid ${
-              [canEdit, Boolean(onDuplicate), Boolean(onVoid)].filter(Boolean).length === 3
+              [canEdit, canDuplicate, canVoid].filter(Boolean).length === 3
                 ? "grid-cols-3"
-                : [canEdit, Boolean(onDuplicate), Boolean(onVoid)].filter(Boolean).length === 2
+                : [canEdit, canDuplicate, canVoid].filter(Boolean).length === 2
                   ? "grid-cols-2"
                   : "grid-cols-1"
             } gap-2 rounded-lg border border-slate-200 p-2`}
@@ -396,13 +399,13 @@ export function TransactionDetailModal({
                 {t("common.edit") || "Edit"}
               </button>
             ) : null}
-            {onDuplicate ? (
+            {canDuplicate ? (
               <button type="button" onClick={onDuplicate} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50">
                 <Copy size={17} />
                 {t("transactions.duplicate") || "Duplikat"}
               </button>
             ) : null}
-            {onVoid ? (
+            {canVoid ? (
               <button disabled={isVoid || isLinked} type="button" onClick={onVoid} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 disabled:text-slate-600 disabled:hover:bg-transparent">
                 <Trash2 size={17} />
                 {t("transactions.void") || "Void"}
