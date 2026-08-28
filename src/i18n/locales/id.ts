@@ -199,6 +199,13 @@ export const id = {
         "Peringatan: Saldo dompet akan menjadi minus setelah transaksi ini.",
     "transactions.saveErrorAuth":
         "Sesi masuk telah berakhir. Silakan login kembali.",
+    "transactions.createdBy": "Dibuat oleh",
+    "transactions.editUnauthorizedNamed":
+        "Transaksi ini dibuat oleh {name}. Kamu tidak dapat mengedit transaksi milik anggota lain.",
+    "transactions.editUnauthorizedFallback":
+        "Kamu hanya dapat mengedit transaksi yang kamu buat sendiri.",
+    "transactions.editUnauthorizedViewer":
+        "Viewer tidak memiliki izin untuk mengedit transaksi.",
     "transactions.transferDesc": "Pindahkan saldo antar dompet Anda.",
     "transactions.singleTransactionDesc":
         "Catat pemasukan atau pengeluaran ke dalam dompet Anda.",

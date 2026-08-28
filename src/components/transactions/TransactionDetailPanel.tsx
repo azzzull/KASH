@@ -14,10 +14,11 @@ import { useI18n } from "../../i18n";
 import { formatCurrency, toNumber } from "../../lib/money";
 import { Modal } from "../ui/Modal";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
+import { useAuth } from "../../context/AuthContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 import { supabase } from "../../lib/supabase";
 import type { TransactionType } from "../../types/domain";
-import type { TransactionWithMeta } from "../../lib/transactions";
+import { canEditTransaction, type TransactionWithMeta } from "../../lib/transactions";
 
 export const transactionTone: Record<TransactionType, string> = {
   adjustment: "text-slate-700",
@@ -128,9 +129,11 @@ export function TransactionDetailModal({
   transaction: TransactionWithMeta | null;
 }) {
   const { t, formatDate, formatCurrency } = useI18n();
-  const { activeSpace } = useActiveSpace();
+  const { user } = useAuth();
+  const { activeSpace, userRole } = useActiveSpace();
   const isManaged = activeSpace?.space_type === "managed";
   const terms = useSpaceTerminology();
+  const canEdit = Boolean(onEdit && canEditTransaction(transaction, activeSpace, user?.id, userRole));
 
   const [crossSpaceDetails, setCrossSpaceDetails] = useState<{
     eventType: string;
@@ -370,13 +373,24 @@ export function TransactionDetailModal({
             </>
           )}
 
+          {transaction.creatorName ? (
+            <DetailLine label={t("transactions.createdBy") || "Dibuat oleh"} value={transaction.creatorName} />
+          ) : null}
           <DetailLine label={t("transactions.note") || "Catatan"} value={transaction.note || "-"} />
           <DetailLine label={t("transactions.transactionId") || "ID Transaksi"} value={transaction.id} />
         </dl>
 
-        {onEdit || onDuplicate || onVoid ? (
-          <div className="grid grid-cols-3 gap-2 rounded-lg border border-slate-200 p-2">
-            {onEdit ? (
+        {canEdit || onDuplicate || onVoid ? (
+          <div
+            className={`grid ${
+              [canEdit, Boolean(onDuplicate), Boolean(onVoid)].filter(Boolean).length === 3
+                ? "grid-cols-3"
+                : [canEdit, Boolean(onDuplicate), Boolean(onVoid)].filter(Boolean).length === 2
+                  ? "grid-cols-2"
+                  : "grid-cols-1"
+            } gap-2 rounded-lg border border-slate-200 p-2`}
+          >
+            {canEdit ? (
               <button disabled={isVoid || isLinked} type="button" onClick={onEdit} className="flex flex-col items-center gap-1 rounded-lg px-2 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:text-slate-600">
                 <Edit3 size={17} />
                 {t("common.edit") || "Edit"}

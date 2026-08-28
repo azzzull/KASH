@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "./AuthContext";
-import type { FinancialSpace } from "../types/domain";
+import type { FinancialSpace, ManagedSpaceRole } from "../types/domain";
+import { supabase } from "../lib/supabase";
 import {
   getFinancialSpaces,
   createManagedSpace as createManagedSpaceApi,
@@ -26,6 +27,7 @@ type ActiveSpaceContextValue = {
   personalSpace: FinancialSpace | null;
   activeSpace: FinancialSpace | null;
   activeSpaceId: string | null;
+  userRole: ManagedSpaceRole | "owner" | null;
   loading: boolean;
   setActiveSpace: (spaceOrId: FinancialSpace | string) => void;
   createManagedSpace: (name: string, walletName: string, walletType: string) => Promise<FinancialSpace>;
@@ -207,12 +209,41 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     return spaces.find((s) => s.id === activeSpaceId && !s.is_archived) ?? personalSpace;
   }, [spaces, activeSpaceId, personalSpace]);
 
+  const [userRole, setUserRole] = useState<ManagedSpaceRole | "owner" | null>("owner");
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!user || !activeSpace) {
+      setUserRole(null);
+      return;
+    }
+    if (activeSpace.space_type === "personal" || activeSpace.owner_user_id === user.id) {
+      setUserRole("owner");
+      return;
+    }
+    supabase
+      .from("managed_space_members")
+      .select("role")
+      .eq("space_id", activeSpace.id)
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (isMounted) {
+          setUserRole((data?.role as ManagedSpaceRole) ?? null);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeSpace, user]);
+
   const value = useMemo<ActiveSpaceContextValue>(
     () => ({
       spaces,
       personalSpace,
       activeSpace,
       activeSpaceId: activeSpace?.id ?? activeSpaceId,
+      userRole,
       loading,
       setActiveSpace,
       createManagedSpace,
@@ -227,6 +258,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       personalSpace,
       activeSpace,
       activeSpaceId,
+      userRole,
       loading,
       setActiveSpace,
       createManagedSpace,

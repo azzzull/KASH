@@ -33,10 +33,13 @@ import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { SelectField } from "../components/ui/SelectField";
 import { useI18n } from "../i18n";
+import { useAuth } from "../context/AuthContext";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { getCategoryIcon } from "../lib/categoryMeta";
 import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../lib/transactions";
 import {
+  canEditTransaction,
   createAdjustment,
   getTransactions,
   type TransactionFilters,
@@ -392,6 +395,8 @@ function TransactionFormModal({
   wallets: Wallet[];
 }) {
   const { t, formatCurrency } = useI18n();
+  const { user } = useAuth();
+  const { activeSpace, userRole } = useActiveSpace();
   const terms = useSpaceTerminology();
   const isAmountError = (message: string | null) => {
     if (!message) return false;
@@ -431,6 +436,28 @@ function TransactionFormModal({
   const amountValue = transaction.type === "adjustment" ? parseSignedMoneyDigits(amount) : parseMoneyInputDigits(amount);
   const feeValue = parseMoneyInputDigits(transferFee) || "0";
   const amountHasError = isAmountError(error);
+
+  const getSaveErrorMessage = (err: any) => {
+    const code = err?.code;
+    const msg = err?.message || "";
+    const isPermissionError =
+      code === "42501" ||
+      code === "PGRST116" ||
+      msg.includes("permission") ||
+      msg.includes("row-level security") ||
+      (activeSpace?.space_type === "managed" &&
+        userRole === "member" &&
+        (transaction.created_by_user_id || transaction.user_id) !== user?.id);
+
+    if (isPermissionError) {
+      if (transaction.creatorName) {
+        return t("transactions.editUnauthorizedNamed", { name: transaction.creatorName });
+      }
+      return t("transactions.editUnauthorizedFallback");
+    }
+
+    return msg || (t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.");
+  };
 
   useEffect(() => {
     getEnvelopes().then((res) => {
@@ -524,7 +551,7 @@ function TransactionFormModal({
           });
 
       if (result.error) {
-        setError(t("transactions.saveError") || "Gagal menyimpan transaksi. Silakan periksa data dan coba lagi.");
+        setError(getSaveErrorMessage(result.error));
         setSaving(false);
         return;
       }
@@ -533,7 +560,7 @@ function TransactionFormModal({
       onSaved();
       onClose();
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : (t("transactions.saveError") || "Gagal menyimpan transaksi."));
+      setError(getSaveErrorMessage(caughtError));
       setSaving(false);
     }
   };
@@ -813,6 +840,8 @@ function AdvancedFilterContent({
 
 export function TransactionsPage() {
   const { t, formatDate, formatCurrency: formatLocalizedCurrency } = useI18n();
+  const { user } = useAuth();
+  const { activeSpace, userRole } = useActiveSpace();
   const terms = useSpaceTerminology();
   const [searchParams] = useSearchParams();
 
@@ -1237,11 +1266,15 @@ export function TransactionsPage() {
         isOpen={Boolean(selectedTransaction)}
         transaction={selectedTransaction}
         onClose={() => setSelectedTransaction(null)}
-        onEdit={() => {
-          const tx = selectedTransaction;
-          setSelectedTransaction(null);
-          if (tx) setEditState({ mode: "edit", transaction: tx });
-        }}
+        onEdit={
+          canEditTransaction(selectedTransaction, activeSpace, user?.id, userRole)
+            ? () => {
+                const tx = selectedTransaction;
+                setSelectedTransaction(null);
+                if (tx) setEditState({ mode: "edit", transaction: tx });
+              }
+            : undefined
+        }
         onDuplicate={() => {
           const tx = selectedTransaction;
           setSelectedTransaction(null);

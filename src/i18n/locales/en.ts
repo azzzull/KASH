@@ -198,6 +198,13 @@ export const en = {
     "transactions.insufficientBalanceExpense":
         "Warning: Wallet balance will become negative after this transaction.",
     "transactions.saveErrorAuth": "Session expired. Please sign in again.",
+    "transactions.createdBy": "Created by",
+    "transactions.editUnauthorizedNamed":
+        "This transaction was created by {name}. You cannot edit transactions created by other members.",
+    "transactions.editUnauthorizedFallback":
+        "You can only edit transactions that you created yourself.",
+    "transactions.editUnauthorizedViewer":
+        "Viewers do not have permission to edit transactions.",
     "transactions.transferDesc": "Transfer balance between your wallets.",
     "transactions.singleTransactionDesc":
         "Record an income or expense into your wallet.",

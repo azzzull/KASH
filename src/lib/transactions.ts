@@ -1,8 +1,19 @@
-import type { Category, CategoryType, Envelope, Transaction, TransactionStatus, TransactionType, Wallet } from "../types/domain";
+import type {
+  Category,
+  CategoryType,
+  Envelope,
+  FinancialSpace,
+  ManagedSpaceMemberItem,
+  ManagedSpaceRole,
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+  Wallet,
+} from "../types/domain";
 import type { Database } from "../types/database";
 import { addMoneyValues, isMoneyGreaterThan, toNumber } from "./money";
 import { toUtcIsoString } from "./datetime";
-import { getActiveSpaceId } from "./spaces";
+import { getActiveSpaceId, getManagedSpaceMembers } from "./spaces";
 import { supabase } from "./supabase";
 
 type BaseTransactionInput = {
@@ -67,7 +78,33 @@ export type TransactionWithMeta = Transaction & {
   destinationWallet: Wallet | null;
   wallet: Wallet | null;
   crossSpaceEvent?: CrossSpaceEventMeta | null;
+  creatorName?: string | null;
 };
+
+export function canEditTransaction(
+  transaction: { user_id?: string; created_by_user_id?: string | null } | null | undefined,
+  activeSpace: FinancialSpace | null,
+  currentUserId: string | null | undefined,
+  userRole?: ManagedSpaceRole | "owner" | null
+): boolean {
+  if (!transaction || !currentUserId) return false;
+
+  if (!activeSpace || activeSpace.space_type === "personal") {
+    return transaction.user_id === currentUserId;
+  }
+
+  const isOwner = activeSpace.owner_user_id === currentUserId || userRole === "owner";
+  if (isOwner || userRole === "admin") {
+    return true;
+  }
+
+  if (userRole === "member") {
+    const creatorId = transaction.created_by_user_id || transaction.user_id;
+    return creatorId === currentUserId;
+  }
+
+  return false;
+}
 
 export type UpdateTransactionInput = {
   amount: string;
@@ -152,21 +189,28 @@ function attachTransactionMeta(
   wallets: Wallet[],
   categories: Category[],
   envelopes: Envelope[] = [],
-  crossSpaceEvents: CrossSpaceEventMeta[] = []
+  crossSpaceEvents: CrossSpaceEventMeta[] = [],
+  members: ManagedSpaceMemberItem[] = []
 ): TransactionWithMeta[] {
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
   const envelopesById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
   const crossSpaceEventsById = new Map(crossSpaceEvents.map((e) => [e.id, e]));
+  const membersById = new Map(members.map((m) => [m.user_id, m]));
 
-  return transactions.map((transaction) => ({
-    ...transaction,
-    category: transaction.category_id ? categoriesById.get(transaction.category_id) ?? null : null,
-    envelope: transaction.envelope_id ? envelopesById.get(transaction.envelope_id) ?? null : null,
-    destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
-    wallet: walletsById.get(transaction.wallet_id || "") ?? null,
-    crossSpaceEvent: transaction.cross_space_event_id ? crossSpaceEventsById.get(transaction.cross_space_event_id) ?? null : null,
-  }));
+  return transactions.map((transaction) => {
+    const creatorUserId = transaction.created_by_user_id || transaction.user_id;
+    const member = creatorUserId ? membersById.get(creatorUserId) : null;
+    return {
+      ...transaction,
+      category: transaction.category_id ? categoriesById.get(transaction.category_id) ?? null : null,
+      envelope: transaction.envelope_id ? envelopesById.get(transaction.envelope_id) ?? null : null,
+      destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
+      wallet: walletsById.get(transaction.wallet_id || "") ?? null,
+      crossSpaceEvent: transaction.cross_space_event_id ? crossSpaceEventsById.get(transaction.cross_space_event_id) ?? null : null,
+      creatorName: member?.full_name || null,
+    };
+  });
 }
 
 function outgoingAmountFor(type: TransactionType, amount: string | number, transferFee: string | number = "0") {
@@ -493,7 +537,15 @@ export async function getTransactions(filters: TransactionFilters = {}) {
     }
   }
 
-  const rows = attachTransactionMeta(data ?? [], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta);
+  let members: ManagedSpaceMemberItem[] = [];
+  if (targetSpaceId) {
+    const { data: memberData } = await getManagedSpaceMembers(targetSpaceId);
+    if (memberData) {
+      members = memberData;
+    }
+  }
+
+  const rows = attachTransactionMeta(data ?? [], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta, members);
   const filteredRows = filters.query ? rows.filter((transaction) => searchMatches(transaction, filters.query ?? "")) : rows;
 
   return {
@@ -549,7 +601,15 @@ export async function getTransactionById(id: string) {
     }
   }
 
-  return attachTransactionMeta([transaction], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta)[0];
+  let members: ManagedSpaceMemberItem[] = [];
+  if (transaction.space_id) {
+    const { data: memberData } = await getManagedSpaceMembers(transaction.space_id);
+    if (memberData) {
+      members = memberData;
+    }
+  }
+
+  return attachTransactionMeta([transaction], supportData.wallets, supportData.categories, supportData.envelopes, crossSpaceEventsMeta, members)[0];
 }
 
 export async function updateTransaction(transaction: Transaction, input: UpdateTransactionInput) {

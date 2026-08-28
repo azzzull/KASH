@@ -135,6 +135,8 @@ export type Transaction = {
   id: string;
   user_id: string;
   space_id?: string;
+  created_by_user_id?: string | null;
+  updated_by_user_id?: string | null;
   type: TransactionType;
   amount: MoneyAmount;
   wallet_id: string | null;
