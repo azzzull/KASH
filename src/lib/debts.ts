@@ -11,7 +11,7 @@ import type {
   Wallet,
 } from "../types/domain";
 import { addMoneyValues, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "./money";
-import { getActiveSpaceId } from "./spaces";
+import { getActiveSpaceId, getManagedSpaceMembers } from "./spaces";
 import { supabase } from "./supabase";
 
 export type CounterpartyWithSummary = Counterparty & {
@@ -133,54 +133,29 @@ export async function getCounterparties(
   if (progressResult.error) throw progressResult.error;
 
   const rawCounterparties = counterpartiesResult.data ?? [];
-  const rawProgressItems = (progressResult.data ?? []) as DebtProgress[];
 
-  // Map any cross_space_event_id available for each counterparty
-  const eventIdByCounterpartyId = new Map<string, string>();
-  for (const item of rawProgressItems) {
-    if (item.counterparty_id && item.cross_space_event_id) {
-      eventIdByCounterpartyId.set(item.counterparty_id, item.cross_space_event_id);
+  // Load Managed Space members to authoritatively map member names for cross-space payables
+  let membersByUserId = new Map<string, string>();
+  if (targetSpaceId) {
+    const { data: members } = await getManagedSpaceMembers(targetSpaceId);
+    if (members && members.length > 0) {
+      membersByUserId = new Map(members.map((m) => [m.user_id, m.full_name || ""]));
     }
-  }
-
-  // Resolve cross-space payer profiles via event-scoped SECURITY DEFINER RPC to respect RLS
-  const profileByEventId = new Map<string, string>();
-  const resolutionPromises: Promise<void>[] = [];
-  const resolvedEvents = new Set<string>();
-
-  for (const c of rawCounterparties as any[]) {
-    if (c.linked_space?.space_type === "personal") {
-      const eventId = eventIdByCounterpartyId.get(c.id);
-      if (eventId && !resolvedEvents.has(eventId)) {
-        resolvedEvents.add(eventId);
-        resolutionPromises.push(
-          (async () => {
-            const { data: payerProfile } = await supabase.rpc("get_cross_space_payer_profile" as any, {
-              p_event_id: eventId,
-            });
-            const profileName = (payerProfile as any)?.[0]?.full_name;
-            if (profileName) {
-              profileByEventId.set(eventId, profileName);
-            }
-          })()
-        );
-      }
-    }
-  }
-
-  if (resolutionPromises.length > 0) {
-    await Promise.all(resolutionPromises);
   }
 
   const counterparties = rawCounterparties.map((c: any) => {
     let displayName = c.name;
     if (c.linked_space) {
       if (c.linked_space.space_type === "personal") {
-        const eventId = eventIdByCounterpartyId.get(c.id);
-        displayName = (eventId ? profileByEventId.get(eventId) : null) ?? c.name ?? "Personal Funds";
+        // Cross-space Managed payable counterparty.user_id (or linked_space.owner_user_id) identifies the payer
+        const payerUserId = c.user_id || c.linked_space.owner_user_id;
+        const memberName = payerUserId ? membersByUserId.get(payerUserId) : null;
+        displayName = memberName || c.name || "Personal Funds";
       } else {
         displayName = c.linked_space.name;
       }
+    } else if (membersByUserId.has(c.user_id)) {
+      displayName = membersByUserId.get(c.user_id) || c.name;
     }
     return { ...c, name: displayName } as Counterparty;
   });
@@ -348,17 +323,21 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   const rawCounterparty = counterpartyResult.data as any;
   const debts = (progressResult.data ?? []) as DebtProgress[];
 
-  // Resolve the display name: for cross-space payables, the linked_space is the payer's Personal space.
-  // Fetch the Personal space owner's profile via event-scoped RPC to respect RLS.
-  let cpDisplayName = rawCounterparty.linked_space?.name || rawCounterparty.name;
-  if (rawCounterparty.linked_space?.space_type === "personal") {
-    const crossSpaceEventId = debts.find((d) => d.cross_space_event_id)?.cross_space_event_id;
-    if (crossSpaceEventId) {
-      const { data: payerProfile } = await supabase.rpc("get_cross_space_payer_profile" as any, {
-        p_event_id: crossSpaceEventId,
-      });
-      cpDisplayName = (payerProfile as any)?.[0]?.full_name || rawCounterparty.name || "Personal Funds";
+  // Load Managed Space members to resolve member display names without querying profiles directly
+  const spaceId = rawCounterparty.space_id;
+  let membersByUserId = new Map<string, string>();
+  if (spaceId) {
+    const { data: members } = await getManagedSpaceMembers(spaceId);
+    if (members && members.length > 0) {
+      membersByUserId = new Map(members.map((m) => [m.user_id, m.full_name || ""]));
     }
+  }
+
+  let cpDisplayName = rawCounterparty.linked_space?.name || rawCounterparty.name;
+  if (rawCounterparty.linked_space?.space_type === "personal" || membersByUserId.has(rawCounterparty.user_id)) {
+    const payerUserId = rawCounterparty.user_id || rawCounterparty.linked_space?.owner_user_id;
+    const memberName = payerUserId ? membersByUserId.get(payerUserId) : null;
+    cpDisplayName = memberName || rawCounterparty.name || "Personal Funds";
   }
   const counterparty = { ...rawCounterparty, name: cpDisplayName } as Counterparty;
   const payments = (paymentsResult.data ?? []) as DebtPayment[];

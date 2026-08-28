@@ -244,6 +244,8 @@ export function DebtsPage() {
             const recPaid = cp.receivablePaidTotal;
             const recProgress = recTotal > 0 ? (recPaid / recTotal * 100) : (cp.receivableTotal === 0 ? 100 : 0);
 
+            const isCrossSpace = (cp as any).linked_space?.space_type === "personal";
+
             return (
               <div
                 key={cp.id}
@@ -292,13 +294,13 @@ export function DebtsPage() {
                           {
                             label: t("debts.pay") || "Bayar Utang",
                             icon: ArrowDownLeft,
-                            hidden: cp.debtTotal <= 0 || !canSettleCrossSpace,
+                            hidden: cp.debtTotal <= 0 || isCrossSpace || !canSettleCrossSpace,
                             onClick: () => setSettlementTarget({ counterparty: cp, debtType: "debt" }),
                           },
                           {
                             label: t("debts.collect") || "Terima Piutang",
                             icon: ArrowUpRight,
-                            hidden: cp.receivableTotal <= 0 || !canSettleCrossSpace,
+                            hidden: cp.receivableTotal <= 0 || isCrossSpace || !canSettleCrossSpace,
                             onClick: () => setSettlementTarget({ counterparty: cp, debtType: "receivable" }),
                           },
                           {
@@ -346,7 +348,7 @@ export function DebtsPage() {
                           <ProgressBar percentage={debtProgress} tone="emerald" height="xs" />
                         </div>
 
-                        {cp.debtTotal > 0 && canSettleCrossSpace && (
+                        {cp.debtTotal > 0 && !isCrossSpace && canSettleCrossSpace && (
                           <div className="pt-1 flex justify-end">
                             <button
                               type="button"
@@ -396,7 +398,7 @@ export function DebtsPage() {
                           <ProgressBar percentage={recProgress} tone="emerald" height="xs" />
                         </div>
 
-                        {cp.receivableTotal > 0 && canSettleCrossSpace && (
+                        {cp.receivableTotal > 0 && !isCrossSpace && canSettleCrossSpace && (
                           <div className="pt-1 flex justify-end">
                             <button
                               type="button"

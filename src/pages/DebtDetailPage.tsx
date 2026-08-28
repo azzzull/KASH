@@ -132,6 +132,7 @@ export function DebtDetailPage() {
   const { counterparty, debts, payments, summary } = detail;
   const activeItems = debts.filter((d) => (d.status === "active" || d.status === "partially_paid") && Number(d.remaining_amount) > 0);
   const settledItems = debts.filter((d) => d.status === "settled" || d.status === "cancelled");
+  const isCrossSpacePayable = (counterparty as any).linked_space?.space_type === "personal" || debts.some((d) => d.cross_space_event_id && d.cross_space_role === "managed_payable");
 
   const counterpartySummary: CounterpartyWithSummary = {
     ...counterparty,
@@ -242,7 +243,7 @@ export function DebtDetailPage() {
 
       {/* Primary Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
       <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {summary.totalDebtRemaining > 0 && canSettleCrossSpace && (
+        {summary.totalDebtRemaining > 0 && canSettleCrossSpace && !isCrossSpacePayable && (
           <Button
             type="button"
             onClick={() => setSettlementTarget("debt")}
@@ -592,7 +593,9 @@ function ItemCard({
             className="inline-flex items-center gap-1.5 rounded-lg border border-kash-emerald/30 bg-kash-emerald/10 px-3 py-1.5 text-xs font-black text-kash-emeraldDark transition hover:bg-kash-emerald hover:text-white"
           >
             <HandCoins size={14} />
-            {isDebt ? (t("debts.payThisItem") || "Bayar Item Ini") : (t("debts.collectThisItem") || "Terima Item Ini")}
+            {item.cross_space_role === "managed_payable"
+              ? (t("debts.reimburseThisItem") || "Reimburse Item Ini")
+              : (isDebt ? (t("debts.payThisItem") || "Bayar Item Ini") : (t("debts.collectThisItem") || "Terima Item Ini"))}
           </button>
         ) : null}
       </div>

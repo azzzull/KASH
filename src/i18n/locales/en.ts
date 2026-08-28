@@ -898,6 +898,7 @@ export const en = {
         "Are you sure you want to permanently delete this item?",
     "debts.settlementProgress": "Settlement Progress",
     "debts.payThisItem": "Pay This Item",
+    "debts.reimburseThisItem": "Reimburse This Item",
     "debts.collectThisItem": "Collect This Item",
     "debts.allocations": "allocations",
     "debts.allocationBreakdown": "Allocation Breakdown",

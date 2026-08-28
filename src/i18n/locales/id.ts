@@ -907,6 +907,7 @@ export const id = {
         "Apakah Anda yakin ingin menghapus item ini secara permanen?",
     "debts.settlementProgress": "Kemajuan Pelunasan",
     "debts.payThisItem": "Bayar Item Ini",
+    "debts.reimburseThisItem": "Reimburse Item Ini",
     "debts.collectThisItem": "Terima Item Ini",
     "debts.allocations": "alokasi",
     "debts.allocationBreakdown": "Rincian Alokasi",
