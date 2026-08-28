@@ -59,7 +59,9 @@ export function DebtsPage() {
   const { t } = useI18n();
   const terms = useSpaceTerminology();
   const navigate = useNavigate();
-  const { activeSpaceId } = useActiveSpace();
+  const { activeSpaceId, activeSpace, userRole } = useActiveSpace();
+  const isManagedSpace = activeSpace?.space_type === "managed";
+  const canSettleCrossSpace = !isManagedSpace || userRole === "owner" || userRole === "admin";
   const [loading, setLoading] = useState(true);
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [allCounterparties, setAllCounterparties] = useState<Counterparty[]>([]);
@@ -290,13 +292,13 @@ export function DebtsPage() {
                           {
                             label: t("debts.pay") || "Bayar Utang",
                             icon: ArrowDownLeft,
-                            hidden: cp.debtTotal <= 0,
+                            hidden: cp.debtTotal <= 0 || !canSettleCrossSpace,
                             onClick: () => setSettlementTarget({ counterparty: cp, debtType: "debt" }),
                           },
                           {
                             label: t("debts.collect") || "Terima Piutang",
                             icon: ArrowUpRight,
-                            hidden: cp.receivableTotal <= 0,
+                            hidden: cp.receivableTotal <= 0 || !canSettleCrossSpace,
                             onClick: () => setSettlementTarget({ counterparty: cp, debtType: "receivable" }),
                           },
                           {
@@ -344,7 +346,7 @@ export function DebtsPage() {
                           <ProgressBar percentage={debtProgress} tone="emerald" height="xs" />
                         </div>
 
-                        {cp.debtTotal > 0 && (
+                        {cp.debtTotal > 0 && canSettleCrossSpace && (
                           <div className="pt-1 flex justify-end">
                             <button
                               type="button"
@@ -394,7 +396,7 @@ export function DebtsPage() {
                           <ProgressBar percentage={recProgress} tone="emerald" height="xs" />
                         </div>
 
-                        {cp.receivableTotal > 0 && (
+                        {cp.receivableTotal > 0 && canSettleCrossSpace && (
                           <div className="pt-1 flex justify-end">
                             <button
                               type="button"

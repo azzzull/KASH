@@ -112,7 +112,8 @@ export async function getCounterparties(
   const userId = await getAuthenticatedUserId();
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
-  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").order("name", { ascending: true });
+  // Fetch owner_user_id so we can resolve the personal-space owner's profile for cross-space payable names
+  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id)").order("name", { ascending: true });
   if (targetSpaceId) {
     cpQuery = cpQuery.eq("space_id", targetSpaceId);
   } else {
@@ -123,22 +124,42 @@ export async function getCounterparties(
     ? supabase.from("debt_progress_view").select("*")
     : supabase.from("debt_progress_view").select("*").eq("user_id", userId);
 
-  const [counterpartiesResult, progressResult, profileResult] = await Promise.all([
+  const [counterpartiesResult, progressResult] = await Promise.all([
     cpQuery,
     progressQuery,
-    supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
   ]);
 
   if (counterpartiesResult.error) throw counterpartiesResult.error;
   if (progressResult.error) throw progressResult.error;
 
-  const userFullName = profileResult.data?.full_name || "Personal Funds";
-
   const rawCounterparties = counterpartiesResult.data ?? [];
+
+  // Collect all distinct personal-space owner IDs that need profile resolution
+  const personalOwnerIds = new Set<string>();
+  for (const c of rawCounterparties as any[]) {
+    if (c.linked_space?.space_type === "personal" && c.linked_space?.owner_user_id) {
+      personalOwnerIds.add(c.linked_space.owner_user_id as string);
+    }
+  }
+  // Fall back to current user's own profile as well (for personal-space own linked counterparties)
+  personalOwnerIds.add(userId);
+
+  const profilesResult = personalOwnerIds.size > 0
+    ? await supabase.from("profiles").select("id, full_name").in("id", [...personalOwnerIds])
+    : { data: [] };
+  const profileById = new Map<string, string>(
+    ((profilesResult as any).data ?? []).map((p: any) => [p.id, p.full_name || "Personal Funds"])
+  );
+
   const counterparties = rawCounterparties.map((c: any) => {
     let displayName = c.name;
     if (c.linked_space) {
-      displayName = c.linked_space.space_type === "personal" ? userFullName : c.linked_space.name;
+      if (c.linked_space.space_type === "personal") {
+        const ownerId = c.linked_space.owner_user_id as string | undefined;
+        displayName = ownerId ? (profileById.get(ownerId) ?? "Personal Funds") : "Personal Funds";
+      } else {
+        displayName = c.linked_space.name;
+      }
     }
     return { ...c, name: displayName } as Counterparty;
   });
@@ -282,7 +303,7 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   const userId = await getAuthenticatedUserId();
 
   const [counterpartyResult, progressResult, paymentsResult, allocationsResult, walletsResult] = await Promise.all([
-    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type)").eq("id", counterpartyId).single(),
+    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id)").eq("id", counterpartyId).single(),
     supabase
       .from("debt_progress_view")
       .select("*")
@@ -304,9 +325,18 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   if (walletsResult.error) throw walletsResult.error;
 
   const rawCounterparty = counterpartyResult.data as any;
-  const profileRes = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
-  const profileFullName = profileRes.data?.full_name || "Personal Funds";
-  const cpDisplayName = rawCounterparty.linked_space?.space_type === "personal" ? profileFullName : (rawCounterparty.linked_space?.name || rawCounterparty.name);
+  // Resolve the display name: for cross-space payables, the linked_space is the payer's Personal space.
+  // Fetch the Personal space owner's profile, NOT the current viewer's profile.
+  let cpDisplayName = rawCounterparty.linked_space?.name || rawCounterparty.name;
+  if (rawCounterparty.linked_space?.space_type === "personal") {
+    const personalOwnerId = rawCounterparty.linked_space?.owner_user_id as string | undefined;
+    if (personalOwnerId) {
+      const ownerProfileRes = await supabase.from("profiles").select("full_name").eq("id", personalOwnerId).maybeSingle();
+      cpDisplayName = ownerProfileRes.data?.full_name || "Personal Funds";
+    } else {
+      cpDisplayName = "Personal Funds";
+    }
+  }
   const counterparty = { ...rawCounterparty, name: cpDisplayName } as Counterparty;
 
   const debts = (progressResult.data ?? []) as DebtProgress[];

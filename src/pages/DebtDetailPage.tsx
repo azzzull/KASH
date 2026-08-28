@@ -54,6 +54,7 @@ import { SettlementModal } from "./DebtsPage";
 import { getPersonalSpace } from "../lib/spaces";
 import { recordCrossSpaceSettlement } from "../lib/transactions";
 import { supabase } from "../lib/supabase";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 
 type ActiveTab = "active" | "settled" | "history";
 
@@ -72,6 +73,12 @@ export function DebtDetailPage() {
   const [editingItem, setEditingItem] = useState<DebtProgress | null>(null);
   const [deletingItem, setDeletingItem] = useState<DebtProgress | null>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
+
+  // Must be called unconditionally (before any early returns)
+  const { activeSpace, userRole } = useActiveSpace();
+  // Only Owner/Admin may settle Managed cross-space reimbursement Payables.
+  const isManagedSpace = activeSpace?.space_type === "managed";
+  const canSettleCrossSpace = !isManagedSpace || userRole === "owner" || userRole === "admin";
 
   const loadData = async () => {
     if (!counterpartyId) return;
@@ -235,7 +242,7 @@ export function DebtDetailPage() {
 
       {/* Primary Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
       <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {summary.totalDebtRemaining > 0 && (
+        {summary.totalDebtRemaining > 0 && canSettleCrossSpace && (
           <Button
             type="button"
             onClick={() => setSettlementTarget("debt")}
@@ -317,7 +324,12 @@ export function DebtDetailPage() {
               <ItemCard
                 key={item.debt_id}
                 item={item}
-                onSettle={() => setSettlingItem(item)}
+                onSettle={
+                  // Cross-space Managed Payables: only owner/admin may settle
+                  item.cross_space_role === "managed_payable"
+                    ? (canSettleCrossSpace ? () => setSettlingItem(item) : undefined)
+                    : () => setSettlingItem(item)
+                }
                 onEdit={() => setEditingItem(item)}
                 onDelete={() => setDeletingItem(item)}
               />
