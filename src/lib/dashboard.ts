@@ -4,7 +4,8 @@ import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
 import { localDateKey } from "./calendar";
 import { createCategoryColorResolver } from "./chartColors";
-import type { Category, Counterparty, DebtProgress, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
+import { getCounterparties } from "./debts";
+import type { Category, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
   bank: "#10B981",
@@ -565,13 +566,6 @@ export async function getDashboardSummary(
     isManagedSpace = spaceData?.space_type === "managed";
   }
 
-  let cpQuery = supabase.from("counterparties").select("*").order("name", { ascending: true });
-  if (targetSpaceId) {
-    cpQuery = cpQuery.eq("space_id", targetSpaceId);
-  } else {
-    cpQuery = cpQuery.eq("user_id", userId);
-  }
-
   const sharedSavingsQuery = isManagedSpace
     ? Promise.resolve({ data: [], error: null })
     : supabase.from("shared_savings_member_shares_view").select("*").eq("user_id", userId);
@@ -584,10 +578,6 @@ export async function getDashboardSummary(
     ? supabase.from("goal_progress_view").select("*")
     : supabase.from("goal_progress_view").select("*").eq("user_id", userId);
 
-  const debtProgressQuery = targetSpaceId
-    ? supabase.from("debt_progress_view").select("*")
-    : supabase.from("debt_progress_view").select("*").eq("user_id", userId);
-
   const [
     walletResult,
     balanceResult,
@@ -598,8 +588,7 @@ export async function getDashboardSummary(
     netWorthTransactionResult,
     goalResult,
     goalProgressResult,
-    counterpartiesResult,
-    debtProgressResult,
+    debtSummaryResult,
     sharedSavingsResult,
   ] = await Promise.all([
     walletQuery,
@@ -611,8 +600,7 @@ export async function getDashboardSummary(
     netWorthTxnQuery,
     goalQuery,
     goalProgressQuery,
-    cpQuery,
-    debtProgressQuery,
+    getCounterparties(undefined, targetSpaceId ?? undefined),
     sharedSavingsQuery,
   ]);
 
@@ -625,8 +613,6 @@ export async function getDashboardSummary(
   if (netWorthTransactionResult.error) throw netWorthTransactionResult.error;
   if (goalResult.error) throw goalResult.error;
   if (goalProgressResult.error) throw goalProgressResult.error;
-  if (counterpartiesResult.error) throw counterpartiesResult.error;
-  if (debtProgressResult.error) throw debtProgressResult.error;
   if (sharedSavingsResult.error) throw sharedSavingsResult.error;
 
   const balancesByWalletId = new Map((balanceResult.data ?? []).map((balance) => [balance.wallet_id, balance]));
@@ -649,60 +635,19 @@ export async function getDashboardSummary(
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
 
-  const counterparties = (counterpartiesResult.data ?? []) as Counterparty[];
-  const validCpIds = new Set(counterparties.map((cp) => cp.id));
-  const debtProgressItems = ((debtProgressResult.data ?? []) as DebtProgress[]).filter((item) =>
-    validCpIds.has(item.counterparty_id)
-  );
+  const totalDebt = debtSummaryResult.totalDebt;
+  const totalReceivable = debtSummaryResult.totalReceivable;
+  const activeDebtCount = debtSummaryResult.allCounterparties.reduce((sum, cp) => sum + cp.activeDebtCount, 0);
+  const activeReceivableCount = debtSummaryResult.allCounterparties.reduce((sum, cp) => sum + cp.activeReceivableCount, 0);
 
-  let totalDebt = 0;
-  let totalReceivable = 0;
-  let activeDebtCount = 0;
-  let activeReceivableCount = 0;
-
-  const debtItemsByCounterparty = new Map<string, DebtProgress[]>();
-  for (const item of debtProgressItems) {
-    if (item.status !== "cancelled") {
-      const remaining = moneyValue(item.remaining_amount);
-      if (item.type === "debt") {
-        totalDebt += remaining;
-        if (item.status !== "settled") activeDebtCount++;
-      } else {
-        totalReceivable += remaining;
-        if (item.status !== "settled") activeReceivableCount++;
-      }
-    }
-    const list = debtItemsByCounterparty.get(item.counterparty_id) ?? [];
-    list.push(item);
-    debtItemsByCounterparty.set(item.counterparty_id, list);
-  }
-
-  const dashboardCounterparties = counterparties
-    .map((cp: Counterparty) => {
-      const items = debtItemsByCounterparty.get(cp.id) ?? [];
-      let cpDebt = 0;
-      let cpReceivable = 0;
-      let activeCount = 0;
-
-      for (const item of items) {
-        if (item.status === "cancelled") continue;
-        const rem = moneyValue(item.remaining_amount);
-        if (item.type === "debt") {
-          cpDebt += rem;
-        } else {
-          cpReceivable += rem;
-        }
-        if (item.status !== "settled") activeCount++;
-      }
-
-      return {
-        id: cp.id,
-        name: cp.name,
-        debtTotal: cpDebt,
-        receivableTotal: cpReceivable,
-        activeItemCount: activeCount,
-      };
-    })
+  const dashboardCounterparties = debtSummaryResult.allCounterparties
+    .map((cp) => ({
+      id: cp.id,
+      name: cp.name,
+      debtTotal: cp.debtTotal,
+      receivableTotal: cp.receivableTotal,
+      activeItemCount: cp.activeDebtCount + cp.activeReceivableCount,
+    }))
     .filter((cp) => cp.debtTotal > 0 || cp.receivableTotal > 0 || cp.activeItemCount > 0)
     .sort((a, b) => (b.debtTotal + b.receivableTotal) - (a.debtTotal + a.receivableTotal));
 

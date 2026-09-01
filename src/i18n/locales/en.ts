@@ -869,6 +869,11 @@ export const en = {
     "debts.amountExceedsItemBalance":
         "Amount cannot exceed the remaining balance of this item ({{remaining}}).",
     "debts.itemSettlementFailed": "Failed to process item settlement.",
+    "debts.insufficientWalletBalancePayment":
+        "Insufficient wallet balance for this payment.",
+    "debts.availableWalletBalance": "Available balance",
+    "debts.walletBalanceRequiredContext":
+        "Available {{available}}, required {{required}}.",
     "debts.perItemSettlement": "Per-Item Settlement",
     "debts.payDebt": "Pay Debt",
     "debts.collectReceivable": "Collect Receivable",

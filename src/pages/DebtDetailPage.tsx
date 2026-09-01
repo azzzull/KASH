@@ -47,7 +47,7 @@ import {
   type CounterpartyWithSummary,
   type DebtPaymentWithMeta,
 } from "../lib/debts";
-import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
+import { formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
 import type { Counterparty, Debt, DebtProgress, DebtType, PaymentMode } from "../types/domain";
 import { SettlementModal } from "./DebtsPage";
@@ -1544,6 +1544,11 @@ function CrossSpaceItemSettlementModal({
 
   const parsedAmount = toNumber(parseMoneyInputDigits(amount));
   const remainingAfterPayment = Math.max(0, remaining - parsedAmount);
+  const selectedManagedWallet = managedWallets.find((wallet) => wallet.id === managedWalletId) ?? null;
+  const selectedManagedWalletBalance = selectedManagedWallet?.balance?.current_balance ?? selectedManagedWallet?.initial_balance ?? "0";
+  const hasInsufficientBalance = Boolean(
+    selectedManagedWallet && parsedAmount > 0 && isMoneyGreaterThan(parsedAmount, selectedManagedWalletBalance)
+  );
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -1557,6 +1562,10 @@ function CrossSpaceItemSettlementModal({
     }
     if (!managedWalletId) {
       setError(t("debts.selectWalletError") || "Pilih dompet Managed.");
+      return;
+    }
+    if (hasInsufficientBalance) {
+      setError(t("debts.insufficientWalletBalancePayment") || "Saldo wallet tidak mencukupi untuk pembayaran ini.");
       return;
     }
 
@@ -1574,7 +1583,12 @@ function CrossSpaceItemSettlementModal({
 
       onSaved();
     } catch (err: any) {
-      setError(err?.message ?? (t("common.errorOccurred") || "Terjadi kesalahan tidak terduga."));
+      const message = err?.message ?? "";
+      setError(
+        message.includes("Insufficient wallet balance")
+          ? (t("debts.insufficientWalletBalancePayment") || "Saldo wallet tidak mencukupi untuk pembayaran ini.")
+          : (message || (t("common.errorOccurred") || "Terjadi kesalahan tidak terduga."))
+      );
       setSaving(false);
     }
   };
@@ -1649,6 +1663,23 @@ function CrossSpaceItemSettlementModal({
             ))}
           </SelectField>
 
+          {selectedManagedWallet ? (
+            <div className={`rounded-lg border px-3 py-2 text-xs font-semibold ${hasInsufficientBalance ? "border-kash-expense/30 bg-kash-expense/10 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+              <p>
+                {t("debts.availableWalletBalance") || "Saldo tersedia"}: {formatCurrency(selectedManagedWalletBalance, selectedManagedWallet.currency)}
+              </p>
+              {hasInsufficientBalance ? (
+                <p className="mt-1 font-bold">
+                  {t("debts.insufficientWalletBalancePayment") || "Saldo wallet tidak mencukupi untuk pembayaran ini."}{" "}
+                  {t("debts.walletBalanceRequiredContext", {
+                    available: formatCurrency(selectedManagedWalletBalance, selectedManagedWallet.currency),
+                    required: formatCurrency(parsedAmount, selectedManagedWallet.currency),
+                  }) || `Tersedia ${formatCurrency(selectedManagedWalletBalance, selectedManagedWallet.currency)}, dibutuhkan ${formatCurrency(parsedAmount, selectedManagedWallet.currency)}.`}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <DatePickerField
             id="cross-space-date"
             label={`${t("debts.settlementDateLabel") || "Tanggal & Waktu Pelunasan"} *`}
@@ -1665,7 +1696,7 @@ function CrossSpaceItemSettlementModal({
           />
 
           <div className="mt-2">
-            <Button disabled={saving} type="submit">
+            <Button disabled={saving || hasInsufficientBalance} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
               {t("debts.confirmPayThisItem") || "Konfirmasi Pembayaran Item Ini"}
             </Button>

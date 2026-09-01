@@ -878,6 +878,11 @@ export const id = {
     "debts.amountExceedsItemBalance":
         "Nominal tidak boleh melebihi sisa tagihan item ({{remaining}}).",
     "debts.itemSettlementFailed": "Gagal memproses pelunasan item.",
+    "debts.insufficientWalletBalancePayment":
+        "Saldo wallet tidak mencukupi untuk pembayaran ini.",
+    "debts.availableWalletBalance": "Saldo tersedia",
+    "debts.walletBalanceRequiredContext":
+        "Tersedia {{available}}, dibutuhkan {{required}}.",
     "debts.perItemSettlement": "Pelunasan Per Item",
     "debts.payDebt": "Bayar Utang",
     "debts.collectReceivable": "Terima Piutang",
