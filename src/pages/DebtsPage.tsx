@@ -59,9 +59,7 @@ export function DebtsPage() {
   const { t } = useI18n();
   const terms = useSpaceTerminology();
   const navigate = useNavigate();
-  const { activeSpaceId, activeSpace, userRole } = useActiveSpace();
-  const isManagedSpace = activeSpace?.space_type === "managed";
-  const canSettleCrossSpace = !isManagedSpace || userRole === "owner" || userRole === "admin";
+  const { activeSpaceId } = useActiveSpace();
   const [loading, setLoading] = useState(true);
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [allCounterparties, setAllCounterparties] = useState<Counterparty[]>([]);
@@ -244,7 +242,7 @@ export function DebtsPage() {
             const recPaid = cp.receivablePaidTotal;
             const recProgress = recTotal > 0 ? (recPaid / recTotal * 100) : (cp.receivableTotal === 0 ? 100 : 0);
 
-            const isCrossSpace = (cp as any).linked_space?.space_type === "personal";
+            const isCrossSpaceManagedPayable = cp.hasCrossSpaceManagedPayable || (cp as any).linked_space?.space_type === "personal";
 
             return (
               <div
@@ -294,13 +292,13 @@ export function DebtsPage() {
                           {
                             label: t("debts.pay") || "Bayar Utang",
                             icon: ArrowDownLeft,
-                            hidden: cp.debtTotal <= 0 || isCrossSpace || !canSettleCrossSpace,
+                            hidden: cp.debtTotal <= 0 || isCrossSpaceManagedPayable,
                             onClick: () => setSettlementTarget({ counterparty: cp, debtType: "debt" }),
                           },
                           {
                             label: t("debts.collect") || "Terima Piutang",
                             icon: ArrowUpRight,
-                            hidden: cp.receivableTotal <= 0 || isCrossSpace || !canSettleCrossSpace,
+                            hidden: cp.receivableTotal <= 0,
                             onClick: () => setSettlementTarget({ counterparty: cp, debtType: "receivable" }),
                           },
                           {
@@ -348,7 +346,7 @@ export function DebtsPage() {
                           <ProgressBar percentage={debtProgress} tone="emerald" height="xs" />
                         </div>
 
-                        {cp.debtTotal > 0 && !isCrossSpace && canSettleCrossSpace && (
+                        {cp.debtTotal > 0 && !isCrossSpaceManagedPayable && (
                           <div className="pt-1 flex justify-end">
                             <button
                               type="button"
@@ -398,7 +396,7 @@ export function DebtsPage() {
                           <ProgressBar percentage={recProgress} tone="emerald" height="xs" />
                         </div>
 
-                        {cp.receivableTotal > 0 && !isCrossSpace && canSettleCrossSpace && (
+                        {cp.receivableTotal > 0 && (
                           <div className="pt-1 flex justify-end">
                             <button
                               type="button"

@@ -26,6 +26,7 @@ export type CounterpartyWithSummary = Counterparty & {
   settledDebtCount: number;
   settledReceivableCount: number;
   totalItemCount: number;
+  hasCrossSpaceManagedPayable: boolean;
 };
 
 export type DebtPaymentWithMeta = DebtPayment & {
@@ -184,9 +185,13 @@ export async function getCounterparties(
     let activeReceivableCount = 0;
     let settledDebtCount = 0;
     let settledReceivableCount = 0;
+    let hasCrossSpaceManagedPayable = false;
 
     for (const item of items) {
       if (item.status === "cancelled") continue;
+      if (item.cross_space_event_id && item.cross_space_role === "managed_payable") {
+        hasCrossSpaceManagedPayable = true;
+      }
       const original = toNumber(item.original_amount);
       const paid = toNumber(item.total_paid);
       const remaining = toNumber(item.remaining_amount);
@@ -224,6 +229,7 @@ export async function getCounterparties(
       settledDebtCount,
       settledReceivableCount,
       totalItemCount: items.filter((i) => i.status !== "cancelled").length,
+      hasCrossSpaceManagedPayable,
     };
   });
 

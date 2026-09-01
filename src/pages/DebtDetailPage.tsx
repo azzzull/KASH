@@ -51,7 +51,6 @@ import { formatCurrency, formatMoneyDigits, parseMoneyInputDigits, toNumber } fr
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
 import type { Counterparty, Debt, DebtProgress, DebtType, PaymentMode } from "../types/domain";
 import { SettlementModal } from "./DebtsPage";
-import { getPersonalSpace } from "../lib/spaces";
 import { recordCrossSpaceSettlement } from "../lib/transactions";
 import { supabase } from "../lib/supabase";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
@@ -78,7 +77,7 @@ export function DebtDetailPage() {
   const { activeSpace, userRole } = useActiveSpace();
   // Only Owner/Admin may settle Managed cross-space reimbursement Payables.
   const isManagedSpace = activeSpace?.space_type === "managed";
-  const canSettleCrossSpace = !isManagedSpace || userRole === "owner" || userRole === "admin";
+  const canSettleManagedCrossSpace = isManagedSpace && (userRole === "owner" || userRole === "admin");
 
   const loadData = async () => {
     if (!counterpartyId) return;
@@ -132,7 +131,7 @@ export function DebtDetailPage() {
   const { counterparty, debts, payments, summary } = detail;
   const activeItems = debts.filter((d) => (d.status === "active" || d.status === "partially_paid") && Number(d.remaining_amount) > 0);
   const settledItems = debts.filter((d) => d.status === "settled" || d.status === "cancelled");
-  const isCrossSpacePayable = (counterparty as any).linked_space?.space_type === "personal" || debts.some((d) => d.cross_space_event_id && d.cross_space_role === "managed_payable");
+  const hasCrossSpaceManagedPayable = debts.some((d) => d.cross_space_event_id && d.cross_space_role === "managed_payable");
 
   const counterpartySummary: CounterpartyWithSummary = {
     ...counterparty,
@@ -147,6 +146,7 @@ export function DebtDetailPage() {
     settledDebtCount: summary.settledDebtCount,
     settledReceivableCount: summary.settledReceivableCount,
     totalItemCount: debts.length,
+    hasCrossSpaceManagedPayable,
   };
   const counterpartySummaryObject = counterpartySummary;
 
@@ -243,7 +243,7 @@ export function DebtDetailPage() {
 
       {/* Primary Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
       <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        {summary.totalDebtRemaining > 0 && canSettleCrossSpace && !isCrossSpacePayable && (
+        {summary.totalDebtRemaining > 0 && !hasCrossSpaceManagedPayable && (
           <Button
             type="button"
             onClick={() => setSettlementTarget("debt")}
@@ -328,7 +328,7 @@ export function DebtDetailPage() {
                 onSettle={
                   // Cross-space Managed Payables: only owner/admin may settle
                   item.cross_space_role === "managed_payable"
-                    ? (canSettleCrossSpace ? () => setSettlingItem(item) : undefined)
+                    ? (canSettleManagedCrossSpace ? () => setSettlingItem(item) : undefined)
                     : () => setSettlingItem(item)
                 }
                 onEdit={() => setEditingItem(item)}
@@ -392,6 +392,7 @@ export function DebtDetailPage() {
           <CrossSpaceItemSettlementModal
             counterparty={counterparty}
             item={settlingItem}
+            activeManagedSpaceId={isManagedSpace ? activeSpace?.id ?? null : null}
             onClose={() => setSettlingItem(null)}
             onSaved={() => {
               setSettlingItem(null);
@@ -1489,11 +1490,13 @@ function ItemSettlementModal({
 function CrossSpaceItemSettlementModal({
   item,
   counterparty,
+  activeManagedSpaceId,
   onClose,
   onSaved,
 }: {
   item: DebtProgress;
   counterparty: Counterparty;
+  activeManagedSpaceId: string | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -1513,16 +1516,23 @@ function CrossSpaceItemSettlementModal({
 
   useEffect(() => {
     const fetchWallets = async () => {
-      const eventRes = await supabase.from("cross_space_events").select("managed_space_id").eq("id", item.cross_space_event_id!).single();
-      const managedSpaceId = eventRes.data?.managed_space_id;
+      let managedSpaceId = activeManagedSpaceId;
 
-      if (managedSpaceId) {
-         const mWalletsRes = await getWallets(managedSpaceId);
-         setManagedWallets(mWalletsRes.data ?? []);
+      if (!managedSpaceId) {
+        const eventRes = await supabase.from("cross_space_events").select("managed_space_id").eq("id", item.cross_space_event_id!).single();
+        managedSpaceId = eventRes.data?.managed_space_id ?? null;
       }
+
+      if (!managedSpaceId) {
+        setManagedWallets([]);
+        return;
+      }
+
+      const mWalletsRes = await getWallets(managedSpaceId);
+      setManagedWallets(mWalletsRes.data ?? []);
     };
     void fetchWallets();
-  }, [item.cross_space_event_id]);
+  }, [activeManagedSpaceId, item.cross_space_event_id]);
 
   const parsedAmount = toNumber(parseMoneyInputDigits(amount));
   const remainingAfterPayment = Math.max(0, remaining - parsedAmount);
@@ -1550,7 +1560,6 @@ function CrossSpaceItemSettlementModal({
         eventId: item.cross_space_event_id!,
         amount: parsedAmount,
         managedWalletId,
-        personalWalletId: managedWalletId,
         settlementDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
         note: note.trim() || undefined,
       });
