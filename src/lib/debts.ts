@@ -27,6 +27,7 @@ export type CounterpartyWithSummary = Counterparty & {
   settledReceivableCount: number;
   totalItemCount: number;
   hasCrossSpaceManagedPayable: boolean;
+  hasCrossSpacePersonalReceivable: boolean;
 };
 
 export type DebtPaymentWithMeta = DebtPayment & {
@@ -102,6 +103,21 @@ function isOutstandingDebtItem(item: Pick<DebtProgress, "remaining_amount" | "st
   );
 }
 
+async function getCrossSpacePayerNames(eventIds: string[]) {
+  const namesByEventId = new Map<string, string>();
+
+  await Promise.all(
+    [...new Set(eventIds)].map(async (eventId) => {
+      const { data } = await supabase
+        .rpc("get_cross_space_payer_profile", { p_event_id: eventId })
+        .maybeSingle();
+      if (data?.full_name) namesByEventId.set(eventId, data.full_name);
+    })
+  );
+
+  return namesByEventId;
+}
+
 export async function getCounterparties(
   filters?: {
     type?: "all" | DebtType;
@@ -134,6 +150,18 @@ export async function getCounterparties(
   if (progressResult.error) throw progressResult.error;
 
   const rawCounterparties = counterpartiesResult.data ?? [];
+  const rawProgressItems = (progressResult.data ?? []) as DebtProgress[];
+  const payerNamesByEventId = await getCrossSpacePayerNames(
+    rawProgressItems
+      .map((item) => item.cross_space_event_id)
+      .filter((eventId): eventId is string => Boolean(eventId))
+  );
+  const payerNamesByCounterpartyId = new Map<string, string>();
+  for (const item of rawProgressItems) {
+    if (!item.cross_space_event_id) continue;
+    const payerName = payerNamesByEventId.get(item.cross_space_event_id);
+    if (payerName) payerNamesByCounterpartyId.set(item.counterparty_id, payerName);
+  }
 
   // Load Managed Space members to authoritatively map member names for cross-space payables
   let membersByUserId = new Map<string, string>();
@@ -145,13 +173,13 @@ export async function getCounterparties(
   }
 
   const counterparties = rawCounterparties.map((c: any) => {
-    let displayName = c.name;
+    let displayName = payerNamesByCounterpartyId.get(c.id) || c.name;
     if (c.linked_space) {
       if (c.linked_space.space_type === "personal") {
         // Cross-space Managed payable counterparty.user_id (or linked_space.owner_user_id) identifies the payer
         const payerUserId = c.user_id || c.linked_space.owner_user_id;
         const memberName = payerUserId ? membersByUserId.get(payerUserId) : null;
-        displayName = memberName || c.name || "Personal Funds";
+        displayName = payerNamesByCounterpartyId.get(c.id) || memberName || c.name || "Personal Funds";
       } else {
         displayName = c.linked_space.name;
       }
@@ -162,7 +190,7 @@ export async function getCounterparties(
   });
 
   const validCpIds = new Set(counterparties.map((c) => c.id));
-  const progressItems = ((progressResult.data ?? []) as DebtProgress[]).filter((item) =>
+  const progressItems = rawProgressItems.filter((item) =>
     validCpIds.has(item.counterparty_id)
   );
 
@@ -186,16 +214,20 @@ export async function getCounterparties(
     let settledDebtCount = 0;
     let settledReceivableCount = 0;
     let hasCrossSpaceManagedPayable = false;
+    let hasCrossSpacePersonalReceivable = false;
 
     for (const item of items) {
       if (item.status === "cancelled") continue;
-      if (item.cross_space_event_id && item.cross_space_role === "managed_payable") {
-        hasCrossSpaceManagedPayable = true;
-      }
       const original = toNumber(item.original_amount);
       const paid = toNumber(item.total_paid);
       const remaining = toNumber(item.remaining_amount);
       const isOutstanding = isOutstandingDebtItem(item);
+      if (isOutstanding && item.cross_space_event_id && item.cross_space_role === "managed_payable") {
+        hasCrossSpaceManagedPayable = true;
+      }
+      if (isOutstanding && item.cross_space_event_id && item.cross_space_role === "personal_receivable") {
+        hasCrossSpacePersonalReceivable = true;
+      }
 
       if (item.type === "debt") {
         if (isOutstanding) {
@@ -230,6 +262,7 @@ export async function getCounterparties(
       settledReceivableCount,
       totalItemCount: items.filter((i) => i.status !== "cancelled").length,
       hasCrossSpaceManagedPayable,
+      hasCrossSpacePersonalReceivable,
     };
   });
 
@@ -328,6 +361,12 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
 
   const rawCounterparty = counterpartyResult.data as any;
   const debts = (progressResult.data ?? []) as DebtProgress[];
+  const payerNamesByEventId = await getCrossSpacePayerNames(
+    debts
+      .map((item) => item.cross_space_event_id)
+      .filter((eventId): eventId is string => Boolean(eventId))
+  );
+  const eventPayerName = [...payerNamesByEventId.values()][0] ?? null;
 
   // Load Managed Space members to resolve member display names without querying profiles directly
   const spaceId = rawCounterparty.space_id;
@@ -339,11 +378,11 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
     }
   }
 
-  let cpDisplayName = rawCounterparty.linked_space?.name || rawCounterparty.name;
+  let cpDisplayName = eventPayerName || rawCounterparty.linked_space?.name || rawCounterparty.name;
   if (rawCounterparty.linked_space?.space_type === "personal" || membersByUserId.has(rawCounterparty.user_id)) {
     const payerUserId = rawCounterparty.user_id || rawCounterparty.linked_space?.owner_user_id;
     const memberName = payerUserId ? membersByUserId.get(payerUserId) : null;
-    cpDisplayName = memberName || rawCounterparty.name || "Personal Funds";
+    cpDisplayName = eventPayerName || memberName || rawCounterparty.name || "Personal Funds";
   }
   const counterparty = { ...rawCounterparty, name: cpDisplayName } as Counterparty;
   const payments = (paymentsResult.data ?? []) as DebtPayment[];

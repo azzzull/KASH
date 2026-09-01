@@ -131,7 +131,12 @@ export function DebtDetailPage() {
   const { counterparty, debts, payments, summary } = detail;
   const activeItems = debts.filter((d) => (d.status === "active" || d.status === "partially_paid") && Number(d.remaining_amount) > 0);
   const settledItems = debts.filter((d) => d.status === "settled" || d.status === "cancelled");
-  const hasCrossSpaceManagedPayable = debts.some((d) => d.cross_space_event_id && d.cross_space_role === "managed_payable");
+  const hasCrossSpaceManagedPayable = activeItems.some(
+    (item) => item.cross_space_event_id && item.cross_space_role === "managed_payable"
+  );
+  const hasCrossSpacePersonalReceivable = activeItems.some(
+    (item) => item.cross_space_event_id && item.cross_space_role === "personal_receivable"
+  );
 
   const counterpartySummary: CounterpartyWithSummary = {
     ...counterparty,
@@ -147,6 +152,7 @@ export function DebtDetailPage() {
     settledReceivableCount: summary.settledReceivableCount,
     totalItemCount: debts.length,
     hasCrossSpaceManagedPayable,
+    hasCrossSpacePersonalReceivable,
   };
   const counterpartySummaryObject = counterpartySummary;
 
@@ -253,7 +259,7 @@ export function DebtDetailPage() {
             {t("debts.pay") || "Bayar Utang"}
           </Button>
         )}
-        {summary.totalReceivableRemaining > 0 && (
+        {summary.totalReceivableRemaining > 0 && !hasCrossSpacePersonalReceivable && (
           <Button
             type="button"
             onClick={() => setSettlementTarget("receivable")}
@@ -327,8 +333,10 @@ export function DebtDetailPage() {
                 item={item}
                 onSettle={
                   // Cross-space Managed Payables: only owner/admin may settle
-                  item.cross_space_role === "managed_payable"
-                    ? (canSettleManagedCrossSpace ? () => setSettlingItem(item) : undefined)
+                  item.cross_space_event_id
+                    ? item.cross_space_role === "managed_payable" && canSettleManagedCrossSpace
+                      ? () => setSettlingItem(item)
+                      : undefined
                     : () => setSettlingItem(item)
                 }
                 onEdit={() => setEditingItem(item)}

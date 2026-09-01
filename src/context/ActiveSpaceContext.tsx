@@ -230,6 +230,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
         .select("role")
         .eq("space_id", activeSpace.id)
         .eq("user_id", user.id)
+        .eq("status", "active")
         .maybeSingle();
 
       if (error) {
@@ -246,7 +247,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     refreshUserRole();
 
     const handleRoleRefresh = () => {
-      refreshUserRole();
+      void Promise.all([loadSpaces(), refreshUserRole()]);
     };
     window.addEventListener("kash:space-changed", handleRoleRefresh);
     window.addEventListener("kash:membership-changed", handleRoleRefresh);
@@ -263,7 +264,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
             filter: `space_id=eq.${activeSpace.id}`,
           },
           () => {
-            refreshUserRole();
+            void Promise.all([loadSpaces(), refreshUserRole()]);
           }
         )
         .subscribe();
@@ -279,7 +280,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("kash:space-changed", handleRoleRefresh);
       window.removeEventListener("kash:membership-changed", handleRoleRefresh);
     };
-  }, [activeSpace, user, refreshUserRole]);
+  }, [activeSpace, user, loadSpaces, refreshUserRole]);
 
   const value = useMemo<ActiveSpaceContextValue>(
     () => ({

@@ -70,6 +70,7 @@ export type CrossSpaceEventMeta = {
   personalSpaceName?: string;
   amount: number;
   status: string;
+  payerName?: string | null;
 };
 
 export type TransactionWithMeta = Transaction & {
@@ -211,14 +212,17 @@ function attachTransactionMeta(
   return transactions.map((transaction) => {
     const creatorUserId = transaction.created_by_user_id || transaction.user_id;
     const member = creatorUserId ? membersById.get(creatorUserId) : null;
+    const crossSpaceEvent = transaction.cross_space_event_id
+      ? crossSpaceEventsById.get(transaction.cross_space_event_id) ?? null
+      : null;
     return {
       ...transaction,
       category: transaction.category_id ? categoriesById.get(transaction.category_id) ?? null : null,
       envelope: transaction.envelope_id ? envelopesById.get(transaction.envelope_id) ?? null : null,
       destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
       wallet: walletsById.get(transaction.wallet_id || "") ?? null,
-      crossSpaceEvent: transaction.cross_space_event_id ? crossSpaceEventsById.get(transaction.cross_space_event_id) ?? null : null,
-      creatorName: member?.full_name || null,
+      crossSpaceEvent,
+      creatorName: crossSpaceEvent?.payerName || member?.full_name || null,
     };
   });
 }
@@ -328,7 +332,7 @@ export async function createCrossSpaceExpense(input: {
   personalSpaceId: string;
   managedSpaceId: string;
 }) {
-  const { data, error } = await supabase.rpc("record_cross_space_expense" as any, {
+  const { data, error } = await supabase.rpc("record_cross_space_expense", {
     p_client_request_id: crypto.randomUUID(),
     p_personal_space_id: input.personalSpaceId,
     p_managed_space_id: input.managedSpaceId,
@@ -376,13 +380,13 @@ export async function recordCrossSpaceSettlement(input: {
   settlementDate: string;
   note?: string;
 }) {
-  const userId = await getAuthenticatedUserId();
-  const { data, error } = await supabase.rpc("record_cross_space_settlement" as any, {
+  await getAuthenticatedUserId();
+  const { data, error } = await supabase.rpc("record_cross_space_settlement", {
     p_client_request_id: crypto.randomUUID(),
     p_event_id: input.eventId,
     p_amount: input.amount,
     p_managed_wallet_id: input.managedWalletId,
-    p_personal_wallet_id: input.personalWalletId || input.managedWalletId,
+    p_personal_wallet_id: null,
     p_settlement_date: input.settlementDate,
     p_note: input.note ?? null,
   });
@@ -524,6 +528,18 @@ export async function getTransactions(filters: TransactionFilters = {}) {
       .in("id", crossSpaceEventIds);
 
     if (eventsData && eventsData.length > 0) {
+      const payerNames = new Map<string, string>();
+      await Promise.all(
+        eventsData
+          .filter((event) => event.event_type === "managed_expense_paid_personally")
+          .map(async (event) => {
+            const { data: payer } = await supabase
+              .rpc("get_cross_space_payer_profile", { p_event_id: event.id })
+              .maybeSingle();
+            if (payer?.full_name) payerNames.set(event.id, payer.full_name);
+          })
+      );
+
       const spaceIds = Array.from(
         new Set(eventsData.flatMap((e) => [e.managed_space_id, e.personal_space_id]).filter(Boolean))
       );
@@ -543,6 +559,7 @@ export async function getTransactions(filters: TransactionFilters = {}) {
         personalSpaceName: spacesById.get(e.personal_space_id) ?? "Personal Space",
         amount: toNumber(e.amount),
         status: e.status,
+        payerName: payerNames.get(e.id) ?? null,
       }));
     }
   }
@@ -588,6 +605,9 @@ export async function getTransactionById(id: string) {
       .single();
 
     if (eventData) {
+      const { data: payer } = eventData.event_type === "managed_expense_paid_personally"
+        ? await supabase.rpc("get_cross_space_payer_profile", { p_event_id: eventData.id }).maybeSingle()
+        : { data: null };
       const spaceIds = [eventData.managed_space_id, eventData.personal_space_id].filter(Boolean);
       const { data: spacesData } = await supabase
         .from("financial_spaces")
@@ -606,6 +626,7 @@ export async function getTransactionById(id: string) {
           personalSpaceName: spacesById.get(eventData.personal_space_id) ?? "Personal Space",
           amount: toNumber(eventData.amount),
           status: eventData.status,
+          payerName: payer?.full_name ?? null,
         },
       ];
     }

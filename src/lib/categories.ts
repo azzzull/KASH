@@ -179,7 +179,7 @@ export async function quickCreateCategory(input: {
       .eq("category_type", input.categoryType);
 
     if (targetSpaceId) {
-      categoryQuery = categoryQuery.or(`is_system.eq.true,and(user_id.eq.${userId},space_id.eq.${targetSpaceId})`);
+      categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.eq.${targetSpaceId}`);
     } else {
       categoryQuery = categoryQuery.or(`is_system.eq.true,and(user_id.eq.${userId},space_id.is.null)`);
     }

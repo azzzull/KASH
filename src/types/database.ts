@@ -1038,11 +1038,21 @@ export type Database = {
           p_event_id: string;
           p_amount: number;
           p_managed_wallet_id: string;
-          p_personal_wallet_id: string;
+          p_personal_wallet_id: string | null;
           p_settlement_date: string;
           p_note?: string | null;
         };
         Returns: Json;
+      };
+      get_cross_space_payer_profile: {
+        Args: {
+          p_event_id: string;
+        };
+        Returns: {
+          user_id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+        }[];
       };
       void_cross_space_event: {
         Args: {
