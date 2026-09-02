@@ -1172,6 +1172,16 @@ export type Database = {
         };
         Returns: void;
       };
+      get_managed_space_member_identities: {
+        Args: {
+          p_space_id: string;
+        };
+        Returns: {
+          user_id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+        }[];
+      };
     };
     Enums: {
       wallet_type: Wallet["wallet_type"];

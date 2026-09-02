@@ -11,7 +11,7 @@ import type {
   Wallet,
 } from "../types/domain";
 import { addMoneyValues, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "./money";
-import { getActiveSpaceId, getManagedSpaceMembers } from "./spaces";
+import { getActiveSpaceId, getManagedSpaceMemberIdentities, getManagedSpaceMembers } from "./spaces";
 import { supabase } from "./supabase";
 
 export type CounterpartyWithSummary = Counterparty & {
@@ -163,10 +163,10 @@ export async function getCounterparties(
     if (payerName) payerNamesByCounterpartyId.set(item.counterparty_id, payerName);
   }
 
-  // Load Managed Space members to authoritatively map member names for cross-space payables
+  // Load Managed Space member identities to authoritatively map member names for cross-space payables
   let membersByUserId = new Map<string, string>();
   if (targetSpaceId) {
-    const { data: members } = await getManagedSpaceMembers(targetSpaceId);
+    const { data: members } = await getManagedSpaceMemberIdentities(targetSpaceId);
     if (members && members.length > 0) {
       membersByUserId = new Map(members.map((m) => [m.user_id, m.full_name || ""]));
     }
@@ -368,11 +368,11 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   );
   const eventPayerName = [...payerNamesByEventId.values()][0] ?? null;
 
-  // Load Managed Space members to resolve member display names without querying profiles directly
+  // Load Managed Space member identities to resolve member display names without querying profiles directly
   const spaceId = rawCounterparty.space_id;
   let membersByUserId = new Map<string, string>();
   if (spaceId) {
-    const { data: members } = await getManagedSpaceMembers(spaceId);
+    const { data: members } = await getManagedSpaceMemberIdentities(spaceId);
     if (members && members.length > 0) {
       membersByUserId = new Map(members.map((m) => [m.user_id, m.full_name || ""]));
     }

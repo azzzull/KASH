@@ -13,7 +13,7 @@ import type {
 import type { Database } from "../types/database";
 import { addMoneyValues, isMoneyGreaterThan, toNumber } from "./money";
 import { toUtcIsoString } from "./datetime";
-import { getActiveSpaceId, getManagedSpaceMembers } from "./spaces";
+import { getActiveSpaceId, getManagedSpaceMemberIdentities, getManagedSpaceMembers } from "./spaces";
 import { supabase } from "./supabase";
 
 type BaseTransactionInput = {
@@ -201,7 +201,7 @@ function attachTransactionMeta(
   categories: Category[],
   envelopes: Envelope[] = [],
   crossSpaceEvents: CrossSpaceEventMeta[] = [],
-  members: ManagedSpaceMemberItem[] = []
+  members: { user_id: string; full_name?: string | null }[] = []
 ): TransactionWithMeta[] {
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
@@ -564,9 +564,9 @@ export async function getTransactions(filters: TransactionFilters = {}) {
     }
   }
 
-  let members: ManagedSpaceMemberItem[] = [];
+  let members: { user_id: string; full_name: string | null }[] = [];
   if (targetSpaceId) {
-    const { data: memberData } = await getManagedSpaceMembers(targetSpaceId);
+    const { data: memberData } = await getManagedSpaceMemberIdentities(targetSpaceId);
     if (memberData) {
       members = memberData;
     }
@@ -632,9 +632,9 @@ export async function getTransactionById(id: string) {
     }
   }
 
-  let members: ManagedSpaceMemberItem[] = [];
+  let members: { user_id: string; full_name: string | null }[] = [];
   if (transaction.space_id) {
-    const { data: memberData } = await getManagedSpaceMembers(transaction.space_id);
+    const { data: memberData } = await getManagedSpaceMemberIdentities(transaction.space_id);
     if (memberData) {
       members = memberData;
     }

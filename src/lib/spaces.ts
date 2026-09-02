@@ -245,6 +245,21 @@ export async function getManagedSpaceMembers(spaceId: string): Promise<{
   }
 }
 
+export async function getManagedSpaceMemberIdentities(spaceId: string): Promise<{
+  data: { user_id: string; full_name: string | null; avatar_url: string | null }[] | null;
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc("get_managed_space_member_identities", {
+      p_space_id: spaceId,
+    });
+    if (error) throw error;
+    return { data: data ?? [], error: null };
+  } catch (err: any) {
+    return { data: null, error: err };
+  }
+}
+
 export async function addManagedSpaceMember(
   spaceId: string,
   email: string,
