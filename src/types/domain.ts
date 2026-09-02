@@ -177,6 +177,7 @@ export type WalletBalance = {
 
 export type WalletMoveIssueClassification =
   | "SAFE_AUTO_MIGRATE"
+  | "SAFE_VOIDED_TRANSFER_CLEANUP"
   | "NEEDS_TRANSFORMATION"
   | "BLOCK_AND_REVIEW";
 
@@ -214,6 +215,8 @@ export type WalletMoveAnalysis = {
   custom_categories_to_copy: number;
   custom_categories_to_reuse_or_copy: number;
   safe_dependencies: number;
+  safe_voided_transfer_cleanups?: number;
+  safe_cleanup_issues?: WalletMoveIssue[];
   needs_transformation: number;
   requires_review: number;
   blocking_issues: WalletMoveIssue[];
@@ -226,6 +229,7 @@ export type WalletMoveResult = {
   source_space_id: string;
   target_space_id: string;
   moved_transactions: number;
+  deleted_voided_transfers?: number;
   balance_before: MoneyAmount;
   balance_after: MoneyAmount;
   analysis: WalletMoveAnalysis;

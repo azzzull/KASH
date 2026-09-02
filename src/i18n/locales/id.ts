@@ -606,6 +606,7 @@ export const id = {
     "wallets.moveCurrentBalance": "Saldo Saat Ini",
     "wallets.moveTransactionsToMove": "Transaksi Dipindah",
     "wallets.moveCustomCategories": "Kategori Custom Disalin",
+    "wallets.moveVoidedCleanupCount": "Transfer Voided Dihapus",
     "wallets.moveSafeDependencies": "Dependensi Aman",
     "wallets.moveRequiresReview": "Perlu Review",
     "wallets.moveBlockingIssues": "Blocking Issues",
@@ -621,6 +622,14 @@ export const id = {
     "wallets.moveBlockedSummary":
         "Dompet ini memiliki riwayat yang perlu direview sebelum bisa dipindahkan.",
     "wallets.moveOtherWallet": "Dompet lain",
+    "wallets.moveVoidedCleanupTitle": "Transfer voided aman untuk dibersihkan",
+    "wallets.moveVoidedCleanupDescription":
+        "Transfer voided ditemukan. Transaksi ini sudah dibatalkan dan tidak memengaruhi saldo. Histori voided tersebut akan dihapus permanen agar wallet dapat dipindahkan.",
+    "wallets.moveVoidedCleanupCountShort": "transfer voided",
+    "wallets.moveVoidedCleanupConfirm":
+        "Saya paham histori transfer voided ini akan dihapus permanen sebagai bagian dari pemindahan wallet.",
+    "wallets.moveVoidedCleanupConfirmRequired":
+        "Konfirmasi penghapusan histori transfer voided sebelum memindahkan dompet.",
     "wallets.moveConfirm": "Pindahkan Dompet",
     "wallets.valuationHistory": "Riwayat Valuasi Nilai Pasar",
     "wallets.marketValue": "Nilai Pasar",

@@ -598,6 +598,7 @@ export const en = {
     "wallets.moveCurrentBalance": "Current Balance",
     "wallets.moveTransactionsToMove": "Transactions to Move",
     "wallets.moveCustomCategories": "Custom Categories to Copy",
+    "wallets.moveVoidedCleanupCount": "Voided Transfers Deleted",
     "wallets.moveSafeDependencies": "Safe Dependencies",
     "wallets.moveRequiresReview": "Requires Review",
     "wallets.moveBlockingIssues": "Blocking Issues",
@@ -612,6 +613,14 @@ export const en = {
     "wallets.moveBlockedSummary":
         "This wallet has history that requires review before it can be moved.",
     "wallets.moveOtherWallet": "Other wallet",
+    "wallets.moveVoidedCleanupTitle": "Voided transfers are safe to clean up",
+    "wallets.moveVoidedCleanupDescription":
+        "Voided transfers were found. These transactions are already cancelled and do not affect balances. That voided history will be permanently deleted so the wallet can be moved.",
+    "wallets.moveVoidedCleanupCountShort": "voided transfer(s)",
+    "wallets.moveVoidedCleanupConfirm":
+        "I understand this voided transfer history will be permanently deleted as part of moving the wallet.",
+    "wallets.moveVoidedCleanupConfirmRequired":
+        "Confirm deletion of the voided transfer history before moving the wallet.",
     "wallets.moveConfirm": "Move Wallet",
     "wallets.valuationHistory": "Market Valuation History",
     "wallets.marketValue": "Market Value",

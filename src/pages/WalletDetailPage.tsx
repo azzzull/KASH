@@ -364,8 +364,12 @@ function MoveWalletToManagedModal({
   const [analyzing, setAnalyzing] = useState(false);
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmedVoidedCleanup, setConfirmedVoidedCleanup] = useState(false);
 
   const selectedSpace = managedSpaces.find((space) => space.id === targetSpaceId) ?? null;
+  const voidedCleanupCount = analysis?.safe_voided_transfer_cleanups ?? 0;
+  const requiresVoidedCleanupConfirmation = voidedCleanupCount > 0;
+  const canSubmitMove = Boolean(analysis?.can_move && selectedSpace && (!requiresVoidedCleanupConfirmation || confirmedVoidedCleanup));
 
   const runAnalysis = async () => {
     if (!targetSpaceId) {
@@ -383,6 +387,7 @@ function MoveWalletToManagedModal({
         setError(analysisError?.message || (t("wallets.moveAnalyzeError") || "Gagal menganalisis migrasi dompet."));
         return;
       }
+      setConfirmedVoidedCleanup(false);
       setAnalysis(data);
     } catch (err) {
       setError(errorMessage(err, t("wallets.moveAnalyzeError") || "Gagal menganalisis migrasi dompet."));
@@ -393,6 +398,10 @@ function MoveWalletToManagedModal({
 
   const moveWallet = async () => {
     if (!analysis?.can_move || moving) return;
+    if (requiresVoidedCleanupConfirmation && !confirmedVoidedCleanup) {
+      setError(t("wallets.moveVoidedCleanupConfirmRequired") || "Konfirmasi penghapusan histori transfer voided sebelum memindahkan dompet.");
+      return;
+    }
 
     setMoving(true);
     setError(null);
@@ -415,6 +424,7 @@ function MoveWalletToManagedModal({
         { label: t("wallets.moveCurrentBalance") || "Saldo Saat Ini", value: formatCurrency(analysis.wallet.current_balance, analysis.wallet.currency) },
         { label: t("wallets.moveTransactionsToMove") || "Transaksi Dipindah", value: String(analysis.transactions_to_move) },
         { label: t("wallets.moveCustomCategories") || "Kategori Custom Disalin", value: String(analysis.custom_categories_to_copy) },
+        { label: t("wallets.moveVoidedCleanupCount") || "Transfer Voided Dihapus", value: String(analysis.safe_voided_transfer_cleanups ?? 0) },
         { label: t("wallets.moveSafeDependencies") || "Dependensi Aman", value: String(analysis.safe_dependencies) },
         { label: t("wallets.moveRequiresReview") || "Perlu Review", value: String(analysis.requires_review) },
         { label: t("wallets.moveBlockingIssues") || "Blocking Issues", value: String(analysis.blocking_issues.length) },
@@ -451,6 +461,7 @@ function MoveWalletToManagedModal({
           onChange={(event) => {
             setTargetSpaceId(event.target.value);
             setAnalysis(null);
+            setConfirmedVoidedCleanup(false);
           }}
           placeholder={t("reimbursable.selectManagedSpace") || "Pilih Managed Space"}
           value={targetSpaceId}
@@ -530,11 +541,64 @@ function MoveWalletToManagedModal({
               </div>
             ) : null}
 
+            {(analysis.safe_cleanup_issues?.length ?? 0) > 0 ? (
+              <div className="space-y-3">
+                {analysis.safe_cleanup_issues?.map((issue) => (
+                  <div key={issue.code} className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-kash-emerald" size={17} />
+                      <div>
+                        <p className="text-sm font-extrabold text-emerald-950">
+                          {t("wallets.moveVoidedCleanupTitle") || "Transfer voided aman untuk dibersihkan"}
+                        </p>
+                        <p className="mt-1 text-xs font-bold leading-relaxed text-emerald-900">
+                          {t("wallets.moveVoidedCleanupDescription") ||
+                            "Transfer voided ditemukan. Transaksi ini sudah dibatalkan dan tidak memengaruhi saldo. Histori voided tersebut akan dihapus permanen agar wallet dapat dipindahkan."}
+                        </p>
+                        <p className="mt-2 text-xs font-extrabold text-emerald-950">
+                          {issue.count} {t("wallets.moveVoidedCleanupCountShort") || "transfer voided"}
+                        </p>
+                      </div>
+                    </div>
+                    {issue.items.length > 0 ? (
+                      <div className="mt-3 divide-y divide-emerald-100 rounded-lg border border-emerald-100 bg-white">
+                        {issue.items.slice(0, 5).map((item) => (
+                          <div key={item.id} className="grid gap-1 px-3 py-2 text-xs font-semibold text-slate-700">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 truncate font-extrabold text-slate-900">{item.title || item.other_wallet_name || item.id}</span>
+                              <span className="shrink-0 font-extrabold">{formatCurrency(item.amount ?? 0, wallet.currency)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 text-slate-500">
+                              <span className="min-w-0 truncate">{item.other_wallet_name ? `${t("wallets.moveOtherWallet") || "Dompet lain"}: ${item.other_wallet_name}` : item.note || item.id}</span>
+                              <span className="shrink-0">{item.date ? formatDate(new Date(item.date)) : ""}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    <label className="mt-3 flex items-start gap-3 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-slate-800">
+                      <input
+                        checked={confirmedVoidedCleanup}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-kash-emerald focus:ring-kash-emerald"
+                        disabled={moving}
+                        onChange={(event) => setConfirmedVoidedCleanup(event.target.checked)}
+                        type="checkbox"
+                      />
+                      <span>
+                        {t("wallets.moveVoidedCleanupConfirm") ||
+                          "Saya paham histori transfer voided ini akan dihapus permanen sebagai bagian dari pemindahan wallet."}
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
               <Button disabled={moving} onClick={onClose} variant="secondary">
                 {t("common.cancel") || "Batal"}
               </Button>
-              <Button disabled={!analysis.can_move || moving || !selectedSpace} isLoading={moving} onClick={() => void moveWallet()}>
+              <Button disabled={!canSubmitMove || moving} isLoading={moving} onClick={() => void moveWallet()}>
                 <MoveRight aria-hidden="true" size={17} />
                 {t("wallets.moveConfirm") || "Pindahkan Dompet"}
               </Button>
