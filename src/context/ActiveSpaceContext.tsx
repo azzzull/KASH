@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -21,6 +22,7 @@ import {
   setActiveSpaceId as persistActiveSpaceId,
   getStoredActiveSpaceId,
   clearActiveSpaceState,
+  isTransientJwtSkewError,
 } from "../lib/spaces";
 import { emitSpaceChanged } from "../lib/appEvents";
 
@@ -45,14 +47,20 @@ type ActiveSpaceContextValue = {
 const ActiveSpaceContext = createContext<ActiveSpaceContextValue | undefined>(undefined);
 
 export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
-  const { status, user } = useAuth();
+  const { status, user, session } = useAuth();
   const [spaces, setSpaces] = useState<FinancialSpace[]>([]);
   const [userRolesBySpaceId, setUserRolesBySpaceId] = useState<Record<string, ManagedSpaceRole | "owner">>({});
   const [activeSpaceId, setActiveSpaceIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Generation counter to cancel stale initialization runs across account switches/sign-outs
+  const initGenerationRef = useRef<number>(0);
+  const activeUserIdRef = useRef<string | null>(null);
+
   const loadSpaces = useCallback(async (preferredSpaceId?: string) => {
-    if (status !== "authenticated" || !user) {
+    if (status !== "authenticated" || !user || !session) {
+      initGenerationRef.current += 1;
+      activeUserIdRef.current = null;
       setSpaces([]);
       setUserRolesBySpaceId({});
       setActiveSpaceIdState(null);
@@ -61,29 +69,56 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const currentGen = ++initGenerationRef.current;
+    const currentUserId = user.id;
+    activeUserIdRef.current = currentUserId;
+
     setLoading(true);
     try {
-      const [{ data, error }, { data: memberData }] = await Promise.all([
-        getFinancialSpaces(),
-        supabase
+      const fetchMembers = async () => {
+        let res = await supabase
           .from("managed_space_members")
           .select("space_id, role")
-          .eq("user_id", user.id)
-          .eq("status", "active"),
+          .eq("user_id", currentUserId)
+          .eq("status", "active");
+
+        if (res.error && isTransientJwtSkewError(res.error)) {
+          await new Promise((r) => setTimeout(r, 150));
+          if (initGenerationRef.current !== currentGen || activeUserIdRef.current !== currentUserId) {
+            return res;
+          }
+          res = await supabase
+            .from("managed_space_members")
+            .select("space_id, role")
+            .eq("user_id", currentUserId)
+            .eq("status", "active");
+        }
+        return res;
+      };
+
+      const [{ data, error }, memberRes] = await Promise.all([
+        getFinancialSpaces(),
+        fetchMembers(),
       ]);
 
-      if (error) {
-        console.error("Failed to load financial spaces:", error);
+      // Check if generation or user changed during async fetch
+      if (initGenerationRef.current !== currentGen || activeUserIdRef.current !== currentUserId) {
+        return;
+      }
+
+      if (error || memberRes.error) {
+        console.error("Failed to load financial spaces:", error || memberRes.error);
         setLoading(false);
         return;
       }
 
+      const memberData = memberRes.data;
       const spaceList = (data ?? []).filter((s) => !s.deleted_at);
       setSpaces(spaceList);
 
       const roleMap: Record<string, ManagedSpaceRole | "owner"> = {};
       spaceList.forEach((s) => {
-        if (s.space_type === "personal" || s.owner_user_id === user.id) {
+        if (s.space_type === "personal" || s.owner_user_id === currentUserId) {
           roleMap[s.id] = "owner";
         } else {
           const mem = memberData?.find((m) => m.space_id === s.id);
@@ -93,10 +128,10 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       setUserRolesBySpaceId(roleMap);
 
       const personal = spaceList.find(
-        (s) => s.space_type === "personal" && s.owner_user_id === user.id
+        (s) => s.space_type === "personal" && s.owner_user_id === currentUserId
       ) ?? null;
 
-      const storedId = preferredSpaceId ?? getStoredActiveSpaceId(user.id);
+      const storedId = preferredSpaceId ?? getStoredActiveSpaceId(currentUserId);
 
       let resolvedSpace: FinancialSpace | null = null;
       if (storedId) {
@@ -115,16 +150,20 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
 
       const resolvedId = resolvedSpace?.id ?? null;
       setActiveSpaceIdState(resolvedId);
-      persistActiveSpaceId(resolvedId, user.id);
+      persistActiveSpaceId(resolvedId, currentUserId);
     } catch (err) {
       console.error("Error initializing financial spaces:", err);
     } finally {
-      setLoading(false);
+      if (initGenerationRef.current === currentGen) {
+        setLoading(false);
+      }
     }
-  }, [status, user]);
+  }, [status, user, session]);
 
   useEffect(() => {
-    if (status !== "authenticated" || !user) {
+    if (status !== "authenticated" || !user || !session) {
+      initGenerationRef.current += 1;
+      activeUserIdRef.current = null;
       setSpaces([]);
       setUserRolesBySpaceId({});
       setActiveSpaceIdState(null);
@@ -136,7 +175,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     setActiveSpaceIdState(null);
     clearActiveSpaceState();
     void loadSpaces();
-  }, [status, user?.id, loadSpaces]);
+  }, [status, user?.id, session?.access_token, loadSpaces]);
 
   const getUserRole = useCallback(
     (spaceOrId: FinancialSpace | string): ManagedSpaceRole | "owner" | null => {

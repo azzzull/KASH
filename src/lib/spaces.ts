@@ -70,21 +70,44 @@ export function clearActiveSpaceState(): void {
   }
 }
 
+export function isTransientJwtSkewError(err: any): boolean {
+  if (!err) return false;
+  const code = err.code || err?.error?.code || "";
+  const msg = (err.message || err?.error?.message || err?.details || "").toLowerCase();
+  return (
+    code === "PGRST303" ||
+    msg.includes("pgrst303") ||
+    msg.includes("jwt issued at future") ||
+    msg.includes("issued at future")
+  );
+}
+
 export async function getFinancialSpaces(): Promise<{
   data: FinancialSpace[] | null;
   error: Error | null;
 }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.user) {
       return { data: [], error: null };
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("financial_spaces")
       .select("*")
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
+
+    if (error && isTransientJwtSkewError(error)) {
+      await new Promise((r) => setTimeout(r, 150));
+      const retryResult = await supabase
+        .from("financial_spaces")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) throw error;
     return { data: (data as FinancialSpace[]) ?? [], error: null };
