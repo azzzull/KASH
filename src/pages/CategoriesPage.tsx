@@ -9,8 +9,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { CategoryIconPicker } from "../components/categories/CategoryIconPicker";
@@ -501,20 +502,22 @@ export function CategoriesPage() {
   const [showEnvelopeModal, setShowEnvelopeModal] = useState(false);
   const [archiveEnvelopeTarget, setArchiveEnvelopeTarget] = useState<Envelope | null>(null);
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<Envelope | null>(null);
+  const { activeSpace, loading: spaceLoading } = useActiveSpace();
   const [archivingEnvelope, setArchivingEnvelope] = useState(false);
   const [deletingEnvelope, setDeletingEnvelope] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (spaceLoading) return;
     setLoading(true);
     setError(null);
 
     const [systemResult, userResult, envResult] = await Promise.all([
       getSystemCategories(),
-      getUserCategories(),
-      getEnvelopes(false),
+      getUserCategories(activeSpace?.id ?? undefined),
+      getEnvelopes(false, activeSpace?.id ?? undefined),
     ]);
 
     if (systemResult.error || userResult.error || !systemResult.data || !userResult.data) {
@@ -527,11 +530,13 @@ export function CategoriesPage() {
     setCustomCategories(userResult.data.filter((category) => !category.is_archived));
     setEnvelopes((envResult.data ?? []).filter((e) => !e.is_archived));
     setLoading(false);
-  };
+  }, [activeSpace?.id, spaceLoading, t]);
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    if (!spaceLoading) {
+      void loadData();
+    }
+  }, [loadData, spaceLoading]);
 
   useAppEvent(appEvents.spaceChanged, () => void loadData());
 

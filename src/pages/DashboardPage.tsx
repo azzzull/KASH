@@ -1805,9 +1805,10 @@ export function DashboardPage() {
         profile?.email.split("@")[0] ??
         "there";
 
-    const { activeSpaceId, activeSpace, userRole } = useActiveSpace();
+    const { activeSpaceId, activeSpace, userRole, loading: spaceLoading } = useActiveSpace();
 
     const loadDashboard = useCallback(async () => {
+        if (spaceLoading) return;
         setIsLoading(true);
         setError(null);
 
@@ -1826,19 +1827,22 @@ export function DashboardPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [selectedMonth, activeSpaceId]);
+    }, [selectedMonth, activeSpaceId, spaceLoading]);
 
     useEffect(() => {
-        void loadDashboard();
-    }, [loadDashboard]);
+        if (!spaceLoading) {
+            void loadDashboard();
+        }
+    }, [loadDashboard, spaceLoading]);
 
     useEffect(() => {
+        if (spaceLoading) return;
         let isMounted = true;
         void getRecurringObligations(activeSpaceId ?? undefined).then(({ data }) => {
             if (isMounted) setUpcomingObligations(data);
         });
         return () => { isMounted = false; };
-    }, [activeSpaceId]);
+    }, [activeSpaceId, spaceLoading]);
 
     useAppEvent(appEvents.transactionSaved, () => void loadDashboard());
     useAppEvent(appEvents.goalSaved, () => void loadDashboard());

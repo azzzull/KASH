@@ -14,8 +14,9 @@ import {
   Wallet,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { PaymentModal } from "../components/subscriptions/PaymentModal";
 import { SettleInstallmentModal } from "../components/subscriptions/SettleInstallmentModal";
 import { Button } from "../components/ui/Button";
@@ -40,6 +41,7 @@ export function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, formatDate, formatCurrency } = useI18n();
+  const { activeSpace, loading: spaceLoading } = useActiveSpace();
 
   const [obligation, setObligation] = useState<RecurringObligationWithMeta | null>(null);
   const [payments, setPayments] = useState<RecurringPayment[]>([]);
@@ -54,14 +56,14 @@ export function SubscriptionDetailPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const loadData = async () => {
-    if (!id) return;
+  const loadData = useCallback(async () => {
+    if (!id || spaceLoading) return;
     setLoading(true);
     setError(null);
 
     const [obRes, walRes] = await Promise.all([
       getRecurringObligationById(id),
-      getWallets(),
+      getWallets(activeSpace?.id ?? undefined),
     ]);
 
     if (obRes.error || !obRes.data) {
@@ -73,11 +75,13 @@ export function SubscriptionDetailPage() {
 
     if (walRes.data) setWallets(walRes.data);
     setLoading(false);
-  };
+  }, [id, activeSpace?.id, spaceLoading, t]);
 
   useEffect(() => {
-    void loadData();
-  }, [id]);
+    if (!spaceLoading) {
+      void loadData();
+    }
+  }, [loadData, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadData());
   useAppEvent(appEvents.notificationsUpdated, () => void loadData());

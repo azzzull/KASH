@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
 import { Button } from "../components/ui/Button";
@@ -59,7 +59,7 @@ export function DebtsPage() {
   const { t } = useI18n();
   const terms = useSpaceTerminology();
   const navigate = useNavigate();
-  const { activeSpaceId } = useActiveSpace();
+  const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const [loading, setLoading] = useState(true);
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [allCounterparties, setAllCounterparties] = useState<Counterparty[]>([]);
@@ -76,7 +76,8 @@ export function DebtsPage() {
     debtType: DebtType;
   } | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (spaceLoading) return;
     try {
       setLoading(true);
       const data = await getCounterparties(
@@ -96,11 +97,13 @@ export function DebtsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [typeFilter, statusFilter, searchQuery, activeSpaceId, spaceLoading]);
 
   useEffect(() => {
-    loadData();
-  }, [typeFilter, statusFilter, searchQuery, activeSpaceId]);
+    if (!spaceLoading) {
+      void loadData();
+    }
+  }, [loadData, spaceLoading]);
 
   useAppEvent(appEvents.debtSaved, loadData);
   useAppEvent(appEvents.transactionSaved, loadData);

@@ -10,7 +10,7 @@ import {
   Trash2,
   WalletCards,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -469,7 +469,7 @@ function WalletSkeleton() {
 export function WalletsPage() {
   const { profile } = useAuth();
   const { t, formatCurrency } = useI18n();
-  const { activeSpace, userRole } = useActiveSpace();
+  const { activeSpace, userRole, loading: spaceLoading } = useActiveSpace();
   const canManageWallet = !activeSpace || activeSpace.space_type === "personal" || userRole === "owner" || userRole === "admin";
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
@@ -496,12 +496,13 @@ export function WalletsPage() {
   const [deletingPermanentlyLoading, setDeletingPermanentlyLoading] =
     useState(false);
 
-  const loadWallets = async () => {
+  const loadWallets = useCallback(async () => {
+    if (spaceLoading) return;
     setLoading(true);
     setError(null);
     const [{ data, error: loadError }, { count: archCount }] = await Promise.all([
-      getWallets(undefined, activeTab === "archived"),
-      getArchivedWalletsCount(),
+      getWallets(activeSpace?.id ?? undefined, activeTab === "archived"),
+      getArchivedWalletsCount(activeSpace?.id ?? undefined),
     ]);
 
     if (loadError || !data) {
@@ -515,11 +516,13 @@ export function WalletsPage() {
     setWallets(data);
     setArchivedCount(archCount);
     setLoading(false);
-  };
+  }, [activeTab, activeSpace?.id, spaceLoading, t]);
 
   useEffect(() => {
-    void loadWallets();
-  }, [activeTab]);
+    if (!spaceLoading) {
+      void loadWallets();
+    }
+  }, [loadWallets, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadWallets());
   useAppEvent(appEvents.goalSaved, () => void loadWallets());

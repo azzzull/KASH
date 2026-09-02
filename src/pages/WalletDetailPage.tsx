@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowLeft, RotateCcw, ArrowRight, Archive, CheckCircle2, Edit3, History, LineChart, Loader2, MoveRight, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -614,7 +614,7 @@ export function WalletDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, formatDate, formatCurrency } = useI18n();
-  const { activeSpace, personalSpace, refreshSpaces, setActiveSpace, spaces, userRole } = useActiveSpace();
+  const { activeSpace, personalSpace, refreshSpaces, setActiveSpace, spaces, userRole, loading: spaceLoading } = useActiveSpace();
   const canManageWallet = !activeSpace || activeSpace.space_type === "personal" || userRole === "owner" || userRole === "admin";
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
   const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
@@ -635,8 +635,8 @@ export function WalletDetailPage() {
   const [deletingActivity, setDeletingActivity] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadWallet = async () => {
-    if (!id) return;
+  const loadWallet = useCallback(async () => {
+    if (!id || spaceLoading) return;
     setLoading(true);
     setError(null);
 
@@ -676,11 +676,13 @@ export function WalletDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, spaceLoading, t]);
 
   useEffect(() => {
-    void loadWallet();
-  }, [id]);
+    if (!spaceLoading) {
+      void loadWallet();
+    }
+  }, [loadWallet, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadWallet());
   useAppEvent(appEvents.goalSaved, () => void loadWallet());

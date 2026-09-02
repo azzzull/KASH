@@ -922,7 +922,7 @@ export function AnalyticsPage() {
   const { t } = useI18n();
   const terms = useSpaceTerminology();
   const { profile } = useAuth();
-  const { activeSpace, activeSpaceId } = useActiveSpace();
+  const { activeSpace, activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const currency = profile?.default_currency ?? "IDR";
   const [period, setPeriod] = useState<AnalyticsPeriodKey>("this_month");
   const [customStartDate, setCustomStartDate] = useState(
@@ -936,6 +936,7 @@ export function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadAnalytics = useCallback(async () => {
+    if (spaceLoading) return;
     setIsLoading(true);
     setError(null);
     const summaryOptions = {
@@ -960,11 +961,13 @@ export function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [customEndDate, customStartDate, period, activeSpaceId]);
+  }, [customEndDate, customStartDate, period, activeSpaceId, spaceLoading]);
 
   useEffect(() => {
-    void loadAnalytics();
-  }, [loadAnalytics]);
+    if (!spaceLoading) {
+      void loadAnalytics();
+    }
+  }, [loadAnalytics, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadAnalytics());
   useAppEvent(appEvents.spaceChanged, () => void loadAnalytics());

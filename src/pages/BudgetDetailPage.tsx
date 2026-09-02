@@ -33,7 +33,7 @@ import type { BudgetWithProgress, Transaction } from "../types/domain";
 
 export function BudgetDetailPage() {
   const { t, formatMonthYear, formatDate, formatCurrency } = useI18n();
-  const { activeSpaceId } = useActiveSpace();
+  const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const { id: budgetId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ export function BudgetDetailPage() {
   }, [searchParams]);
 
   const loadData = useCallback(async () => {
-    if (!budgetId) return;
+    if (!budgetId || spaceLoading) return;
     setLoading(true);
     try {
       const bData = await getBudgetDetail(budgetId, currentMonth, activeSpaceId ?? undefined);
@@ -88,11 +88,13 @@ export function BudgetDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [budgetId, currentMonth, activeSpaceId]);
+  }, [budgetId, currentMonth, activeSpaceId, spaceLoading]);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    if (!spaceLoading) {
+      void loadData();
+    }
+  }, [loadData, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => {
     void loadData();

@@ -842,7 +842,7 @@ function AdvancedFilterContent({
 export function TransactionsPage() {
   const { t, formatDate, formatCurrency: formatLocalizedCurrency } = useI18n();
   const { user } = useAuth();
-  const { activeSpace, userRole } = useActiveSpace();
+  const { activeSpace, userRole, loading: spaceLoading } = useActiveSpace();
   const terms = useSpaceTerminology();
   const [searchParams] = useSearchParams();
 
@@ -903,11 +903,15 @@ export function TransactionsPage() {
   ];
 
   const loadTransactions = useCallback(async (nextFilters = filters, append = false) => {
+    if (spaceLoading) return;
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await getTransactions(nextFilters);
+      const result = await getTransactions({
+        ...nextFilters,
+        spaceId: activeSpace?.id ?? nextFilters.spaceId,
+      });
       setTransactions((current) => (append ? [...current, ...result.transactions] : result.transactions));
       setWallets(result.wallets);
       setCategories(result.categories);
@@ -919,11 +923,13 @@ export function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, t]);
+  }, [filters, activeSpace?.id, spaceLoading, t]);
 
   useEffect(() => {
-    void loadTransactions(filters);
-  }, [filters, loadTransactions]);
+    if (!spaceLoading) {
+      void loadTransactions(filters);
+    }
+  }, [filters, loadTransactions, spaceLoading]);
 
   useEffect(() => {
     const dateKey = searchParams.get("date") ?? undefined;

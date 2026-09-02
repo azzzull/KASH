@@ -16,8 +16,9 @@ import {
   Trophy,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
@@ -585,6 +586,7 @@ function GoalsSkeleton() {
 export function GoalsPage() {
   const { t, formatCurrency } = useI18n();
   const terms = useSpaceTerminology();
+  const { activeSpace, loading: spaceLoading } = useActiveSpace();
   const [activeTab, setActiveTab] = useState<"active" | "archived">("active");
   const [goals, setGoals] = useState<GoalWithProgress[]>([]);
   const [archivedCount, setArchivedCount] = useState(0);
@@ -604,14 +606,15 @@ export function GoalsPage() {
   const [deletingTarget, setDeletingTarget] = useState<GoalWithProgress | null>(null);
   const [deletingLoading, setDeletingLoading] = useState(false);
 
-  const loadGoals = async () => {
+  const loadGoals = useCallback(async () => {
+    if (spaceLoading) return;
     setLoading(true);
     setError(null);
 
     const [{ data, error: loadError }, { count: archCount }, { data: walletData }] = await Promise.all([
-      getGoals(undefined, activeTab === "archived"),
-      getArchivedGoalsCount(),
-      getWallets(),
+      getGoals(activeSpace?.id ?? undefined, activeTab === "archived"),
+      getArchivedGoalsCount(activeSpace?.id ?? undefined),
+      getWallets(activeSpace?.id ?? undefined),
     ]);
 
     if (loadError || !data) {
@@ -624,11 +627,13 @@ export function GoalsPage() {
     setArchivedCount(archCount);
     if (walletData) setWallets(walletData);
     setLoading(false);
-  };
+  }, [activeTab, activeSpace?.id, spaceLoading, t]);
 
   useEffect(() => {
-    void loadGoals();
-  }, [activeTab]);
+    if (!spaceLoading) {
+      void loadGoals();
+    }
+  }, [loadGoals, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadGoals());
   useAppEvent(appEvents.goalSaved, () => void loadGoals());

@@ -30,7 +30,7 @@ import type { BudgetWithProgress, MonthlyBudgetOverview } from "../types/domain"
 export function BudgetsPage() {
   const { t, formatMonthYear, formatCurrency } = useI18n();
   const terms = useSpaceTerminology();
-  const { activeSpaceId } = useActiveSpace();
+  const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -55,6 +55,7 @@ export function BudgetsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const loadData = useCallback(async () => {
+    if (spaceLoading) return;
     setLoading(true);
     try {
       const [overviewData, budgetList] = await Promise.all([
@@ -79,11 +80,13 @@ export function BudgetsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentMonth, activeSpaceId]);
+  }, [currentMonth, activeSpaceId, spaceLoading]);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    if (!spaceLoading) {
+      void loadData();
+    }
+  }, [loadData, spaceLoading]);
 
   useAppEvent(appEvents.transactionSaved, () => {
     void loadData();

@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -74,13 +74,13 @@ export function DebtDetailPage() {
   const [renameModalOpen, setRenameModalOpen] = useState(false);
 
   // Must be called unconditionally (before any early returns)
-  const { activeSpace, userRole } = useActiveSpace();
+  const { activeSpace, userRole, loading: spaceLoading } = useActiveSpace();
   // Only Owner/Admin may settle Managed cross-space reimbursement Payables.
   const isManagedSpace = activeSpace?.space_type === "managed";
   const canSettleManagedCrossSpace = isManagedSpace && (userRole === "owner" || userRole === "admin");
 
-  const loadData = async () => {
-    if (!counterpartyId) return;
+  const loadData = useCallback(async () => {
+    if (!counterpartyId || spaceLoading) return;
     try {
       setLoading(true);
       const data = await getCounterpartyDetail(counterpartyId);
@@ -90,11 +90,13 @@ export function DebtDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [counterpartyId, spaceLoading]);
 
   useEffect(() => {
-    loadData();
-  }, [counterpartyId]);
+    if (!spaceLoading) {
+      void loadData();
+    }
+  }, [loadData, spaceLoading]);
 
   useAppEvent(appEvents.debtSaved, loadData);
   useAppEvent(appEvents.transactionSaved, loadData);

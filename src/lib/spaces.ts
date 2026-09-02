@@ -7,32 +7,66 @@ import type {
 } from "../types/domain";
 import { supabase } from "./supabase";
 
-export const ACTIVE_SPACE_STORAGE_KEY = "kash_active_space_id";
+export const USER_ACTIVE_SPACE_KEY_PREFIX = "kash:active-space:";
+export const LEGACY_ACTIVE_SPACE_STORAGE_KEY = "kash_active_space_id";
 
-let cachedActiveSpaceId: string | null = (() => {
-  try {
-    return typeof window !== "undefined" ? localStorage.getItem(ACTIVE_SPACE_STORAGE_KEY) : null;
-  } catch {
-    return null;
-  }
-})();
+let currentUserId: string | null = null;
+let cachedActiveSpaceId: string | null = null;
 
 export function getActiveSpaceId(): string | null {
   return cachedActiveSpaceId;
 }
 
-export function setActiveSpaceId(spaceId: string | null): void {
-  cachedActiveSpaceId = spaceId;
+export function getStoredActiveSpaceId(userId?: string): string | null {
+  if (typeof window === "undefined" || !userId) return null;
   try {
-    if (typeof window !== "undefined") {
+    const userKey = `${USER_ACTIVE_SPACE_KEY_PREFIX}${userId}`;
+    const userScoped = localStorage.getItem(userKey);
+    if (userScoped) return userScoped;
+
+    // Clean up legacy un-scoped key
+    localStorage.removeItem(LEGACY_ACTIVE_SPACE_STORAGE_KEY);
+  } catch {
+    // ignore localStorage access error
+  }
+  return null;
+}
+
+export function setActiveSpaceId(spaceId: string | null, userId?: string): void {
+  cachedActiveSpaceId = spaceId;
+  if (userId) {
+    currentUserId = userId;
+  }
+
+  if (typeof window === "undefined") return;
+
+  try {
+    // Clean up legacy un-scoped key
+    localStorage.removeItem(LEGACY_ACTIVE_SPACE_STORAGE_KEY);
+
+    const targetUser = userId || currentUserId;
+    if (targetUser) {
+      const userKey = `${USER_ACTIVE_SPACE_KEY_PREFIX}${targetUser}`;
       if (spaceId) {
-        localStorage.setItem(ACTIVE_SPACE_STORAGE_KEY, spaceId);
+        localStorage.setItem(userKey, spaceId);
       } else {
-        localStorage.removeItem(ACTIVE_SPACE_STORAGE_KEY);
+        localStorage.removeItem(userKey);
       }
     }
   } catch {
     // ignore storage quota / access errors
+  }
+}
+
+export function clearActiveSpaceState(): void {
+  currentUserId = null;
+  cachedActiveSpaceId = null;
+  try {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(LEGACY_ACTIVE_SPACE_STORAGE_KEY);
+    }
+  } catch {
+    // ignore
   }
 }
 

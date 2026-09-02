@@ -19,7 +19,8 @@ import {
   deleteManagedSpace as deleteManagedSpaceApi,
   leaveManagedSpace as apiLeaveManagedSpace,
   setActiveSpaceId as persistActiveSpaceId,
-  getActiveSpaceId as getStoredActiveSpaceId,
+  getStoredActiveSpaceId,
+  clearActiveSpaceState,
 } from "../lib/spaces";
 import { emitSpaceChanged } from "../lib/appEvents";
 
@@ -47,7 +48,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   const { status, user } = useAuth();
   const [spaces, setSpaces] = useState<FinancialSpace[]>([]);
   const [userRolesBySpaceId, setUserRolesBySpaceId] = useState<Record<string, ManagedSpaceRole | "owner">>({});
-  const [activeSpaceId, setActiveSpaceIdState] = useState<string | null>(getStoredActiveSpaceId());
+  const [activeSpaceId, setActiveSpaceIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const loadSpaces = useCallback(async (preferredSpaceId?: string) => {
@@ -55,7 +56,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       setSpaces([]);
       setUserRolesBySpaceId({});
       setActiveSpaceIdState(null);
-      persistActiveSpaceId(null);
+      clearActiveSpaceState();
       setLoading(false);
       return;
     }
@@ -77,7 +78,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const spaceList = data ?? [];
+      const spaceList = (data ?? []).filter((s) => !s.deleted_at);
       setSpaces(spaceList);
 
       const roleMap: Record<string, ManagedSpaceRole | "owner"> = {};
@@ -91,12 +92,17 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       });
       setUserRolesBySpaceId(roleMap);
 
-      const personal = spaceList.find((s) => s.space_type === "personal") ?? null;
-      const storedId = preferredSpaceId ?? getStoredActiveSpaceId();
+      const personal = spaceList.find(
+        (s) => s.space_type === "personal" && s.owner_user_id === user.id
+      ) ?? null;
+
+      const storedId = preferredSpaceId ?? getStoredActiveSpaceId(user.id);
 
       let resolvedSpace: FinancialSpace | null = null;
       if (storedId) {
-        const found = spaceList.find((s) => s.id === storedId && !s.is_archived);
+        const found = spaceList.find(
+          (s) => s.id === storedId && !s.is_archived && !s.deleted_at
+        );
         if (found) {
           resolvedSpace = found;
         }
@@ -109,7 +115,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
 
       const resolvedId = resolvedSpace?.id ?? null;
       setActiveSpaceIdState(resolvedId);
-      persistActiveSpaceId(resolvedId);
+      persistActiveSpaceId(resolvedId, user.id);
     } catch (err) {
       console.error("Error initializing financial spaces:", err);
     } finally {
@@ -118,8 +124,19 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   }, [status, user]);
 
   useEffect(() => {
-    loadSpaces();
-  }, [loadSpaces]);
+    if (status !== "authenticated" || !user) {
+      setSpaces([]);
+      setUserRolesBySpaceId({});
+      setActiveSpaceIdState(null);
+      clearActiveSpaceState();
+      setLoading(false);
+      return;
+    }
+
+    setActiveSpaceIdState(null);
+    clearActiveSpaceState();
+    void loadSpaces();
+  }, [status, user?.id, loadSpaces]);
 
   const getUserRole = useCallback(
     (spaceOrId: FinancialSpace | string): ManagedSpaceRole | "owner" | null => {
@@ -140,22 +157,23 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
 
   const setActiveSpace = useCallback(
     (spaceOrId: FinancialSpace | string) => {
+      if (!user) return;
       const targetId = typeof spaceOrId === "string" ? spaceOrId : spaceOrId.id;
-      const targetSpace = spaces.find((s) => s.id === targetId && !s.is_archived);
+      const targetSpace = spaces.find((s) => s.id === targetId && !s.is_archived && !s.deleted_at);
 
       let nextId: string | null = null;
       if (targetSpace) {
         nextId = targetSpace.id;
       } else {
-        const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+        const personal = spaces.find((s) => s.space_type === "personal" && s.owner_user_id === user.id) ?? null;
         nextId = personal?.id ?? null;
       }
 
       setActiveSpaceIdState(nextId);
-      persistActiveSpaceId(nextId);
+      persistActiveSpaceId(nextId, user.id);
       emitSpaceChanged();
     },
-    [spaces]
+    [spaces, user]
   );
 
   const createManagedSpace = useCallback(
@@ -194,17 +212,17 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       }
 
       // If active space is the one being archived, fallback to personal space
-      const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+      const personal = spaces.find((s) => s.space_type === "personal" && s.owner_user_id === user?.id) ?? null;
       if (activeSpaceId === spaceId) {
         const fallbackId = personal?.id ?? null;
         setActiveSpaceIdState(fallbackId);
-        persistActiveSpaceId(fallbackId);
+        persistActiveSpaceId(fallbackId, user?.id);
       }
 
       await loadSpaces();
       emitSpaceChanged();
     },
-    [spaces, activeSpaceId, loadSpaces]
+    [spaces, activeSpaceId, loadSpaces, user]
   );
 
   const restoreManagedSpace = useCallback(
@@ -228,17 +246,17 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       }
 
       // If active space is the one being deleted, fallback to personal space
-      const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+      const personal = spaces.find((s) => s.space_type === "personal" && s.owner_user_id === user?.id) ?? null;
       if (activeSpaceId === spaceId) {
         const fallbackId = personal?.id ?? null;
         setActiveSpaceIdState(fallbackId);
-        persistActiveSpaceId(fallbackId);
+        persistActiveSpaceId(fallbackId, user?.id);
       }
 
       await loadSpaces();
       emitSpaceChanged();
     },
-    [spaces, activeSpaceId, loadSpaces]
+    [spaces, activeSpaceId, loadSpaces, user]
   );
 
   const leaveManagedSpace = useCallback(
@@ -249,28 +267,29 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       }
 
       // If active space is the one being left, fallback to personal space
-      const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+      const personal = spaces.find((s) => s.space_type === "personal" && s.owner_user_id === user?.id) ?? null;
       if (activeSpaceId === spaceId) {
         const fallbackId = personal?.id ?? null;
         setActiveSpaceIdState(fallbackId);
-        persistActiveSpaceId(fallbackId);
+        persistActiveSpaceId(fallbackId, user?.id);
       }
 
       await loadSpaces();
       emitSpaceChanged();
     },
-    [spaces, activeSpaceId, loadSpaces]
+    [spaces, activeSpaceId, loadSpaces, user]
   );
 
   const personalSpace = useMemo(
-    () => spaces.find((s) => s.space_type === "personal") ?? null,
-    [spaces]
+    () => spaces.find((s) => s.space_type === "personal" && s.owner_user_id === user?.id) ?? null,
+    [spaces, user]
   );
 
   const activeSpace = useMemo(() => {
+    if (loading || !user) return null;
     if (!activeSpaceId) return personalSpace;
-    return spaces.find((s) => s.id === activeSpaceId && !s.is_archived) ?? personalSpace;
-  }, [spaces, activeSpaceId, personalSpace]);
+    return spaces.find((s) => s.id === activeSpaceId && !s.is_archived && !s.deleted_at) ?? personalSpace;
+  }, [loading, user, spaces, activeSpaceId, personalSpace]);
 
   const userRole = useMemo(() => {
     if (!activeSpace) return null;
