@@ -127,5 +127,11 @@ export async function getTransactionRecapData({ space, period, filters: partialF
 }
 
 export async function getFinancialReportData({ space, period }: { space: FinancialSpace; period: ReportPeriod }): Promise<FinancialReportData> {
-  return { space, period, transactionRecap: await getTransactionRecapData({ space, period }) };
+  const [transactionRecap, balanceResult] = await Promise.all([
+    getTransactionRecapData({ space, period }),
+    supabase.from("wallet_balance_view").select("current_balance, wallets!inner(space_id)").eq("wallets.space_id", space.id),
+  ]);
+  if (balanceResult.error) throw balanceResult.error;
+  const currentBalance = (balanceResult.data ?? []).reduce((total, row) => total + toNumber(row.current_balance), 0);
+  return { space, period, transactionRecap, currentBalance };
 }

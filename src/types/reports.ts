@@ -62,4 +62,5 @@ export type FinancialReportData = {
   space: FinancialSpace;
   period: ReportPeriod;
   transactionRecap: TransactionRecapData;
+  currentBalance: number;
 };

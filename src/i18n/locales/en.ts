@@ -1990,6 +1990,10 @@ export const en = {
     "reports.total": "Total",
     "reports.exportAs": "Export as",
     "reports.exportDeferred": "PDF, Excel, and CSV will be available in the next phase.",
+    "reports.exportDescription": "Download a report using the currently selected data and filters.",
+    "reports.financialPdfHint": "A summary of financial position and activity.",
+    "reports.recapExportHint": "Complete transaction details for the selected period.",
+    "reports.exportError": "The export could not be created. Please try again shortly.",
 
     // Statuses
     "status.active": "Active",

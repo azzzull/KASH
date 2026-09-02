@@ -2002,6 +2002,10 @@ export const id = {
     "reports.total": "Total",
     "reports.exportAs": "Export sebagai",
     "reports.exportDeferred": "PDF, Excel, dan CSV akan tersedia pada tahap berikutnya.",
+    "reports.exportDescription": "Unduh laporan berdasarkan data dan filter yang sedang dipilih.",
+    "reports.financialPdfHint": "Ringkasan kondisi dan aktivitas keuangan.",
+    "reports.recapExportHint": "Rincian transaksi lengkap untuk periode pilihan.",
+    "reports.exportError": "Export belum dapat dibuat. Coba lagi dalam beberapa saat.",
 
     // Statuses
     "status.active": "Aktif",
