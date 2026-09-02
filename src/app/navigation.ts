@@ -8,6 +8,7 @@ import {
     LucideIcon,
     ReceiptText,
     Repeat,
+    Download,
     Scale,
     Settings,
     Crosshair,
@@ -35,6 +36,7 @@ export const navGroups: NavGroup[] = [
             { label: "Budget", path: "/budgets", icon: Scale },
             { label: "Calendar", path: "/calendar", icon: CalendarDays },
             { label: "Analytics", path: "/analytics", icon: BarChart3 },
+            { label: "Export & Reports", path: "/reports", icon: Download },
         ],
     },
     {
@@ -57,6 +59,7 @@ export const mobilePrimaryItems: NavItem[] = [
     { label: "Home", path: "/dashboard", icon: Home },
     { label: "Transactions", path: "/transactions", icon: ReceiptText },
     { label: "Analytics", path: "/analytics", icon: BarChart3 },
+    { label: "Export & Reports", path: "/reports", icon: Download },
 ];
 
 export const mobileMoreItems: NavItem[] = [
