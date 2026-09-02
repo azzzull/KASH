@@ -206,6 +206,10 @@ a:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .kash-bottom-sheet {
+    transition: none !important;
+  }
+
   .kash-launch-splash--enter,
   .kash-launch-splash--exit {
     animation-duration: 1ms;

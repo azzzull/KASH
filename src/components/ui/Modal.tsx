@@ -45,6 +45,8 @@ let savedScrollY = 0;
 const MEDIUM_DETENT_DVH = 62;
 const LARGE_DETENT_DVH = 90;
 const LARGE_TOP_GAP_PX = 28;
+const EXPANSION_SETTLE_RATIO = 0.36;
+const EXPANSION_FLICK_VELOCITY = -0.32;
 const KEYBOARD_FIELD_GAP_PX = 18;
 const KEYBOARD_FOCUS_SAFE_GAP_PX = 65;
 const KEYBOARD_TRACKING_FRAME_LIMIT = 36;
@@ -243,6 +245,8 @@ export function Modal({
     const [dragY, setDragY] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
     const [isBodyDragging, setIsBodyDragging] = useState(false);
+    const [expansionHeight, setExpansionHeight] = useState<number | null>(null);
+    const [hasExpanded, setHasExpanded] = useState(false);
     const startYRef = useRef<number>(0);
     const currentYRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
@@ -304,6 +308,8 @@ export function Modal({
             setDragY(0);
             setIsDragging(false);
             setIsBodyDragging(false);
+            setExpansionHeight(null);
+            setHasExpanded(false);
             setSheetDetent("medium");
 
             let frame2: number;
@@ -323,6 +329,8 @@ export function Modal({
             setDragY(0);
             setIsDragging(false);
             setIsBodyDragging(false);
+            setExpansionHeight(null);
+            setHasExpanded(false);
             setSheetDetent("medium");
         }
     }, [isOpen]);
@@ -694,12 +702,49 @@ export function Modal({
     }, [mounted, dismissible, isClosing, isTopModal]);
 
     // Touch Gesture Handlers (iOS Safari & Standalone PWA)
+    const getDetentHeights = () => {
+        const viewportHeight =
+            baseViewportHeight ??
+            window.visualViewport?.height ??
+            window.innerHeight;
+        const medium = viewportHeight * (MEDIUM_DETENT_DVH / 100);
+        const large = Math.max(
+            320,
+            Math.min(
+                viewportHeight * (LARGE_DETENT_DVH / 100),
+                viewportHeight - LARGE_TOP_GAP_PX,
+            ),
+        );
+
+        return { medium, large, range: Math.max(1, large - medium) };
+    };
+
+    const expandSheet = () => {
+        setHasExpanded(true);
+        setExpansionHeight(null);
+        setSheetDetent("large");
+    };
+
+    const updateExpansionFromGesture = (deltaY: number) => {
+        const { medium, range } = getDetentHeights();
+        setExpansionHeight(medium + Math.min(-deltaY, range));
+    };
+
+    const shouldSettleExpanded = (deltaY: number, velocity: number) => {
+        const { range } = getDetentHeights();
+        return (
+            -deltaY >= range * EXPANSION_SETTLE_RATIO ||
+            velocity <= EXPANSION_FLICK_VELOCITY
+        );
+    };
+
     const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
         if (!dismissible || isClosing || !isTopModal) return;
         const touch = e.touches[0];
         startYRef.current = touch.clientY;
         currentYRef.current = touch.clientY;
         startTimeRef.current = Date.now();
+        setExpansionHeight(null);
         setIsDragging(true);
     };
 
@@ -707,12 +752,12 @@ export function Modal({
         if (!isDragging || !dismissible || isClosing || !isTopModal) return;
         const touch = e.touches[0];
         const deltaY = touch.clientY - startYRef.current;
+        currentYRef.current = touch.clientY;
 
-        if (deltaY < -32 && sheetDetent === "medium") {
-            setSheetDetent("large");
+        if (deltaY < 0 && sheetDetentRef.current === "medium") {
+            // A compact sheet grows with the handle rather than snapping early.
+            updateExpansionFromGesture(deltaY);
             setDragY(0);
-            startYRef.current = touch.clientY;
-            currentYRef.current = touch.clientY;
         } else if (deltaY > 0) {
             // Downward drag follows finger
             setDragY(deltaY);
@@ -731,7 +776,13 @@ export function Modal({
         const elapsed = Math.max(1, Date.now() - startTimeRef.current);
         const velocity = deltaY / elapsed; // px per ms
 
-        if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
+        if (sheetDetentRef.current === "medium" && deltaY < 0) {
+            if (shouldSettleExpanded(deltaY, velocity)) {
+                expandSheet();
+            } else {
+                setExpansionHeight(null);
+            }
+        } else if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
             // Threshold passed -> Dismiss with animated exit
             setDragY(400);
             handleRequestClose();
@@ -747,6 +798,7 @@ export function Modal({
         startYRef.current = touch.clientY;
         currentYRef.current = touch.clientY;
         startTimeRef.current = Date.now();
+        setExpansionHeight(null);
         setIsBodyDragging(true);
     };
 
@@ -758,25 +810,31 @@ export function Modal({
 
         const touch = e.touches[0];
         const deltaY = touch.clientY - startYRef.current;
+        currentYRef.current = touch.clientY;
         const hasOverflow =
             scrollBody.scrollHeight > scrollBody.clientHeight + 2;
-        const isAtTop = scrollBody.scrollTop <= 0;
 
-        if (sheetDetent === "medium" && hasOverflow && deltaY < -28) {
+        if (sheetDetentRef.current === "medium" && hasOverflow && deltaY < 0) {
             if (e.cancelable) e.preventDefault();
-            setSheetDetent("large");
-            setIsBodyDragging(false);
-            return;
-        }
-
-        if (sheetDetent === "large" && isAtTop && deltaY > 36 && dismissible) {
-            if (e.cancelable) e.preventDefault();
-            setSheetDetent("medium");
-            setIsBodyDragging(false);
+            // Before the first expansion, content drag owns the progressive
+            // compact-to-expanded gesture. Once expanded, body gestures are
+            // left entirely to the native scroll container.
+            updateExpansionFromGesture(deltaY);
         }
     };
 
     const handleBodyTouchEnd = () => {
+        if (isBodyDragging && sheetDetentRef.current === "medium") {
+            const deltaY = currentYRef.current - startYRef.current;
+            const elapsed = Math.max(1, Date.now() - startTimeRef.current);
+            const velocity = deltaY / elapsed;
+
+            if (deltaY < 0 && shouldSettleExpanded(deltaY, velocity)) {
+                expandSheet();
+            } else {
+                setExpansionHeight(null);
+            }
+        }
         setIsBodyDragging(false);
     };
 
@@ -802,10 +860,6 @@ export function Modal({
     useEffect(() => {
         const panelEl = panelRef.current;
         if (!panelEl) return;
-
-        const expandSheet = () => {
-            setSheetDetent("large");
-        };
 
         panelEl.addEventListener("kash:bottom-sheet-expand", expandSheet);
         return () => {
@@ -837,9 +891,9 @@ export function Modal({
             ? "translate3d(0, 100%, 0)"
             : "translate3d(0, 0, 0)";
 
-    const mobileTransition = isDragging
+    const mobileTransition = isDragging || expansionHeight !== null
         ? "none"
-        : "transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.40s cubic-bezier(0.22, 1, 0.36, 1)";
+        : "transform 0.32s cubic-bezier(0.22, 0.8, 0.3, 1), max-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1)";
 
     // Backdrop opacity calculation
     const backdropOpacity =
@@ -861,6 +915,8 @@ export function Modal({
 
     const mobileMaxHeight = hasChildModal
         ? "46dvh"
+        : expansionHeight !== null
+          ? `${expansionHeight}px`
         : sheetDetent === "large"
           ? largeDetentPx
               ? `${largeDetentPx}px`
@@ -901,7 +957,8 @@ export function Modal({
                     tabIndex={-1}
                     data-bottom-sheet-panel="true"
                     data-bottom-sheet-detent={sheetDetent}
-                    className={`${isTopModal ? "pointer-events-auto" : "pointer-events-none"} flex max-h-[var(--mobile-sheet-max-height)] w-full flex-col ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:block md:max-h-[85vh] md:rounded-2xl md:pb-6 md:!transform-none md:transition-all md:duration-200 ${
+                    data-bottom-sheet-expanded={hasExpanded ? "true" : "false"}
+                    className={`kash-bottom-sheet ${isTopModal ? "pointer-events-auto" : "pointer-events-none"} flex max-h-[var(--mobile-sheet-max-height)] w-full flex-col ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:block md:max-h-[85vh] md:rounded-2xl md:pb-6 md:!transform-none md:transition-all md:duration-200 ${
                         entered && !isClosing
                             ? "md:scale-100 md:opacity-100"
                             : "md:scale-95 md:opacity-0"
