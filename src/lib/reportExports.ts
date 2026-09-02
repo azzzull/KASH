@@ -46,14 +46,14 @@ function footer(doc: jsPDF, data: TransactionRecapData, page: number) { doc.setD
 function sectionTitle(doc: jsPDF, value: string, y: number) { doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42); doc.setFontSize(11); doc.text(value, PAGE.left, y); }
 
 function metricCards(doc: jsPDF, metrics: Metric[], startY: number) {
-  const columnWidth = 56.6; const cardHeight = 18; const gap = 4;
+  const columnWidth = 42.25; const cardHeight = 18; const gap = 3;
   metrics.forEach(([label, value, isCount], index) => {
-    const column = index % 3; const row = Math.floor(index / 3); const x = PAGE.left + column * (columnWidth + gap); const y = startY + row * (cardHeight + gap);
-    doc.setFillColor(244, 251, 247); doc.roundedRect(x, y, columnWidth, cardHeight, 2.5, 2.5, "F");
-    doc.setTextColor(71, 85, 105); doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.text(label, x + 4, y + 5.5);
-    doc.setTextColor(15, 23, 42); doc.setFont("helvetica", "bold"); doc.setFontSize(isCount ? 11 : 9.5); doc.text(isCount ? String(value) : formatCurrency(value), x + 4, y + 13);
+    const x = PAGE.left + index * (columnWidth + gap); const y = startY;
+    doc.setFillColor(244, 251, 247); doc.setDrawColor(209, 250, 229); doc.setLineWidth(0.2); doc.roundedRect(x, y, columnWidth, cardHeight, 2.5, 2.5, "FD");
+    doc.setTextColor(71, 85, 105); doc.setFont("helvetica", "normal"); doc.setFontSize(6.5); doc.text(clipped(doc, label, columnWidth - 8), x + 4, y + 5.5);
+    doc.setTextColor(15, 23, 42); doc.setFont("helvetica", "bold"); doc.setFontSize(isCount ? 10 : 8.5); doc.text(clipped(doc, isCount ? String(value) : formatCurrency(value), columnWidth - 8), x + 4, y + 13);
   });
-  return startY + Math.ceil(metrics.length / 3) * (cardHeight + gap);
+  return startY + cardHeight + gap;
 }
 
 function drawTableHeader(doc: jsPDF, y: number) {
@@ -65,7 +65,7 @@ function drawTableHeader(doc: jsPDF, y: number) {
 
 export async function exportTransactionRecapPdf(data: TransactionRecapData) {
   const { jsPDF } = await import("jspdf"); const doc = new jsPDF({ format: "a4", orientation: "portrait", unit: "mm" }); const l = labels(data); const s = data.summary;
-  await pdfHeader(doc, "Transaction Recap", data); let y = metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], ["Admin Fee", s.adminFees], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46) + 4;
+  await pdfHeader(doc, "Transaction Recap", data); let y = metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46) + 4;
   sectionTitle(doc, "Transactions", y); y = drawTableHeader(doc, y + 5); let page = 1;
   const positions = [16, 34, 70, 100, 128, 150, 171]; const widths = [16, 33, 27, 25, 20, 19, 21];
   data.transactions.forEach((transaction, index) => {
@@ -80,7 +80,7 @@ export async function exportTransactionRecapPdf(data: TransactionRecapData) {
 
 export async function exportFinancialReportPdf(data: FinancialReportData) {
   const { jsPDF } = await import("jspdf"); const doc = new jsPDF({ format: "a4", orientation: "portrait", unit: "mm" }); const recap = data.transactionRecap; const l = labels(recap); const s = recap.summary;
-  await pdfHeader(doc, "Financial Report", recap); let y = metricCards(doc, [[l.balance, data.currentBalance], [l.income, s.income], [l.expense, s.expensePrincipal], ["Admin Fee", s.adminFees], [l.net, s.netCashFlow]], 46) + 4;
+  await pdfHeader(doc, "Financial Report", recap); let y = metricCards(doc, [[l.balance, data.currentBalance], [l.income, s.income], [l.total, s.totalExpense], [l.net, s.netCashFlow]], 46) + 4;
   if (recap.categoryBreakdown.length) { sectionTitle(doc, l.category, y); y += 7; recap.categoryBreakdown.slice(0, 10).forEach((item) => { if (y > 267) { doc.addPage(); y = 18; } doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(clipped(doc, item.categoryName, 95), PAGE.left, y); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.text(`${item.percentage.toFixed(1)}%`, 145, y, { align: "right" }); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(item.amount), PAGE.right, y, { align: "right" }); doc.setFillColor(226, 232, 240); doc.roundedRect(PAGE.left, y + 3, 128, 3.5, 1.75, 1.75, "F"); doc.setFillColor(...EMERALD); doc.roundedRect(PAGE.left, y + 3, Math.max(2, 128 * item.percentage / 100), 3.5, 1.75, 1.75, "F"); y += 13; }); }
   if (recap.walletBreakdown.length) { y += 2; if (y > 255) { doc.addPage(); y = 18; } sectionTitle(doc, "Wallet Activity", y); y += 7; recap.walletBreakdown.slice(0, 8).forEach((item) => { if (y > 270) { doc.addPage(); y = 18; } doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 13, 2, 2, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.wallet.name, 75), 20, y + 5); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(7); doc.text(`In ${formatCurrency(item.cashIn)} · Out ${formatCurrency(item.cashOut)} · Net ${formatCurrency(item.netMovement)}`, 20, y + 10); y += 16; }); }
   const pages = doc.getNumberOfPages();
