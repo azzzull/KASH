@@ -33,6 +33,7 @@ import {
     type DashboardMetricChange,
     type DashboardSummary,
 } from "../lib/dashboard";
+import { emeraldRingColor } from "../lib/reportCharts";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type {
     BudgetWithProgress,
@@ -881,7 +882,7 @@ function SpendingDonut({
     const availableDeg = 360 - totalGapDeg;
 
     let accumulatedOffset = 0;
-    const segments = categories.map((category) => {
+    const segments = categories.map((category, index) => {
         const segDeg = (category.percent / 100) * availableDeg;
         const segLen = (segDeg / 360) * circumference;
         const gapLen = (gapDeg / 360) * circumference;
@@ -889,6 +890,7 @@ function SpendingDonut({
         accumulatedOffset += segLen + gapLen;
         return {
             ...category,
+            color: emeraldRingColor(index, categories.length),
             dasharray: `${segLen} ${circumference - segLen}`,
             dashoffset: -offset,
         };
@@ -942,7 +944,7 @@ function SpendingDonut({
 
                 {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
                 <div className="w-full min-w-0 max-w-full space-y-1.5 md:flex-1">
-                    {categories.map((category) => (
+                    {segments.map((category) => (
                         <button
                             type="button"
                             key={category.id}

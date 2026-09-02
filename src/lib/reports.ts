@@ -127,11 +127,17 @@ export async function getTransactionRecapData({ space, period, filters: partialF
 }
 
 export async function getFinancialReportData({ space, period }: { space: FinancialSpace; period: ReportPeriod }): Promise<FinancialReportData> {
-  const [transactionRecap, balanceResult] = await Promise.all([
-    getTransactionRecapData({ space, period }),
-    supabase.from("wallet_balance_view").select("current_balance, wallets!inner(space_id)").eq("wallets.space_id", space.id),
-  ]);
-  if (balanceResult.error) throw balanceResult.error;
-  const currentBalance = (balanceResult.data ?? []).reduce((total, row) => total + toNumber(row.current_balance), 0);
+  const transactionRecap = await getTransactionRecapData({ space, period });
+  const walletIds = transactionRecap.wallets.map((wallet) => wallet.id);
+  if (!walletIds.length) return { space, period, transactionRecap, currentBalance: 0 };
+  const { data: balances, error } = await supabase
+    .from("wallet_balance_view")
+    .select("wallet_id, current_balance")
+    .in("wallet_id", walletIds);
+  if (error) {
+    console.error("[KASH Financial Report Export][financial-balance]", error);
+    throw error;
+  }
+  const currentBalance = (balances ?? []).reduce((total, row) => total + toNumber(row.current_balance), 0);
   return { space, period, transactionRecap, currentBalance };
 }

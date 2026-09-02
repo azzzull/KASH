@@ -24,6 +24,7 @@ import {
   type AnalyticsPeriodKey,
   type AnalyticsSummary,
 } from "../lib/analytics";
+import { emeraldRingColor } from "../lib/reportCharts";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type { BudgetWithProgress } from "../types/domain";
 import { formatCompactCurrency, formatCurrency } from "../lib/money";
@@ -462,7 +463,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
   const availableDeg = 360 - totalGapDeg;
 
   let accumulatedOffset = 0;
-  const segments = categories.map((category) => {
+  const segments = categories.map((category, index) => {
     const segDeg = (category.percent / 100) * availableDeg;
     const segLen = (segDeg / 360) * circumference;
     const gapLen = (gapDeg / 360) * circumference;
@@ -470,6 +471,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
     accumulatedOffset += segLen + gapLen;
     return {
       ...category,
+      color: emeraldRingColor(index, categories.length),
       dasharray: `${segLen} ${circumference - segLen}`,
       dashoffset: -offset,
     };
@@ -508,7 +510,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
 
       {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
       <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
-        {categories.map((category) => (
+        {segments.map((category) => (
           <div key={category.id} className="min-w-0 text-xs sm:text-sm">
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex min-w-0 items-center gap-2">

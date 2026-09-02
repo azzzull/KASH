@@ -3,6 +3,12 @@ import { toNumber } from "./money";
 
 export type CashFlowPoint = { label: string; shortLabel: string; income: number; expense: number; net: number };
 
+export function emeraldRingColor(index: number, total: number) {
+  const contrastIndex = index % 2 === 0 ? index / 2 : total - 1 - Math.floor(index / 2);
+  const ratio = total <= 1 ? 0.35 : contrastIndex / (total - 1);
+  return `hsl(160 ${82 - ratio * 18}% ${25 + ratio * 48}%)`;
+}
+
 function isEconomicMovement(relatedEntityType: string | null) {
   return ["debt_creation", "receivable_creation", "debt_payment", "receivable_payment", "goal_contribution", "goal_refund"].includes(relatedEntityType ?? "");
 }
