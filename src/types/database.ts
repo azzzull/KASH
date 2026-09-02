@@ -1172,6 +1172,24 @@ export type Database = {
         };
         Returns: void;
       };
+      archive_managed_space: {
+        Args: {
+          p_space_id: string;
+        };
+        Returns: void;
+      };
+      restore_managed_space: {
+        Args: {
+          p_space_id: string;
+        };
+        Returns: void;
+      };
+      delete_managed_space: {
+        Args: {
+          p_space_id: string;
+        };
+        Returns: void;
+      };
       get_managed_space_member_identities: {
         Args: {
           p_space_id: string;

@@ -545,10 +545,15 @@ export async function getTransactions(filters: TransactionFilters = {}) {
       );
       const { data: spacesData } = await supabase
         .from("financial_spaces")
-        .select("id, name, space_type")
+        .select("id, name, space_type, deleted_at")
         .in("id", spaceIds);
 
-      const spacesById = new Map((spacesData ?? []).map((s) => [s.id, s.name]));
+      const spacesById = new Map(
+        (spacesData ?? []).map((s) => [
+          s.id,
+          s.deleted_at ? `${s.name} (Dihapus)` : s.name,
+        ])
+      );
 
       crossSpaceEventsMeta = eventsData.map((e) => ({
         id: e.id,
@@ -611,10 +616,15 @@ export async function getTransactionById(id: string) {
       const spaceIds = [eventData.managed_space_id, eventData.personal_space_id].filter(Boolean);
       const { data: spacesData } = await supabase
         .from("financial_spaces")
-        .select("id, name, space_type")
+        .select("id, name, space_type, deleted_at")
         .in("id", spaceIds);
 
-      const spacesById = new Map((spacesData ?? []).map((s) => [s.id, s.name]));
+      const spacesById = new Map(
+        (spacesData ?? []).map((s) => [
+          s.id,
+          s.deleted_at ? `${s.name} (Dihapus)` : s.name,
+        ])
+      );
 
       crossSpaceEventsMeta = [
         {

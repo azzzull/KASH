@@ -49,6 +49,7 @@ export async function getFinancialSpaces(): Promise<{
     const { data, error } = await supabase
       .from("financial_spaces")
       .select("*")
+      .is("deleted_at", null)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
@@ -73,6 +74,7 @@ export async function getPersonalSpace(): Promise<{
       .select("*")
       .eq("owner_user_id", user.id)
       .eq("space_type", "personal")
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (error) throw error;
@@ -156,33 +158,7 @@ export async function archiveManagedSpace(spaceId: string): Promise<{
   error: Error | null;
 }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error("You need to be signed in to archive a Financial Space.");
-    }
-
-    // Check not personal space
-    const { data: existing, error: findError } = await supabase
-      .from("financial_spaces")
-      .select("space_type")
-      .eq("id", spaceId)
-      .eq("owner_user_id", user.id)
-      .single();
-
-    if (findError || !existing) {
-      throw new Error("Financial Space tidak ditemukan.");
-    }
-
-    if (existing.space_type === "personal") {
-      throw new Error("Personal Space cannot be archived.");
-    }
-
-    const { error } = await supabase
-      .from("financial_spaces")
-      .update({ is_archived: true, updated_at: new Date().toISOString() })
-      .eq("id", spaceId)
-      .eq("owner_user_id", user.id);
-
+    const { error } = await supabase.rpc("archive_managed_space", { p_space_id: spaceId });
     if (error) throw error;
     return { error: null };
   } catch (err: any) {
@@ -194,17 +170,7 @@ export async function restoreManagedSpace(spaceId: string): Promise<{
   error: Error | null;
 }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error("You need to be signed in to restore a Financial Space.");
-    }
-
-    const { error } = await supabase
-      .from("financial_spaces")
-      .update({ is_archived: false, updated_at: new Date().toISOString() })
-      .eq("id", spaceId)
-      .eq("owner_user_id", user.id);
-
+    const { error } = await supabase.rpc("restore_managed_space", { p_space_id: spaceId });
     if (error) throw error;
     return { error: null };
   } catch (err: any) {
@@ -216,14 +182,8 @@ export async function deleteManagedSpace(spaceId: string): Promise<{
   error: Error | null;
 }> {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error("You need to be signed in to delete a Financial Space.");
-    }
-
-    const { error } = await supabase.rpc("delete_managed_space" as any, { p_space_id: spaceId });
+    const { error } = await supabase.rpc("delete_managed_space", { p_space_id: spaceId });
     if (error) throw error;
-    
     return { error: null };
   } catch (err: any) {
     return { error: err };

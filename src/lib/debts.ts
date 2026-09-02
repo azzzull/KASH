@@ -130,7 +130,7 @@ export async function getCounterparties(
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
   // Fetch owner_user_id so we can resolve the personal-space owner's profile for cross-space payable names
-  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id)").order("name", { ascending: true });
+  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id, deleted_at)").order("name", { ascending: true });
   if (targetSpaceId) {
     cpQuery = cpQuery.eq("space_id", targetSpaceId);
   } else {
@@ -181,7 +181,9 @@ export async function getCounterparties(
         const memberName = payerUserId ? membersByUserId.get(payerUserId) : null;
         displayName = payerNamesByCounterpartyId.get(c.id) || memberName || c.name || "Personal Funds";
       } else {
-        displayName = c.linked_space.name;
+        displayName = c.linked_space.deleted_at
+          ? `${c.linked_space.name} (Dihapus)`
+          : c.linked_space.name;
       }
     } else if (membersByUserId.has(c.user_id)) {
       displayName = membersByUserId.get(c.user_id) || c.name;
@@ -338,7 +340,7 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   const userId = await getAuthenticatedUserId();
 
   const [counterpartyResult, progressResult, paymentsResult, allocationsResult, walletsResult] = await Promise.all([
-    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id)").eq("id", counterpartyId).single(),
+    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id, deleted_at)").eq("id", counterpartyId).single(),
     supabase
       .from("debt_progress_view")
       .select("*")
@@ -383,6 +385,10 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
     const payerUserId = rawCounterparty.user_id || rawCounterparty.linked_space?.owner_user_id;
     const memberName = payerUserId ? membersByUserId.get(payerUserId) : null;
     cpDisplayName = eventPayerName || memberName || rawCounterparty.name || "Personal Funds";
+  } else if (rawCounterparty.linked_space) {
+    cpDisplayName = rawCounterparty.linked_space.deleted_at
+      ? `${rawCounterparty.linked_space.name} (Dihapus)`
+      : rawCounterparty.linked_space.name;
   }
   const counterparty = { ...rawCounterparty, name: cpDisplayName } as Counterparty;
   const payments = (paymentsResult.data ?? []) as DebtPayment[];

@@ -180,7 +180,7 @@ export function TransactionDetailModal({
         if (!isMounted || !eventRes.data) return;
 
         const [spaceRes, catRes] = await Promise.all([
-          supabase.from("financial_spaces").select("name").eq("id", eventRes.data.managed_space_id).maybeSingle(),
+          supabase.from("financial_spaces").select("name, deleted_at").eq("id", eventRes.data.managed_space_id).maybeSingle(),
           eventRes.data.managed_category_id
             ? supabase.from("categories").select("name").eq("id", eventRes.data.managed_category_id).maybeSingle()
             : Promise.resolve({ data: null, error: null }),
@@ -188,7 +188,9 @@ export function TransactionDetailModal({
 
         if (!isMounted) return;
 
-        const managedSpaceName = spaceRes.data?.name ?? (t("spaces.managed") || "Managed Space");
+        const managedSpaceName = spaceRes.data
+          ? (spaceRes.data.deleted_at ? `${spaceRes.data.name} (Dihapus)` : spaceRes.data.name)
+          : (t("spaces.managed") || "Managed Space");
         const categoryName = catRes.data?.name ?? undefined;
         const origAmount = debtRes.data ? toNumber(debtRes.data.original_amount) : toNumber(eventRes.data.amount);
         const totalPaid = debtRes.data ? toNumber(debtRes.data.total_paid) : 0;

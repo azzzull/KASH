@@ -135,18 +135,7 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
       setDeletingSpace(null);
     } catch (err: any) {
       console.error("Failed to delete space:", err);
-      const msg = String(err?.message || "");
-      if (
-        msg.includes("cross_space_events") ||
-        msg.includes("foreign key constraint") ||
-        msg.includes("is still referenced") ||
-        msg.includes("cross-space") ||
-        msg.includes("histori")
-      ) {
-        setDeleteError(t("spaces.deleteBlockedCrossSpace"));
-      } else {
-        setDeleteError(err?.message || t("common.error"));
-      }
+      setDeleteError(err?.message || t("common.error"));
     } finally {
       setDeleteLoading(false);
     }

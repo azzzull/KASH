@@ -167,18 +167,7 @@ export function SettingsPage() {
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Failed to delete space:", err);
-      const msg = String(err?.message || "");
-      if (
-        msg.includes("cross_space_events") ||
-        msg.includes("foreign key constraint") ||
-        msg.includes("is still referenced") ||
-        msg.includes("cross-space") ||
-        msg.includes("histori")
-      ) {
-        setDeleteSpaceError(t("spaces.deleteBlockedCrossSpace"));
-      } else {
-        setDeleteSpaceError(err?.message || t("common.error"));
-      }
+      setDeleteSpaceError(err?.message || t("common.error"));
     } finally {
       setDeletingSpaceLoading(false);
     }

@@ -296,9 +296,11 @@ export const en = {
     "spaces.deleteSpace": "Delete Permanently",
     "spaces.deleteSpaceTitle": "Delete Managed Space?",
     "spaces.deleteConfirm":
-        "All data in this Managed Space will be permanently deleted and cannot be recovered.",
+        "This Managed Space will be permanently deleted and cannot be recovered. Financial history required to keep transaction records accurate will be preserved.",
+    "spaces.deleteBlockedActiveLiabilities":
+        "Settle all active Payable/Receivable obligations before deleting this Managed Space.",
     "spaces.deleteBlockedCrossSpace":
-        "This Managed Space cannot be deleted because it still has linked reimbursement/cross-space history.",
+        "Settle all active Payable/Receivable obligations before deleting this Managed Space.",
     "spaces.archivedSpaces": "Archived Spaces",
     "spaces.restore": "Restore",
     "spaces.spaceManagement": "Space Management",

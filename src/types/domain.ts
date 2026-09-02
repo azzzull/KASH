@@ -11,10 +11,12 @@ export type FinancialSpace = {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 };
 
 export type ManagedSpaceRole = "owner" | "admin" | "member" | "viewer";
-export type ManagedSpaceMemberStatus = "invited" | "active";
+export type ManagedSpaceMemberStatus = "invited" | "active" | "removed" | "left";
 
 export type ManagedSpaceMember = {
   id: string;

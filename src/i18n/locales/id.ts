@@ -299,9 +299,11 @@ export const id = {
     "spaces.deleteSpace": "Hapus Permanen",
     "spaces.deleteSpaceTitle": "Hapus Managed Space?",
     "spaces.deleteConfirm":
-        "Semua data di Managed Space ini akan dihapus permanen dan tidak dapat dipulihkan.",
+        "Managed Space ini akan dihapus permanen dan tidak dapat dipulihkan. Histori keuangan yang diperlukan untuk menjaga catatan transaksi tetap akurat akan tetap disimpan.",
+    "spaces.deleteBlockedActiveLiabilities":
+        "Selesaikan Payable/Receivable yang masih aktif sebelum menghapus Managed Space.",
     "spaces.deleteBlockedCrossSpace":
-        "Managed Space ini tidak dapat dihapus karena masih memiliki histori reimbursement/cross-space yang terhubung.",
+        "Selesaikan Payable/Receivable yang masih aktif sebelum menghapus Managed Space.",
     "spaces.archivedSpaces": "Space Diarsipkan",
     "spaces.restore": "Pulihkan",
     "spaces.spaceManagement": "Manajemen Space",
