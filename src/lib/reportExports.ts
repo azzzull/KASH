@@ -2,6 +2,7 @@ import type { jsPDF } from "jspdf";
 import kashLogoUrl from "../../logo/SVG/KASHLogo.svg";
 import type { FinancialReportData, TransactionRecapData } from "../types/reports";
 import { formatCurrency, toNumber } from "./money";
+import { buildCashFlowTrend } from "./reportCharts";
 import { isExternalTransfer } from "./transactions";
 
 type ExportKind = "financial" | "recap" | "transactions";
@@ -63,6 +64,28 @@ function drawTableHeader(doc: jsPDF, y: number) {
   return y + 8;
 }
 
+function chartPanel(doc: jsPDF, title: string, x: number, y: number, width: number, height: number) {
+  doc.setFillColor(255, 255, 255); doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.2); doc.roundedRect(x, y, width, height, 2.5, 2.5, "FD");
+  doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42); doc.setFontSize(8.5); doc.text(title, x + 5, y + 7);
+}
+
+function drawCashFlowTrend(doc: jsPDF, data: TransactionRecapData, x: number, y: number, width: number, height: number) {
+  const points = buildCashFlowTrend(data); chartPanel(doc, "Cash Flow Trend", x, y, width, height);
+  if (!points.length) { doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.setFontSize(7); doc.text("No activity in this period", x + width / 2, y + height / 2, { align: "center" }); return; }
+  const left = x + 7; const right = x + width - 7; const top = y + 15; const bottom = y + height - 10; const min = Math.min(0, ...points.map((point) => point.net)); const max = Math.max(1, ...points.flatMap((point) => [point.income, point.expense, point.net]));
+  const pointX = (index: number) => left + index * ((right - left) / Math.max(1, points.length - 1)); const pointY = (value: number) => top + (max - value) / (max - min) * (bottom - top);
+  doc.setDrawColor(226, 232, 240); doc.line(left, pointY(0), right, pointY(0));
+  const drawSeries = (values: number[], color: readonly [number, number, number], dash?: number[]) => { doc.setDrawColor(...color); doc.setLineWidth(0.8); doc.setLineDashPattern(dash ?? [], 0); values.forEach((value, index) => { if (index) doc.line(pointX(index - 1), pointY(values[index - 1]), pointX(index), pointY(value)); }); };
+  drawSeries(points.map((point) => point.income), EMERALD); drawSeries(points.map((point) => point.expense), [239, 68, 68]); drawSeries(points.map((point) => point.net), [15, 118, 110], [1.5, 1.5]); doc.setLineDashPattern([], 0);
+  doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.setFontSize(5.8); const step = Math.max(1, Math.ceil(points.length / 6)); points.forEach((point, index) => { if (index % step === 0 || index === points.length - 1) doc.text(point.shortLabel, pointX(index), bottom + 5, { align: "center" }); });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(6.2); [[EMERALD, "Income"], [[239, 68, 68] as const, "Expense"], [[15, 118, 110] as const, "Net"]].forEach(([color, label], index) => { const swatchX = right - 54 + index * 18; doc.setFillColor(...(color as readonly [number, number, number])); doc.circle(swatchX, y + 7, 1, "F"); doc.setTextColor(71, 85, 105); doc.text(label as string, swatchX + 2, y + 8.5); });
+}
+
+function drawRankedChart(doc: jsPDF, title: string, items: { label: string; value: number; percentage?: number }[], x: number, y: number, width: number, height: number) {
+  chartPanel(doc, title, x, y, width, height); const ranked = items.slice(0, 4); if (!ranked.length) { doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.setFontSize(7); doc.text("No activity in this period", x + width / 2, y + height / 2, { align: "center" }); return; }
+  const max = Math.max(1, ...ranked.map((item) => item.value)); ranked.forEach((item, index) => { const rowY = y + 16 + index * 10; doc.setFont("helvetica", "bold"); doc.setTextColor(51, 65, 85); doc.setFontSize(6.5); doc.text(clipped(doc, item.label, width - 45), x + 5, rowY); doc.setFillColor(226, 232, 240); doc.roundedRect(x + 5, rowY + 2.5, width - 12, 2.5, 1.25, 1.25, "F"); doc.setFillColor(...EMERALD); doc.roundedRect(x + 5, rowY + 2.5, Math.max(2, (width - 12) * item.value / max), 2.5, 1.25, 1.25, "F"); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(5.8); doc.text(item.percentage === undefined ? formatCurrency(item.value) : `${item.percentage.toFixed(0)}%`, x + width - 5, rowY, { align: "right" }); });
+}
+
 export async function exportTransactionRecapPdf(data: TransactionRecapData) {
   const { jsPDF } = await import("jspdf"); const doc = new jsPDF({ format: "a4", orientation: "portrait", unit: "mm" }); const l = labels(data); const s = data.summary;
   await pdfHeader(doc, "Transaction Recap", data); let y = metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46) + 4;
@@ -80,9 +103,15 @@ export async function exportTransactionRecapPdf(data: TransactionRecapData) {
 
 export async function exportFinancialReportPdf(data: FinancialReportData) {
   const { jsPDF } = await import("jspdf"); const doc = new jsPDF({ format: "a4", orientation: "portrait", unit: "mm" }); const recap = data.transactionRecap; const l = labels(recap); const s = recap.summary;
-  await pdfHeader(doc, "Financial Report", recap); let y = metricCards(doc, [[l.balance, data.currentBalance], [l.income, s.income], [l.total, s.totalExpense], [l.net, s.netCashFlow]], 46) + 4;
-  if (recap.categoryBreakdown.length) { sectionTitle(doc, l.category, y); y += 7; recap.categoryBreakdown.slice(0, 10).forEach((item) => { if (y > 267) { doc.addPage(); y = 18; } doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(clipped(doc, item.categoryName, 95), PAGE.left, y); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.text(`${item.percentage.toFixed(1)}%`, 145, y, { align: "right" }); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(item.amount), PAGE.right, y, { align: "right" }); doc.setFillColor(226, 232, 240); doc.roundedRect(PAGE.left, y + 3, 128, 3.5, 1.75, 1.75, "F"); doc.setFillColor(...EMERALD); doc.roundedRect(PAGE.left, y + 3, Math.max(2, 128 * item.percentage / 100), 3.5, 1.75, 1.75, "F"); y += 13; }); }
-  if (recap.walletBreakdown.length) { y += 2; if (y > 255) { doc.addPage(); y = 18; } sectionTitle(doc, "Wallet Activity", y); y += 7; recap.walletBreakdown.slice(0, 8).forEach((item) => { if (y > 270) { doc.addPage(); y = 18; } doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 13, 2, 2, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.wallet.name, 75), 20, y + 5); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(7); doc.text(`In ${formatCurrency(item.cashIn)} · Out ${formatCurrency(item.cashOut)} · Net ${formatCurrency(item.netMovement)}`, 20, y + 10); y += 16; }); }
+  await pdfHeader(doc, "Financial Report", recap); metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46);
+  drawCashFlowTrend(doc, recap, PAGE.left, 72, 178, 53);
+  drawRankedChart(doc, l.category, recap.categoryBreakdown.map((item) => ({ label: item.categoryName, value: item.amount, percentage: item.percentage })), PAGE.left, 131, 86, 59);
+  drawRankedChart(doc, "Wallet Activity", recap.walletBreakdown.map((item) => ({ label: item.wallet.name, value: item.cashOut })), 108, 131, 86, 59);
+  doc.addPage(); let y = 20; sectionTitle(doc, "Financial Summary", y); y += 8;
+  const detailMetrics: Metric[] = [[l.income, s.income], [l.expense, s.expensePrincipal], ["Admin Fee", s.adminFees], [l.total, s.totalExpense], [l.net, s.netCashFlow]];
+  detailMetrics.forEach(([label, value]) => { doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 10, 1.5, 1.5, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(51, 65, 85); doc.setFontSize(8); doc.text(label, 20, y + 6); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(value), PAGE.right - 4, y + 6, { align: "right" }); y += 12; });
+  y += 4; sectionTitle(doc, l.category, y); y += 8; recap.categoryBreakdown.slice(0, 10).forEach((item) => { if (y > 266) { doc.addPage(); y = 20; sectionTitle(doc, l.category, y); y += 8; } doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.categoryName, 95), PAGE.left, y); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.text(`${item.percentage.toFixed(1)}%`, 145, y, { align: "right" }); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(item.amount), PAGE.right, y, { align: "right" }); doc.setDrawColor(226, 232, 240); doc.line(PAGE.left, y + 4, PAGE.right, y + 4); y += 9; });
+  if (recap.walletBreakdown.length) { y += 5; if (y > 245) { doc.addPage(); y = 20; } sectionTitle(doc, "Wallet Breakdown", y); y += 8; recap.walletBreakdown.slice(0, 8).forEach((item) => { if (y > 270) { doc.addPage(); y = 20; sectionTitle(doc, "Wallet Breakdown", y); y += 8; } doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 13, 2, 2, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.wallet.name, 75), 20, y + 5); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(7); doc.text(`In ${formatCurrency(item.cashIn)} · Out ${formatCurrency(item.cashOut)} · Net ${formatCurrency(item.netMovement)}`, 20, y + 10); y += 16; }); }
   const pages = doc.getNumberOfPages();
   for (let page = 1; page <= pages; page += 1) { doc.setPage(page); footer(doc, recap, page); }
   download(doc.output("blob"), reportFilename("financial", recap, "pdf"));
