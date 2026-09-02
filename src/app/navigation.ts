@@ -59,13 +59,13 @@ export const mobilePrimaryItems: NavItem[] = [
     { label: "Home", path: "/dashboard", icon: Home },
     { label: "Transactions", path: "/transactions", icon: ReceiptText },
     { label: "Analytics", path: "/analytics", icon: BarChart3 },
-    { label: "Export & Reports", path: "/reports", icon: Download },
 ];
 
 export const mobileMoreItems: NavItem[] = [
     { label: "Budgets", path: "/budgets", icon: Scale },
     { label: "Wallets", path: "/wallets", icon: WalletCards },
     { label: "Calendar", path: "/calendar", icon: CalendarDays },
+    { label: "Export & Reports", path: "/reports", icon: Download },
     { label: "Goals", path: "/goals", icon: Crosshair },
     { label: "Shared Savings", path: "/shared-savings", icon: UsersRound },
     { label: "Debt & Receivable", path: "/debts", icon: HandCoins },

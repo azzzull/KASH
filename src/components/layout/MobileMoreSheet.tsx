@@ -1,10 +1,7 @@
-import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Briefcase, ChevronRight, User } from "lucide-react";
 import { mobileMoreItems } from "../../app/navigation";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { Modal } from "../ui/Modal";
-import { SpaceSwitcherModal } from "../spaces/SpaceSwitcherModal";
 import { useI18n } from "../../i18n";
 
 type MobileMoreSheetProps = {
@@ -15,7 +12,6 @@ type MobileMoreSheetProps = {
 export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
   const { t } = useI18n();
   const { activeSpace } = useActiveSpace();
-  const [spaceSwitcherOpen, setSpaceSwitcherOpen] = useState(false);
 
   const getLocalizedLabel = (path: string, defaultLabel: string) => {
     switch (path) {
@@ -24,6 +20,7 @@ export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
       case "/budgets": return t("nav.budgets");
       case "/wallets": return t("nav.wallets");
       case "/calendar": return t("nav.calendar");
+      case "/reports": return t("reports.title");
       case "/goals": return t("nav.goals");
       case "/shared-savings": return t("nav.sharedSavings");
       case "/debts": return t("nav.debts");
@@ -34,46 +31,13 @@ export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
   };
 
   return (
-    <>
-      <Modal
+    <Modal
         isOpen={open}
         onClose={onClose}
         maxWidth="sm"
         title={t("nav.more")}
       >
-        <div className="flex flex-col gap-3 pt-1 pb-3">
-          {/* Active Space Banner / Switcher */}
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              setSpaceSwitcherOpen(true);
-            }}
-            className="flex touch-manipulation items-center justify-between gap-3 rounded-xl border border-kash-emerald/20 bg-kash-selected/40 px-3.5 py-3 text-left transition hover:bg-kash-selected/70 active:scale-[0.99] active:bg-kash-selected"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-kash-emerald text-white">
-                {activeSpace?.space_type === "managed" ? (
-                  <Briefcase size={18} strokeWidth={2.2} />
-                ) : (
-                  <User size={18} strokeWidth={2.2} />
-                )}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-extrabold text-slate-900">
-                  {activeSpace?.name || t("spaces.personal")}
-                </p>
-                <p className="truncate text-xs font-semibold text-kash-emeraldDark">
-                  {activeSpace?.space_type === "managed"
-                    ? t("spaces.managedBadge")
-                    : t("spaces.personalBadge")} • {t("spaces.switchSpace")}
-                </p>
-              </div>
-            </div>
-            <ChevronRight size={16} className="shrink-0 text-slate-400" />
-          </button>
-
-          <div className="grid gap-1.5 border-t border-slate-100 pt-2">
+        <div className="grid max-h-[min(68dvh,34rem)] gap-1.5 overflow-y-auto px-0.5 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {mobileMoreItems
               .filter((item) => activeSpace?.space_type !== "managed" || item.path !== "/shared-savings")
               .map((item) => (
@@ -97,14 +61,7 @@ export function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
                   <span>{getLocalizedLabel(item.path, item.label)}</span>
                 </NavLink>
               ))}
-          </div>
         </div>
       </Modal>
-
-      <SpaceSwitcherModal
-        isOpen={spaceSwitcherOpen}
-        onClose={() => setSpaceSwitcherOpen(false)}
-      />
-    </>
   );
 }
