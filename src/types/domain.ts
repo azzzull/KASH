@@ -168,6 +168,7 @@ export type InvestmentValuation = {
 };
 
 export type TransactionType = "income" | "expense" | "transfer" | "adjustment";
+export type TransactionSubtype = "external_transfer";
 export type TransactionStatus = "completed" | "void";
 
 export type Transaction = {
@@ -177,6 +178,7 @@ export type Transaction = {
   created_by_user_id?: string | null;
   updated_by_user_id?: string | null;
   type: TransactionType;
+  transaction_subtype?: TransactionSubtype | null;
   amount: MoneyAmount;
   wallet_id: string | null;
   category_id: string | null;

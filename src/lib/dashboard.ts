@@ -197,6 +197,10 @@ function moneyValue(value: unknown) {
   return toNumber(typeof value === "string" || typeof value === "number" || value == null ? value : 0);
 }
 
+function feeExpense(transaction: Transaction) {
+  return moneyValue(transaction.transfer_fee);
+}
+
 function walletCurrentBalance(wallet: WalletWithBalance) {
   return moneyValue(wallet.balance?.current_balance ?? wallet.initial_balance);
 }
@@ -228,7 +232,7 @@ function buildCashflow(daysInMonth: number, transactions: Transaction[]) {
     }
 
     if (transaction.type === "expense") {
-      bucket.expense += moneyValue(transaction.amount);
+      bucket.expense += moneyValue(transaction.amount) + feeExpense(transaction);
       return;
     }
 
@@ -295,7 +299,7 @@ function calculateMonthlyMetrics(transactions: Transaction[]) {
     .filter((transaction) => transaction.type === "expense")
     .reduce((sum, transaction) => sum + moneyValue(transaction.amount), 0);
   const transferFees = transactions
-    .filter((transaction) => transaction.type === "transfer")
+    .filter((transaction) => transaction.type === "transfer" || transaction.type === "expense")
     .reduce((sum, transaction) => sum + moneyValue(transaction.transfer_fee), 0);
   const expense = expensePrincipal + transferFees;
 
@@ -350,7 +354,7 @@ function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: 
   const destinationIncluded = transaction.destination_wallet_id ? includedWalletIds.has(transaction.destination_wallet_id) : false;
 
   if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;
-  if (transaction.type === "expense") return sourceIncluded ? -moneyValue(transaction.amount) : 0;
+  if (transaction.type === "expense") return sourceIncluded ? -(moneyValue(transaction.amount) + feeExpense(transaction)) : 0;
 
   if (transaction.type === "adjustment") {
     if (

@@ -37,7 +37,7 @@ import { useAuth } from "../context/AuthContext";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { getCategoryIcon } from "../lib/categoryMeta";
-import { createExpense, createIncome, createTransfer, filterCategoriesByType } from "../lib/transactions";
+import { createExpense, createExternalTransfer, createIncome, createTransfer, filterCategoriesByType, isExternalTransfer } from "../lib/transactions";
 import {
   canCreateTransaction,
   canEditTransaction,
@@ -104,6 +104,7 @@ function transactionIcon(type: TransactionType) {
 
 function transactionTitle(transaction: TransactionWithMeta) {
   if (transaction.title) return transaction.title;
+  if (isExternalTransfer(transaction)) return "Transfer Keluar";
   if (transaction.type === "transfer") return `Transfer to ${transaction.destinationWallet?.name ?? "Wallet"}`;
   if (transaction.type === "adjustment") {
     if (transaction.related_entity_type === "debt_payment") return "Debt Payment";
@@ -118,6 +119,7 @@ function transactionTitle(transaction: TransactionWithMeta) {
 }
 
 function transactionCategoryLabel(transaction: TransactionWithMeta) {
+  if (isExternalTransfer(transaction)) return transaction.category?.name ?? "Uncategorized";
   if (transaction.type === "transfer") return "Transfer";
   if (transaction.type === "adjustment") {
     if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return "Debt";
@@ -150,6 +152,7 @@ function transactionWalletLabel(transaction: TransactionWithMeta) {
 function signedAmount(transaction: TransactionWithMeta) {
   const amount = toNumber(transaction.amount);
   if (transaction.type === "income") return amount;
+  if (isExternalTransfer(transaction)) return -(amount + toNumber(transaction.transfer_fee));
   if (transaction.type === "expense") return -amount;
   return amount;
 }
@@ -180,14 +183,13 @@ function transactionDailyNetAmount(transaction: TransactionWithMeta, walletId?: 
   if (transaction.status !== "completed") return 0;
 
   const amount = toNumber(transaction.amount);
+  const fee = toNumber(transaction.transfer_fee);
 
   if (transaction.type === "income") return amount;
-  if (transaction.type === "expense") return -amount;
+  if (transaction.type === "expense") return -(amount + fee);
   if (transaction.type === "adjustment") return amount;
 
   if (transaction.type === "transfer") {
-    const fee = toNumber(transaction.transfer_fee);
-
     if (walletId) {
       if (transaction.wallet_id === walletId) return -(amount + fee);
       if (transaction.destination_wallet_id === walletId) return amount;
@@ -424,11 +426,15 @@ function TransactionFormModal({
   const [envelopeId, setEnvelopeId] = useState(transaction.envelope_id ?? "");
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const [transferFee, setTransferFee] = useState(formatDatabaseMoneyDigits(transaction.transfer_fee));
+  const [externalRecipient, setExternalRecipient] = useState(() =>
+    isExternalTransfer(transaction) ? (transaction.title || "").replace(/^Transfer ke\s+/i, "") : "",
+  );
   const [transactionDate, setTransactionDate] = useState(mode === "duplicate" ? getCurrentLocalDatetimeString() : toLocalDatetimeInputValue(transaction.transaction_date));
   const [note, setNote] = useState(transaction.note ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLElement>(null);
+  const externalTransfer = isExternalTransfer(transaction);
   const activeWallets = wallets.filter((wallet) => !wallet.is_archived || wallet.id === transaction.wallet_id || wallet.id === transaction.destination_wallet_id);
   const filteredCategories = useMemo(() => {
     if (transaction.type !== "income" && transaction.type !== "expense") return [];
@@ -476,6 +482,7 @@ function TransactionFormModal({
     if (!transactionDate) return t("transactions.chooseDate") || "Pilih tanggal transaksi.";
     if (!amountValue || toNumber(amountValue) === 0) return transaction.type === "adjustment" ? (t("wallets.adjustmentNonZero") || "Nilai penyesuaian tidak boleh nol.") : (t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.");
     if (transaction.type !== "adjustment" && toNumber(amountValue) <= 0) return t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.";
+    if (isExternalTransfer(transaction) && !externalRecipient.trim()) return t("transactions.chooseRecipient") || "Isi penerima atau tujuan transfer.";
     if ((transaction.type === "income" || transaction.type === "expense") && !categoryId) return t("transactions.chooseCategory") || "Pilih kategori.";
     if (transaction.type === "transfer") {
       if (!destinationWalletId) return t("transactions.chooseDestinationWallet") || "Pilih dompet tujuan.";
@@ -515,15 +522,25 @@ function TransactionFormModal({
               walletId,
             })
             : transaction.type === "expense"
-              ? await createExpense({
-                amount: amountValue,
-                categoryId,
-                envelopeId: envelopeId || null,
-                note: noteValue,
-                title: noteValue ?? categoryName,
-                transactionDate,
-                walletId,
-              })
+              ? externalTransfer
+                ? await createExternalTransfer({
+                  amount: amountValue,
+                  categoryId,
+                  note: noteValue,
+                  recipient: externalRecipient,
+                  transactionDate,
+                  transferFee: feeValue,
+                  walletId,
+                })
+                : await createExpense({
+                  amount: amountValue,
+                  categoryId,
+                  envelopeId: envelopeId || null,
+                  note: noteValue,
+                  title: noteValue ?? categoryName,
+                  transactionDate,
+                  walletId,
+                })
               : transaction.type === "transfer"
                 ? await createTransfer({
                   amount: amountValue,
@@ -545,7 +562,7 @@ function TransactionFormModal({
             envelopeId: transaction.type === "expense" ? (envelopeId || null) : null,
             destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
             note: noteValue,
-            title: transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
+            title: externalTransfer ? `Transfer ke ${externalRecipient.trim()}` : transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
             transactionDate,
             transferFee: feeValue,
             walletId,
@@ -572,7 +589,7 @@ function TransactionFormModal({
       onClose={onClose}
       maxWidth="lg"
       title={mode === "duplicate" ? (t("transactions.duplicateTitle") || "Duplikat Transaksi") : (t("transactions.editTitle") || "Edit Transaksi")}
-      description={`${t("transactions.type") || "Tipe"}: ${terms.getTransactionTypeLabel(transaction.type)}`}
+      description={`${t("transactions.type") || "Tipe"}: ${externalTransfer ? (t("transactions.outgoingTransfer") || "Transfer Keluar") : terms.getTransactionTypeLabel(transaction.type)}`}
     >
       <div>
         {error ? <div className="mb-4 rounded-xl border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">{error}</div> : null}
@@ -582,7 +599,7 @@ function TransactionFormModal({
             hasError={amountHasError}
             id="transaction-edit-amount"
             inputMode="numeric"
-            label={transaction.type === "adjustment" ? (t("transactions.signedAmount") || "Nominal Bertanda (+/-)") : (t("transactions.amount") || "Nominal")}
+            label={externalTransfer ? (t("transactions.transferAmount") || "Nominal Transfer") : transaction.type === "adjustment" ? (t("transactions.signedAmount") || "Nominal Bertanda (+/-)") : (t("transactions.amount") || "Nominal")}
             onChange={(event) => setAmount(transaction.type === "adjustment" ? formatSignedMoneyInput(event.target.value) : formatMoneyDigits(event.target.value))}
             value={amount}
           />
@@ -618,6 +635,15 @@ function TransactionFormModal({
               ))}
               <option value="__create_new__">{t("categories.createNewOption") || "+ Tambah Kategori Baru..."}</option>
             </SelectField>
+          ) : null}
+
+          {externalTransfer ? (
+            <FormField
+              id="transaction-edit-recipient"
+              label={t("transactions.recipient") || "Penerima / Tujuan"}
+              onChange={(event) => setExternalRecipient(event.target.value)}
+              value={externalRecipient}
+            />
           ) : null}
 
           {transaction.type === "expense" && envelopes.length > 0 ? (
@@ -672,6 +698,10 @@ function TransactionFormModal({
             <FormField id="transaction-edit-transfer-fee" inputMode="numeric" label={t("transactions.transferFeeOptional") || "Biaya Transfer (Opsional)"} onChange={(event) => setTransferFee(formatMoneyDigits(event.target.value))} value={transferFee} />
           ) : null}
 
+          {externalTransfer ? (
+            <FormField id="transaction-edit-transfer-fee" inputMode="numeric" label={t("transactions.adminFeeOptional") || "Biaya Admin (Opsional)"} onChange={(event) => setTransferFee(formatMoneyDigits(event.target.value))} value={transferFee} />
+          ) : null}
+
           <DatePickerField
             id="transaction-edit-date"
             label={t("common.date") || "Tanggal"}
@@ -682,11 +712,13 @@ function TransactionFormModal({
 
           <FormField id="transaction-edit-note" label={transaction.type === "adjustment" ? (t("transactions.reasonOrNote") || "Alasan / Catatan") : (t("transactions.note") || "Catatan")} value={note} onChange={(event) => setNote(event.target.value)} />
 
-          {transaction.type === "transfer" ? (
+          {transaction.type === "transfer" || externalTransfer ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
-              <p className="font-bold text-slate-900">{t("transactions.transferSummary") || "Ringkasan Transfer"}</p>
-              <div className="mt-3 flex justify-between gap-4"><span>{t("transactions.totalDeducted") || "Total Terpotong"}</span><span>{formatCurrency(toNumber(amountValue) + toNumber(feeValue), "IDR")}</span></div>
-              <div className="mt-2 flex justify-between gap-4"><span>{t("transactions.destinationReceives") || "Tujuan Menerima"}</span><span>{formatCurrency(toNumber(amountValue), "IDR")}</span></div>
+              <p className="font-bold text-slate-900">{externalTransfer ? (t("transactions.outgoingTransfer") || "Transfer Keluar") : (t("transactions.transferSummary") || "Ringkasan Transfer")}</p>
+              {externalTransfer ? <div className="mt-3 flex justify-between gap-4"><span>{t("transactions.transferAmount") || "Nominal Transfer"}</span><span>{formatCurrency(toNumber(amountValue), "IDR")}</span></div> : null}
+              {externalTransfer ? <div className="mt-2 flex justify-between gap-4"><span>{t("transactions.adminFee") || "Biaya Admin"}</span><span>{formatCurrency(toNumber(feeValue), "IDR")}</span></div> : null}
+              <div className="mt-2 flex justify-between gap-4 border-t border-slate-200 pt-2"><span>{externalTransfer ? (t("transactions.totalOutgoing") || "Total Keluar") : (t("transactions.totalDeducted") || "Total Terpotong")}</span><span>{formatCurrency(toNumber(amountValue) + toNumber(feeValue), "IDR")}</span></div>
+              {!externalTransfer ? <div className="mt-2 flex justify-between gap-4"><span>{t("transactions.destinationReceives") || "Tujuan Menerima"}</span><span>{formatCurrency(toNumber(amountValue), "IDR")}</span></div> : null}
             </div>
           ) : null}
 

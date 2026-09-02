@@ -14,7 +14,7 @@ import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
 import { getPersonalSpace, getActiveSpaceId } from "../../lib/spaces";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
-import { createExpense, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense, recordCrossSpaceAdvance, canCreateTransaction } from "../../lib/transactions";
+import { createExpense, createExternalTransfer, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense, recordCrossSpaceAdvance, canCreateTransaction } from "../../lib/transactions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
@@ -80,6 +80,8 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const [destinationWalletId, setDestinationWalletId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [envelopeId, setEnvelopeId] = useState("");
+  const [transferKind, setTransferKind] = useState<"internal" | "outgoing">("internal");
+  const [recipient, setRecipient] = useState("");
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [showQuickEnvelopeModal, setShowQuickEnvelopeModal] = useState(false);
   const [amount, setAmount] = useState("");
@@ -138,6 +140,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const activeWallets = paymentSource === "personal" ? personalWallets : wallets;
   const selectedWallet = activeWallets.find((wallet) => wallet.id === walletId) ?? null;
   const destinationWallet = wallets.find((wallet) => wallet.id === destinationWalletId) ?? null;
+  const isOutgoingTransfer = mode === "transfer" && transferKind === "outgoing";
   const filteredCategories = useMemo(
     () => filterCategoriesByType(categories, mode === "income" ? "income" : "expense"),
     [categories, mode],
@@ -160,8 +163,13 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     if (!transactionDate) return t("transactions.chooseDate") || "Pilih tanggal transaksi.";
 
     if (mode === "transfer") {
-      if (!destinationWalletId) return t("transactions.chooseDestinationWallet") || "Pilih dompet tujuan.";
-      if (walletId === destinationWalletId) return t("transactions.walletsMustBeDifferent") || "Dompet asal dan tujuan harus berbeda.";
+      if (isOutgoingTransfer) {
+        if (!recipient.trim()) return t("transactions.chooseRecipient") || "Isi penerima atau tujuan transfer.";
+        if (!categoryId) return t("transactions.chooseCategory") || "Pilih kategori untuk pemasukan atau pengeluaran.";
+      } else {
+        if (!destinationWalletId) return t("transactions.chooseDestinationWallet") || "Pilih dompet tujuan.";
+        if (walletId === destinationWalletId) return t("transactions.walletsMustBeDifferent") || "Dompet asal dan tujuan harus berbeda.";
+      }
       if (feeNumber < 0) return t("transactions.feeCannotBeNegative") || "Biaya transfer tidak boleh bernilai negatif.";
       if (isMoneyGreaterThan(totalTransferDeduction, selectedWalletBalance)) {
         return t("transactions.insufficientBalanceTransfer") || "Saldo dompet tidak mencukupi. Periksa kembali nominal transfer.";
@@ -242,14 +250,24 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               transactionDate,
               walletId,
             })
-            : await createTransfer({
-              amount: amountDigits,
-              destinationWalletId,
-              note: noteValue,
-              transactionDate,
-              transferFee: feeDigits || "0",
-              walletId,
-            });
+            : isOutgoingTransfer
+              ? await createExternalTransfer({
+                amount: amountDigits,
+                categoryId,
+                note: noteValue,
+                recipient,
+                transactionDate,
+                transferFee: feeDigits || "0",
+                walletId,
+              })
+              : await createTransfer({
+                amount: amountDigits,
+                destinationWalletId,
+                note: noteValue,
+                transactionDate,
+                transferFee: feeDigits || "0",
+                walletId,
+              });
 
       if (result.error) {
         console.error("Failed to create transaction", result.error);
@@ -334,10 +352,47 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               value={amount}
             />
 
-            {mode !== "transfer" && !(mode === "income" && terms.isManaged && paymentSource === "personal") ? (
+            {mode === "transfer" ? (
+              <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferKind("internal");
+                    setCategoryId("");
+                  }}
+                  className={`rounded-md px-3 py-2 text-left text-xs font-bold transition ${transferKind === "internal" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                >
+                  <span className="block">{t("transactions.betweenWallets") || "Antar Wallet"}</span>
+                  <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">{t("transactions.betweenWalletsDesc") || "Pindahkan uang antar wallet/rekening milik sendiri."}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferKind("outgoing");
+                    setDestinationWalletId("");
+                  }}
+                  className={`rounded-md px-3 py-2 text-left text-xs font-bold transition ${transferKind === "outgoing" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+                >
+                  <span className="block">{t("transactions.outgoingTransfer") || "Transfer Keluar"}</span>
+                  <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">{t("transactions.outgoingTransferDesc") || "Kirim uang ke orang lain atau rekening/wallet yang bukan milik saya."}</span>
+                </button>
+              </div>
+            ) : null}
+
+            {isOutgoingTransfer ? (
+              <FormField
+                id="transfer-recipient"
+                label={t("transactions.recipient") || "Penerima / Tujuan"}
+                onChange={(event) => setRecipient(event.target.value)}
+                placeholder={t("transactions.recipientPlaceholder") || "Andi"}
+                value={recipient}
+              />
+            ) : null}
+
+            {(mode !== "transfer" || isOutgoingTransfer) && !(mode === "income" && terms.isManaged && paymentSource === "personal") ? (
               <SelectField
                 id={`${mode}-category`}
-                label={mode === "income" ? terms.incomeCategoryLabel : (t("categories.title") || "Kategori")}
+                label={mode === "income" ? terms.incomeCategoryLabel : (isOutgoingTransfer ? t("transactions.category") || "Kategori" : (t("categories.title") || "Kategori"))}
                 action={
                   <button
                     type="button"
@@ -454,7 +509,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </SelectField>
             ) : null}
 
-            {mode === "transfer" ? (
+            {mode === "transfer" && !isOutgoingTransfer ? (
               <>
                 <SelectField id="transfer-destination" label={t("transactions.toWallet") || "Ke Dompet"} onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
                   <option value="">{t("transactions.selectDestinationWallet") || "Pilih Dompet Tujuan"}</option>
@@ -475,6 +530,17 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </>
             ) : null}
 
+            {isOutgoingTransfer ? (
+              <FormField
+                id="transfer-fee"
+                inputMode="numeric"
+                label={t("transactions.adminFeeOptional") || "Biaya Admin (Opsional)"}
+                onChange={(event) => setTransferFee(formatMoneyDigits(event.target.value))}
+                placeholder="0"
+                value={transferFee}
+              />
+            ) : null}
+
             <DatePickerField id={`${mode}-date`} label={t("transactions.dateTime") || "Tanggal & Waktu"} enableTime onChange={(value) => setTransactionDate(value)} value={transactionDate} />
 
             <FormField
@@ -488,37 +554,39 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               value={note}
             />
 
-            {mode === "transfer" && selectedWallet && destinationWallet ? (
+            {mode === "transfer" && selectedWallet && (destinationWallet || isOutgoingTransfer) ? (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
-                <p className="font-bold text-slate-900">{t("transactions.transferBreakdown") || "Rincian Transfer"}</p>
+                <p className="font-bold text-slate-900">{isOutgoingTransfer ? t("transactions.outgoingTransfer") || "Transfer Keluar" : t("transactions.transferBreakdown") || "Rincian Transfer"}</p>
                 <dl className="mt-2 space-y-1">
                   <div className="flex justify-between gap-4">
-                    <dt>{t("transactions.from") || "Dari"} {selectedWallet?.name ?? "-"}</dt>
+                    <dt>{isOutgoingTransfer ? t("transactions.transferAmount") || "Nominal Transfer" : `${t("transactions.from") || "Dari"} ${selectedWallet?.name ?? "-"}`}</dt>
                     <dd>{formatCurrency(amountNumber, selectedWallet?.currency ?? "IDR")}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <dt>{t("transactions.fee") || "Biaya"}</dt>
+                    <dt>{isOutgoingTransfer ? t("transactions.adminFee") || "Biaya Admin" : t("transactions.fee") || "Biaya"}</dt>
                     <dd>{formatCurrency(feeNumber, selectedWallet?.currency ?? "IDR")}</dd>
                   </div>
                   <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 text-slate-900">
-                    <dt>{t("transactions.totalDeducted") || "Total Terpotong"}</dt>
+                    <dt>{isOutgoingTransfer ? t("transactions.totalOutgoing") || "Total Keluar" : t("transactions.totalDeducted") || "Total Terpotong"}</dt>
                     <dd>{formatCurrency(totalDeducted, selectedWallet?.currency ?? "IDR")}</dd>
                   </div>
-                  <div className="flex justify-between gap-4">
-                    <dt>{destinationWallet?.name ?? "Tujuan"} {t("transactions.receives") || "menerima"}</dt>
-                    <dd>{formatCurrency(amountNumber, destinationWallet?.currency ?? "IDR")}</dd>
-                  </div>
+                  {!isOutgoingTransfer ? (
+                    <div className="flex justify-between gap-4">
+                      <dt>{destinationWallet?.name ?? "Tujuan"} {t("transactions.receives") || "menerima"}</dt>
+                      <dd>{formatCurrency(amountNumber, destinationWallet?.currency ?? "IDR")}</dd>
+                    </div>
+                  ) : null}
                 </dl>
               </div>
             ) : null}
 
-            {mode === "transfer" && wallets.length < 2 ? (
+            {mode === "transfer" && !isOutgoingTransfer && wallets.length < 2 ? (
               <p className="rounded-lg border border-kash-gold/40 bg-kash-gold/10 px-4 py-3 text-sm font-bold text-slate-900">
                 {t("transactions.needTwoWallets") || "Tambahkan setidaknya satu dompet aktif lainnya sebelum membuat transfer."}
               </p>
             ) : null}
 
-            <Button disabled={saving || (mode === "transfer" && wallets.length < 2)} type="submit">
+            <Button disabled={saving || (mode === "transfer" && !isOutgoingTransfer && wallets.length < 2)} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
               {saving ? (t("common.saving") || "Menyimpan...") : copy.submitLabel}
             </Button>

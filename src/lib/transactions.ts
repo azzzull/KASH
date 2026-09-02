@@ -35,6 +35,12 @@ type TransferInput = BaseTransactionInput & {
   transferFee: string;
 };
 
+type ExternalTransferInput = BaseTransactionInput & {
+  categoryId: string;
+  recipient: string;
+  transferFee: string;
+};
+
 type AdjustmentInput = Pick<BaseTransactionInput, "transactionDate" | "walletId" | "spaceId"> & {
   amount: string;
   reason: string;
@@ -228,9 +234,13 @@ function attachTransactionMeta(
 }
 
 function outgoingAmountFor(type: TransactionType, amount: string | number, transferFee: string | number = "0") {
-  if (type === "expense") return String(amount);
+  if (type === "expense") return addMoneyValues(amount, transferFee);
   if (type === "transfer") return addMoneyValues(amount, transferFee);
   return null;
+}
+
+export function isExternalTransfer(transaction: Pick<Transaction, "type" | "transaction_subtype">) {
+  return transaction.type === "expense" && transaction.transaction_subtype === "external_transfer";
 }
 
 async function getWalletCurrentBalance(walletId: string) {
@@ -260,6 +270,7 @@ async function createTransaction(payload: {
   destination_wallet_id?: string | null;
   note?: string | null;
   title?: string | null;
+  transaction_subtype?: Transaction["transaction_subtype"];
   transfer_fee?: string;
   transaction_date: string;
   type: TransactionType;
@@ -280,6 +291,7 @@ async function createTransaction(payload: {
       user_id: userId,
       space_id: targetSpaceId,
       type: payload.type,
+      transaction_subtype: payload.transaction_subtype ?? null,
       amount: payload.amount,
       wallet_id: payload.wallet_id,
       category_id: payload.category_id ?? null,
@@ -316,6 +328,23 @@ export async function createExpense(input: CategoryTransactionInput) {
     note: input.note,
     title: input.title,
     transaction_date: input.transactionDate,
+    type: "expense",
+    wallet_id: input.walletId,
+    space_id: input.spaceId,
+  });
+}
+
+export async function createExternalTransfer(input: ExternalTransferInput) {
+  const recipient = input.recipient.trim();
+
+  return createTransaction({
+    amount: input.amount,
+    category_id: input.categoryId,
+    note: input.note,
+    title: recipient ? `Transfer ke ${recipient}` : "Transfer Keluar",
+    transaction_date: input.transactionDate,
+    transaction_subtype: "external_transfer",
+    transfer_fee: input.transferFee,
     type: "expense",
     wallet_id: input.walletId,
     space_id: input.spaceId,
@@ -714,6 +743,7 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     destination_wallet_id: input.destinationWalletId ?? null,
     note: input.note?.trim() || null,
     title: (input.title ?? transaction.title ?? "").trim(),
+    transaction_subtype: transaction.transaction_subtype ?? null,
     transaction_date: toUtcIsoString(input.transactionDate ?? transaction.transaction_date),
     transfer_fee: input.transferFee ?? "0",
     wallet_id: input.walletId,

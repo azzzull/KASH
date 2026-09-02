@@ -93,7 +93,7 @@ export function calculateDaySummary(transactions: TransactionWithMeta[]): Calend
     return total + toNumber(transaction.amount);
   }, 0);
   const expense = completedTransactions.reduce((total, transaction) => {
-    if (transaction.type === "expense") return total + toNumber(transaction.amount);
+    if (transaction.type === "expense") return total + toNumber(transaction.amount) + toNumber(transaction.transfer_fee);
     if (transaction.type === "transfer") return total + toNumber(transaction.transfer_fee);
     return total;
   }, 0);

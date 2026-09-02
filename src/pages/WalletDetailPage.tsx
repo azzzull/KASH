@@ -15,7 +15,7 @@ import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
-import { createAdjustment, getTransactions, type TransactionWithMeta } from "../lib/transactions";
+import { createAdjustment, getTransactions, isExternalTransfer, type TransactionWithMeta } from "../lib/transactions";
 import { TransactionDetailPanel, transactionIcon, transactionTitle, transactionTone } from "../components/transactions/TransactionDetailPanel";
 import { getCurrentLocalDatetimeString } from "../lib/datetime";
 import {
@@ -1161,6 +1161,9 @@ export function WalletDetailPage() {
               const formattedDate = formatDate(new Date(tx.transaction_date));
               const isSourceWallet = tx.wallet_id === wallet.id;
               const isDestinationWallet = tx.destination_wallet_id === wallet.id;
+              const rowAmount = tx.type === "expense"
+                ? toNumber(tx.amount) + toNumber(tx.transfer_fee)
+                : toNumber(tx.amount);
 
               let displayAmountPrefix = tx.type === "income" ? "+" : tx.type === "expense" ? "-" : "";
               if (tx.type === "transfer") {
@@ -1190,8 +1193,13 @@ export function WalletDetailPage() {
 
                     <span className="text-right shrink-0">
                       <span className={`block text-sm font-extrabold ${tone}`}>
-                        {displayAmountPrefix}{formatCurrency(tx.amount, wallet.currency)}
+                        {displayAmountPrefix}{formatCurrency(rowAmount, wallet.currency)}
                       </span>
+                      {isExternalTransfer(tx) && toNumber(tx.transfer_fee) > 0 ? (
+                        <span className="block text-[11px] font-bold text-slate-500">
+                          {t("transactions.adminFee") || "Biaya Admin"} {formatCurrency(tx.transfer_fee, wallet.currency)}
+                        </span>
+                      ) : null}
                       {tx.type === "transfer" ? (
                         <span className="block text-[11px] font-bold text-slate-500">
                           {isDestinationWallet ? (t("transactions.transferIn") || "Masuk") : (t("transactions.transferOut") || "Keluar")}

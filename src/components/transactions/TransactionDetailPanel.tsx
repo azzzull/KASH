@@ -18,7 +18,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 import { supabase } from "../../lib/supabase";
 import type { TransactionType } from "../../types/domain";
-import { canCreateTransaction, canEditTransaction, type TransactionWithMeta } from "../../lib/transactions";
+import { canCreateTransaction, canEditTransaction, isExternalTransfer, type TransactionWithMeta } from "../../lib/transactions";
 
 export const transactionTone: Record<TransactionType, string> = {
   adjustment: "text-slate-700",
@@ -37,6 +37,7 @@ export function transactionIcon(type: TransactionType) {
 
 export function transactionTitle(transaction: TransactionWithMeta) {
   if (transaction.title) return transaction.title;
+  if (isExternalTransfer(transaction)) return "Transfer Keluar";
   if (transaction.type === "transfer") return `Transfer to ${transaction.destinationWallet?.name ?? "Wallet"}`;
   if (transaction.type === "adjustment") {
     if (transaction.related_entity_type === "debt_payment") return "Debt Payment";
@@ -51,6 +52,7 @@ export function transactionTitle(transaction: TransactionWithMeta) {
 }
 
 export function transactionCategoryLabel(transaction: TransactionWithMeta) {
+  if (isExternalTransfer(transaction)) return transaction.category?.name ?? "Uncategorized";
   if (transaction.type === "transfer") return "Transfer";
   if (transaction.type === "adjustment") {
     if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return "Debt";
@@ -85,6 +87,7 @@ export function transactionWalletLabel(transaction: TransactionWithMeta) {
 export function signedTransactionAmount(transaction: TransactionWithMeta) {
   const amount = toNumber(transaction.amount);
   if (transaction.type === "income") return amount;
+  if (isExternalTransfer(transaction)) return -(amount + toNumber(transaction.transfer_fee));
   if (transaction.type === "expense" || transaction.cross_space_role === "personal_cash_out") return -amount;
   return amount;
 }
@@ -233,6 +236,7 @@ export function TransactionDetailModal({
   const isVoid = transaction.status === "void";
   const amount = toNumber(transaction.amount);
   const fee = toNumber(transaction.transfer_fee);
+  const externalTransfer = isExternalTransfer(transaction);
 
   const isReimbursableEvent = crossSpaceDetails?.eventType === "managed_expense_paid_personally";
   const isAdvanceEvent = crossSpaceDetails?.eventType === "personal_advance_to_managed";
@@ -241,6 +245,7 @@ export function TransactionDetailModal({
     if (transaction.title) return transaction.title;
     if (isReimbursableEvent) return t("reimbursable.title") || "Pengeluaran Reimburse";
     if (isAdvanceEvent) return t("spaces.personalAdvance") || "Talangan ke Managed";
+    if (externalTransfer) return t("transactions.outgoingTransfer") || "Transfer Keluar";
     if (transaction.type === "transfer") return `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`;
     if (transaction.type === "adjustment") {
       if (transaction.related_entity_type === "debt_payment") return t("debts.debtPayment") || "Pembayaran Utang";
@@ -257,6 +262,7 @@ export function TransactionDetailModal({
   const getTranslatedCategoryLabel = () => {
     if (isReimbursableEvent) return t("reimbursable.title") || "Pengeluaran Reimburse";
     if (isAdvanceEvent) return t("spaces.personalAdvance") || "Talangan ke Managed";
+    if (externalTransfer) return transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
     if (transaction.type === "transfer") return t("transactions.transfer") || "Transfer";
     if (transaction.type === "adjustment") {
       if (transaction.related_entity_type === "debt_payment" || transaction.related_entity_type === "debt_creation") return t("debts.debt") || "Utang";
@@ -366,7 +372,10 @@ export function TransactionDetailModal({
             </>
           ) : (
             <>
-              <DetailLine label={t("transactions.type") || "Tipe Transaksi"} value={terms.getTransactionTypeLabel(transaction.type)} />
+              <DetailLine label={t("transactions.type") || "Tipe Transaksi"} value={externalTransfer ? (t("transactions.outgoingTransfer") || "Transfer Keluar") : terms.getTransactionTypeLabel(transaction.type)} />
+              {externalTransfer ? <DetailLine label={t("transactions.transferAmount") || "Nominal Transfer"} value={formatCurrency(amount, currency)} /> : null}
+              {externalTransfer ? <DetailLine label={t("transactions.adminFee") || "Biaya Admin"} value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
+              {externalTransfer ? <DetailLine label={t("transactions.totalOutgoing") || "Total Keluar"} value={formatCurrency(amount + fee, currency)} /> : null}
               <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet_id === null && transaction.cross_space_role === "managed_spending" ? (t("transactions.paidWithPersonalFunds") || "Dibayar dengan dana pribadi") : transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
               {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
               {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}

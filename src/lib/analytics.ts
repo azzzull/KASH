@@ -216,11 +216,15 @@ function moneyValue(value: unknown) {
   return toNumber(typeof value === "string" || typeof value === "number" || value == null ? value : 0);
 }
 
+function feeExpense(transaction: Transaction) {
+  return moneyValue(transaction.transfer_fee);
+}
+
 function calculateCashFlowMetrics(transactions: Transaction[]) {
   const completed = transactions.filter((transaction) => transaction.status === "completed");
   const income = completed.reduce((sum, transaction) => (transaction.type === "income" ? sum + moneyValue(transaction.amount) : sum), 0);
   const expensePrincipal = completed.reduce((sum, transaction) => (transaction.type === "expense" ? sum + moneyValue(transaction.amount) : sum), 0);
-  const transferFees = completed.reduce((sum, transaction) => (transaction.type === "transfer" ? sum + moneyValue(transaction.transfer_fee) : sum), 0);
+  const transferFees = completed.reduce((sum, transaction) => (transaction.type === "transfer" || transaction.type === "expense" ? sum + moneyValue(transaction.transfer_fee) : sum), 0);
   const expense = expensePrincipal + transferFees;
 
   return {
@@ -401,7 +405,7 @@ function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: 
   const destinationIncluded = transaction.destination_wallet_id ? includedWalletIds.has(transaction.destination_wallet_id) : false;
 
   if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;
-  if (transaction.type === "expense") return sourceIncluded ? -moneyValue(transaction.amount) : 0;
+  if (transaction.type === "expense") return sourceIncluded ? -(moneyValue(transaction.amount) + feeExpense(transaction)) : 0;
   if (transaction.type === "adjustment") {
     if (
       transaction.related_entity_type === "debt_creation" ||

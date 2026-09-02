@@ -2,8 +2,9 @@ import React, { type CSSProperties } from "react";
 import { useI18n, type TranslationKey } from "../../i18n";
 import { getCategoryIcon } from "../../lib/categoryMeta";
 import { formatCurrency, toNumber } from "../../lib/money";
-import type { TransactionType } from "../../types/domain";
+import type { TransactionSubtype, TransactionType } from "../../types/domain";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
+import { isExternalTransfer } from "../../lib/transactions";
 import { transactionIcon, transactionTone } from "./TransactionDetailPanel";
 
 export type TransactionRowData = {
@@ -13,6 +14,7 @@ export type TransactionRowData = {
   related_entity_type?: string | null;
   status?: "completed" | "pending" | "void";
   title?: string | null;
+  transaction_subtype?: TransactionSubtype | null;
   transaction_date: string;
   transfer_fee?: string | number | null;
   type: TransactionType;
@@ -57,6 +59,7 @@ export function TransactionRow({
   const iconClass = transaction.category?.color ? "" : transactionTone[transaction.type];
   const fee = toNumber(transaction.transfer_fee ?? 0);
   const amount = toNumber(transaction.amount);
+  const externalTransfer = isExternalTransfer(transaction);
   const timeLabel = new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(transaction.transaction_date));
 
   // Determine category and subtitle based on authoritative cross_space_event.event_type
@@ -77,6 +80,8 @@ export function TransactionRow({
     } else {
       categoryLabel = adjustmentCategory(transaction.related_entity_type, t);
     }
+  } else if (externalTransfer) {
+    categoryLabel = transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
   } else if (transaction.type === "transfer") {
     categoryLabel = t("transactions.transfer") || "Transfer";
   } else if (transaction.type === "adjustment") {
@@ -87,6 +92,8 @@ export function TransactionRow({
 
   const title = transaction.title || (transaction.type === "transfer"
     ? `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`
+    : externalTransfer
+      ? t("transactions.outgoingTransfer") || "Transfer Keluar"
     : transaction.type === "adjustment"
       ? adjustmentTitle(transaction.related_entity_type, t)
       : transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori"));
@@ -99,6 +106,8 @@ export function TransactionRow({
 
   const displayAmount = hideAmounts
     ? "••••••"
+    : externalTransfer
+      ? formatCurrency(-(amount + fee), currency)
     : transaction.type === "transfer"
       ? formatCurrency(amount, currency)
       : transaction.cross_space_role === "personal_cash_out"
@@ -135,7 +144,7 @@ export function TransactionRow({
         </span>
         {isVoid ? <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{t("transactions.voided") || "Dibatalkan"}</span> : null}
       </span>
-      <span {...amountClickProps}><span className={`block text-sm font-extrabold ${amountTone}`}>{displayAmount}</span>{!hideAmounts && transaction.type === "transfer" && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">+ {t("transactions.fee") || "biaya"} {formatCurrency(fee, currency)}</span> : null}<span className="mt-0.5 block text-[11px] font-medium text-slate-500">{timeLabel}</span></span>
+      <span {...amountClickProps}><span className={`block text-sm font-extrabold ${amountTone}`}>{displayAmount}</span>{!hideAmounts && (transaction.type === "transfer" || externalTransfer) && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">{externalTransfer ? t("transactions.adminFee") || "Biaya Admin" : `+ ${t("transactions.fee") || "biaya"}`} {formatCurrency(fee, currency)}</span> : null}<span className="mt-0.5 block text-[11px] font-medium text-slate-500">{timeLabel}</span></span>
     </span>
     {density === "default" ? (
       <span className="hidden items-center gap-4 px-2 py-2.5 text-sm md:flex">
@@ -147,7 +156,7 @@ export function TransactionRow({
           </span>
         </span>
         <span className="min-w-0 truncate font-medium text-slate-500">{walletLabel}</span>
-        <span {...amountClickProps}><span className={`block text-right font-extrabold ${amountTone}`}>{displayAmount}{!hideAmounts && transaction.type === "transfer" && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">+ {t("transactions.fee") || "biaya"} {formatCurrency(fee, currency)}</span> : null}</span></span>
+        <span {...amountClickProps}><span className={`block text-right font-extrabold ${amountTone}`}>{displayAmount}{!hideAmounts && (transaction.type === "transfer" || externalTransfer) && fee > 0 ? <span className="block text-[10px] font-bold text-kash-expense">{externalTransfer ? t("transactions.adminFee") || "Biaya Admin" : `+ ${t("transactions.fee") || "biaya"}`} {formatCurrency(fee, currency)}</span> : null}</span></span>
         <span className="text-right text-xs font-medium text-slate-500">{timeLabel}</span>
       </span>
     ) : null}

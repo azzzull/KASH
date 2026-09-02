@@ -46,6 +46,7 @@ import type {
   RecurringPaymentStatus,
   Transaction,
   TransactionStatus,
+  TransactionSubtype,
   TransactionType,
   Wallet,
   WalletBalance,
@@ -231,6 +232,7 @@ export type Database = {
           user_id: string;
           space_id?: string;
           type: TransactionType;
+          transaction_subtype?: TransactionSubtype | null;
           amount: string;
           wallet_id: string;
           category_id?: string | null;
