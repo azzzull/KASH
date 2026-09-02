@@ -301,3 +301,17 @@ a:focus-visible {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Mobile scroll containers keep their native scrolling behavior without visible tracks or thumbs. */
+@media (max-width: 767px) {
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
