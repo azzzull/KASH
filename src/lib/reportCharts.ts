@@ -14,12 +14,12 @@ export function buildCashFlowTrend(data: TransactionRecapData): CashFlowPoint[] 
   const groups = new Map<string, CashFlowPoint>();
   const format = new Intl.DateTimeFormat("en-GB", groupByMonth ? { month: "short", year: "2-digit" } : { day: "numeric", month: "short" });
   data.transactions.filter((transaction) => transaction.status === "completed").forEach((transaction) => {
-    const date = new Date(transaction.transaction_date); const key = groupByMonth ? `${date.getFullYear()}-${date.getMonth()}` : date.toISOString().slice(0, 10);
+    const parsedDate = new Date(transaction.transaction_date); const date = Number.isFinite(parsedDate.getTime()) ? parsedDate : start; const key = groupByMonth ? `${date.getFullYear()}-${date.getMonth()}` : date.toISOString().slice(0, 10);
     const point = groups.get(key) ?? { label: format.format(date), shortLabel: groupByMonth ? format.format(date) : String(date.getDate()), income: 0, expense: 0, net: 0 };
     const amount = toNumber(transaction.amount); const fee = transaction.type === "expense" || transaction.type === "transfer" ? toNumber(transaction.transfer_fee) : 0;
-    if (transaction.type === "income" && !isEconomicMovement(transaction.related_entity_type)) point.income += amount;
-    if (transaction.type === "expense" && !isEconomicMovement(transaction.related_entity_type)) point.expense += amount;
-    point.expense += fee;
+    if (transaction.type === "income" && !isEconomicMovement(transaction.related_entity_type)) point.income += Number.isFinite(amount) ? amount : 0;
+    if (transaction.type === "expense" && !isEconomicMovement(transaction.related_entity_type)) point.expense += Number.isFinite(amount) ? amount : 0;
+    point.expense += Number.isFinite(fee) ? fee : 0;
     point.net = point.income - point.expense;
     groups.set(key, point);
   });

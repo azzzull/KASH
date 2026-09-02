@@ -11,6 +11,27 @@ const PAGE = { width: 210, height: 297, left: 16, right: 194, footer: 289 };
 const EMERALD = [5, 150, 105] as const;
 let logoDataUrl: Promise<string | null> | null = null;
 
+function safeNumber(value: unknown) { const number = Number(value); return Number.isFinite(number) ? number : 0; }
+function safeDate(value: unknown, fallback: string) { const date = new Date(typeof value === "string" ? value : ""); return Number.isFinite(date.getTime()) ? date.toISOString() : fallback; }
+function stageError(stage: string, error: unknown) { return new Error(`[${stage}] ${error instanceof Error ? error.message : String(error)}`); }
+
+function normalizeFinancialReport(data: FinancialReportData): FinancialReportData {
+  const recap = data.transactionRecap; const fallbackDate = safeDate(recap.period?.start, new Date(0).toISOString());
+  return {
+    ...data,
+    currentBalance: safeNumber(data.currentBalance),
+    transactionRecap: {
+      ...recap,
+      space: { ...recap.space, name: recap.space?.name || "KASH Space" },
+      period: { ...recap.period, label: recap.period?.label || "Selected period", start: fallbackDate, end: safeDate(recap.period?.end, fallbackDate) },
+      summary: { income: safeNumber(recap.summary?.income), expensePrincipal: safeNumber(recap.summary?.expensePrincipal), adminFees: safeNumber(recap.summary?.adminFees), totalExpense: safeNumber(recap.summary?.totalExpense), netCashFlow: safeNumber(recap.summary?.netCashFlow), transactionCount: safeNumber(recap.summary?.transactionCount) },
+      transactions: (recap.transactions ?? []).map((transaction) => ({ ...transaction, transaction_date: safeDate(transaction.transaction_date, fallbackDate), amount: safeNumber(transaction.amount), transfer_fee: safeNumber(transaction.transfer_fee), title: transaction.title ?? "" })),
+      categoryBreakdown: (recap.categoryBreakdown ?? []).map((item) => ({ ...item, categoryName: item.categoryName || "Uncategorized", amount: safeNumber(item.amount), transactionCount: safeNumber(item.transactionCount), percentage: safeNumber(item.percentage) })),
+      walletBreakdown: (recap.walletBreakdown ?? []).map((item) => ({ ...item, wallet: { ...item.wallet, name: item.wallet?.name || "Wallet" }, cashIn: safeNumber(item.cashIn), cashOut: safeNumber(item.cashOut), netMovement: safeNumber(item.netMovement), transactionCount: safeNumber(item.transactionCount) })),
+    },
+  };
+}
+
 function slug(value: string) { return value.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim().replace(/[. ]+$/g, "") || "Space"; }
 function periodFilePart(data: TransactionRecapData) { return data.period.month !== undefined && data.period.year !== undefined ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(new Date(data.period.year, data.period.month, 1)).replace(" ", "-") : `${data.period.start.slice(0, 10)}-to-${new Date(new Date(data.period.end).getTime() - 1).toISOString().slice(0, 10)}`; }
 export function reportFilename(kind: ExportKind, data: TransactionRecapData, extension: "pdf" | "xlsx" | "csv") { const prefix = kind === "financial" ? "KASH-Financial-Report" : kind === "recap" ? "KASH-Transaction-Recap" : "KASH-Transactions"; return `${prefix}-${slug(data.space.name)}-${periodFilePart(data)}.${extension}`; }
@@ -27,7 +48,7 @@ function loadLogoDataUrl() {
     image.onload = () => { const canvas = document.createElement("canvas"); canvas.width = 1194; canvas.height = 304; const context = canvas.getContext("2d"); if (!context) { URL.revokeObjectURL(blobUrl); reject(new Error("Unable to create logo canvas")); return; } context.drawImage(image, 0, 0, canvas.width, canvas.height); URL.revokeObjectURL(blobUrl); resolve(canvas.toDataURL("image/png")); };
     image.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error("Unable to load KASH logo")); };
     image.src = blobUrl;
-  })).catch(() => null);
+  })).catch((error) => { console.warn("[KASH Financial Report Export][logo] Using text fallback", error); return null; });
   return logoDataUrl;
 }
 
@@ -101,20 +122,30 @@ export async function exportTransactionRecapPdf(data: TransactionRecapData) {
   footer(doc, data, page); download(doc.output("blob"), reportFilename("recap", data, "pdf"));
 }
 
+export async function createFinancialReportPdfBlob(rawData: FinancialReportData): Promise<Blob> {
+  const data = normalizeFinancialReport(rawData); const recap = data.transactionRecap; const l = labels(recap); const s = recap.summary;
+  let jsPDFConstructor: typeof import("jspdf").jsPDF;
+  try { ({ jsPDF: jsPDFConstructor } = await import("jspdf")); } catch (error) { throw stageError("pdf-library", error); }
+  const doc = new jsPDFConstructor({ format: "a4", orientation: "portrait", unit: "mm" });
+  try { await pdfHeader(doc, "Financial Report", recap); } catch (error) { throw stageError("pdf-header", error); }
+  try { metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46); } catch (error) { throw stageError("pdf-kpis", error); }
+  try { drawCashFlowTrend(doc, recap, PAGE.left, 72, 178, 53); } catch (error) { console.error("[KASH Financial Report Export][chart-cash-flow]", error); chartPanel(doc, "Cash Flow Trend", PAGE.left, 72, 178, 53); }
+  try { drawRankedChart(doc, l.category, recap.categoryBreakdown.map((item) => ({ label: item.categoryName, value: item.amount, percentage: item.percentage })), PAGE.left, 131, 86, 59); } catch (error) { console.error("[KASH Financial Report Export][chart-category]", error); chartPanel(doc, l.category, PAGE.left, 131, 86, 59); }
+  try { drawRankedChart(doc, "Wallet Activity", recap.walletBreakdown.map((item) => ({ label: item.wallet.name, value: item.cashOut })), 108, 131, 86, 59); } catch (error) { console.error("[KASH Financial Report Export][chart-wallet]", error); chartPanel(doc, "Wallet Activity", 108, 131, 86, 59); }
+  try {
+    doc.addPage(); let y = 20; sectionTitle(doc, "Financial Summary", y); y += 8;
+    const detailMetrics: Metric[] = [[l.income, s.income], [l.expense, s.expensePrincipal], ["Admin Fee", s.adminFees], [l.total, s.totalExpense], [l.net, s.netCashFlow]];
+    detailMetrics.forEach(([label, value]) => { doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 10, 1.5, 1.5, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(51, 65, 85); doc.setFontSize(8); doc.text(label, 20, y + 6); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(value), PAGE.right - 4, y + 6, { align: "right" }); y += 12; });
+    y += 4; sectionTitle(doc, l.category, y); y += 8; recap.categoryBreakdown.slice(0, 10).forEach((item) => { if (y > 266) { doc.addPage(); y = 20; sectionTitle(doc, l.category, y); y += 8; } doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.categoryName, 95), PAGE.left, y); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.text(`${item.percentage.toFixed(1)}%`, 145, y, { align: "right" }); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(item.amount), PAGE.right, y, { align: "right" }); doc.setDrawColor(226, 232, 240); doc.line(PAGE.left, y + 4, PAGE.right, y + 4); y += 9; });
+    if (recap.walletBreakdown.length) { y += 5; if (y > 245) { doc.addPage(); y = 20; } sectionTitle(doc, "Wallet Breakdown", y); y += 8; recap.walletBreakdown.slice(0, 8).forEach((item) => { if (y > 270) { doc.addPage(); y = 20; sectionTitle(doc, "Wallet Breakdown", y); y += 8; } doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 13, 2, 2, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.wallet.name, 75), 20, y + 5); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(7); doc.text(`In ${formatCurrency(item.cashIn)} · Out ${formatCurrency(item.cashOut)} · Net ${formatCurrency(item.netMovement)}`, 20, y + 10); y += 16; }); }
+    const pages = doc.getNumberOfPages(); for (let page = 1; page <= pages; page += 1) { doc.setPage(page); footer(doc, recap, page); }
+  } catch (error) { throw stageError("pdf-details", error); }
+  try { return doc.output("blob"); } catch (error) { throw stageError("pdf-blob", error); }
+}
+
 export async function exportFinancialReportPdf(data: FinancialReportData) {
-  const { jsPDF } = await import("jspdf"); const doc = new jsPDF({ format: "a4", orientation: "portrait", unit: "mm" }); const recap = data.transactionRecap; const l = labels(recap); const s = recap.summary;
-  await pdfHeader(doc, "Financial Report", recap); metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46);
-  drawCashFlowTrend(doc, recap, PAGE.left, 72, 178, 53);
-  drawRankedChart(doc, l.category, recap.categoryBreakdown.map((item) => ({ label: item.categoryName, value: item.amount, percentage: item.percentage })), PAGE.left, 131, 86, 59);
-  drawRankedChart(doc, "Wallet Activity", recap.walletBreakdown.map((item) => ({ label: item.wallet.name, value: item.cashOut })), 108, 131, 86, 59);
-  doc.addPage(); let y = 20; sectionTitle(doc, "Financial Summary", y); y += 8;
-  const detailMetrics: Metric[] = [[l.income, s.income], [l.expense, s.expensePrincipal], ["Admin Fee", s.adminFees], [l.total, s.totalExpense], [l.net, s.netCashFlow]];
-  detailMetrics.forEach(([label, value]) => { doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 10, 1.5, 1.5, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(51, 65, 85); doc.setFontSize(8); doc.text(label, 20, y + 6); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(value), PAGE.right - 4, y + 6, { align: "right" }); y += 12; });
-  y += 4; sectionTitle(doc, l.category, y); y += 8; recap.categoryBreakdown.slice(0, 10).forEach((item) => { if (y > 266) { doc.addPage(); y = 20; sectionTitle(doc, l.category, y); y += 8; } doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.categoryName, 95), PAGE.left, y); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.text(`${item.percentage.toFixed(1)}%`, 145, y, { align: "right" }); doc.setTextColor(15, 23, 42); doc.text(formatCurrency(item.amount), PAGE.right, y, { align: "right" }); doc.setDrawColor(226, 232, 240); doc.line(PAGE.left, y + 4, PAGE.right, y + 4); y += 9; });
-  if (recap.walletBreakdown.length) { y += 5; if (y > 245) { doc.addPage(); y = 20; } sectionTitle(doc, "Wallet Breakdown", y); y += 8; recap.walletBreakdown.slice(0, 8).forEach((item) => { if (y > 270) { doc.addPage(); y = 20; sectionTitle(doc, "Wallet Breakdown", y); y += 8; } doc.setFillColor(248, 250, 252); doc.roundedRect(PAGE.left, y, 178, 13, 2, 2, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.text(clipped(doc, item.wallet.name, 75), 20, y + 5); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(7); doc.text(`In ${formatCurrency(item.cashIn)} · Out ${formatCurrency(item.cashOut)} · Net ${formatCurrency(item.netMovement)}`, 20, y + 10); y += 16; }); }
-  const pages = doc.getNumberOfPages();
-  for (let page = 1; page <= pages; page += 1) { doc.setPage(page); footer(doc, recap, page); }
-  download(doc.output("blob"), reportFilename("financial", recap, "pdf"));
+  const blob = await createFinancialReportPdfBlob(data);
+  try { download(blob, reportFilename("financial", data.transactionRecap, "pdf")); } catch (error) { throw stageError("pdf-save", error); }
 }
 
 export async function exportTransactionRecapXlsx(data: TransactionRecapData) {

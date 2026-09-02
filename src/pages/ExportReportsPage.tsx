@@ -57,7 +57,7 @@ export function ExportReportsPage() {
       else if (kind === "xlsx") await exportTransactionRecapXlsx(data);
       else if (kind === "csv") exportTransactionCsv(data);
       else if (activeSpace && period) await exportFinancialReportPdf(await getFinancialReportData({ space: activeSpace, period }));
-    } catch (exportFailure) { console.error("Failed to generate report export", exportFailure); setExportError(true); } finally { setExporting(null); }
+    } catch (exportFailure) { console.error(kind === "financial-pdf" ? "[KASH Financial Report Export]" : "[KASH Transaction Recap Export]", exportFailure); setExportError(true); } finally { setExporting(null); }
   }, [activeSpace, data, exporting, format, period, reportKind]);
 
   useEffect(() => {
