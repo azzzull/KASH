@@ -589,6 +589,30 @@ export const en = {
     "wallets.activityHelpNote":
         "Trading activity only affects performance breakdown (realized vs unrealized) without altering wallet balance or Net Worth twice.",
     "wallets.currentBalance": "Current Balance",
+    "wallets.moveToManaged": "Move to Managed Space",
+    "wallets.moveDescription":
+        "Move this wallet and safely migratable transaction history to a managed space.",
+    "wallets.moveSelectManagedSpace": "Select the target Managed Space.",
+    "wallets.moveAnalyzeError": "Failed to analyze wallet migration.",
+    "wallets.moveError": "Failed to move wallet.",
+    "wallets.moveCurrentBalance": "Current Balance",
+    "wallets.moveTransactionsToMove": "Transactions to Move",
+    "wallets.moveCustomCategories": "Custom Categories to Copy",
+    "wallets.moveSafeDependencies": "Safe Dependencies",
+    "wallets.moveRequiresReview": "Requires Review",
+    "wallets.moveBlockingIssues": "Blocking Issues",
+    "wallets.moveWalletLabel": "Wallet",
+    "wallets.moveWarning":
+        "Moved history will no longer be included in Personal analytics and will be included in the target Managed Space analytics.",
+    "wallets.moveChooseManagedSpace": "Choose Managed Space",
+    "wallets.moveNoManagedSpaces": "No active Managed Space is available.",
+    "wallets.moveAnalyze": "Analyze Migration",
+    "wallets.moveSafeSummary":
+        "Migration is safe. Balance stays unchanged and all related history can be moved automatically.",
+    "wallets.moveBlockedSummary":
+        "This wallet has history that requires review before it can be moved.",
+    "wallets.moveOtherWallet": "Other wallet",
+    "wallets.moveConfirm": "Move Wallet",
     "wallets.valuationHistory": "Market Valuation History",
     "wallets.marketValue": "Market Value",
     "wallets.transactionHistoryDesc":

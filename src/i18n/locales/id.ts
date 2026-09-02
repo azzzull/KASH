@@ -597,6 +597,31 @@ export const id = {
     "wallets.activityHelpNote":
         "Aktivitas trading hanya mempengaruhi pembagian performa (realized vs unrealized) dan tidak mengubah saldo dompet maupun kekayaan bersih secara ganda.",
     "wallets.currentBalance": "Saldo Saat Ini",
+    "wallets.moveToManaged": "Pindahkan ke Managed Space",
+    "wallets.moveDescription":
+        "Pindahkan dompet dan riwayat transaksi yang aman ke space kelolaan.",
+    "wallets.moveSelectManagedSpace": "Pilih Managed Space tujuan.",
+    "wallets.moveAnalyzeError": "Gagal menganalisis migrasi dompet.",
+    "wallets.moveError": "Gagal memindahkan dompet.",
+    "wallets.moveCurrentBalance": "Saldo Saat Ini",
+    "wallets.moveTransactionsToMove": "Transaksi Dipindah",
+    "wallets.moveCustomCategories": "Kategori Custom Disalin",
+    "wallets.moveSafeDependencies": "Dependensi Aman",
+    "wallets.moveRequiresReview": "Perlu Review",
+    "wallets.moveBlockingIssues": "Blocking Issues",
+    "wallets.moveWalletLabel": "Dompet",
+    "wallets.moveWarning":
+        "Riwayat yang dipindahkan tidak lagi masuk ke analitik Personal dan akan masuk ke analitik Managed Space tujuan.",
+    "wallets.moveChooseManagedSpace": "Pilih Managed Space",
+    "wallets.moveNoManagedSpaces":
+        "Belum ada Managed Space aktif yang bisa dipilih.",
+    "wallets.moveAnalyze": "Analisis Migrasi",
+    "wallets.moveSafeSummary":
+        "Migrasi aman. Saldo tidak berubah dan seluruh riwayat terkait dapat dipindahkan otomatis.",
+    "wallets.moveBlockedSummary":
+        "Dompet ini memiliki riwayat yang perlu direview sebelum bisa dipindahkan.",
+    "wallets.moveOtherWallet": "Dompet lain",
+    "wallets.moveConfirm": "Pindahkan Dompet",
     "wallets.valuationHistory": "Riwayat Valuasi Nilai Pasar",
     "wallets.marketValue": "Nilai Pasar",
     "wallets.transactionHistoryDesc":

@@ -1,4 +1,4 @@
-import { ArrowLeft, RotateCcw, ArrowRight, Archive, Edit3, History, LineChart, Loader2, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, RotateCcw, ArrowRight, Archive, CheckCircle2, Edit3, History, LineChart, Loader2, MoveRight, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
@@ -36,12 +36,14 @@ import {
   getWalletById,
   getWalletLinkedGoalCount,
   getWalletTransactionCount,
+  analyzeWalletMoveToManaged,
+  moveWalletToManaged,
   recordInvestmentActivity,
   recordInvestmentValuation,
   updateWallet,
   type WalletWithBalance,
 } from "../lib/wallets";
-import type { InvestmentActivity, InvestmentActivityType, InvestmentValuation, WalletType } from "../types/domain";
+import type { FinancialSpace, InvestmentActivity, InvestmentActivityType, InvestmentValuation, WalletMoveAnalysis, WalletType } from "../types/domain";
 
 import {
   AdjustmentModal,
@@ -341,11 +343,214 @@ function RecordInvestmentActivityModal({
   );
 }
 
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function MoveWalletToManagedModal({
+  managedSpaces,
+  onClose,
+  onMoved,
+  wallet,
+}: {
+  managedSpaces: FinancialSpace[];
+  onClose: () => void;
+  onMoved: (targetSpaceId: string) => void;
+  wallet: WalletWithBalance;
+}) {
+  const { t, formatCurrency, formatDate } = useI18n();
+  const [targetSpaceId, setTargetSpaceId] = useState(managedSpaces[0]?.id ?? "");
+  const [analysis, setAnalysis] = useState<WalletMoveAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedSpace = managedSpaces.find((space) => space.id === targetSpaceId) ?? null;
+
+  const runAnalysis = async () => {
+    if (!targetSpaceId) {
+      setError(t("wallets.moveSelectManagedSpace") || "Pilih Managed Space tujuan.");
+      return;
+    }
+
+    setAnalyzing(true);
+    setError(null);
+    setAnalysis(null);
+
+    try {
+      const { data, error: analysisError } = await analyzeWalletMoveToManaged(wallet.id, targetSpaceId);
+      if (analysisError || !data) {
+        setError(analysisError?.message || (t("wallets.moveAnalyzeError") || "Gagal menganalisis migrasi dompet."));
+        return;
+      }
+      setAnalysis(data);
+    } catch (err) {
+      setError(errorMessage(err, t("wallets.moveAnalyzeError") || "Gagal menganalisis migrasi dompet."));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const moveWallet = async () => {
+    if (!analysis?.can_move || moving) return;
+
+    setMoving(true);
+    setError(null);
+    try {
+      const { error: moveError } = await moveWalletToManaged(wallet.id, targetSpaceId);
+      if (moveError) {
+        setError(moveError.message || (t("wallets.moveError") || "Gagal memindahkan dompet."));
+        return;
+      }
+      onMoved(targetSpaceId);
+    } catch (err) {
+      setError(errorMessage(err, t("wallets.moveError") || "Gagal memindahkan dompet."));
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  const statItems = analysis
+    ? [
+        { label: t("wallets.moveCurrentBalance") || "Saldo Saat Ini", value: formatCurrency(analysis.wallet.current_balance, analysis.wallet.currency) },
+        { label: t("wallets.moveTransactionsToMove") || "Transaksi Dipindah", value: String(analysis.transactions_to_move) },
+        { label: t("wallets.moveCustomCategories") || "Kategori Custom Disalin", value: String(analysis.custom_categories_to_copy) },
+        { label: t("wallets.moveSafeDependencies") || "Dependensi Aman", value: String(analysis.safe_dependencies) },
+        { label: t("wallets.moveRequiresReview") || "Perlu Review", value: String(analysis.requires_review) },
+        { label: t("wallets.moveBlockingIssues") || "Blocking Issues", value: String(analysis.blocking_issues.length) },
+      ]
+    : [];
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      maxWidth="2xl"
+      title={t("wallets.moveToManaged") || "Pindahkan ke Managed Space"}
+      description={t("wallets.moveDescription") || "Pindahkan dompet dan riwayat transaksi yang aman ke space kelolaan."}
+    >
+      <div className="space-y-4">
+        {error ? (
+          <div className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+
+        <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{t("wallets.moveWalletLabel") || "Dompet"}</p>
+          <p className="mt-1 text-base font-extrabold text-slate-900">{wallet.name}</p>
+          <p className="mt-1 text-xs font-semibold text-slate-600">
+            {t("wallets.moveWarning") || "Riwayat yang dipindahkan tidak lagi masuk ke analitik Personal dan akan masuk ke analitik Managed Space tujuan."}
+          </p>
+        </section>
+
+        <SelectField
+          disabled={analyzing || moving || managedSpaces.length === 0}
+          id="move-wallet-target-space"
+          label={t("wallets.moveChooseManagedSpace") || "Pilih Managed Space"}
+          onChange={(event) => {
+            setTargetSpaceId(event.target.value);
+            setAnalysis(null);
+          }}
+          placeholder={t("reimbursable.selectManagedSpace") || "Pilih Managed Space"}
+          value={targetSpaceId}
+        >
+          <option value="" disabled>
+            {t("reimbursable.selectManagedSpace") || "Pilih Managed Space"}
+          </option>
+          {managedSpaces.map((space) => (
+            <option key={space.id} value={space.id}>
+              {space.name}
+            </option>
+          ))}
+        </SelectField>
+
+        {managedSpaces.length === 0 ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-800">
+            {t("wallets.moveNoManagedSpaces") || "Belum ada Managed Space aktif yang bisa dipilih."}
+          </div>
+        ) : null}
+
+        <Button disabled={!targetSpaceId || analyzing || moving} isLoading={analyzing} onClick={() => void runAnalysis()} variant="secondary">
+          {t("wallets.moveAnalyze") || "Analisis Migrasi"}
+        </Button>
+
+        {analysis ? (
+          <section className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+              {statItems.map((item) => (
+                <div key={item.label} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-normal text-slate-500">{item.label}</p>
+                  <p className="mt-1 text-base font-extrabold text-slate-900">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className={`rounded-lg border px-4 py-3 text-sm font-bold ${analysis.can_move ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-slate-900"}`}>
+              <div className="flex items-start gap-2">
+                {analysis.can_move ? <CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-kash-emerald" size={17} /> : <AlertTriangle aria-hidden="true" className="mt-0.5 shrink-0 text-amber-600" size={17} />}
+                <p>
+                  {analysis.can_move
+                    ? (t("wallets.moveSafeSummary") || "Migrasi aman. Saldo tidak berubah dan seluruh riwayat terkait dapat dipindahkan otomatis.")
+                    : (t("wallets.moveBlockedSummary") || "Dompet ini memiliki riwayat yang perlu direview sebelum bisa dipindahkan.")}
+                </p>
+              </div>
+            </div>
+
+            {analysis.blocking_issues.length > 0 ? (
+              <div className="space-y-3">
+                {analysis.blocking_issues.map((issue) => (
+                  <div key={issue.code} className="rounded-lg border border-slate-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-extrabold text-slate-900">{issue.title}</p>
+                        <p className="mt-1 text-xs font-bold text-slate-500">
+                          {issue.classification} · {issue.count}
+                        </p>
+                      </div>
+                    </div>
+                    {issue.items.length > 0 ? (
+                      <div className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-100">
+                        {issue.items.slice(0, 5).map((item) => (
+                          <div key={item.id} className="grid gap-1 px-3 py-2 text-xs font-semibold text-slate-700">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 truncate font-extrabold text-slate-900">{item.title || item.other_wallet_name || item.id}</span>
+                              <span className="shrink-0 font-extrabold">{formatCurrency(item.amount ?? 0, wallet.currency)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 text-slate-500">
+                              <span className="min-w-0 truncate">{item.other_wallet_name ? `${t("wallets.moveOtherWallet") || "Dompet lain"}: ${item.other_wallet_name}` : item.note || item.id}</span>
+                              <span className="shrink-0">{item.date ? formatDate(new Date(item.date)) : ""}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+              <Button disabled={moving} onClick={onClose} variant="secondary">
+                {t("common.cancel") || "Batal"}
+              </Button>
+              <Button disabled={!analysis.can_move || moving || !selectedSpace} isLoading={moving} onClick={() => void moveWallet()}>
+                <MoveRight aria-hidden="true" size={17} />
+                {t("wallets.moveConfirm") || "Pindahkan Dompet"}
+              </Button>
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </Modal>
+  );
+}
+
 export function WalletDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, formatDate, formatCurrency } = useI18n();
-  const { activeSpace, userRole } = useActiveSpace();
+  const { activeSpace, personalSpace, refreshSpaces, setActiveSpace, spaces, userRole } = useActiveSpace();
   const canManageWallet = !activeSpace || activeSpace.space_type === "personal" || userRole === "owner" || userRole === "admin";
   const [wallet, setWallet] = useState<WalletWithBalance | null>(null);
   const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
@@ -359,6 +564,7 @@ export function WalletDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
+  const [showMoveWallet, setShowMoveWallet] = useState(false);
   const [showValuation, setShowValuation] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<InvestmentActivity | null>(null);
@@ -515,6 +721,13 @@ export function WalletDetailPage() {
   const lastValuationAt = wallet.balance?.last_valuation_at;
   const canEditInitialBalance = transactionCount === 0;
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
+  const managedSpaces = spaces.filter((space) => space.space_type === "managed" && !space.is_archived);
+  const canMoveToManaged =
+    canManageWallet &&
+    !wallet.is_archived &&
+    wallet.wallet_type !== "investment" &&
+    Boolean(personalSpace?.id) &&
+    wallet.space_id === personalSpace?.id;
   const heroMetadata = (
     <div className="mt-4 flex max-w-full flex-nowrap gap-2 overflow-x-auto border-t border-white/15 pt-3 text-xs font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       <div className="w-[7rem] shrink-0">
@@ -564,6 +777,12 @@ export function WalletDetailPage() {
                   label: t("common.edit") || "Edit",
                   icon: Edit3,
                   onClick: () => setShowEdit(true),
+                },
+                {
+                  label: t("wallets.moveToManaged") || "Pindahkan ke Managed Space",
+                  icon: MoveRight,
+                  hidden: !canMoveToManaged,
+                  onClick: () => setShowMoveWallet(true),
                 },
                 {
                   label: wallet.is_archived
@@ -649,6 +868,12 @@ export function WalletDetailPage() {
                   icon: SlidersHorizontal,
                   hidden: isInvestment || wallet.is_archived || !canManageWallet,
                   onClick: () => setShowAdjustment(true),
+                },
+                {
+                  label: t("wallets.moveToManaged") || "Pindahkan ke Managed Space",
+                  icon: MoveRight,
+                  hidden: !canMoveToManaged,
+                  onClick: () => setShowMoveWallet(true),
                 },
                 {
                   label: wallet.is_archived
@@ -953,6 +1178,23 @@ export function WalletDetailPage() {
           onClose={() => setShowAdjustment(false)}
           onSaved={() => {
             setShowAdjustment(false);
+            void loadWallet();
+          }}
+          wallet={wallet}
+        />
+      ) : null}
+      {showMoveWallet ? (
+        <MoveWalletToManagedModal
+          managedSpaces={managedSpaces}
+          onClose={() => setShowMoveWallet(false)}
+          onMoved={(targetSpaceId) => {
+            setShowMoveWallet(false);
+            const targetSpace = managedSpaces.find((space) => space.id === targetSpaceId);
+            if (targetSpace) {
+              setActiveSpace(targetSpace);
+            }
+            void refreshSpaces();
+            emitTransactionSaved();
             void loadWallet();
           }}
           wallet={wallet}

@@ -47,6 +47,8 @@ import type {
   TransactionType,
   Wallet,
   WalletBalance,
+  WalletMoveAnalysis,
+  WalletMoveResult,
   WalletType,
   SharedSavings,
   SharedSavingsMember,
@@ -603,6 +605,20 @@ export type Database = {
           p_wallet_id: string;
         };
         Returns: void;
+      };
+      analyze_wallet_move_to_managed: {
+        Args: {
+          p_wallet_id: string;
+          p_target_space_id: string;
+        };
+        Returns: WalletMoveAnalysis;
+      };
+      move_wallet_to_managed: {
+        Args: {
+          p_wallet_id: string;
+          p_target_space_id: string;
+        };
+        Returns: WalletMoveResult;
       };
       delete_goal_if_empty: {
         Args: {

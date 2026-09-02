@@ -175,6 +175,62 @@ export type WalletBalance = {
   last_valuation_at?: string | null;
 };
 
+export type WalletMoveIssueClassification =
+  | "SAFE_AUTO_MIGRATE"
+  | "NEEDS_TRANSFORMATION"
+  | "BLOCK_AND_REVIEW";
+
+export type WalletMoveReviewItem = {
+  id: string;
+  date?: string | null;
+  type?: TransactionType | string | null;
+  amount?: MoneyAmount | null;
+  title?: string | null;
+  note?: string | null;
+  other_wallet_id?: string | null;
+  other_wallet_name?: string | null;
+};
+
+export type WalletMoveIssue = {
+  classification: WalletMoveIssueClassification;
+  code: string;
+  title: string;
+  count: number;
+  items: WalletMoveReviewItem[];
+};
+
+export type WalletMoveAnalysis = {
+  wallet: {
+    id: string;
+    name: string;
+    currency: CurrencyCode;
+    current_balance: MoneyAmount;
+  };
+  source_space_id: string;
+  target_space_id: string;
+  target_space_name: string;
+  transactions_to_move: number;
+  total_wallet_transactions: number;
+  custom_categories_to_copy: number;
+  custom_categories_to_reuse_or_copy: number;
+  safe_dependencies: number;
+  needs_transformation: number;
+  requires_review: number;
+  blocking_issues: WalletMoveIssue[];
+  can_move: boolean;
+};
+
+export type WalletMoveResult = {
+  success: boolean;
+  wallet_id: string;
+  source_space_id: string;
+  target_space_id: string;
+  moved_transactions: number;
+  balance_before: MoneyAmount;
+  balance_after: MoneyAmount;
+  analysis: WalletMoveAnalysis;
+};
+
 export type GoalStatus = "active" | "completed" | "cancelled";
 
 export type Goal = {
@@ -725,4 +781,3 @@ export type CrossSpaceSettlement = {
   client_request_id?: string | null;
   created_at: string;
 };
-

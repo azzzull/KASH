@@ -1,4 +1,14 @@
-import type { CurrencyCode, InvestmentActivity, InvestmentActivityType, InvestmentValuation, Wallet, WalletBalance, WalletType } from "../types/domain";
+import type {
+  CurrencyCode,
+  InvestmentActivity,
+  InvestmentActivityType,
+  InvestmentValuation,
+  Wallet,
+  WalletBalance,
+  WalletMoveAnalysis,
+  WalletMoveResult,
+  WalletType,
+} from "../types/domain";
 import type { Database } from "../types/database";
 import type { TranslationKey } from "../i18n/index";
 import { getActiveSpaceId } from "./spaces";
@@ -237,6 +247,36 @@ export async function deleteWalletPermanently(id: string) {
   return supabase.rpc("delete_wallet_permanently", { p_wallet_id: id });
 }
 
+export async function analyzeWalletMoveToManaged(walletId: string, targetSpaceId: string): Promise<{
+  data: WalletMoveAnalysis | null;
+  error: Error | null;
+}> {
+  const { data, error } = await supabase.rpc("analyze_wallet_move_to_managed", {
+    p_wallet_id: walletId,
+    p_target_space_id: targetSpaceId,
+  });
+
+  return {
+    data: data ? (data as WalletMoveAnalysis) : null,
+    error: error ? new Error(error.message) : null,
+  };
+}
+
+export async function moveWalletToManaged(walletId: string, targetSpaceId: string): Promise<{
+  data: WalletMoveResult | null;
+  error: Error | null;
+}> {
+  const { data, error } = await supabase.rpc("move_wallet_to_managed", {
+    p_wallet_id: walletId,
+    p_target_space_id: targetSpaceId,
+  });
+
+  return {
+    data: data ? (data as WalletMoveResult) : null,
+    error: error ? new Error(error.message) : null,
+  };
+}
+
 export function parseWalletDeleteError(errorMessage: string | undefined): TranslationKey {
   if (!errorMessage) return "wallets.deleteError";
   
@@ -325,5 +365,4 @@ export async function deleteInvestmentActivity(id: string) {
   if (error) throw error;
   return { error: null };
 }
-
 
