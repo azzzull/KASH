@@ -365,3 +365,20 @@ export async function removeManagedSpaceMember(
     return { error: err };
   }
 }
+
+export async function leaveManagedSpace(
+  spaceId: string
+): Promise<{
+  error: Error | null;
+}> {
+  try {
+    const { error } = await supabase.rpc("leave_managed_space", {
+      p_space_id: spaceId,
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (err: any) {
+    return { error: err };
+  }
+}
+

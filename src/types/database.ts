@@ -1166,6 +1166,12 @@ export type Database = {
         };
         Returns: void;
       };
+      leave_managed_space: {
+        Args: {
+          p_space_id: string;
+        };
+        Returns: void;
+      };
     };
     Enums: {
       wallet_type: Wallet["wallet_type"];

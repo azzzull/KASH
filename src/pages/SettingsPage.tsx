@@ -10,6 +10,7 @@ import {
   Info,
   Loader2,
   Lock,
+  LogOut,
   Mail,
   Save,
   Settings,
@@ -53,6 +54,7 @@ export function SettingsPage() {
     renameManagedSpace,
     archiveManagedSpace,
     deleteManagedSpace,
+    leaveManagedSpace,
   } = useActiveSpace();
   const { locale, setLocale, t } = useI18n();
 
@@ -77,6 +79,10 @@ export function SettingsPage() {
   const [deleteSpaceModal, setDeleteSpaceModal] = useState(false);
   const [deletingSpaceLoading, setDeletingSpaceLoading] = useState(false);
   const [deleteSpaceError, setDeleteSpaceError] = useState<string | null>(null);
+
+  const [leaveSpaceModal, setLeaveSpaceModal] = useState(false);
+  const [leavingSpaceLoading, setLeavingSpaceLoading] = useState(false);
+  const [leaveSpaceError, setLeaveSpaceError] = useState<string | null>(null);
 
   const isManaged = activeSpace?.space_type === "managed";
   const isOwner = isManaged && (userRole === "owner" || activeSpace?.owner_user_id === user?.id);
@@ -175,6 +181,22 @@ export function SettingsPage() {
       }
     } finally {
       setDeletingSpaceLoading(false);
+    }
+  };
+
+  const handleConfirmLeaveSpace = async () => {
+    if (!activeSpace) return;
+    setLeavingSpaceLoading(true);
+    setLeaveSpaceError(null);
+    try {
+      await leaveManagedSpace(activeSpace.id);
+      setLeaveSpaceModal(false);
+      navigate("/");
+    } catch (err: any) {
+      console.error("Failed to leave space:", err);
+      setLeaveSpaceError(err?.message || t("common.error"));
+    } finally {
+      setLeavingSpaceLoading(false);
     }
   };
 
@@ -439,7 +461,7 @@ export function SettingsPage() {
                 <ChevronRight aria-hidden="true" className="shrink-0 text-slate-400" size={18} />
               </Link>
 
-              {/* Owner Lifecycle Actions */}
+              {/* Lifecycle Actions */}
               {isOwner ? (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
                   <Button
@@ -466,7 +488,23 @@ export function SettingsPage() {
                     <span>{t("spaces.deleteSpace") || "Hapus Permanen"}</span>
                   </Button>
                 </div>
-              ) : null}
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setLeaveSpaceError(null);
+                      setLeaveSpaceModal(true);
+                    }}
+                    className="gap-1.5 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 border-kash-expense/20 w-full sm:w-auto"
+                  >
+                    <LogOut size={14} />
+                    <span>{t("spaces.leaveSpace") || "Keluar dari Managed Space"}</span>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         ) : null}
@@ -644,6 +682,34 @@ export function SettingsPage() {
           {deleteSpaceError ? (
             <div className="rounded-xl border border-kash-expense/20 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
               {deleteSpaceError}
+            </div>
+          ) : null}
+        </ConfirmationDialog>
+      ) : null}
+
+      {/* Leave Space Confirmation Dialog */}
+      {leaveSpaceModal ? (
+        <ConfirmationDialog
+          title={
+            t("spaces.leaveSpaceTitle", { space: activeSpace?.name || "Managed Space" }) ||
+            `Keluar dari ${activeSpace?.name}?`
+          }
+          description={
+            t("spaces.leaveSpaceDesc") ||
+            "Kamu akan kehilangan akses ke Managed Space ini. Histori transaksi yang pernah kamu buat tetap tersimpan."
+          }
+          confirmLabel={t("spaces.leaveSpaceButton") || "Keluar"}
+          tone="danger"
+          isLoading={leavingSpaceLoading}
+          onConfirm={handleConfirmLeaveSpace}
+          onCancel={() => {
+            setLeaveSpaceModal(false);
+            setLeaveSpaceError(null);
+          }}
+        >
+          {leaveSpaceError ? (
+            <div className="rounded-xl border border-kash-expense/20 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
+              {leaveSpaceError}
             </div>
           ) : null}
         </ConfirmationDialog>

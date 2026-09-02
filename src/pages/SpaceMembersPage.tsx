@@ -5,6 +5,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { Button } from "../components/ui/Button";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
+import { EntityMoreActionsMenu } from "../components/ui/EntityMoreActionsMenu";
 import { AddMemberModal } from "../components/spaces/AddMemberModal";
 import { EditMemberRoleModal } from "../components/spaces/EditMemberRoleModal";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
@@ -21,7 +22,7 @@ import type { ManagedSpaceInvitation, ManagedSpaceMemberItem, ManagedSpaceRole }
 export function SpaceMembersPage() {
   const { t, locale } = useI18n();
   const { user } = useAuth();
-  const { activeSpace, userRole } = useActiveSpace();
+  const { activeSpace, userRole, refreshSpaces } = useActiveSpace();
   const navigate = useNavigate();
 
   const [members, setMembers] = useState<ManagedSpaceMemberItem[]>([]);
@@ -90,13 +91,15 @@ export function SpaceMembersPage() {
     try {
       const { error: removeError } = await removeManagedSpaceMember(spaceId, removingMember.user_id);
       if (removeError) {
-        alert(removeError.message || t("common.error"));
+        setError(removeError.message || t("common.error"));
       } else {
         await loadMembers();
+        await refreshSpaces();
+        window.dispatchEvent(new CustomEvent("kash:membership-changed"));
         setRemovingMember(null);
       }
     } catch (err: any) {
-      alert(err?.message || t("common.error"));
+      setError(err?.message || t("common.error"));
     } finally {
       setRemoveLoading(false);
     }
@@ -303,31 +306,42 @@ export function SpaceMembersPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                    {canEdit ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setEditingMember(member)}
-                        className="h-8 px-2.5 text-xs font-bold"
-                      >
-                        <Edit3 size={13} />
-                        <span>{t("spaces.changeRole") || "Ubah Peran"}</span>
-                      </Button>
-                    ) : null}
+                  {(() => {
+                    const memberActions = [
+                      ...(canEdit
+                        ? [
+                            {
+                              label: t("spaces.changeRole") || "Ubah Peran",
+                              icon: Edit3,
+                              onClick: () => setEditingMember(member),
+                            },
+                          ]
+                        : []),
+                      ...(canRemove
+                        ? [
+                            {
+                              label: t("spaces.removeFromManagedSpace") || "Hapus dari Managed Space",
+                              icon: Trash2,
+                              isDestructive: true,
+                              separatorBefore: canEdit,
+                              onClick: () => setRemovingMember(member),
+                            },
+                          ]
+                        : []),
+                    ];
 
-                    {canRemove ? (
-                      <button
-                        type="button"
-                        onClick={() => setRemovingMember(member)}
-                        aria-label={`${t("spaces.removeMember")} ${displayName}`}
-                        title={t("spaces.removeMember") || "Hapus Anggota"}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-kash-expense/30 hover:bg-kash-expense/10 hover:text-kash-expense transition"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    ) : null}
-                  </div>
+                    if (memberActions.length === 0) return null;
+
+                    return (
+                      <div className="shrink-0 self-end sm:self-auto">
+                        <EntityMoreActionsMenu
+                          triggerVariant="ghost"
+                          ariaLabel={`Aksi anggota ${displayName}`}
+                          items={memberActions}
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -415,12 +429,19 @@ export function SpaceMembersPage() {
       {/* Remove Member Confirmation Dialog */}
       {removingMember ? (
         <ConfirmationDialog
-          title={t("spaces.removeMember") || "Hapus Anggota"}
-          description={
-            (t("spaces.removeMemberConfirm") || "Apakah Anda yakin ingin menghapus anggota ini?") +
-            ` (${removingMember.full_name || "Pengguna KASH"})`
+          title={
+            t("spaces.removeMemberTitle", {
+              name: removingMember.full_name || "Pengguna",
+              space: activeSpace?.name || "Managed Space",
+            }) || `Hapus ${removingMember.full_name || "Pengguna"} dari ${activeSpace?.name}?`
           }
-          confirmLabel={t("common.delete") || "Hapus"}
+          description={
+            t("spaces.removeMemberDesc", {
+              name: removingMember.full_name || "Pengguna",
+            }) ||
+            `${removingMember.full_name || "Pengguna"} akan kehilangan akses ke Managed Space ini. Transaksi dan histori yang pernah dibuat tetap tersimpan.`
+          }
+          confirmLabel={t("spaces.removeMemberButton") || t("spaces.removeMember") || "Hapus Anggota"}
           tone="danger"
           onConfirm={handleConfirmRemove}
           onCancel={() => setRemovingMember(null)}

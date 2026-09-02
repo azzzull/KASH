@@ -17,6 +17,7 @@ import {
   archiveManagedSpace as archiveManagedSpaceApi,
   restoreManagedSpace as restoreManagedSpaceApi,
   deleteManagedSpace as deleteManagedSpaceApi,
+  leaveManagedSpace as apiLeaveManagedSpace,
   setActiveSpaceId as persistActiveSpaceId,
   getActiveSpaceId as getStoredActiveSpaceId,
 } from "../lib/spaces";
@@ -36,6 +37,7 @@ type ActiveSpaceContextValue = {
   archiveManagedSpace: (spaceId: string) => Promise<void>;
   restoreManagedSpace: (spaceId: string) => Promise<void>;
   deleteManagedSpace: (spaceId: string) => Promise<void>;
+  leaveManagedSpace: (spaceId: string) => Promise<void>;
   refreshSpaces: (preferredSpaceId?: string) => Promise<void>;
 };
 
@@ -239,6 +241,27 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     [spaces, activeSpaceId, loadSpaces]
   );
 
+  const leaveManagedSpace = useCallback(
+    async (spaceId: string): Promise<void> => {
+      const { error } = await apiLeaveManagedSpace(spaceId);
+      if (error) {
+        throw error;
+      }
+
+      // If active space is the one being left, fallback to personal space
+      const personal = spaces.find((s) => s.space_type === "personal") ?? null;
+      if (activeSpaceId === spaceId) {
+        const fallbackId = personal?.id ?? null;
+        setActiveSpaceIdState(fallbackId);
+        persistActiveSpaceId(fallbackId);
+      }
+
+      await loadSpaces();
+      emitSpaceChanged();
+    },
+    [spaces, activeSpaceId, loadSpaces]
+  );
+
   const personalSpace = useMemo(
     () => spaces.find((s) => s.space_type === "personal") ?? null,
     [spaces]
@@ -306,6 +329,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       archiveManagedSpace,
       restoreManagedSpace,
       deleteManagedSpace,
+      leaveManagedSpace,
       refreshSpaces: async (preferredSpaceId?: string) => {
         await loadSpaces(preferredSpaceId);
       },
@@ -324,6 +348,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       archiveManagedSpace,
       restoreManagedSpace,
       deleteManagedSpace,
+      leaveManagedSpace,
       loadSpaces,
     ]
   );
