@@ -105,13 +105,24 @@ function isOutstandingDebtItem(item: Pick<DebtProgress, "remaining_amount" | "st
 
 async function getCrossSpacePayerNames(eventIds: string[]) {
   const namesByEventId = new Map<string, string>();
+  const uniqueEventIds = [...new Set(eventIds.filter(Boolean))];
+  if (uniqueEventIds.length === 0) return namesByEventId;
+
+  // Only call get_cross_space_payer_profile for managed_expense_paid_personally
+  const { data: events } = await supabase
+    .from("cross_space_events")
+    .select("id, event_type")
+    .in("id", uniqueEventIds)
+    .eq("event_type", "managed_expense_paid_personally");
+
+  if (!events || events.length === 0) return namesByEventId;
 
   await Promise.all(
-    [...new Set(eventIds)].map(async (eventId) => {
+    events.map(async (event) => {
       const { data } = await supabase
-        .rpc("get_cross_space_payer_profile", { p_event_id: eventId })
+        .rpc("get_cross_space_payer_profile", { p_event_id: event.id })
         .maybeSingle();
-      if (data?.full_name) namesByEventId.set(eventId, data.full_name);
+      if (data?.full_name) namesByEventId.set(event.id, data.full_name);
     })
   );
 
@@ -129,8 +140,11 @@ export async function getCounterparties(
   const userId = await getAuthenticatedUserId();
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
-  // Fetch owner_user_id so we can resolve the personal-space owner's profile for cross-space payable names
-  let cpQuery = supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id, deleted_at)").order("name", { ascending: true });
+  // Fetch space_type and linked_space so we can resolve names authoritatively
+  let cpQuery = supabase
+    .from("counterparties")
+    .select("*, space:financial_spaces!space_id(id, space_type), linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id, deleted_at)")
+    .order("name", { ascending: true });
   if (targetSpaceId) {
     cpQuery = cpQuery.eq("space_id", targetSpaceId);
   } else {
@@ -163,9 +177,10 @@ export async function getCounterparties(
     if (payerName) payerNamesByCounterpartyId.set(item.counterparty_id, payerName);
   }
 
-  // Load Managed Space member identities to authoritatively map member names for cross-space payables
+  // Load Managed Space member identities ONLY if the space being queried is a Managed Space
   let membersByUserId = new Map<string, string>();
-  if (targetSpaceId) {
+  const isManagedSpace = rawCounterparties.some((c: any) => c.space?.space_type === "managed");
+  if (isManagedSpace && targetSpaceId) {
     const { data: members } = await getManagedSpaceMemberIdentities(targetSpaceId);
     if (members && members.length > 0) {
       membersByUserId = new Map(members.map((m) => [m.user_id, m.full_name || ""]));
@@ -340,7 +355,11 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   const userId = await getAuthenticatedUserId();
 
   const [counterpartyResult, progressResult, paymentsResult, allocationsResult, walletsResult] = await Promise.all([
-    supabase.from("counterparties").select("*, linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id, deleted_at)").eq("id", counterpartyId).single(),
+    supabase
+      .from("counterparties")
+      .select("*, space:financial_spaces!space_id(id, space_type), linked_space:financial_spaces!linked_space_id(name, space_type, owner_user_id, deleted_at)")
+      .eq("id", counterpartyId)
+      .single(),
     supabase
       .from("debt_progress_view")
       .select("*")
@@ -370,10 +389,11 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
   );
   const eventPayerName = [...payerNamesByEventId.values()][0] ?? null;
 
-  // Load Managed Space member identities to resolve member display names without querying profiles directly
+  // Load Managed Space member identities ONLY if this counterparty belongs to a Managed Space
   const spaceId = rawCounterparty.space_id;
+  const isManagedSpace = rawCounterparty.space?.space_type === "managed";
   let membersByUserId = new Map<string, string>();
-  if (spaceId) {
+  if (spaceId && isManagedSpace) {
     const { data: members } = await getManagedSpaceMemberIdentities(spaceId);
     if (members && members.length > 0) {
       membersByUserId = new Map(members.map((m) => [m.user_id, m.full_name || ""]));

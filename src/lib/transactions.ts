@@ -571,9 +571,17 @@ export async function getTransactions(filters: TransactionFilters = {}) {
 
   let members: { user_id: string; full_name: string | null }[] = [];
   if (targetSpaceId) {
-    const { data: memberData } = await getManagedSpaceMemberIdentities(targetSpaceId);
-    if (memberData) {
-      members = memberData;
+    const { data: space } = await supabase
+      .from("financial_spaces")
+      .select("space_type")
+      .eq("id", targetSpaceId)
+      .maybeSingle();
+
+    if (space?.space_type === "managed") {
+      const { data: memberData } = await getManagedSpaceMemberIdentities(targetSpaceId);
+      if (memberData) {
+        members = memberData;
+      }
     }
   }
 
@@ -644,9 +652,17 @@ export async function getTransactionById(id: string) {
 
   let members: { user_id: string; full_name: string | null }[] = [];
   if (transaction.space_id) {
-    const { data: memberData } = await getManagedSpaceMemberIdentities(transaction.space_id);
-    if (memberData) {
-      members = memberData;
+    const { data: space } = await supabase
+      .from("financial_spaces")
+      .select("space_type")
+      .eq("id", transaction.space_id)
+      .maybeSingle();
+
+    if (space?.space_type === "managed") {
+      const { data: memberData } = await getManagedSpaceMemberIdentities(transaction.space_id);
+      if (memberData) {
+        members = memberData;
+      }
     }
   }
 
