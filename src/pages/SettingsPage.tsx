@@ -1,8 +1,11 @@
 import {
+  Archive,
   Bell,
   BellOff,
+  Briefcase,
   Check,
   ChevronRight,
+  Edit3,
   Globe,
   Info,
   Loader2,
@@ -12,15 +15,18 @@ import {
   Settings,
   Smartphone,
   Tags,
+  Trash2,
   User as UserIcon,
   Users,
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { FilterTabs } from "../components/ui/FilterTabs";
 import { FormField } from "../components/ui/FormField";
+import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAuth } from "../context/AuthContext";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
@@ -37,8 +43,17 @@ import {
 import { supabase } from "../lib/supabase";
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { profile, refreshProfile, user } = useAuth();
-  const { activeSpace } = useActiveSpace();
+  const {
+    activeSpace,
+    personalSpace,
+    userRole,
+    setActiveSpace,
+    renameManagedSpace,
+    archiveManagedSpace,
+    deleteManagedSpace,
+  } = useActiveSpace();
   const { locale, setLocale, t } = useI18n();
 
   const [displayName, setDisplayName] = useState(profile?.full_name ?? "");
@@ -49,6 +64,23 @@ export function SettingsPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushMessage, setPushMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Managed Space lifecycle states
+  const [editingSpaceModal, setEditingSpaceModal] = useState(false);
+  const [spaceNameInput, setSpaceNameInput] = useState("");
+  const [savingSpaceName, setSavingSpaceName] = useState(false);
+  const [spaceNameError, setSpaceNameError] = useState<string | null>(null);
+
+  const [archiveSpaceModal, setArchiveSpaceModal] = useState(false);
+  const [archivingSpaceLoading, setArchivingSpaceLoading] = useState(false);
+
+  const [deleteSpaceModal, setDeleteSpaceModal] = useState(false);
+  const [deletingSpaceLoading, setDeletingSpaceLoading] = useState(false);
+  const [deleteSpaceError, setDeleteSpaceError] = useState<string | null>(null);
+
+  const isManaged = activeSpace?.space_type === "managed";
+  const isOwner = isManaged && (userRole === "owner" || activeSpace?.owner_user_id === user?.id);
+  const isAdmin = isManaged && userRole === "admin";
 
   useEffect(() => {
     if (profile?.full_name !== undefined) {
@@ -71,6 +103,80 @@ export function SettingsPage() {
   useEffect(() => {
     void checkPushStatus();
   }, []);
+
+  const handleStartRenameSpace = () => {
+    if (!activeSpace) return;
+    setSpaceNameInput(activeSpace.name);
+    setSpaceNameError(null);
+    setEditingSpaceModal(true);
+  };
+
+  const handleSaveRenameSpace = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!activeSpace) return;
+    const trimmed = spaceNameInput.trim();
+    if (!trimmed) {
+      setSpaceNameError(t("spaces.spaceName") + " " + t("common.required").toLowerCase());
+      return;
+    }
+    setSavingSpaceName(true);
+    setSpaceNameError(null);
+    try {
+      await renameManagedSpace(activeSpace.id, trimmed);
+      setEditingSpaceModal(false);
+    } catch (err: any) {
+      setSpaceNameError(err?.message || t("common.error"));
+    } finally {
+      setSavingSpaceName(false);
+    }
+  };
+
+  const handleConfirmArchiveSpace = async () => {
+    if (!activeSpace) return;
+    setArchivingSpaceLoading(true);
+    try {
+      await archiveManagedSpace(activeSpace.id);
+      if (personalSpace) {
+        setActiveSpace(personalSpace.id);
+      }
+      setArchiveSpaceModal(false);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Failed to archive space:", err);
+    } finally {
+      setArchivingSpaceLoading(false);
+    }
+  };
+
+  const handleConfirmDeleteSpace = async () => {
+    if (!activeSpace) return;
+    setDeletingSpaceLoading(true);
+    setDeleteSpaceError(null);
+    try {
+      await deleteManagedSpace(activeSpace.id);
+      if (personalSpace) {
+        setActiveSpace(personalSpace.id);
+      }
+      setDeleteSpaceModal(false);
+      navigate("/dashboard");
+    } catch (err: any) {
+      console.error("Failed to delete space:", err);
+      const msg = String(err?.message || "");
+      if (
+        msg.includes("cross_space_events") ||
+        msg.includes("foreign key constraint") ||
+        msg.includes("is still referenced") ||
+        msg.includes("cross-space") ||
+        msg.includes("histori")
+      ) {
+        setDeleteSpaceError(t("spaces.deleteBlockedCrossSpace"));
+      } else {
+        setDeleteSpaceError(err?.message || t("common.error"));
+      }
+    } finally {
+      setDeletingSpaceLoading(false);
+    }
+  };
 
   const handleSaveDisplayName = async (e: FormEvent) => {
     e.preventDefault();
@@ -279,30 +385,92 @@ export function SettingsPage() {
           <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />
         </Link>
 
-        {/* Managed Space Members Link (Only for Managed Space) */}
-        {activeSpace?.space_type === "managed" ? (
-          <Link
-            className="grid grid-cols-[auto_1fr_auto] items-center gap-3.5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-kash-emerald hover:bg-kash-selected/40"
-            to="/settings/members"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark">
-              <Users aria-hidden="true" size={19} />
-            </span>
-            <span>
-              <div className="flex items-center gap-2">
-                <span className="block text-sm font-extrabold text-slate-900">
-                  {t("spaces.members") || "Anggota Space"}
+        {/* Managed Space Management Section (Only for Managed Space) */}
+        {isManaged ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kash-selected text-kash-emeraldDark font-black text-base shadow-sm">
+                  <Briefcase size={20} />
                 </span>
-                <span className="rounded-full bg-kash-selected px-2 py-0.5 text-[10px] font-extrabold text-kash-emeraldDark">
-                  {activeSpace.name}
-                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base font-extrabold text-slate-900 truncate">{activeSpace?.name}</h2>
+                    <span className="rounded-full bg-kash-selected px-2.5 py-0.5 text-xs font-extrabold text-kash-emeraldDark">
+                      {isOwner ? (t("spaces.roleOwner") || "Owner") : isAdmin ? (t("spaces.roleAdmin") || "Admin") : userRole}
+                    </span>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-600 truncate">
+                    {t("spaces.spaceManagementDesc") || "Kelola nama, anggota, atau status Financial Space ini."}
+                  </p>
+                </div>
               </div>
-              <span className="mt-0.5 block text-xs font-semibold text-slate-700">
-                {t("spaces.membersDesc") || "Kelola anggota dan hak akses untuk Financial Space ini."}
-              </span>
-            </span>
-            <ChevronRight aria-hidden="true" className="text-slate-600" size={18} />
-          </Link>
+
+              {isOwner ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleStartRenameSpace}
+                  className="gap-1.5 text-xs font-bold shrink-0 self-start sm:self-auto"
+                >
+                  <Edit3 size={14} />
+                  <span>{t("spaces.renameSpace") || "Ubah Nama"}</span>
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3">
+              {/* Link to members */}
+              <Link
+                className="flex items-center justify-between rounded-lg border border-slate-200/80 bg-slate-50/70 p-3.5 transition hover:border-kash-emerald/50 hover:bg-kash-selected/30"
+                to="/settings/members"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-700 shadow-xs border border-slate-200">
+                    <Users size={17} />
+                  </div>
+                  <div>
+                    <span className="block text-sm font-extrabold text-slate-900">
+                      {t("spaces.members") || "Anggota Space"}
+                    </span>
+                    <span className="block text-xs font-semibold text-slate-500">
+                      {t("spaces.membersDesc") || "Kelola anggota dan hak akses untuk Financial Space ini."}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight aria-hidden="true" className="text-slate-400" size={18} />
+              </Link>
+
+              {/* Owner Lifecycle Actions */}
+              {isOwner ? (
+                <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setArchiveSpaceModal(true)}
+                    className="gap-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                  >
+                    <Archive size={14} />
+                    <span>{t("spaces.archiveSpace") || "Arsipkan Space"}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setDeleteSpaceError(null);
+                      setDeleteSpaceModal(true);
+                    }}
+                    className="gap-1.5 text-xs font-bold text-kash-expense hover:bg-kash-expense/10 border-kash-expense/20"
+                  >
+                    <Trash2 size={14} />
+                    <span>{t("spaces.deleteSpace") || "Hapus Permanen"}</span>
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </div>
         ) : null}
 
         {/* Device Push Notifications Card */}
@@ -399,6 +567,89 @@ export function SettingsPage() {
           )}
         </div>
       </section>
+
+      {/* Space Rename Modal */}
+      {editingSpaceModal && activeSpace ? (
+        <Modal
+          isOpen={true}
+          onClose={() => setEditingSpaceModal(false)}
+          title={t("spaces.renameSpace")}
+          maxWidth="sm"
+        >
+          <form onSubmit={handleSaveRenameSpace} className="flex flex-col gap-5 pt-2 pb-1">
+            {spaceNameError ? (
+              <div className="rounded-xl border border-kash-expense/20 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
+                {spaceNameError}
+              </div>
+            ) : null}
+            <FormField
+              id="settings-space-name-input"
+              label={t("spaces.spaceName")}
+              type="text"
+              value={spaceNameInput}
+              onChange={(e) => setSpaceNameInput(e.target.value)}
+              placeholder={t("spaces.spaceNamePlaceholder")}
+              maxLength={50}
+              disabled={savingSpaceName}
+              autoFocus
+              required
+              hasError={Boolean(spaceNameError)}
+            />
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setEditingSpaceModal(false)}
+                disabled={savingSpaceName}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={savingSpaceName || !spaceNameInput.trim()}
+              >
+                {savingSpaceName ? t("common.saving") : t("common.save")}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {/* Archive Space Confirmation Dialog */}
+      {archiveSpaceModal ? (
+        <ConfirmationDialog
+          title={t("spaces.archiveSpace")}
+          description={t("spaces.archiveConfirm")}
+          confirmLabel={t("common.archive")}
+          tone="danger"
+          isLoading={archivingSpaceLoading}
+          onConfirm={handleConfirmArchiveSpace}
+          onCancel={() => setArchiveSpaceModal(false)}
+        />
+      ) : null}
+
+      {/* Delete Space Confirmation Dialog */}
+      {deleteSpaceModal ? (
+        <ConfirmationDialog
+          title={t("spaces.deleteSpaceTitle") || t("spaces.deleteSpace")}
+          description={t("spaces.deleteConfirm")}
+          confirmLabel={t("common.deletePermanent")}
+          tone="danger"
+          isLoading={deletingSpaceLoading}
+          onConfirm={handleConfirmDeleteSpace}
+          onCancel={() => {
+            setDeleteSpaceModal(false);
+            setDeleteSpaceError(null);
+          }}
+        >
+          {deleteSpaceError ? (
+            <div className="rounded-xl border border-kash-expense/20 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
+              {deleteSpaceError}
+            </div>
+          ) : null}
+        </ConfirmationDialog>
+      ) : null}
     </div>
   );
 }

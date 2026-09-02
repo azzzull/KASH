@@ -29,6 +29,7 @@ type ActiveSpaceContextValue = {
   activeSpaceId: string | null;
   userRole: ManagedSpaceRole | "owner" | null;
   loading: boolean;
+  getUserRole: (spaceOrId: FinancialSpace | string) => ManagedSpaceRole | "owner" | null;
   setActiveSpace: (spaceOrId: FinancialSpace | string) => void;
   createManagedSpace: (name: string) => Promise<FinancialSpace>;
   renameManagedSpace: (spaceId: string, name: string) => Promise<FinancialSpace>;
@@ -43,12 +44,14 @@ const ActiveSpaceContext = createContext<ActiveSpaceContextValue | undefined>(un
 export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   const { status, user } = useAuth();
   const [spaces, setSpaces] = useState<FinancialSpace[]>([]);
+  const [userRolesBySpaceId, setUserRolesBySpaceId] = useState<Record<string, ManagedSpaceRole | "owner">>({});
   const [activeSpaceId, setActiveSpaceIdState] = useState<string | null>(getStoredActiveSpaceId());
   const [loading, setLoading] = useState<boolean>(true);
 
   const loadSpaces = useCallback(async (preferredSpaceId?: string) => {
     if (status !== "authenticated" || !user) {
       setSpaces([]);
+      setUserRolesBySpaceId({});
       setActiveSpaceIdState(null);
       persistActiveSpaceId(null);
       setLoading(false);
@@ -57,7 +60,15 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
 
     setLoading(true);
     try {
-      const { data, error } = await getFinancialSpaces();
+      const [{ data, error }, { data: memberData }] = await Promise.all([
+        getFinancialSpaces(),
+        supabase
+          .from("managed_space_members")
+          .select("space_id, role")
+          .eq("user_id", user.id)
+          .eq("status", "active"),
+      ]);
+
       if (error) {
         console.error("Failed to load financial spaces:", error);
         setLoading(false);
@@ -66,6 +77,17 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
 
       const spaceList = data ?? [];
       setSpaces(spaceList);
+
+      const roleMap: Record<string, ManagedSpaceRole | "owner"> = {};
+      spaceList.forEach((s) => {
+        if (s.space_type === "personal" || s.owner_user_id === user.id) {
+          roleMap[s.id] = "owner";
+        } else {
+          const mem = memberData?.find((m) => m.space_id === s.id);
+          roleMap[s.id] = (mem?.role as ManagedSpaceRole) ?? "viewer";
+        }
+      });
+      setUserRolesBySpaceId(roleMap);
 
       const personal = spaceList.find((s) => s.space_type === "personal") ?? null;
       const storedId = preferredSpaceId ?? getStoredActiveSpaceId();
@@ -96,6 +118,23 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadSpaces();
   }, [loadSpaces]);
+
+  const getUserRole = useCallback(
+    (spaceOrId: FinancialSpace | string): ManagedSpaceRole | "owner" | null => {
+      if (!user) return null;
+      const targetId = typeof spaceOrId === "string" ? spaceOrId : spaceOrId.id;
+      const targetSpace = typeof spaceOrId === "string"
+        ? spaces.find((s) => s.id === spaceOrId)
+        : spaceOrId;
+
+      if (!targetSpace && !userRolesBySpaceId[targetId]) return null;
+      if (targetSpace?.space_type === "personal" || targetSpace?.owner_user_id === user.id) {
+        return "owner";
+      }
+      return userRolesBySpaceId[targetId] ?? null;
+    },
+    [user, spaces, userRolesBySpaceId]
+  );
 
   const setActiveSpace = useCallback(
     (spaceOrId: FinancialSpace | string) => {
@@ -210,45 +249,14 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     return spaces.find((s) => s.id === activeSpaceId && !s.is_archived) ?? personalSpace;
   }, [spaces, activeSpaceId, personalSpace]);
 
-  const [userRole, setUserRole] = useState<ManagedSpaceRole | "owner" | null>(() => {
-    if (!user || !activeSpace) return null;
-    if (activeSpace.space_type === "personal" || activeSpace.owner_user_id === user.id) return "owner";
-    return null;
-  });
-
-  const refreshUserRole = useCallback(async () => {
-    if (!user || !activeSpace) {
-      setUserRole(null);
-      return;
-    }
-    if (activeSpace.space_type === "personal" || activeSpace.owner_user_id === user.id) {
-      setUserRole("owner");
-      return;
-    }
-    try {
-      const { data, error } = await supabase
-        .from("managed_space_members")
-        .select("role")
-        .eq("space_id", activeSpace.id)
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (error) {
-        console.error("Failed to load user role in active space:", error);
-        return;
-      }
-      setUserRole((data?.role as ManagedSpaceRole) ?? null);
-    } catch (err) {
-      console.error("Error refreshing user role:", err);
-    }
-  }, [activeSpace, user]);
+  const userRole = useMemo(() => {
+    if (!activeSpace) return null;
+    return getUserRole(activeSpace.id);
+  }, [activeSpace, getUserRole]);
 
   useEffect(() => {
-    refreshUserRole();
-
     const handleRoleRefresh = () => {
-      void Promise.all([loadSpaces(), refreshUserRole()]);
+      void loadSpaces();
     };
     window.addEventListener("kash:space-changed", handleRoleRefresh);
     window.addEventListener("kash:membership-changed", handleRoleRefresh);
@@ -265,7 +273,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
             filter: `space_id=eq.${activeSpace.id}`,
           },
           () => {
-            void Promise.all([loadSpaces(), refreshUserRole()]);
+            void loadSpaces();
           }
         )
         .subscribe();
@@ -281,7 +289,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("kash:space-changed", handleRoleRefresh);
       window.removeEventListener("kash:membership-changed", handleRoleRefresh);
     };
-  }, [activeSpace, user, loadSpaces, refreshUserRole]);
+  }, [activeSpace, user, loadSpaces]);
 
   const value = useMemo<ActiveSpaceContextValue>(
     () => ({
@@ -291,6 +299,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       activeSpaceId: activeSpace?.id ?? activeSpaceId,
       userRole,
       loading,
+      getUserRole,
       setActiveSpace,
       createManagedSpace,
       renameManagedSpace,
@@ -299,7 +308,6 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       deleteManagedSpace,
       refreshSpaces: async (preferredSpaceId?: string) => {
         await loadSpaces(preferredSpaceId);
-        await refreshUserRole();
       },
     }),
     [
@@ -309,6 +317,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       activeSpaceId,
       userRole,
       loading,
+      getUserRole,
       setActiveSpace,
       createManagedSpace,
       renameManagedSpace,

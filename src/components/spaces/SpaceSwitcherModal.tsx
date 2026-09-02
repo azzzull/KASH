@@ -23,6 +23,7 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
     personalSpace,
     activeSpaceId,
     setActiveSpace,
+    getUserRole,
     renameManagedSpace,
     archiveManagedSpace,
     restoreManagedSpace,
@@ -40,6 +41,7 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [deletingSpace, setDeletingSpace] = useState<FinancialSpace | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [showArchivedSpaces, setShowArchivedSpaces] = useState(false);
 
@@ -117,11 +119,13 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
   const handleStartDelete = (e: React.MouseEvent, space: FinancialSpace) => {
     e.stopPropagation();
     setDeletingSpace(space);
+    setDeleteError(null);
   };
 
   const handleConfirmDelete = async () => {
     if (!deletingSpace) return;
     setDeleteLoading(true);
+    setDeleteError(null);
     try {
       await deleteManagedSpace(deletingSpace.id);
       if (activeSpaceId === deletingSpace.id && personalSpace) {
@@ -129,8 +133,20 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
         navigate("/");
       }
       setDeletingSpace(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to delete space:", err);
+      const msg = String(err?.message || "");
+      if (
+        msg.includes("cross_space_events") ||
+        msg.includes("foreign key constraint") ||
+        msg.includes("is still referenced") ||
+        msg.includes("cross-space") ||
+        msg.includes("histori")
+      ) {
+        setDeleteError(t("spaces.deleteBlockedCrossSpace"));
+      } else {
+        setDeleteError(err?.message || t("common.error"));
+      }
     } finally {
       setDeleteLoading(false);
     }
@@ -205,6 +221,56 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
               ) : (
                 managedSpaces.map((space) => {
                   const isActive = activeSpaceId === space.id;
+                  const role = getUserRole(space.id);
+                  const isOwner = role === "owner";
+                  const isAdmin = role === "admin";
+
+                  const actionItems = isOwner
+                    ? [
+                        {
+                          label: t("spaces.manageMembers") || "Kelola Anggota",
+                          icon: Users,
+                          onClick: (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            setActiveSpace(space.id);
+                            onClose();
+                            navigate("/settings/members");
+                          },
+                        },
+                        {
+                          label: t("spaces.renameSpace") || "Ubah Nama",
+                          icon: Edit3,
+                          onClick: (e: React.MouseEvent) => handleStartRename(e, space),
+                        },
+                        {
+                          label: t("spaces.archiveSpace") || "Arsipkan Space",
+                          icon: Archive,
+                          isDestructive: true,
+                          onClick: (e: React.MouseEvent) => handleStartArchive(e, space),
+                        },
+                        {
+                          label: t("spaces.deleteSpace") || "Hapus Space",
+                          icon: Trash2,
+                          isDestructive: true,
+                          separatorBefore: true,
+                          onClick: (e: React.MouseEvent) => handleStartDelete(e, space),
+                        },
+                      ]
+                    : isAdmin
+                    ? [
+                        {
+                          label: t("spaces.manageMembers") || "Kelola Anggota",
+                          icon: Users,
+                          onClick: (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            setActiveSpace(space.id);
+                            onClose();
+                            navigate("/settings/members");
+                          },
+                        },
+                      ]
+                    : [];
+
                   return (
                     <div
                       key={space.id}
@@ -241,39 +307,13 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                             <Check size={14} strokeWidth={3} />
                           </span>
                         ) : null}
-                        <EntityMoreActionsMenu
-                          triggerVariant="ghost"
-                          ariaLabel={`Aksi space ${space.name}`}
-                          items={[
-                            {
-                              label: t("spaces.manageMembers") || "Kelola Anggota",
-                              icon: Users,
-                              onClick: () => {
-                                setActiveSpace(space.id);
-                                onClose();
-                                navigate("/settings/members");
-                              },
-                            },
-                            {
-                              label: t("spaces.renameSpace") || "Ubah Nama",
-                              icon: Edit3,
-                              onClick: (e) => handleStartRename(e, space),
-                            },
-                            {
-                              label: t("spaces.archiveSpace") || "Arsipkan Space",
-                              icon: Archive,
-                              isDestructive: true,
-                              onClick: (e) => handleStartArchive(e, space),
-                            },
-                            {
-                              label: t("spaces.deleteSpace") || "Hapus Space",
-                              icon: Trash2,
-                              isDestructive: true,
-                              separatorBefore: true,
-                              onClick: (e) => handleStartDelete(e, space),
-                            },
-                          ]}
-                        />
+                        {actionItems.length > 0 ? (
+                          <EntityMoreActionsMenu
+                            triggerVariant="ghost"
+                            ariaLabel={`Aksi space ${space.name}`}
+                            items={actionItems}
+                          />
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -303,45 +343,50 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
                     {t("spaces.noArchivedSpaces") || "Belum ada space yang diarsipkan"}
                   </div>
                 ) : (
-                  archivedSpaces.map((space) => (
-                    <div
-                      key={space.id}
-                      className="flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left transition bg-slate-50 opacity-85 border border-slate-200/60"
-                    >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
-                          <Archive size={18} strokeWidth={2.2} />
+                  archivedSpaces.map((space) => {
+                    const isOwner = getUserRole(space.id) === "owner";
+                    return (
+                      <div
+                        key={space.id}
+                        className="flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left transition bg-slate-50 opacity-85 border border-slate-200/60"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+                            <Archive size={18} strokeWidth={2.2} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-extrabold text-slate-600 line-through">
+                              {space.name}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-extrabold text-slate-600 line-through">
-                            {space.name}
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => handleRestore(e, space)}
-                          disabled={restoreLoading}
-                          className="h-8 px-2.5 text-xs text-kash-emeraldDark hover:bg-kash-selected font-extrabold"
-                        >
-                          <RotateCcw size={12} className="mr-1 inline" />
-                          {t("spaces.restore") || "Pulihkan"}
-                        </Button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleStartDelete(e, space)}
-                          aria-label={t("spaces.deleteSpace")}
-                          className="rounded-lg p-1.5 text-slate-400 transition hover:bg-kash-expense/10 hover:text-kash-expense active:bg-kash-expense/20"
-                        >
-                          <Trash2 size={15} strokeWidth={2} />
-                        </button>
+                        {isOwner ? (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => handleRestore(e, space)}
+                              disabled={restoreLoading}
+                              className="h-8 px-2.5 text-xs text-kash-emeraldDark hover:bg-kash-selected font-extrabold"
+                            >
+                              <RotateCcw size={12} className="mr-1 inline" />
+                              {t("spaces.restore") || "Pulihkan"}
+                            </Button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleStartDelete(e, space)}
+                              aria-label={t("spaces.deleteSpace")}
+                              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-kash-expense/10 hover:text-kash-expense active:bg-kash-expense/20"
+                            >
+                              <Trash2 size={15} strokeWidth={2} />
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             )}
@@ -436,14 +481,23 @@ export function SpaceSwitcherModal({ isOpen, onClose }: SpaceSwitcherModalProps)
       {/* Delete Confirmation Dialog */}
       {deletingSpace ? (
         <ConfirmationDialog
-          title={t("spaces.deleteSpace")}
+          title={t("spaces.deleteSpaceTitle") || t("spaces.deleteSpace")}
           description={t("spaces.deleteConfirm")}
           confirmLabel={t("common.deletePermanent")}
           tone="danger"
           onConfirm={handleConfirmDelete}
-          onCancel={() => setDeletingSpace(null)}
+          onCancel={() => {
+            setDeletingSpace(null);
+            setDeleteError(null);
+          }}
           isLoading={deleteLoading}
-        />
+        >
+          {deleteError ? (
+            <div className="rounded-xl border border-kash-expense/20 bg-kash-expense/10 p-3 text-xs font-bold text-kash-expense">
+              {deleteError}
+            </div>
+          ) : null}
+        </ConfirmationDialog>
       ) : null}
     </>
   );

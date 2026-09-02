@@ -20,6 +20,7 @@ export type EntityMoreActionsMenuProps = {
   ariaLabel?: string;
   className?: string;
   buttonClassName?: string;
+  menuClassName?: string;
   iconSize?: number;
 };
 
@@ -30,6 +31,7 @@ export function EntityMoreActionsMenu({
   ariaLabel = "Opsi lainnya",
   className = "",
   buttonClassName = "",
+  menuClassName = "",
   iconSize = 16,
 }: EntityMoreActionsMenuProps) {
   const visibleItems = items.filter((item): item is MoreActionItem => Boolean(item && !item.hidden));
@@ -53,6 +55,7 @@ export function EntityMoreActionsMenu({
     <Menu as="div" className={`relative inline-block text-left ${className}`}>
       <MenuButton
         type="button"
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
         className={`${triggerStyles[triggerVariant]} ${buttonClassName}`}
         aria-label={ariaLabel}
       >
@@ -62,7 +65,7 @@ export function EntityMoreActionsMenu({
       <MenuItems
         transition
         anchor={align === "left" ? "bottom start" : "bottom end"}
-        className="z-50 min-w-[11rem] rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[closed]:pointer-events-none data-[enter]:duration-100 data-[leave]:duration-75"
+        className={`z-[1200] min-w-[11rem] rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-xl transition focus:outline-none data-[closed]:scale-95 data-[closed]:opacity-0 data-[closed]:pointer-events-none data-[enter]:duration-100 data-[leave]:duration-75 ${menuClassName}`}
       >
         {visibleItems.map((item, index) => {
           const ItemIcon = item.icon;
