@@ -1,4 +1,10 @@
-import type { FinancialSpace, ManagedSpaceMemberItem, ManagedSpaceRole } from "../types/domain";
+import type {
+  FinancialSpace,
+  ManagedSpaceInvitation,
+  ManagedSpaceInvitationResponse,
+  ManagedSpaceMemberItem,
+  ManagedSpaceRole,
+} from "../types/domain";
 import { supabase } from "./supabase";
 
 export const ACTIVE_SPACE_STORAGE_KEY = "kash_active_space_id";
@@ -76,7 +82,7 @@ export async function getPersonalSpace(): Promise<{
   }
 }
 
-export async function createManagedSpace(name: string, walletName: string, walletType: string): Promise<{
+export async function createManagedSpace(name: string): Promise<{
   data: FinancialSpace | null;
   error: Error | null;
 }> {
@@ -86,10 +92,8 @@ export async function createManagedSpace(name: string, walletName: string, walle
       throw new Error("You need to be signed in to create a Financial Space.");
     }
 
-    const { data, error } = await supabase.rpc("create_managed_space_with_wallet" as any, {
+    const { data, error } = await supabase.rpc("create_managed_space", {
       p_space_name: name,
-      p_wallet_name: walletName,
-      p_wallet_type: walletType,
     });
 
     if (error) throw error;
@@ -246,11 +250,11 @@ export async function addManagedSpaceMember(
   email: string,
   role: ManagedSpaceRole
 ): Promise<{
-  data: { success: boolean; user_id: string } | null;
+  data: { success: boolean; invitation_id: string; duplicate: boolean } | null;
   error: Error | null;
 }> {
   try {
-    const { data, error } = await supabase.rpc("add_managed_space_member", {
+    const { data, error } = await supabase.rpc("invite_managed_space_member", {
       p_space_id: spaceId,
       p_email: email,
       p_role: role,
@@ -259,6 +263,68 @@ export async function addManagedSpaceMember(
     return { data: data ?? null, error: null };
   } catch (err: any) {
     return { data: null, error: err };
+  }
+}
+
+export const inviteManagedSpaceMember = addManagedSpaceMember;
+
+export async function getManagedSpaceInvitations(spaceId: string): Promise<{
+  data: ManagedSpaceInvitation[] | null;
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc("get_managed_space_invitations", {
+      p_space_id: spaceId,
+    });
+    if (error) throw error;
+    return { data: data ?? [], error: null };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error : new Error("Unable to load invitations.") };
+  }
+}
+
+export async function getManagedSpaceInvitation(invitationId: string): Promise<{
+  data: ManagedSpaceInvitation | null;
+  error: Error | null;
+}> {
+  try {
+    const { data, error } = await supabase.rpc("get_managed_space_invitation", {
+      p_invitation_id: invitationId,
+    });
+    if (error) throw error;
+    return { data: data?.[0] ?? null, error: null };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error : new Error("Unable to load invitation.") };
+  }
+}
+
+export async function respondManagedSpaceInvitation(
+  invitationId: string,
+  action: "accept" | "decline",
+): Promise<{ data: ManagedSpaceInvitationResponse | null; error: Error | null }> {
+  try {
+    const { data, error } = await supabase.rpc("respond_managed_space_invitation", {
+      p_invitation_id: invitationId,
+      p_action: action,
+    });
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error : new Error("Unable to respond to invitation.") };
+  }
+}
+
+export async function cancelManagedSpaceInvitation(invitationId: string): Promise<{
+  error: Error | null;
+}> {
+  try {
+    const { error } = await supabase.rpc("cancel_managed_space_invitation", {
+      p_invitation_id: invitationId,
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (error) {
+    return { error: error instanceof Error ? error : new Error("Unable to cancel invitation.") };
   }
 }
 

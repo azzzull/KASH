@@ -30,10 +30,47 @@ export type ManagedSpaceMember = {
 export type ManagedSpaceMemberItem = {
   user_id: string;
   full_name: string | null;
+  email: string | null;
   avatar_url: string | null;
   role: ManagedSpaceRole;
   status: string;
   created_at: string;
+};
+
+export type ManagedSpaceInvitationStatus =
+  | "pending"
+  | "accepted"
+  | "declined"
+  | "cancelled";
+
+export type ManagedSpaceInvitation = {
+  id: string;
+  space_id: string;
+  space_name: string;
+  invited_user_id: string;
+  invited_name: string | null;
+  invited_email: string;
+  invited_avatar_url?: string | null;
+  role: Exclude<ManagedSpaceRole, "owner">;
+  status: ManagedSpaceInvitationStatus;
+  invited_by: string;
+  inviter_name: string | null;
+  inviter_email: string;
+  inviter_avatar_url?: string | null;
+  invited_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  cancelled_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ManagedSpaceInvitationResponse = {
+  success: boolean;
+  status: "accepted" | "declined";
+  space_id: string;
+  space_name: string;
+  role: Exclude<ManagedSpaceRole, "owner">;
 };
 
 export type Profile = {
@@ -291,6 +328,7 @@ export type NotificationType =
   | "installment_due_today"
   | "installment_overdue"
   | "shared_invitation"
+  | "managed_space_invitation"
   | "shared_contribution_pending"
   | "shared_contribution_verified"
   | "shared_contribution_rejected"

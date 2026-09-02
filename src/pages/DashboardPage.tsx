@@ -19,6 +19,9 @@ import {
     TrendingDown,
     TrendingUp,
     WalletCards,
+    Plus,
+    MoveRight,
+    UserPlus,
 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1802,7 +1805,7 @@ export function DashboardPage() {
         profile?.email.split("@")[0] ??
         "there";
 
-    const { activeSpaceId } = useActiveSpace();
+    const { activeSpaceId, activeSpace, userRole } = useActiveSpace();
 
     const loadDashboard = useCallback(async () => {
         setIsLoading(true);
@@ -1886,6 +1889,39 @@ export function DashboardPage() {
                     {terms.dashboardOverviewTitle}
                 </p>
             </div>
+
+            {activeSpace?.space_type === "managed" && summary.walletCount === 0 ? (
+                <div className="rounded-xl border border-kash-emerald/25 bg-white p-5 shadow-sm sm:p-6">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="max-w-2xl">
+                            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kash-emerald/10 text-kash-emeraldDark">
+                                <WalletCards size={21} />
+                            </span>
+                            <h2 className="mt-4 text-lg font-extrabold text-slate-900">
+                                {t("dashboard.managedEmptySetupTitle", { name: activeSpace.name })}
+                            </h2>
+                            <p className="mt-1 text-sm font-medium leading-6 text-slate-600">
+                                {t("dashboard.managedEmptySetupDesc")}
+                            </p>
+                        </div>
+                        {userRole === "owner" || userRole === "admin" ? (
+                            <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
+                                <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-kash-emerald px-4 py-2 text-sm font-bold text-white transition hover:bg-kash-emeraldDark" to={`/managed-spaces/${activeSpace.id}/setup?start=create-wallet`}>
+                                    <Plus size={16} />
+                                    {t("spaces.createNewWallet")}
+                                </Link>
+                                <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50" to={`/managed-spaces/${activeSpace.id}/setup?start=move-wallet`}>
+                                    <MoveRight size={16} />
+                                    {t("spaces.movePersonalWallet")}
+                                </Link>
+                                <Link className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50" title={t("spaces.inviteMember")} to="/settings/members">
+                                    <UserPlus size={17} />
+                                </Link>
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            ) : null}
 
             {/* Hero Card */}
             <HeroCard

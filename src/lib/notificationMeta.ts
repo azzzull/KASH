@@ -9,6 +9,7 @@ import {
   CreditCard,
   History,
   Repeat,
+  ShieldCheck,
   Trophy,
   Users,
   Wallet,
@@ -112,6 +113,13 @@ export function getNotificationVisualMeta(type: NotificationType | string): Noti
         badgeBgClass: "bg-kash-transfer/15 text-kash-transfer",
         categoryLabel: "Shared Savings",
       };
+    case "managed_space_invitation":
+      return {
+        icon: ShieldCheck,
+        toneClass: "text-kash-emerald",
+        badgeBgClass: "bg-kash-emerald/10 text-kash-emeraldDark",
+        categoryLabel: "Managed Space",
+      };
     case "shared_contribution_pending":
       return {
         icon: History,
@@ -188,6 +196,8 @@ export function getNotificationTargetPath(notification: Notification): string | 
     case "shared_savings_invite":
     case "shared_contribution":
       return "/shared-savings";
+    case "managed_space_invitation":
+      return `/managed-invitations/${notification.entity_id}`;
     default:
       if (typeof notification.metadata?.target_path === "string" && notification.metadata.target_path) {
         return notification.metadata.target_path;

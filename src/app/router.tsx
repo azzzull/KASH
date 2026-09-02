@@ -27,6 +27,8 @@ const EnvelopeDetailPage = lazyPage(() => import("../pages/EnvelopeDetailPage"),
 const GoalsPage = lazyPage(() => import("../pages/GoalsPage"), "GoalsPage");
 const GoalDetailPage = lazyPage(() => import("../pages/GoalDetailPage"), "GoalDetailPage");
 const LoginPage = lazyPage(() => import("../pages/LoginPage"), "LoginPage");
+const ManagedSpaceInvitationPage = lazyPage(() => import("../pages/ManagedSpaceInvitationPage"), "ManagedSpaceInvitationPage");
+const ManagedSpaceSetupPage = lazyPage(() => import("../pages/ManagedSpaceSetupPage"), "ManagedSpaceSetupPage");
 const NotificationsPage = lazyPage(() => import("../pages/NotificationsPage"), "NotificationsPage");
 const OnboardingPage = lazyPage(() => import("../pages/OnboardingPage"), "OnboardingPage");
 const SettingsPage = lazyPage(() => import("../pages/SettingsPage"), "SettingsPage");
@@ -105,6 +107,8 @@ export const router = createBrowserRouter([
             ],
           },
           { path: "/notifications", element: routeElement(<NotificationsPage />) },
+          { path: "/managed-invitations/:id", element: routeElement(<ManagedSpaceInvitationPage />) },
+          { path: "/managed-spaces/:spaceId/setup", element: routeElement(<ManagedSpaceSetupPage />) },
           { path: "/settings", element: routeElement(<SettingsPage />) },
           { path: "/settings/categories", element: routeElement(<CategoriesPage />) },
           { path: "/settings/members", element: routeElement(<SpaceMembersPage />) },

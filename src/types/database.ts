@@ -21,6 +21,8 @@ import type {
   FinancialSpace,
   FinancialSpaceType,
   ManagedSpaceMember,
+  ManagedSpaceInvitation,
+  ManagedSpaceInvitationResponse,
   ManagedSpaceRole,
   ManagedSpaceMemberStatus,
   Goal,
@@ -99,6 +101,18 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Omit<ManagedSpaceMember, "id" | "space_id" | "user_id" | "created_at">>;
+        Relationships: [];
+      };
+      managed_space_invitations: {
+        Row: ManagedSpaceInvitation;
+        Insert: Partial<ManagedSpaceInvitation> & {
+          space_id: string;
+          invited_user_id: string;
+          invited_email: string;
+          role: Exclude<ManagedSpaceRole, "owner">;
+          invited_by: string;
+        };
+        Update: Partial<ManagedSpaceInvitation>;
         Relationships: [];
       };
       profiles: {
@@ -1083,6 +1097,7 @@ export type Database = {
         Returns: {
           user_id: string;
           full_name: string | null;
+          email: string | null;
           avatar_url: string | null;
           role: ManagedSpaceRole;
           status: string;
@@ -1097,8 +1112,44 @@ export type Database = {
         };
         Returns: {
           success: boolean;
-          user_id: string;
+          invitation_id: string;
+          duplicate: boolean;
         };
+      };
+      create_managed_space: {
+        Args: { p_space_name: string };
+        Returns: FinancialSpace;
+      };
+      get_managed_space_invitations: {
+        Args: { p_space_id: string };
+        Returns: ManagedSpaceInvitation[];
+      };
+      invite_managed_space_member: {
+        Args: {
+          p_space_id: string;
+          p_email: string;
+          p_role: ManagedSpaceRole;
+        };
+        Returns: {
+          success: boolean;
+          invitation_id: string;
+          duplicate: boolean;
+        };
+      };
+      get_managed_space_invitation: {
+        Args: { p_invitation_id: string };
+        Returns: ManagedSpaceInvitation[];
+      };
+      respond_managed_space_invitation: {
+        Args: {
+          p_invitation_id: string;
+          p_action: "accept" | "decline";
+        };
+        Returns: ManagedSpaceInvitationResponse;
+      };
+      cancel_managed_space_invitation: {
+        Args: { p_invitation_id: string };
+        Returns: void;
       };
       update_managed_space_member_role: {
         Args: {

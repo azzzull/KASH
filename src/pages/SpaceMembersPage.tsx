@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Users, UserPlus, Edit3, Trash2, ArrowLeft, Shield, Crown, Eye, UserCheck } from "lucide-react";
+import { Users, UserPlus, Edit3, Trash2, ArrowLeft, Shield, Crown, Eye, UserCheck, Clock3, X } from "lucide-react";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Button } from "../components/ui/Button";
 import { StatusBadge } from "../components/ui/StatusBadge";
@@ -10,16 +10,22 @@ import { EditMemberRoleModal } from "../components/spaces/EditMemberRoleModal";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../i18n";
-import { getManagedSpaceMembers, removeManagedSpaceMember } from "../lib/spaces";
-import type { ManagedSpaceMemberItem, ManagedSpaceRole } from "../types/domain";
+import {
+  cancelManagedSpaceInvitation,
+  getManagedSpaceInvitations,
+  getManagedSpaceMembers,
+  removeManagedSpaceMember,
+} from "../lib/spaces";
+import type { ManagedSpaceInvitation, ManagedSpaceMemberItem, ManagedSpaceRole } from "../types/domain";
 
 export function SpaceMembersPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { user } = useAuth();
-  const { activeSpace } = useActiveSpace();
+  const { activeSpace, userRole } = useActiveSpace();
   const navigate = useNavigate();
 
   const [members, setMembers] = useState<ManagedSpaceMemberItem[]>([]);
+  const [invitations, setInvitations] = useState<ManagedSpaceInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +33,7 @@ export function SpaceMembersPage() {
   const [editingMember, setEditingMember] = useState<ManagedSpaceMemberItem | null>(null);
   const [removingMember, setRemovingMember] = useState<ManagedSpaceMemberItem | null>(null);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const [cancellingInvitation, setCancellingInvitation] = useState<ManagedSpaceInvitation | null>(null);
 
   const isManaged = activeSpace?.space_type === "managed";
   const spaceId = activeSpace?.id;
@@ -41,18 +48,27 @@ export function SpaceMembersPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchError } = await getManagedSpaceMembers(spaceId);
+      const canLoadInvitations = activeSpace?.owner_user_id === user?.id || userRole === "admin";
+      const [membersResult, invitationsResult] = await Promise.all([
+        getManagedSpaceMembers(spaceId),
+        canLoadInvitations
+          ? getManagedSpaceInvitations(spaceId)
+          : Promise.resolve({ data: [] as ManagedSpaceInvitation[], error: null }),
+      ]);
+      const { data, error: fetchError } = membersResult;
       if (fetchError) {
         setError(fetchError.message || t("common.error"));
       } else {
         setMembers(data || []);
+        setInvitations((invitationsResult.data || []).filter((invitation) => invitation.status === "pending"));
+        if (invitationsResult.error) setError(invitationsResult.error.message);
       }
     } catch (err: any) {
       setError(err?.message || t("common.error"));
     } finally {
       setLoading(false);
     }
-  }, [spaceId, isManaged, t]);
+  }, [spaceId, isManaged, t, activeSpace?.owner_user_id, user?.id, userRole]);
 
   useEffect(() => {
     loadMembers();
@@ -84,6 +100,19 @@ export function SpaceMembersPage() {
     } finally {
       setRemoveLoading(false);
     }
+  };
+
+  const handleCancelInvitation = async () => {
+    if (!cancellingInvitation) return;
+    setRemoveLoading(true);
+    const { error: cancelError } = await cancelManagedSpaceInvitation(cancellingInvitation.id);
+    if (cancelError) {
+      setError(cancelError.message);
+    } else {
+      setCancellingInvitation(null);
+      await loadMembers();
+    }
+    setRemoveLoading(false);
   };
 
   // Helper to check if caller can edit role of a specific member
@@ -187,7 +216,7 @@ export function SpaceMembersPage() {
             {canManageMembers ? (
               <Button onClick={() => setAddModalOpen(true)}>
                 <UserPlus size={16} />
-                <span>{t("spaces.addMember") || "Tambah Anggota"}</span>
+                <span>{t("spaces.inviteMember")}</span>
               </Button>
             ) : null}
           </div>
@@ -204,7 +233,7 @@ export function SpaceMembersPage() {
         <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-extrabold text-slate-900">
-              {t("spaces.members") || "Daftar Anggota"}
+              {t("spaces.activeMembers")}
             </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-extrabold text-slate-600">
               {members.length}
@@ -306,6 +335,60 @@ export function SpaceMembersPage() {
         )}
       </div>
 
+      {canManageMembers ? (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Clock3 className="text-slate-500" size={16} />
+              <span className="text-sm font-extrabold text-slate-900">
+                {t("spaces.pendingInvitations")}
+              </span>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-extrabold text-amber-800">
+                {invitations.length}
+              </span>
+            </div>
+          </div>
+
+          {!loading && invitations.length === 0 ? (
+            <div className="p-7 text-center text-xs font-semibold text-slate-500">
+              {t("spaces.noPendingInvitations")}
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {invitations.map((invitation) => {
+                const displayName = invitation.invited_name || invitation.invited_email;
+                const canCancel = callerRole === "owner" || invitation.role !== "admin";
+                return (
+                  <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between" key={invitation.id}>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-extrabold text-slate-900">{displayName}</p>
+                      <p className="truncate text-xs font-medium text-slate-600">{invitation.invited_email}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {getRoleBadge(invitation.role)}
+                        <StatusBadge tone="warning" label={t("spaces.awaitingResponse")} size="sm" />
+                      </div>
+                      <p className="mt-2 text-[11px] font-medium text-slate-500">
+                        {t("spaces.invitedBy", { name: invitation.inviter_name || invitation.inviter_email })}
+                        {" · "}
+                        {new Intl.DateTimeFormat(locale === "en" ? "en-US" : "id-ID", {
+                          dateStyle: "medium",
+                        }).format(new Date(invitation.invited_at))}
+                      </p>
+                    </div>
+                    {canCancel ? (
+                      <Button onClick={() => setCancellingInvitation(invitation)} size="sm" variant="secondary">
+                        <X size={14} />
+                        {t("spaces.cancelInvitation")}
+                      </Button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {/* Add Member Modal */}
       {spaceId ? (
         <AddMemberModal
@@ -342,6 +425,18 @@ export function SpaceMembersPage() {
           onConfirm={handleConfirmRemove}
           onCancel={() => setRemovingMember(null)}
           isLoading={removeLoading}
+        />
+      ) : null}
+
+      {cancellingInvitation ? (
+        <ConfirmationDialog
+          confirmLabel={t("spaces.cancelInvitation")}
+          description={t("spaces.cancelInvitationConfirm", { email: cancellingInvitation.invited_email })}
+          isLoading={removeLoading}
+          onCancel={() => setCancellingInvitation(null)}
+          onConfirm={handleCancelInvitation}
+          title={t("spaces.cancelInvitation")}
+          tone="danger"
         />
       ) : null}
     </div>

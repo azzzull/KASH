@@ -30,12 +30,12 @@ type ActiveSpaceContextValue = {
   userRole: ManagedSpaceRole | "owner" | null;
   loading: boolean;
   setActiveSpace: (spaceOrId: FinancialSpace | string) => void;
-  createManagedSpace: (name: string, walletName: string, walletType: string) => Promise<FinancialSpace>;
+  createManagedSpace: (name: string) => Promise<FinancialSpace>;
   renameManagedSpace: (spaceId: string, name: string) => Promise<FinancialSpace>;
   archiveManagedSpace: (spaceId: string) => Promise<void>;
   restoreManagedSpace: (spaceId: string) => Promise<void>;
   deleteManagedSpace: (spaceId: string) => Promise<void>;
-  refreshSpaces: () => Promise<void>;
+  refreshSpaces: (preferredSpaceId?: string) => Promise<void>;
 };
 
 const ActiveSpaceContext = createContext<ActiveSpaceContextValue | undefined>(undefined);
@@ -46,7 +46,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   const [activeSpaceId, setActiveSpaceIdState] = useState<string | null>(getStoredActiveSpaceId());
   const [loading, setLoading] = useState<boolean>(true);
 
-  const loadSpaces = useCallback(async () => {
+  const loadSpaces = useCallback(async (preferredSpaceId?: string) => {
     if (status !== "authenticated" || !user) {
       setSpaces([]);
       setActiveSpaceIdState(null);
@@ -68,7 +68,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       setSpaces(spaceList);
 
       const personal = spaceList.find((s) => s.space_type === "personal") ?? null;
-      const storedId = getStoredActiveSpaceId();
+      const storedId = preferredSpaceId ?? getStoredActiveSpaceId();
 
       let resolvedSpace: FinancialSpace | null = null;
       if (storedId) {
@@ -118,13 +118,14 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   );
 
   const createManagedSpace = useCallback(
-    async (name: string, walletName: string, walletType: string): Promise<FinancialSpace> => {
-      const { data, error } = await createManagedSpaceApi(name, walletName, walletType);
+    async (name: string): Promise<FinancialSpace> => {
+      const { data, error } = await createManagedSpaceApi(name);
       if (error || !data) {
         throw error || new Error("Gagal membuat Financial Space");
       }
 
-      await loadSpaces();
+      await loadSpaces(data.id);
+      emitSpaceChanged();
       return data;
     },
     [loadSpaces]
@@ -296,8 +297,9 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
       archiveManagedSpace,
       restoreManagedSpace,
       deleteManagedSpace,
-      refreshSpaces: async () => {
-        await Promise.all([loadSpaces(), refreshUserRole()]);
+      refreshSpaces: async (preferredSpaceId?: string) => {
+        await loadSpaces(preferredSpaceId);
+        await refreshUserRole();
       },
     }),
     [

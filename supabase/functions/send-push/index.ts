@@ -269,6 +269,13 @@ serve(async (req: Request) => {
       entityId = notifRow.entity_id;
       metadata = notifRow.metadata as Record<string, unknown>;
 
+      if (typeof metadata?.push_title === "string" && metadata.push_title.trim()) {
+        pushTitle = metadata.push_title;
+      }
+      if (typeof metadata?.push_message === "string" && metadata.push_message.trim()) {
+        pushMessage = metadata.push_message;
+      }
+
       const { error: claimError } = await supabase
         .from("notification_push_deliveries")
         .insert({
