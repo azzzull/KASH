@@ -1,8 +1,8 @@
 import type { jsPDF } from "jspdf";
 import kashLogoUrl from "../../logo/SVG/KASHLogo.svg";
 import type { FinancialReportData, TransactionRecapData } from "../types/reports";
-import { formatCurrency, toNumber } from "./money";
-import { buildCashFlowTrend } from "./reportCharts";
+import { formatCompactCurrency, formatCurrency, toNumber } from "./money";
+import { buildCashFlowScale, buildCashFlowTrend } from "./reportCharts";
 import { isExternalTransfer } from "./transactions";
 
 type ExportKind = "financial" | "recap" | "transactions";
@@ -23,7 +23,7 @@ function normalizeFinancialReport(data: FinancialReportData): FinancialReportDat
     transactionRecap: {
       ...recap,
       space: { ...recap.space, name: recap.space?.name || "KASH Space" },
-      period: { ...recap.period, label: recap.period?.label || "Selected period", start: fallbackDate, end: safeDate(recap.period?.end, fallbackDate) },
+      period: { ...recap.period, label: recap.period?.label || "Selected period", start: typeof recap.period?.start === "string" ? recap.period.start : fallbackDate, end: typeof recap.period?.end === "string" ? recap.period.end : fallbackDate },
       summary: { income: safeNumber(recap.summary?.income), expensePrincipal: safeNumber(recap.summary?.expensePrincipal), adminFees: safeNumber(recap.summary?.adminFees), totalExpense: safeNumber(recap.summary?.totalExpense), netCashFlow: safeNumber(recap.summary?.netCashFlow), transactionCount: safeNumber(recap.summary?.transactionCount) },
       transactions: (recap.transactions ?? []).map((transaction) => ({ ...transaction, transaction_date: safeDate(transaction.transaction_date, fallbackDate), amount: safeNumber(transaction.amount), transfer_fee: safeNumber(transaction.transfer_fee), title: transaction.title ?? "" })),
       categoryBreakdown: (recap.categoryBreakdown ?? []).map((item) => ({ ...item, categoryName: item.categoryName || "Uncategorized", amount: safeNumber(item.amount), transactionCount: safeNumber(item.transactionCount), percentage: safeNumber(item.percentage) })),
@@ -33,7 +33,7 @@ function normalizeFinancialReport(data: FinancialReportData): FinancialReportDat
 }
 
 function slug(value: string) { return value.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim().replace(/[. ]+$/g, "") || "Space"; }
-function periodFilePart(data: TransactionRecapData) { return data.period.month !== undefined && data.period.year !== undefined ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(new Date(data.period.year, data.period.month, 1)).replace(" ", "-") : `${data.period.start.slice(0, 10)}-to-${new Date(new Date(data.period.end).getTime() - 1).toISOString().slice(0, 10)}`; }
+function periodFilePart(data: TransactionRecapData) { return data.period.month !== undefined && data.period.year !== undefined ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(new Date(data.period.year, data.period.month, 1)).replace(" ", "-") : `${data.period.start}-to-${data.period.end}`; }
 export function reportFilename(kind: ExportKind, data: TransactionRecapData, extension: "pdf" | "xlsx" | "csv") { const prefix = kind === "financial" ? "KASH-Financial-Report" : kind === "recap" ? "KASH-Transaction-Recap" : "KASH-Transactions"; return `${prefix}-${slug(data.space.name)}-${periodFilePart(data)}.${extension}`; }
 function download(blob: Blob, filename: string) { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1_000); }
 function displayTitle(transaction: TransactionRecapData["transactions"][number]) { if (transaction.title) return transaction.title; if (isExternalTransfer(transaction)) return "Transfer Keluar"; return transaction.category?.name ?? transaction.type; }
@@ -93,9 +93,9 @@ function chartPanel(doc: jsPDF, title: string, x: number, y: number, width: numb
 function drawCashFlowTrend(doc: jsPDF, data: TransactionRecapData, x: number, y: number, width: number, height: number) {
   const points = buildCashFlowTrend(data); chartPanel(doc, "Cash Flow Trend", x, y, width, height);
   if (!points.length) { doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.setFontSize(7); doc.text("No activity in this period", x + width / 2, y + height / 2, { align: "center" }); return; }
-  const left = x + 7; const right = x + width - 7; const top = y + 15; const bottom = y + height - 10; const min = Math.min(0, ...points.map((point) => point.net)); const max = Math.max(1, ...points.flatMap((point) => [point.income, point.expense, point.net]));
+  const left = x + 22; const right = x + width - 7; const top = y + 15; const bottom = y + height - 10; const scale = buildCashFlowScale(points); const { min, max } = scale;
   const pointX = (index: number) => left + index * ((right - left) / Math.max(1, points.length - 1)); const pointY = (value: number) => top + (max - value) / (max - min) * (bottom - top);
-  doc.setDrawColor(226, 232, 240); doc.line(left, pointY(0), right, pointY(0));
+  scale.ticks.forEach((tick) => { doc.setDrawColor(tick === 0 ? 148 : 226, tick === 0 ? 163 : 232, tick === 0 ? 184 : 240); doc.line(left, pointY(tick), right, pointY(tick)); doc.setTextColor(tick === 0 ? 71 : 100, tick === 0 ? 85 : 116, tick === 0 ? 105 : 139); doc.setFont("helvetica", tick === 0 ? "bold" : "normal"); doc.setFontSize(5.4); doc.text(formatCompactCurrency(tick), left - 2, pointY(tick) + 1.8, { align: "right" }); });
   const drawSeries = (values: number[], color: readonly [number, number, number], dash?: number[]) => { doc.setDrawColor(...color); doc.setLineWidth(0.8); doc.setLineDashPattern(dash ?? [], 0); values.forEach((value, index) => { if (index) doc.line(pointX(index - 1), pointY(values[index - 1]), pointX(index), pointY(value)); }); };
   drawSeries(points.map((point) => point.income), EMERALD); drawSeries(points.map((point) => point.expense), [239, 68, 68]); drawSeries(points.map((point) => point.net), [15, 118, 110], [1.5, 1.5]); doc.setLineDashPattern([], 0);
   doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.setFontSize(5.8); const step = Math.max(1, Math.ceil(points.length / 6)); points.forEach((point, index) => { if (index % step === 0 || index === points.length - 1) doc.text(point.shortLabel, pointX(index), bottom + 5, { align: "center" }); });
@@ -159,7 +159,7 @@ export async function createFinancialReportPdfBlob(rawData: FinancialReportData)
   try { metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46); } catch (error) { throw stageError("pdf-kpis", error); }
   try { drawCashFlowTrend(doc, recap, PAGE.left, 72, 178, 53); } catch (error) { console.error("[KASH Financial Report Export][chart-cash-flow]", error); chartPanel(doc, "Cash Flow Trend", PAGE.left, 72, 178, 53); }
   try { await drawCategoryRingChart(doc, l.category, recap.categoryBreakdown.map((item) => ({ label: item.categoryName, value: item.amount, percentage: item.percentage })), PAGE.left, 131, 178, 75); } catch (error) { console.error("[KASH Financial Report Export][chart-category]", error); drawRankedChart(doc, l.category, recap.categoryBreakdown.map((item) => ({ label: item.categoryName, value: item.amount, percentage: item.percentage })), PAGE.left, 131, 178, 75); }
-  try { drawRankedChart(doc, "Wallet Activity", recap.walletBreakdown.map((item) => ({ label: item.wallet.name, value: item.cashOut })), PAGE.left, 212, 178, 62); } catch (error) { console.error("[KASH Financial Report Export][chart-wallet]", error); chartPanel(doc, "Wallet Activity", PAGE.left, 212, 178, 62); }
+  try { drawRankedChart(doc, "Cash Out by Wallet", recap.walletBreakdown.map((item) => ({ label: item.wallet.name, value: item.cashOut })), PAGE.left, 212, 178, 62); } catch (error) { console.error("[KASH Financial Report Export][chart-wallet]", error); chartPanel(doc, "Cash Out by Wallet", PAGE.left, 212, 178, 62); }
   try {
     doc.addPage(); let y = 20; sectionTitle(doc, "Activity Details", y); y += 8;
     const totalMovement = recap.transactions.reduce((sum, transaction) => sum + Math.abs(transactionTotal(transaction)), 0); const largestTransaction = [...recap.transactions].sort((a, b) => Math.abs(transactionTotal(b)) - Math.abs(transactionTotal(a)))[0];

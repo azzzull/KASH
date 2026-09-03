@@ -3,24 +3,19 @@ import { DatePickerField } from "../ui/DatePickerField";
 import { SelectField } from "../ui/SelectField";
 import type { ReportPeriod, ReportPeriodPreset } from "../../types/reports";
 import { useI18n } from "../../i18n";
+import { createReportPeriod } from "../../lib/reportPeriod";
 
 type Props = { preset: ReportPeriodPreset; month: number; year: number; from: string; until: string; onChange: (next: { preset?: ReportPeriodPreset; month?: number; year?: number; from?: string; until?: string }) => void; onPeriodChange: (period: ReportPeriod) => void };
-
-function localIso(year: number, month: number, day: number) { return new Date(year, month, day).toISOString(); }
 
 export function ReportPeriodPicker({ preset, month, year, from, until, onChange, onPeriodChange }: Props) {
   const { formatMonthYear, t } = useI18n();
   const period = useMemo<ReportPeriod>(() => {
     const now = new Date();
-    if (preset === "this_month") return { preset, start: localIso(now.getFullYear(), now.getMonth(), 1), end: localIso(now.getFullYear(), now.getMonth() + 1, 1), label: formatMonthYear(new Date(now.getFullYear(), now.getMonth(), 1)) };
-    if (preset === "last_month") return { preset, start: localIso(now.getFullYear(), now.getMonth() - 1, 1), end: localIso(now.getFullYear(), now.getMonth(), 1), label: formatMonthYear(new Date(now.getFullYear(), now.getMonth() - 1, 1)) };
-    if (preset === "this_year") return { preset, start: localIso(now.getFullYear(), 0, 1), end: localIso(now.getFullYear() + 1, 0, 1), label: String(now.getFullYear()), year: now.getFullYear() };
-    if (preset === "custom_range") {
-      const start = from ? new Date(`${from}T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
-      const endDate = until ? new Date(`${until}T00:00:00`) : new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      return { preset, start: start.toISOString(), end: new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() + 1).toISOString(), label: `${from} – ${until}` };
-    }
-    return { preset, start: localIso(year, month, 1), end: localIso(year, month + 1, 1), label: formatMonthYear(new Date(year, month, 1)), month, year };
+    if (preset === "this_month") return createReportPeriod({ preset, year: now.getFullYear(), month: now.getMonth(), label: formatMonthYear(new Date(now.getFullYear(), now.getMonth(), 1)) });
+    if (preset === "last_month") return createReportPeriod({ preset, year: now.getFullYear(), month: now.getMonth() - 1, label: formatMonthYear(new Date(now.getFullYear(), now.getMonth() - 1, 1)) });
+    if (preset === "this_year") return createReportPeriod({ preset, year: now.getFullYear(), label: String(now.getFullYear()) });
+    if (preset === "custom_range") return createReportPeriod({ preset, year: now.getFullYear(), month: now.getMonth(), from, until, label: `${from} – ${until}` });
+    return createReportPeriod({ preset, year, month, label: formatMonthYear(new Date(year, month, 1)) });
   }, [formatMonthYear, from, month, preset, until, year]);
 
   useEffect(() => { onPeriodChange(period); }, [onPeriodChange, period]);

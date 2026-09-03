@@ -1978,6 +1978,7 @@ export const id = {
     "reports.cashFlowTrend": "Tren arus kas",
     "reports.categoryBreakdown": "Rincian kategori",
     "reports.walletActivity": "Aktivitas dompet",
+    "reports.cashOutByWallet": "Arus Keluar per Dompet",
     "reports.chartEmpty": "Belum ada data grafik untuk periode ini.",
     "reports.transactionRecap": "Rekap Transaksi",
     "reports.recapDescription": "Rekap transaksi lengkap berdasarkan bulan atau periode pilihan.",

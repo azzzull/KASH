@@ -10,6 +10,7 @@ import type {
 import { toNumber } from "./money";
 import { isExternalTransfer, type TransactionWithMeta } from "./transactions";
 import { supabase } from "./supabase";
+import { reportQueryRange } from "./reportPeriod";
 
 const REPORT_PAGE_SIZE = 500;
 
@@ -26,14 +27,15 @@ function matchesFilters(transaction: Transaction, filters: TransactionRecapFilte
 }
 
 async function getAllTransactions(spaceId: string, period: ReportPeriod) {
+  const range = reportQueryRange(period);
   const rows: Transaction[] = [];
   for (let start = 0; ; start += REPORT_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("transactions")
       .select("*")
       .eq("space_id", spaceId)
-      .gte("transaction_date", period.start)
-      .lt("transaction_date", period.end)
+      .gte("transaction_date", range.start)
+      .lt("transaction_date", range.endExclusive)
       .order("transaction_date", { ascending: true })
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })

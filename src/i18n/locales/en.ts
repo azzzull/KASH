@@ -1966,6 +1966,7 @@ export const en = {
     "reports.cashFlowTrend": "Cash flow trend",
     "reports.categoryBreakdown": "Category breakdown",
     "reports.walletActivity": "Wallet activity",
+    "reports.cashOutByWallet": "Cash Out by Wallet",
     "reports.chartEmpty": "No chart data is available for this period.",
     "reports.transactionRecap": "Transaction Recap",
     "reports.recapDescription": "A complete transaction recap by month or custom period.",

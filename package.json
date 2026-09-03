@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "verify:report-period": "node --experimental-strip-types scripts/verify-report-period.mts",
     "preview": "vite preview"
   },
   "dependencies": {
