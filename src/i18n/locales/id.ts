@@ -1656,6 +1656,12 @@ export const id = {
         "Semua pemberitahuan dan pengingat akan muncul di sini.",
     "notifications.markAllRead": "Tandai Semua Dibaca",
     "notifications.clearRead": "Hapus yang Dibaca",
+    "notifications.managedReimbursementCreatedTitle": "Reimbursement baru",
+    "notifications.managedReimbursementCreatedMessage": "{requester} mengajukan reimbursement {amount} di {space}.",
+    "notifications.managedReimbursementPartiallyPaidTitle": "Reimbursement dibayar sebagian",
+    "notifications.managedReimbursementPartiallyPaidMessage": "{actor} membayar {amount} dari reimbursement kamu di {space}. Sisa {remaining}.",
+    "notifications.managedReimbursementPaidTitle": "Reimbursement berhasil dibayar",
+    "notifications.managedReimbursementPaidMessage": "Reimbursement {amount} kamu di {space} telah dibayar oleh {actor}.",
 
     // Budget additions
     "budgets.noBudgetForEnvelopeInMonth":

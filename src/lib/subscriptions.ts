@@ -244,7 +244,7 @@ export async function createRecurringObligation(
       p_already_paid_count: input.alreadyPaidCount || 0,
       p_note: input.note?.trim() || null,
       p_space_id: input.spaceId ?? getActiveSpaceId() ?? null,
-    } as any);
+    });
 
     if (error) throw error;
 

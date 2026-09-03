@@ -364,6 +364,7 @@ export type Database = {
           entity_type?: string | null;
           entity_id?: string | null;
           metadata?: Json;
+          source_key?: string | null;
           is_read?: boolean;
           read_at?: string | null;
           created_at?: string;
@@ -850,6 +851,7 @@ export type Database = {
           p_installment_count?: number | null;
           p_already_paid_count?: number;
           p_note?: string | null;
+          p_space_id?: string | null;
         };
         Returns: string;
       };

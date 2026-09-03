@@ -1647,6 +1647,12 @@ export const en = {
         "All updates and reminders will appear here.",
     "notifications.markAllRead": "Mark All as Read",
     "notifications.clearRead": "Clear Read",
+    "notifications.managedReimbursementCreatedTitle": "New reimbursement",
+    "notifications.managedReimbursementCreatedMessage": "{requester} requested reimbursement of {amount} in {space}.",
+    "notifications.managedReimbursementPartiallyPaidTitle": "Reimbursement partially paid",
+    "notifications.managedReimbursementPartiallyPaidMessage": "{actor} paid {amount} of your reimbursement in {space}. Remaining {remaining}.",
+    "notifications.managedReimbursementPaidTitle": "Reimbursement paid",
+    "notifications.managedReimbursementPaidMessage": "Your reimbursement of {amount} in {space} was paid by {actor}.",
 
     // Budget additions
     "budgets.noBudgetForEnvelopeInMonth":

@@ -1,8 +1,7 @@
 import { Plus, RefreshCw, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationProvider } from "../context/NotificationContext";
-import { useAppLaunchSplash } from "../components/app/AppLaunchSplash";
 import { StaleSessionReset } from "../components/app/StaleSessionReset";
 import { PushNotificationOnboardingPrompt } from "../components/notifications/PushNotificationOnboardingPrompt";
 import { ServiceWorkerNavigationBridge } from "../components/pwa/ServiceWorkerNavigationBridge";
@@ -21,11 +20,11 @@ import { canCreateTransaction } from "../lib/transactions";
 
 export function AppShell() {
   const location = useLocation();
-  const { showStaleResetSplash } = useAppLaunchSplash();
+  const navigate = useNavigate();
   const contentRef = useRef<HTMLElement | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { activeSpace, userRole, activeSpaceId } = useActiveSpace();
+  const { activeSpace, userRole, activeSpaceId, loading: spaceLoading, setActiveSpace, spaces } = useActiveSpace();
   const canCreate = canCreateTransaction(activeSpace, userRole);
   const [transactionMode, setTransactionMode] =
     useState<QuickAddMode | null>(null);
@@ -38,6 +37,28 @@ export function AppShell() {
     window.scrollTo({ top: 0 });
     setMobileHeaderVisible(true);
   }, [location.pathname]);
+
+  // Notification deep links carry a space identifier. Resolve it only against the
+  // authenticated user's currently accessible spaces, then remove it from the URL.
+  useEffect(() => {
+    const targetSpaceId = new URLSearchParams(location.search).get("space_id");
+    if (!targetSpaceId) return;
+    if (spaceLoading) return;
+
+    const targetSpace = spaces.find(
+      (space) => space.id === targetSpaceId && !space.is_archived && !space.deleted_at,
+    );
+    if (targetSpace) {
+      setActiveSpace(targetSpace);
+    }
+
+    const nextSearch = new URLSearchParams(location.search);
+    nextSearch.delete("space_id");
+    navigate(
+      { pathname: location.pathname, search: nextSearch.toString() ? `?${nextSearch.toString()}` : "" },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, navigate, setActiveSpace, spaceLoading, spaces]);
 
   useEffect(() => {
     const getScrollTop = () => {
@@ -150,19 +171,11 @@ export function AppShell() {
     window.location.reload();
   };
 
-  const resetTransientUi = useCallback(() => {
-    setQuickAddOpen(false);
-    setMoreOpen(false);
-    setTransactionMode(null);
-    setSuccessMessage(null);
-    setUpdateRegistration(null);
-  }, []);
-
   return (
     <NotificationProvider>
       <ServiceWorkerNavigationBridge />
       <PushNotificationOnboardingPrompt />
-      <StaleSessionReset onResetTransientUi={resetTransientUi} onStaleResetStart={showStaleResetSplash} />
+      <StaleSessionReset />
       <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
         <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
           <DesktopSidebar />

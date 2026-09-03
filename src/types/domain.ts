@@ -347,6 +347,7 @@ export type Notification = {
   entity_type: string | null;
   entity_id: string | null;
   metadata: Record<string, unknown>;
+  source_key: string | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;

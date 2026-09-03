@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
+  HandCoins,
   History,
   Repeat,
   ShieldCheck,
@@ -17,6 +18,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Notification, NotificationType } from "../types/domain";
+import type { TranslationKey } from "../i18n";
+
+type NotificationTranslator = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
 export type NotificationVisualMeta = {
   icon: LucideIcon;
@@ -120,6 +124,15 @@ export function getNotificationVisualMeta(type: NotificationType | string): Noti
         badgeBgClass: "bg-kash-emerald/10 text-kash-emeraldDark",
         categoryLabel: "Managed Space",
       };
+    case "managed_reimbursement_created":
+    case "managed_reimbursement_partially_paid":
+    case "managed_reimbursement_paid":
+      return {
+        icon: HandCoins,
+        toneClass: "text-kash-emerald",
+        badgeBgClass: "bg-kash-emerald100 text-kash-emeraldDark",
+        categoryLabel: "Managed Space",
+      };
     case "shared_contribution_pending":
       return {
         icon: History,
@@ -164,6 +177,64 @@ export function getNotificationVisualMeta(type: NotificationType | string): Noti
         badgeBgClass: "bg-kash-selected text-kash-emeraldDark",
         categoryLabel: "Notification",
       };
+  }
+}
+
+function notificationMetadataString(notification: Notification, key: string, fallback: string) {
+  const value = notification.metadata?.[key];
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function notificationMetadataNumber(notification: Notification, key: string) {
+  const value = notification.metadata?.[key];
+  return typeof value === "number" || typeof value === "string" ? Number(value) : Number.NaN;
+}
+
+export function getNotificationContent(
+  notification: Notification,
+  t: NotificationTranslator,
+  formatCurrency: (amount: number | string, currency?: string) => string,
+) {
+  const space = notificationMetadataString(notification, "space_name", "Managed Space");
+
+  switch (notification.type) {
+    case "managed_reimbursement_created": {
+      const amount = notificationMetadataNumber(notification, "amount");
+      return {
+        title: t("notifications.managedReimbursementCreatedTitle"),
+        message: t("notifications.managedReimbursementCreatedMessage", {
+          requester: notificationMetadataString(notification, "requester_name", "Pengguna"),
+          amount: Number.isFinite(amount) ? formatCurrency(amount, "IDR") : "-",
+          space,
+        }),
+      };
+    }
+    case "managed_reimbursement_partially_paid": {
+      const amount = notificationMetadataNumber(notification, "amount");
+      const remaining = notificationMetadataNumber(notification, "remaining_amount");
+      return {
+        title: t("notifications.managedReimbursementPartiallyPaidTitle"),
+        message: t("notifications.managedReimbursementPartiallyPaidMessage", {
+          actor: notificationMetadataString(notification, "settled_by_name", "Pengguna"),
+          amount: Number.isFinite(amount) ? formatCurrency(amount, "IDR") : "-",
+          remaining: Number.isFinite(remaining) ? formatCurrency(remaining, "IDR") : "-",
+          space,
+        }),
+      };
+    }
+    case "managed_reimbursement_paid": {
+      const amount = notificationMetadataNumber(notification, "amount");
+      return {
+        title: t("notifications.managedReimbursementPaidTitle"),
+        message: t("notifications.managedReimbursementPaidMessage", {
+          actor: notificationMetadataString(notification, "settled_by_name", "Pengguna"),
+          amount: Number.isFinite(amount) ? formatCurrency(amount, "IDR") : "-",
+          space,
+        }),
+      };
+    }
+    default:
+      return { title: notification.title, message: notification.message };
   }
 }
 

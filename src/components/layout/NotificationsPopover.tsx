@@ -1,9 +1,11 @@
 import { Bell, CheckCheck, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useI18n } from "../../i18n";
 import {
   formatRelativeNotificationTime,
+  getNotificationContent,
   getNotificationTargetPath,
   getNotificationVisualMeta,
 } from "../../lib/notificationMeta";
@@ -40,7 +42,8 @@ export function NotificationsPopover({
   className = "",
   onClose,
 }: NotificationsPopoverProps) {
-  const { t } = useI18n();
+  const { t, formatCurrency } = useI18n();
+  const { setActiveSpace, spaces } = useActiveSpace();
   const navigate = useNavigate();
   const {
     clearRead,
@@ -79,6 +82,16 @@ export function NotificationsPopover({
         await markRead(notification.id);
       } catch {
         // Continue navigation even if marking read fails
+      }
+    }
+
+    const targetSpaceId = notification.metadata?.target_space_id;
+    if (typeof targetSpaceId === "string") {
+      const targetSpace = spaces.find(
+        (space) => space.id === targetSpaceId && !space.is_archived && !space.deleted_at,
+      );
+      if (targetSpace) {
+        setActiveSpace(targetSpace);
       }
     }
 
@@ -163,6 +176,7 @@ export function NotificationsPopover({
           <div className="divide-y divide-slate-100">
             {notifications.map((notification) => {
               const meta = getNotificationVisualMeta(notification.type);
+              const content = getNotificationContent(notification, t, formatCurrency);
               const IconComponent = meta.icon;
               const isUnread = !notification.is_read;
 
@@ -188,14 +202,14 @@ export function NotificationsPopover({
                           isUnread ? "font-extrabold" : "font-semibold text-slate-800"
                         }`}
                       >
-                        {notification.title}
+                        {content.title}
                       </p>
                       {isUnread && (
                         <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-kash-emerald" />
                       )}
                     </div>
                     <p className="mt-1 text-xs font-medium leading-5 text-slate-700">
-                      {notification.message}
+                      {content.message}
                     </p>
                     <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-semibold text-slate-600">
                       <span>{meta.categoryLabel}</span>
