@@ -2015,6 +2015,11 @@ export const en = {
     "reports.exportDeferred": "PDF, Excel, and CSV will be available in the next phase.",
     "reports.exportDescription": "Download a report using the currently selected data and filters.",
     "reports.financialPdfHint": "A summary of financial position and activity.",
+    "reports.financialPosition": "Financial position",
+    "reports.budgetHealth": "Budget health",
+    "reports.debtReceivable": "Debt / receivable",
+    "reports.overBudgetCount": "{{count}} over budget",
+    "reports.noBudgets": "No budgets",
     "reports.recapExportHint": "Complete transaction details for the selected period.",
     "reports.exportError": "The export could not be created. Please try again shortly.",
 

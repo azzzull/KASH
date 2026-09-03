@@ -2027,6 +2027,11 @@ export const id = {
     "reports.exportDeferred": "PDF, Excel, dan CSV akan tersedia pada tahap berikutnya.",
     "reports.exportDescription": "Unduh laporan berdasarkan data dan filter yang sedang dipilih.",
     "reports.financialPdfHint": "Ringkasan kondisi dan aktivitas keuangan.",
+    "reports.financialPosition": "Posisi keuangan",
+    "reports.budgetHealth": "Kesehatan anggaran",
+    "reports.debtReceivable": "Utang / piutang",
+    "reports.overBudgetCount": "{{count}} melebihi anggaran",
+    "reports.noBudgets": "Tidak ada anggaran",
     "reports.recapExportHint": "Rincian transaksi lengkap untuk periode pilihan.",
     "reports.exportError": "Export belum dapat dibuat. Coba lagi dalam beberapa saat.",
 

@@ -63,4 +63,13 @@ export type FinancialReportData = {
   period: ReportPeriod;
   transactionRecap: TransactionRecapData;
   currentBalance: number;
+  financialHealth?: FinancialHealthReportData;
+};
+
+export type FinancialHealthReportData = {
+  position?: { beginningNetWorth: number; endingNetWorth: number; change: number; changePercent: number | null; investmentValuationLimited: boolean };
+  budgets: Array<{ id: string; name: string; periodStart: string; budgeted: number; spent: number; remaining: number; utilizationPercent: number; status: "on_track" | "near_limit" | "over_budget" }>;
+  goals: Array<{ id: string; name: string; target: number; progress: number; progressPercent: number; remaining: number; contributedDuringPeriod: number; progressAtPeriodEnd: boolean }>;
+  receivables: { outstanding: number; collectedDuringPeriod: number };
+  debts: { outstanding: number; paidDuringPeriod: number };
 };
