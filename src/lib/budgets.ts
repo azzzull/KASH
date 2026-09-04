@@ -109,7 +109,17 @@ export async function getMonthlyBudgets(periodStart?: string, spaceId?: string):
     status: row.status,
     included_category_ids: row.included_category_ids ?? [],
     included_category_names: row.included_category_names ?? [],
-  }));
+  })).sort((first, second) => {
+    // Surface budgets that need attention first, consistently on the Budget page
+    // and in dashboard highlights. The raw percentage can exceed 100% when
+    // overspent, which correctly keeps those budgets above all others.
+    const usageDifference = second.usage_percentage - first.usage_percentage;
+    if (usageDifference !== 0) return usageDifference;
+
+    // When usage is equal, prioritize the larger actual realization instead of
+    // falling back to an alphabetical name order.
+    return second.spent - first.spent;
+  });
 }
 
 /**
