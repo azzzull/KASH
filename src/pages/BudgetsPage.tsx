@@ -62,9 +62,12 @@ export function BudgetsPage() {
         getMonthlyBudgetOverview(currentMonth, activeSpaceId ?? undefined),
         getMonthlyBudgets(currentMonth, activeSpaceId ?? undefined),
       ]);
-      const healthyCount = budgetList.filter((budget) => budget.status === "healthy").length;
-      const nearLimitCount = budgetList.filter((budget) => budget.status === "near_limit").length;
-      const overBudgetCount = budgetList.filter((budget) => budget.status === "over_budget").length;
+      const spendingBudgets = budgetList.filter(
+        (budget) => budget.target_type === "category" || budget.target_type === "envelope",
+      );
+      const healthyCount = spendingBudgets.filter((budget) => budget.status === "healthy").length;
+      const nearLimitCount = spendingBudgets.filter((budget) => budget.status === "near_limit").length;
+      const overBudgetCount = spendingBudgets.filter((budget) => budget.status === "over_budget").length;
 
       setOverview({
         ...overviewData,

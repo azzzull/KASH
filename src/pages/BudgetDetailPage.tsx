@@ -205,8 +205,12 @@ export function BudgetDetailPage() {
     );
   }
 
-  const isOverBudget = budget.status === "over_budget";
-  const isNearLimit = budget.status === "near_limit";
+  const isContributionTarget = targetType === "goal" || targetType === "debt";
+  const hasReachedTarget = isContributionTarget && budget.usage_percentage >= 100;
+  const isApproachingTarget = isContributionTarget && budget.usage_percentage >= 80;
+  const isOverBudget = !isContributionTarget && budget.status === "over_budget";
+  const isNearLimit = !isContributionTarget && budget.status === "near_limit";
+  const isAboveTarget = isContributionTarget && Number(budget.remaining) < 0;
   const progressPercent = Math.min(Math.max(budget.usage_percentage, 0), 100);
 
   const progressBarColor = isOverBudget
@@ -297,8 +301,12 @@ export function BudgetDetailPage() {
                   {targetLabel}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
-                  {isOverBudget || isNearLimit ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
-                  {budget.usage_percentage.toFixed(1)}%
+                  {isOverBudget || isNearLimit || isApproachingTarget ? <AlertCircle size={13} /> : <CheckCircle2 size={13} />}
+                  {hasReachedTarget
+                    ? t("budgets.targetReached") || "Target tercapai"
+                    : isApproachingTarget
+                    ? t("budgets.approachingTarget") || "Mendekati target"
+                    : `${budget.usage_percentage.toFixed(1)}%`}
                 </span>
               </div>
             </div>
@@ -365,7 +373,11 @@ export function BudgetDetailPage() {
             </span>
           ) : null}
           <span className="rounded-lg bg-white/15 px-2.5 py-1">
-            {Number(budget.remaining) < 0 ? (t("budgets.overspent") || "Kelebihan") : (t("budgets.remainingAllocation") || "Sisa")}:{" "}
+            {isAboveTarget
+              ? t("budgets.aboveTarget") || "Melebihi target"
+              : Number(budget.remaining) < 0
+              ? t("budgets.overspent") || "Kelebihan"
+              : t("budgets.remainingAllocation") || "Sisa"}:{" "}
             {formatCurrency(Math.abs(Number(budget.remaining)))}
           </span>
         </div>

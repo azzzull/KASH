@@ -12,8 +12,12 @@ type BudgetCardProps = {
 export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
   const { t, formatCurrency } = useI18n();
   const targetType = budget.target_type ?? (budget.type === "envelope" ? "envelope" : "category");
-  const isOverBudget = budget.status === "over_budget";
-  const isNearLimit = budget.status === "near_limit";
+  const isContributionTarget = targetType === "goal" || targetType === "debt";
+  const hasReachedTarget = isContributionTarget && budget.usage_percentage >= 100;
+  const isApproachingTarget = isContributionTarget && budget.usage_percentage >= 80;
+  const isOverBudget = !isContributionTarget && budget.status === "over_budget";
+  const isNearLimit = !isContributionTarget && budget.status === "near_limit";
+  const isAboveTarget = isContributionTarget && Number(budget.remaining) < 0;
 
   const progressPercent = Math.min(Math.max(budget.usage_percentage, 0), 100);
 
@@ -23,7 +27,17 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
     ? "bg-amber-500"
     : "bg-kash-emerald";
 
-  const statusBadge = isOverBudget ? (
+  const statusBadge = hasReachedTarget ? (
+    <span className="flex items-center gap-1 rounded-full bg-kash-selected px-2 py-0.5 text-[11px] font-extrabold text-kash-emeraldDark">
+      <CheckCircle2 size={12} />
+      {t("budgets.targetReached") || "Target tercapai"}
+    </span>
+  ) : isApproachingTarget ? (
+    <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-800">
+      <AlertCircle size={12} />
+      {t("budgets.approachingTarget") || "Mendekati target"}
+    </span>
+  ) : isOverBudget ? (
     <span className="flex items-center gap-1 rounded-full bg-kash-expense/15 px-2 py-0.5 text-[11px] font-extrabold text-kash-expense">
       <AlertCircle size={12} />
       {t("budgets.overBudget") || "Over Budget"}
@@ -129,11 +143,15 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
 
         <div className="text-right shrink-0">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            {Number(budget.remaining) < 0 ? (t("budgets.overspentLabel") || "Kelebihan") : (t("budgets.remainingBudgetLabel") || "Sisa Budget")}
+            {isAboveTarget
+              ? t("budgets.aboveTarget") || "Melebihi target"
+              : Number(budget.remaining) < 0
+              ? t("budgets.overspentLabel") || "Kelebihan"
+              : t("budgets.remainingBudgetLabel") || "Sisa Budget"}
           </span>
           <p
             className={`mt-0.5 text-xs font-extrabold ${
-              Number(budget.remaining) < 0 ? "text-kash-expense" : "text-kash-emerald"
+              Number(budget.remaining) < 0 && !isContributionTarget ? "text-kash-expense" : "text-kash-emerald"
             }`}
           >
             {formatCurrency(Math.abs(Number(budget.remaining)))}
@@ -151,7 +169,11 @@ export function BudgetCard({ budget, periodStart }: BudgetCardProps) {
         </div>
 
         <div className="mt-1.5 flex items-center justify-between text-[11px] font-extrabold text-slate-500">
-          <span>{t("budgets.budgetUsedPercent", { percent: budget.usage_percentage.toFixed(1) }) || `${budget.usage_percentage.toFixed(1)}% terpakai`}</span>
+          <span>
+            {isContributionTarget
+              ? t("budgets.monthlyTargetProgress", { percent: budget.usage_percentage.toFixed(1) }) || `${budget.usage_percentage.toFixed(1)}% target bulanan`
+              : t("budgets.budgetUsedPercent", { percent: budget.usage_percentage.toFixed(1) }) || `${budget.usage_percentage.toFixed(1)}% terpakai`}
+          </span>
           {Number(budget.rollover_amount) > 0 ? (
             <span className="rounded-md bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-800">
               +{formatCurrency(budget.rollover_amount)} Rollover
