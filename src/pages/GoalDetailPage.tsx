@@ -383,6 +383,7 @@ export function GoalDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showContribution, setShowContribution] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const createActionRef = useRef<HTMLDivElement>(null);
 
   const loadGoal = async () => {
     if (!id) return;
@@ -500,7 +501,6 @@ export function GoalDetailPage() {
     );
   }
 
-  const createActionRef = useRef<HTMLDivElement>(null);
   const Icon = getGoalIcon(goal.icon);
   const isCancelled = goal.status === "cancelled";
 
