@@ -473,6 +473,9 @@ export const en = {
     "dashboard.noBudgetsTitle": "No active budgets",
     "dashboard.noBudgetsDesc":
         "Set monthly budgets to control category or envelope spending.",
+    "dashboard.noSpendingBudgetsTitle": "No spending budgets yet",
+    "dashboard.noSpendingBudgetsDesc":
+        "Savings and debt repayment budgets are not shown as spending highlights.",
     "dashboard.viewAllBudgets": "View All Budgets",
     "dashboard.noTransactionsTitle": "No transactions yet",
     "dashboard.noTransactionsDesc": "Record your first income or expense.",

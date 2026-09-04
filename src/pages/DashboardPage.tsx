@@ -1665,6 +1665,11 @@ function BudgetDashboardSummary({
     useAppEvent(appEvents.transactionSaved, () => void loadBudgets());
     useAppEvent(appEvents.budgetSaved, () => void loadBudgets());
 
+    const highlightedBudgets = budgets.filter(
+        (budget) =>
+            budget.target_type === "category" || budget.target_type === "envelope",
+    );
+
     if (loading) {
         return <div className="h-28 animate-pulse rounded-xl bg-slate-100" />;
     }
@@ -1681,9 +1686,21 @@ function BudgetDashboardSummary({
         );
     }
 
+    if (highlightedBudgets.length === 0) {
+        return (
+            <EmptyPanel
+                title={t("dashboard.noSpendingBudgetsTitle") || "Belum ada budget pengeluaran"}
+                description={
+                    t("dashboard.noSpendingBudgetsDesc") ||
+                    "Budget tabungan dan pelunasan utang tidak ditampilkan sebagai highlight pengeluaran."
+                }
+            />
+        );
+    }
+
     return (
         <div className="space-y-2.5">
-            {budgets.slice(0, 4).map((b) => {
+            {highlightedBudgets.slice(0, 4).map((b) => {
                 const progress = Math.min(Math.max(b.usage_percentage, 0), 100);
                 const isOver = b.status === "over_budget";
                 const isNear = b.status === "near_limit";

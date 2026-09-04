@@ -54,6 +54,10 @@ export type UpdateBudgetInput = {
   rolloverEnabled?: boolean;
 };
 
+function isSpendingBudget(budget: BudgetWithProgress) {
+  return budget.target_type === "category" || budget.target_type === "envelope";
+}
+
 /**
  * Fetch monthly budgets with enriched progress and spending breakdown.
  */
@@ -110,9 +114,17 @@ export async function getMonthlyBudgets(periodStart?: string, spaceId?: string):
     included_category_ids: row.included_category_ids ?? [],
     included_category_names: row.included_category_names ?? [],
   })).sort((first, second) => {
+    const targetPriorityDifference =
+      Number(isSpendingBudget(second)) - Number(isSpendingBudget(first));
+    if (targetPriorityDifference !== 0) return targetPriorityDifference;
+
+    if (!isSpendingBudget(first)) return 0;
+
     // Surface budgets that need attention first, consistently on the Budget page
-    // and in dashboard highlights. The raw percentage can exceed 100% when
-    // overspent, which correctly keeps those budgets above all others.
+    // and in dashboard highlights. Savings and debt targets are kept after
+    // spending budgets because exceeding those targets is not a warning.
+    // The raw percentage can exceed 100% when overspent, which correctly keeps
+    // those spending budgets above all other spending budgets.
     const usageDifference = second.usage_percentage - first.usage_percentage;
     if (usageDifference !== 0) return usageDifference;
 

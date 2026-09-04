@@ -476,6 +476,9 @@ export const id = {
     "dashboard.noBudgetsTitle": "Belum ada budget aktif",
     "dashboard.noBudgetsDesc":
         "Atur budget bulanan untuk mengontrol pengeluaran kategori atau amplop Anda.",
+    "dashboard.noSpendingBudgetsTitle": "Belum ada budget pengeluaran",
+    "dashboard.noSpendingBudgetsDesc":
+        "Budget tabungan dan pelunasan utang tidak ditampilkan sebagai highlight pengeluaran.",
     "dashboard.viewAllBudgets": "Lihat Semua Budget",
     "dashboard.noTransactionsTitle": "Belum ada transaksi",
     "dashboard.noTransactionsDesc":
