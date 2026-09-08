@@ -220,7 +220,6 @@ export function ContributeSharedModal({
             autoFocus
             placeholder="0"
             inputMode="numeric"
-            pattern="[0-9]*"
             disabled={mode === "historical" && Boolean(selectedHistorical)}
             hint={mode === "wallet" ? `Saldo: ${formatCurrency(selectedBalance, "IDR")}` : undefined}
             value={formatMoneyDigits(amountDigits)}
