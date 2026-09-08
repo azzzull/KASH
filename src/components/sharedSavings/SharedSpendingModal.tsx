@@ -115,7 +115,6 @@ export function SharedSpendingModal({
             required
             placeholder="0"
             inputMode="numeric"
-            pattern="[0-9]*"
             value={amountDigits ? formatMoneyDigits(amountDigits) : ""}
             onChange={(e) => setAmountDigits(parseMoneyInputDigits(e.target.value))}
           />
