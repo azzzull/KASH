@@ -214,7 +214,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     total_spent_allocated: toNumber(m.total_spent_allocated),
     is_owner: m.user_id === space.owner_user_id,
     is_account_holder: m.user_id === space.account_holder_user_id,
-    is_approver: approverIds.includes(m.user_id),
+    is_approver: m.user_id !== null && approverIds.includes(m.user_id),
     link_request_status: m.participant_id && pendingLinkParticipants.has(m.participant_id) ? "pending" : null,
   }));
 
@@ -688,6 +688,16 @@ export async function removeSharedSavingsMember(spaceId: string, userId: string)
   const { data, error } = await supabase.rpc("remove_shared_savings_member", {
     p_shared_savings_id: spaceId,
     p_user_id: userId,
+  });
+
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function removeSharedSavingsGuestMember(spaceId: string, participantId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("remove_shared_savings_guest_member", {
+    p_shared_savings_id: spaceId,
+    p_participant_id: participantId,
   });
 
   if (error) throw error;

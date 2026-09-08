@@ -28,7 +28,7 @@ export function TransferOwnershipModal({
   onTransferred,
 }: TransferOwnershipModalProps) {
   const { t } = useI18n();
-  const eligibleMembers = members.filter((m) => m.member_status === "active" && m.user_id !== currentOwnerId);
+  const eligibleMembers = members.filter((m): m is SharedSavingsMemberShare & { user_id: string } => m.member_status === "active" && m.user_id !== null && m.user_id !== currentOwnerId);
   const [selectedUserId, setSelectedUserId] = useState(eligibleMembers[0]?.user_id || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

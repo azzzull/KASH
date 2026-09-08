@@ -29,7 +29,7 @@ export function ManageApproversModal({
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const activeMembers = members.filter((m) => m.member_status === "active");
+  const activeMembers = members.filter((m): m is SharedSavingsMemberShare & { user_id: string } => m.member_status === "active" && m.user_id !== null);
 
   const handleToggle = async (userId: string, currentIsApprover: boolean) => {
     setLoadingUserId(userId);

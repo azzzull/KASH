@@ -1048,6 +1048,13 @@ export type Database = {
         };
         Returns: boolean;
       };
+      remove_shared_savings_guest_member: {
+        Args: {
+          p_shared_savings_id: string;
+          p_participant_id: string;
+        };
+        Returns: boolean;
+      };
       record_cross_space_advance: {
         Args: {
           p_client_request_id: string;

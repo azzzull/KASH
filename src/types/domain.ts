@@ -760,7 +760,7 @@ export type SharedSavingsBalance = {
 
 export type SharedSavingsMemberShare = {
   shared_savings_id: string;
-  user_id: string;
+  user_id: string | null;
   participant_id?: string;
   member_type?: "kash_member" | "guest";
   display_name?: string | null;

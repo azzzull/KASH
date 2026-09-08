@@ -57,6 +57,7 @@ import {
   cancelSharedRequest,
   getSharedSavingsDetail,
   rejectSharedRequest,
+  removeSharedSavingsGuestMember,
   removeSharedSavingsMember,
 } from "../lib/sharedSavings";
 import { toNumber } from "../lib/money";
@@ -76,7 +77,9 @@ type SharedSavingsConfirmation =
     }
   | {
       type: "remove-member";
-      userId: string;
+      participantId: string;
+      userId: string | null;
+      memberType: "kash_member" | "guest";
       memberName: string;
     }
   | {
@@ -243,10 +246,16 @@ export function SharedSavingsDetailPage() {
     }
   };
 
-  const handleRemoveMember = async (userId: string, memberName: string) => {
+  const handleRemoveMember = async (participantId: string, userId: string | null, memberType: "kash_member" | "guest", memberName: string) => {
     try {
       if (!id) return;
-      await removeSharedSavingsMember(id, userId);
+      if (memberType === "guest") {
+        await removeSharedSavingsGuestMember(id, participantId);
+      } else if (userId) {
+        await removeSharedSavingsMember(id, userId);
+      } else {
+        throw new Error("KASH member account is missing.");
+      }
       setConfirmation(null);
       await loadData();
     } catch (err: any) {
@@ -616,7 +625,9 @@ export function SharedSavingsDetailPage() {
                         type="button"
                         onClick={() => setConfirmation({
                           type: "remove-member",
+                          participantId: m.participant_id || "",
                           userId: m.user_id,
+                          memberType: m.member_type || "kash_member",
                           memberName: m.member_name || m.member_email,
                         })}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-kash-expense hover:underline"
@@ -1103,7 +1114,7 @@ export function SharedSavingsDetailPage() {
           icon={UserMinus}
           itemLabel={confirmation.memberName}
           onCancel={() => setConfirmation(null)}
-          onConfirm={() => void handleRemoveMember(confirmation.userId, confirmation.memberName)}
+          onConfirm={() => void handleRemoveMember(confirmation.participantId, confirmation.userId, confirmation.memberType, confirmation.memberName)}
           title="Hapus anggota"
           tone="danger"
         />

@@ -28,7 +28,7 @@ export function SetAccountHolderModal({
   onUpdated,
 }: SetAccountHolderModalProps) {
   const { t } = useI18n();
-  const activeMembers = members.filter((m) => m.member_status === "active");
+  const activeMembers = members.filter((m): m is SharedSavingsMemberShare & { user_id: string } => m.member_status === "active" && m.user_id !== null);
   const [selectedUserId, setSelectedUserId] = useState(currentAccountHolderId || activeMembers[0]?.user_id || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

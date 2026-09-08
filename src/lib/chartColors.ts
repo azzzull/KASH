@@ -27,18 +27,18 @@ export const KASH_CHART_COLORS = KASH_CATEGORY_PALETTE;
  * distinguish at a glance, including in exported PDFs.
  */
 export const KASH_DONUT_CHART_PALETTE = [
-  "#2563EB", // Blue
-  "#F97316", // Orange
-  "#7C3AED", // Violet
-  "#E11D48", // Rose
-  "#0891B2", // Cyan
-  "#CA8A04", // Gold
-  "#4F46E5", // Indigo
-  "#DB2777", // Pink
-  "#0F766E", // Teal
-  "#DC2626", // Red
-  "#9333EA", // Purple
-  "#0284C7", // Sky Blue
+  "#60A5FA", // Sky Blue
+  "#FB923C", // Tangerine
+  "#A78BFA", // Lavender
+  "#FB7185", // Coral Pink
+  "#22D3EE", // Aqua
+  "#FBBF24", // Sunny Yellow
+  "#818CF8", // Periwinkle
+  "#F472B6", // Bubblegum Pink
+  "#2DD4BF", // Mint Teal
+  "#F87171", // Watermelon
+  "#C084FC", // Lilac
+  "#38BDF8", // Bright Sky
 ] as const;
 
 export function getDonutChartColor(index: number): string {
