@@ -633,7 +633,7 @@ export type SharedSavingsMemberStatus = "active" | "left" | "removed";
 export type SharedSavingsInviteStatus = "pending" | "accepted" | "rejected" | "expired" | "cancelled";
 export type SharedSavingsRequestType = "contribution" | "withdrawal" | "shared_spending";
 export type SharedSavingsRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
-export type SharedSavingsContributionSourceType = "wallet_contribution" | "linked_historical_movement" | "already_received";
+export type SharedSavingsContributionSourceType = "wallet_contribution" | "linked_historical_movement" | "manual_historical_contribution" | "already_received";
 export type SharedSavingsEventType = "contribution" | "personal_withdrawal" | "shared_spending" | "reversal";
 
 export type SharedSavings = {

@@ -469,7 +469,7 @@ export async function submitContributionRequest(input: {
   amount: number;
   note?: string;
   contributionDate: string;
-  sourceType?: "wallet_contribution" | "linked_historical_movement";
+  sourceType?: "wallet_contribution" | "manual_historical_contribution";
   sourceTransactionId?: string | null;
 }): Promise<string> {
   const { data, error } = await supabase.rpc("submit_shared_contribution_request", {

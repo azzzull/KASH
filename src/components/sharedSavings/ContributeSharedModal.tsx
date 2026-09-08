@@ -1,14 +1,13 @@
-import { ArrowDownRight, Wallet, X } from "lucide-react";
+import { ArrowDownRight } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Button } from "../ui/Button";
 import { FormField } from "../ui/FormField";
-import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
 import { DatePickerField } from "../ui/DatePickerField";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
-import { getHistoricalContributionCandidates, recordSharedSavingsPaymentReceived, submitContributionRequest, type HistoricalContributionCandidate } from "../../lib/sharedSavings";
+import { recordSharedSavingsPaymentReceived, submitContributionRequest } from "../../lib/sharedSavings";
 import type { SharedSavingsMemberShare } from "../../types/domain";
 import { formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { useI18n } from "../../i18n";
@@ -41,10 +40,8 @@ export function ContributeSharedModal({
 }: ContributeSharedModalProps) {
   const { t, formatCurrency } = useI18n();
   const [wallets, setWallets] = useState<WalletWithBalance[]>([]);
-  const [historicalCandidates, setHistoricalCandidates] = useState<HistoricalContributionCandidate[]>([]);
   const [mode, setMode] = useState<"wallet" | "historical" | "received">("wallet");
   const [participantId, setParticipantId] = useState("");
-  const [selectedHistoricalId, setSelectedHistoricalId] = useState("");
   const [selectedWalletId, setSelectedWalletId] = useState("");
   const [amountDigits, setAmountDigits] = useState("");
   const [contributionDate, setContributionDate] = useState(localToday);
@@ -67,19 +64,13 @@ export function ContributeSharedModal({
       })
       .catch((err) => setError(err.message || t("common.error")))
       .finally(() => setLoading(false));
-    getHistoricalContributionCandidates().then(setHistoricalCandidates).catch(() => undefined);
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const selectedHistorical = historicalCandidates.find((candidate) => candidate.id === selectedHistoricalId);
     if (mode === "wallet" && !selectedWalletId) {
-      setError(t("common.required"));
-      return;
-    }
-    if (mode === "historical" && !selectedHistorical) {
       setError(t("common.required"));
       return;
     }
@@ -99,12 +90,12 @@ export function ContributeSharedModal({
         await recordSharedSavingsPaymentReceived({ spaceId, participantId, amount: amountNum, contributionDate, note: note.trim() || undefined });
       } else await submitContributionRequest({
         spaceId,
-        sourceWalletId: mode === "wallet" ? selectedWalletId : selectedHistorical?.wallet_id,
+        sourceWalletId: mode === "wallet" ? selectedWalletId : null,
         amount: amountNum,
         note: note.trim() || undefined,
         contributionDate,
-        sourceType: mode === "wallet" ? "wallet_contribution" : "linked_historical_movement",
-        sourceTransactionId: selectedHistorical?.id ?? null,
+        sourceType: mode === "wallet" ? "wallet_contribution" : "manual_historical_contribution",
+        sourceTransactionId: null,
       });
 
       onSubmitted();
@@ -117,7 +108,6 @@ export function ContributeSharedModal({
   };
 
   const selectedWallet = wallets.find((w) => w.id === selectedWalletId);
-  const selectedHistorical = historicalCandidates.find((candidate) => candidate.id === selectedHistoricalId);
   const selectedBalance = selectedWallet
     ? toNumber(selectedWallet.balance?.current_balance ?? selectedWallet.initial_balance)
     : 0;
@@ -190,27 +180,7 @@ export function ContributeSharedModal({
                 </option>
               );
             })}
-          </SelectField> : <SelectField
-            id="historical-movement"
-            label={t("shared.historicalMovement")}
-            value={selectedHistoricalId}
-            onChange={(e) => {
-              const candidate = historicalCandidates.find((item) => item.id === e.target.value);
-              setSelectedHistoricalId(e.target.value);
-              if (candidate) {
-                setAmountDigits(String(candidate.amount));
-                setContributionDate(candidate.transaction_date.slice(0, 10));
-              }
-              if (error) setError(null);
-            }}
-          >
-            <option value="">{t("shared.selectHistoricalMovement")}</option>
-            {historicalCandidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.transaction_date.slice(0, 10)} · {formatCurrency(candidate.amount, "IDR")} · {candidate.title || t("tx.adjustment")}
-              </option>
-            ))}
-          </SelectField>}
+          </SelectField> : null}
 
           {/* Amount Field */}
           <FormField
@@ -220,7 +190,6 @@ export function ContributeSharedModal({
             autoFocus
             placeholder="0"
             inputMode="numeric"
-            disabled={mode === "historical" && Boolean(selectedHistorical)}
             hint={mode === "wallet" ? `Saldo: ${formatCurrency(selectedBalance, "IDR")}` : undefined}
             value={formatMoneyDigits(amountDigits)}
             onChange={(e) => {
@@ -234,7 +203,6 @@ export function ContributeSharedModal({
             label={t("shared.contributionDate")}
             value={contributionDate}
             max={localToday()}
-            disabled={mode === "historical" && Boolean(selectedHistorical)}
             onChange={setContributionDate}
             required
           />

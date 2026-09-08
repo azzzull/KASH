@@ -940,7 +940,7 @@ export type Database = {
           p_amount: number;
           p_note?: string | null;
           p_contribution_date?: string;
-          p_source_type?: "wallet_contribution" | "linked_historical_movement";
+          p_source_type?: "wallet_contribution" | "linked_historical_movement" | "manual_historical_contribution";
           p_source_transaction_id?: string | null;
           p_client_request_id?: string;
         };

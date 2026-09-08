@@ -711,13 +711,14 @@ export function SharedSavingsDetailPage() {
                 const amount = toNumber(r.amount);
 
                 // Self-approval logic:
+                const isManualHistoricalContribution = r.request_type === "contribution" && r.contribution_source_type === "manual_historical_contribution";
                 const canApprove =
-                  isApprover &&
+                  (isApprover || (isManualHistoricalContribution && isAccountHolder)) &&
                   r.status === "pending" &&
                   (!isRequester || otherApproversCount === 0);
 
                 const waitingForOtherApprover =
-                  isApprover && isRequester && r.status === "pending" && otherApproversCount > 0;
+                  (isApprover || (isManualHistoricalContribution && isAccountHolder)) && isRequester && r.status === "pending" && otherApproversCount > 0;
 
                 return (
                   <div
@@ -780,7 +781,7 @@ export function SharedSavingsDetailPage() {
                           {r.request_type === "contribution" && r.contribution_date ? (
                             <>
                               {t("shared.contributionDate")}: {formatDate(r.contribution_date)} · {t("shared.recordedOn")}: {formatDate(r.created_at)}
-                              {r.contribution_source_type === "linked_historical_movement" && <span className="ml-1 font-bold text-blue-700">· {t("shared.historicalEntry")}</span>}
+                              {(r.contribution_source_type === "linked_historical_movement" || r.contribution_source_type === "manual_historical_contribution") && <span className="ml-1 font-bold text-blue-700">· {t("shared.historicalEntry")}</span>}
                             </>
                           ) : formatDate(r.created_at)}
                         </p>
