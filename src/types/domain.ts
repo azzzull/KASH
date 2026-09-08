@@ -735,7 +735,7 @@ export type SharedSavingsMemberAllocation = {
   id: string;
   shared_savings_id: string;
   ledger_id: string;
-  user_id: string;
+  user_id: string | null;
   amount_signed: MoneyAmount;
   created_at: string;
 };
