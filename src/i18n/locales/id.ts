@@ -39,6 +39,7 @@ export const id = {
     "common.active": "Aktif",
     "common.completed": "Selesai",
     "common.loading": "Memuat...",
+    "common.refreshingData": "Menyegarkan data Anda…",
     "common.error": "Terjadi kesalahan",
     "common.invalidAmount": "Nominal harus lebih besar dari 0",
     "auth.invalidEmail": "Format email tidak valid",

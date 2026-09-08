@@ -29,6 +29,7 @@ type AuthContextValue = {
   profileLoading: boolean;
 
   refreshProfile: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
 
   signInWithGoogle: () => Promise<{
     errorMessage: string | null;
@@ -235,6 +236,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       profileLoading,
 
       refreshProfile,
+      refreshSession: async () => {
+        if (!isSupabaseConfigured || !session?.user.id) {
+          return false;
+        }
+
+        const { data, error } = await supabase.auth.getUser();
+        if (error || !data.user || data.user.id !== session.user.id) {
+          return false;
+        }
+
+        await loadProfile(data.user.id);
+        return true;
+      },
 
       signInWithGoogle: async () => {
         if (!isSupabaseConfigured) {
@@ -351,12 +365,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setStatus("unauthenticated");
       },
     }),
-    [
-      profile,
-      profileLoading,
-      session,
-      status,
-    ],
+    [profile, profileLoading, session, status],
   );
 
   return (

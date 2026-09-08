@@ -1,5 +1,5 @@
 import { Plus, RefreshCw, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NotificationProvider } from "../context/NotificationContext";
 import { StaleSessionReset } from "../components/app/StaleSessionReset";
@@ -16,6 +16,7 @@ import {
 import { TransactionModal } from "../components/transactions/TransactionModal";
 import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpenseModal";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
+import { useAuth } from "../context/AuthContext";
 import { canCreateTransaction } from "../lib/transactions";
 
 export function AppShell() {
@@ -25,12 +26,34 @@ export function AppShell() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const { activeSpace, userRole, activeSpaceId, loading: spaceLoading, setActiveSpace, spaces } = useActiveSpace();
+  const { user } = useAuth();
+  const shellUserIdRef = useRef<string | null>(null);
   const canCreate = canCreateTransaction(activeSpace, userRole);
   const [transactionMode, setTransactionMode] =
     useState<QuickAddMode | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [resumeEpoch, setResumeEpoch] = useState(0);
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
+
+  const resetTransientShellUi = useCallback(() => {
+    setQuickAddOpen(false);
+    setMoreOpen(false);
+    setTransactionMode(null);
+    setSuccessMessage(null);
+  }, []);
+
+  const advanceResumeEpoch = useCallback(() => {
+    setResumeEpoch((current) => current + 1);
+  }, []);
+
+  useEffect(() => {
+    if (shellUserIdRef.current === user?.id) return;
+
+    shellUserIdRef.current = user?.id ?? null;
+    resetTransientShellUi();
+    advanceResumeEpoch();
+  }, [advanceResumeEpoch, resetTransientShellUi, user?.id]);
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0 });
@@ -175,14 +198,17 @@ export function AppShell() {
     <NotificationProvider>
       <ServiceWorkerNavigationBridge />
       <PushNotificationOnboardingPrompt />
-      <StaleSessionReset />
+      <StaleSessionReset
+        onBeforeLongResume={resetTransientShellUi}
+        onLongResume={advanceResumeEpoch}
+      />
       <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
         <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
           <DesktopSidebar />
           <div className="flex min-w-0 flex-1 flex-col lg:h-[100dvh] lg:min-h-0">
             <AppHeader visible={mobileHeaderVisible} />
             <main ref={contentRef} className="flex-1 px-4 pt-20 pb-28 md:px-6 md:pt-6 lg:min-h-0 lg:overflow-y-auto lg:pb-8 lg:pt-8">
-              <Outlet key={activeSpaceId ?? 'no-space'} />
+              <Outlet key={`${activeSpaceId ?? "no-space"}-${resumeEpoch}`} />
             </main>
           </div>
         </div>

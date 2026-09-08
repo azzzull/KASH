@@ -39,6 +39,7 @@ export const en = {
     "common.active": "Active",
     "common.completed": "Completed",
     "common.loading": "Loading...",
+    "common.refreshingData": "Refreshing your data…",
     "common.error": "An error occurred",
     "common.invalidAmount": "Amount must be greater than 0",
     "auth.invalidEmail": "Invalid email address format",
