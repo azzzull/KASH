@@ -24,7 +24,7 @@ import {
   type AnalyticsPeriodKey,
   type AnalyticsSummary,
 } from "../lib/analytics";
-import { emeraldRingColor } from "../lib/reportCharts";
+import { donutRingColor } from "../lib/reportCharts";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type { BudgetWithProgress } from "../types/domain";
 import { formatCompactCurrency, formatCurrency } from "../lib/money";
@@ -471,7 +471,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
     accumulatedOffset += segLen + gapLen;
     return {
       ...category,
-      color: emeraldRingColor(index, categories.length),
+      color: donutRingColor(index, categories.length),
       dasharray: `${segLen} ${circumference - segLen}`,
       dashoffset: -offset,
     };

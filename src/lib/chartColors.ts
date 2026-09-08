@@ -22,6 +22,30 @@ export const KASH_CATEGORY_PALETTE = [
 export const KASH_CHART_COLORS = KASH_CATEGORY_PALETTE;
 
 /**
+ * High-contrast categorical palette for donut/ring charts.  Keep this
+ * separate from the brand palette: adjacent slices must be easy to
+ * distinguish at a glance, including in exported PDFs.
+ */
+export const KASH_DONUT_CHART_PALETTE = [
+  "#2563EB", // Blue
+  "#F97316", // Orange
+  "#7C3AED", // Violet
+  "#E11D48", // Rose
+  "#0891B2", // Cyan
+  "#CA8A04", // Gold
+  "#4F46E5", // Indigo
+  "#DB2777", // Pink
+  "#0F766E", // Teal
+  "#DC2626", // Red
+  "#9333EA", // Purple
+  "#0284C7", // Sky Blue
+] as const;
+
+export function getDonutChartColor(index: number): string {
+  return KASH_DONUT_CHART_PALETTE[index % KASH_DONUT_CHART_PALETTE.length];
+}
+
+/**
  * FNV-1a 32-bit stable hash function.
  */
 function fnv1aHash(str: string): number {

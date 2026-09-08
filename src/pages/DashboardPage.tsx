@@ -33,7 +33,7 @@ import {
     type DashboardMetricChange,
     type DashboardSummary,
 } from "../lib/dashboard";
-import { emeraldRingColor } from "../lib/reportCharts";
+import { donutRingColor } from "../lib/reportCharts";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type {
     BudgetWithProgress,
@@ -890,7 +890,7 @@ function SpendingDonut({
         accumulatedOffset += segLen + gapLen;
         return {
             ...category,
-            color: emeraldRingColor(index, categories.length),
+            color: donutRingColor(index, categories.length),
             dasharray: `${segLen} ${circumference - segLen}`,
             dashoffset: -offset,
         };

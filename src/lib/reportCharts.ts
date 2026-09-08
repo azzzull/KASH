@@ -1,4 +1,5 @@
 import type { TransactionRecapData } from "../types/reports";
+import { getDonutChartColor } from "./chartColors";
 import { toNumber } from "./money";
 import { parseDateKey } from "./reportPeriod";
 
@@ -16,10 +17,9 @@ export function buildCashFlowScale(points: CashFlowPoint[]): CashFlowScale {
   return { min, max: safeMax, ticks: Array.from({ length: 5 }, (_, index) => min + (safeMax - min) * index / 4) };
 }
 
-export function emeraldRingColor(index: number, total: number) {
-  const contrastIndex = index % 2 === 0 ? index / 2 : total - 1 - Math.floor(index / 2);
-  const ratio = total <= 1 ? 0.35 : contrastIndex / (total - 1);
-  return `hsl(160 ${82 - ratio * 18}% ${25 + ratio * 48}%)`;
+export function donutRingColor(index: number, total: number) {
+  void total;
+  return getDonutChartColor(index);
 }
 
 function isEconomicMovement(relatedEntityType: string | null) {

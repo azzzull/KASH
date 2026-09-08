@@ -1,6 +1,6 @@
 import type { TransactionRecapData } from "../../types/reports";
 import type { ReactNode } from "react";
-import { buildCashFlowScale, buildCashFlowTrend, emeraldRingColor } from "../../lib/reportCharts";
+import { buildCashFlowScale, buildCashFlowTrend, donutRingColor } from "../../lib/reportCharts";
 import { formatCompactCurrency, formatCurrency } from "../../lib/money";
 
 type Props = { data: TransactionRecapData; labels: { cashFlow: string; category: string; wallet: string; income: string; expense: string; net: string; noData: string } };
@@ -22,7 +22,7 @@ function CategoryChart({ data, noData }: { data: TransactionRecapData; noData: s
   const items = data.categoryBreakdown.filter((item) => item.amount > 0); if (!items.length) return <NoData text={noData} />;
   const total = items.reduce((sum, item) => sum + item.amount, 0); const radius = 48; const circumference = 2 * Math.PI * radius; const gapDegrees = Math.min(3, 120 / items.length); const availableDegrees = 360 - gapDegrees * items.length;
   let offset = 0;
-  const segments = items.map((item, index) => { const segmentDegrees = item.amount / total * availableDegrees; const dash = segmentDegrees / 360 * circumference; const segmentOffset = offset; offset += dash + gapDegrees / 360 * circumference; return { item, color: emeraldRingColor(index, items.length), dasharray: `${dash} ${circumference - dash}`, dashoffset: -segmentOffset }; });
+  const segments = items.map((item, index) => { const segmentDegrees = item.amount / total * availableDegrees; const dash = segmentDegrees / 360 * circumference; const segmentOffset = offset; offset += dash + gapDegrees / 360 * circumference; return { item, color: donutRingColor(index, items.length), dasharray: `${dash} ${circumference - dash}`, dashoffset: -segmentOffset }; });
   return <div className="flex flex-col items-center justify-center gap-6 py-2 md:flex-row md:items-center"><div className="relative flex h-48 w-48 shrink-0 items-center justify-center"><svg aria-label="Expense breakdown" className="h-full w-full -rotate-90" role="img" viewBox="0 0 120 120">{segments.map(({ item, color, dasharray, dashoffset }) => <circle key={item.categoryName} cx="60" cy="60" data-segment fill="none" r={radius} stroke={color} strokeDasharray={dasharray} strokeDashoffset={dashoffset} strokeLinecap="round" strokeWidth="20" />)}</svg><div className="absolute inset-0 flex items-center justify-center p-2 text-center"><div className="min-w-0 max-w-full"><p className="text-[11px] font-bold text-slate-500">Total Expense</p><p className="mt-0.5 max-w-28 truncate text-sm font-extrabold leading-tight text-slate-900">{formatCurrency(total)}</p></div></div></div><div className="w-full min-w-0 space-y-2.5 md:flex-1">{segments.map(({ item, color }) => <div key={item.categoryName} className="min-w-0 text-xs"><div className="flex items-center justify-between gap-2.5"><div className="flex min-w-0 items-center gap-2"><i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} /><span className="truncate font-semibold text-slate-700">{item.categoryName}</span></div><div className="shrink-0 text-right"><span className="font-bold text-slate-900">{formatCurrency(item.amount)}</span><span className="ml-1.5 font-semibold text-slate-500">{Math.round(item.amount / total * 100)}%</span></div></div></div>)}</div></div>;
 }
 
