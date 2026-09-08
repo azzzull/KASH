@@ -36,6 +36,7 @@ const SettingsPage = lazyPage(() => import("../pages/SettingsPage"), "SettingsPa
 const SpaceMembersPage = lazyPage(() => import("../pages/SpaceMembersPage"), "SpaceMembersPage");
 const SharedSavingsPage = lazyPage(() => import("../pages/SharedSavingsPage"), "SharedSavingsPage");
 const SharedSavingsDetailPage = lazyPage(() => import("../pages/SharedSavingsDetailPage"), "SharedSavingsDetailPage");
+const SharedSavingsLinkRequestPage = lazyPage(() => import("../pages/SharedSavingsLinkRequestPage"), "SharedSavingsLinkRequestPage");
 const SubscriptionsPage = lazyPage(() => import("../pages/SubscriptionsPage"), "SubscriptionsPage");
 const SubscriptionDetailPage = lazyPage(() => import("../pages/SubscriptionDetailPage"), "SubscriptionDetailPage");
 const TransactionsPage = lazyPage(() => import("../pages/TransactionsPage"), "TransactionsPage");
@@ -109,6 +110,7 @@ export const router = createBrowserRouter([
             ],
           },
           { path: "/notifications", element: routeElement(<NotificationsPage />) },
+          { path: "/shared-savings/link-requests/:id", element: routeElement(<SharedSavingsLinkRequestPage />) },
           { path: "/managed-invitations/:id", element: routeElement(<ManagedSpaceInvitationPage />) },
           { path: "/managed-spaces/:spaceId/setup", element: routeElement(<ManagedSpaceSetupPage />) },
           { path: "/settings", element: routeElement(<SettingsPage />) },

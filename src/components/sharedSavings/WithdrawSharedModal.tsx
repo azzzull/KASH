@@ -160,6 +160,8 @@ export function WithdrawSharedModal({
             required
             autoFocus
             placeholder="0"
+            inputMode="numeric"
+            pattern="[0-9]*"
             hint={t("shared.withdrawAmountMax", { amount: formatCurrency(myAvailableShare, "IDR") })}
             value={formatMoneyDigits(amountDigits)}
             onChange={(e) => {

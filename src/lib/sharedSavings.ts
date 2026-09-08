@@ -145,6 +145,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     ledgerResult,
     walletsResult,
     invitesResult,
+    linkRequestsResult,
   ] = await Promise.all([
     supabase
       .from("shared_savings_balance_view")
@@ -180,6 +181,11 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
       .eq("status", "pending")
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false }),
+    supabase
+      .from("shared_savings_member_link_requests")
+      .select("participant_id, status")
+      .eq("shared_savings_id", spaceId)
+      .eq("status", "pending"),
   ]);
 
   if (spaceResult.error) throw spaceResult.error;
@@ -187,6 +193,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
   if (approversResult.error) throw approversResult.error;
   if (requestsResult.error) throw requestsResult.error;
   if (ledgerResult.error) throw ledgerResult.error;
+  if (linkRequestsResult.error) throw linkRequestsResult.error;
 
   const space = spaceResult.data as SharedSavingsBalance;
   const approverIds = (approversResult.data ?? []).map((a) => a.user_id);
@@ -198,6 +205,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
   const activeMembersSet = new Set((membersResult.data ?? []).filter((m) => m.member_status === "active").map((m) => m.user_id));
   const otherApproversCount = approverIds.filter((id) => id !== userId && activeMembersSet.has(id)).length;
 
+  const pendingLinkParticipants = new Set((linkRequestsResult.data ?? []).map((request) => request.participant_id));
   const members: SharedSavingsMemberShare[] = (membersResult.data ?? []).map((m) => ({
     ...m,
     current_share: toNumber(m.current_share),
@@ -207,6 +215,7 @@ export async function getSharedSavingsDetail(spaceId: string): Promise<{
     is_owner: m.user_id === space.owner_user_id,
     is_account_holder: m.user_id === space.account_holder_user_id,
     is_approver: approverIds.includes(m.user_id),
+    link_request_status: m.participant_id && pendingLinkParticipants.has(m.participant_id) ? "pending" : null,
   }));
 
   const myMember = members.find((m) => m.user_id === userId);
@@ -456,19 +465,91 @@ export async function respondToSharedSavingsInvite(inviteId: string, action: "ac
 
 export async function submitContributionRequest(input: {
   spaceId: string;
-  sourceWalletId: string;
+  sourceWalletId?: string | null;
   amount: number;
   note?: string;
+  contributionDate: string;
+  sourceType?: "wallet_contribution" | "linked_historical_movement";
+  sourceTransactionId?: string | null;
 }): Promise<string> {
   const { data, error } = await supabase.rpc("submit_shared_contribution_request", {
     p_shared_savings_id: input.spaceId,
-    p_source_wallet_id: input.sourceWalletId,
+    p_source_wallet_id: input.sourceWalletId ?? null,
     p_amount: input.amount,
     p_note: input.note ?? null,
+    p_contribution_date: input.contributionDate,
+    p_source_type: input.sourceType ?? "wallet_contribution",
+    p_source_transaction_id: input.sourceTransactionId ?? null,
+    p_client_request_id: crypto.randomUUID(),
   });
 
   if (error) throw error;
   return data as string;
+}
+
+export async function createSharedSavingsGuestMember(input: { spaceId: string; name: string; note?: string }) {
+  const { data, error } = await supabase.rpc("create_shared_savings_guest_member", {
+    p_shared_savings_id: input.spaceId, p_name: input.name, p_note: input.note ?? null,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function recordSharedSavingsPaymentReceived(input: { spaceId: string; participantId: string; amount: number; contributionDate: string; note?: string }) {
+  const { data, error } = await supabase.rpc("record_shared_savings_payment_received", {
+    p_shared_savings_id: input.spaceId, p_participant_id: input.participantId, p_amount: input.amount,
+    p_contribution_date: input.contributionDate, p_note: input.note ?? null, p_client_request_id: crypto.randomUUID(),
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function requestSharedSavingsGuestAccountLink(participantId: string, targetEmail: string): Promise<string> {
+  const { data, error } = await supabase.rpc("request_shared_savings_guest_account_link", { p_participant_id: participantId, p_target_email: targetEmail.trim() });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function respondSharedSavingsGuestAccountLink(requestId: string, action: "accept" | "decline"): Promise<boolean> {
+  const { data, error } = await supabase.rpc("respond_shared_savings_guest_account_link", { p_request_id: requestId, p_action: action });
+  if (error) throw error;
+  return Boolean(data);
+}
+
+export async function getSharedSavingsGuestLinkRequest(requestId: string) {
+  const { data, error } = await supabase.rpc("get_shared_savings_guest_link_request", { p_request_id: requestId });
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
+
+export type HistoricalContributionCandidate = {
+  id: string;
+  wallet_id: string;
+  amount: number;
+  transaction_date: string;
+  title: string | null;
+  note: string | null;
+};
+
+/**
+ * Only completed, unlinked negative adjustments are eligible. Linking an
+ * ordinary expense would incorrectly rewrite expense reporting as an asset move.
+ */
+export async function getHistoricalContributionCandidates(): Promise<HistoricalContributionCandidate[]> {
+  const userId = await getAuthenticatedUserId();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, wallet_id, amount, transaction_date, title, note")
+    .eq("user_id", userId)
+    .eq("type", "adjustment")
+    .eq("status", "completed")
+    .is("related_entity_type", null)
+    .lt("amount", 0)
+    .order("transaction_date", { ascending: false });
+  if (error) throw error;
+  return (data ?? [])
+    .filter((row): row is typeof row & { wallet_id: string } => Boolean(row.wallet_id))
+    .map((row) => ({ ...row, amount: Math.abs(toNumber(row.amount)) }));
 }
 
 export async function submitWithdrawalRequest(input: {

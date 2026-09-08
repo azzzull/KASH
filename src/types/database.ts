@@ -591,6 +591,12 @@ export type Database = {
         }>;
         Relationships: [];
       };
+      shared_savings_member_link_requests: {
+        Row: { id: string; participant_id: string; shared_savings_id: string; target_user_id: string; requested_by_user_id: string; status: string; expires_at: string; responded_at: string | null; created_at: string; updated_at: string; };
+        Insert: Partial<{ id: string; participant_id: string; shared_savings_id: string; target_user_id: string; requested_by_user_id: string; status: string; expires_at: string; responded_at: string | null; }>;
+        Update: Partial<{ status: string; responded_at: string | null; }>;
+        Relationships: [];
+      };
       shared_savings_balance_view: {
         Row: SharedSavingsBalance;
         Insert: never;
@@ -930,9 +936,13 @@ export type Database = {
       submit_shared_contribution_request: {
         Args: {
           p_shared_savings_id: string;
-          p_source_wallet_id: string;
+          p_source_wallet_id?: string | null;
           p_amount: number;
           p_note?: string | null;
+          p_contribution_date?: string;
+          p_source_type?: "wallet_contribution" | "linked_historical_movement";
+          p_source_transaction_id?: string | null;
+          p_client_request_id?: string;
         };
         Returns: string;
       };
@@ -1077,6 +1087,26 @@ export type Database = {
           p_note?: string | null;
         };
         Returns: Json;
+      };
+      create_shared_savings_guest_member: {
+        Args: { p_shared_savings_id: string; p_name: string; p_joined_at?: string; p_note?: string | null; p_phone?: string | null; p_email?: string | null; };
+        Returns: string;
+      };
+      record_shared_savings_payment_received: {
+        Args: { p_shared_savings_id: string; p_participant_id: string; p_amount: number; p_contribution_date: string; p_note?: string | null; p_client_request_id?: string; };
+        Returns: string;
+      };
+      request_shared_savings_guest_account_link: {
+        Args: { p_participant_id: string; p_target_email: string; };
+        Returns: string;
+      };
+      respond_shared_savings_guest_account_link: {
+        Args: { p_request_id: string; p_action: string; };
+        Returns: boolean;
+      };
+      get_shared_savings_guest_link_request: {
+        Args: { p_request_id: string; };
+        Returns: { request_id: string; status: string; space_name: string; member_name: string; current_share: number; joined_at: string; requester_name: string; expires_at: string; }[];
       };
       get_cross_space_payer_profile: {
         Args: {

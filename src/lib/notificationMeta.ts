@@ -265,6 +265,8 @@ export function getNotificationTargetPath(notification: Notification): string | 
     case "shared_saving":
       return `/shared-savings/${notification.entity_id}`;
     case "shared_savings_invite":
+    case "shared_savings_member_link_request":
+      return `/shared-savings/link-requests/${notification.entity_id}`;
     case "shared_contribution":
       return "/shared-savings";
     case "managed_space_invitation":

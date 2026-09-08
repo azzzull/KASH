@@ -44,6 +44,8 @@ import { ContributeSharedModal } from "../components/sharedSavings/ContributeSha
 import { WithdrawSharedModal } from "../components/sharedSavings/WithdrawSharedModal";
 import { SharedSpendingModal } from "../components/sharedSavings/SharedSpendingModal";
 import { InviteMemberModal } from "../components/sharedSavings/InviteMemberModal";
+import { AddGuestMemberModal } from "../components/sharedSavings/AddGuestMemberModal";
+import { LinkGuestAccountModal } from "../components/sharedSavings/LinkGuestAccountModal";
 import { EditSharedSavingsModal } from "../components/sharedSavings/EditSharedSavingsModal";
 import { ManageApproversModal } from "../components/sharedSavings/ManageApproversModal";
 import { TransferOwnershipModal } from "../components/sharedSavings/TransferOwnershipModal";
@@ -121,6 +123,8 @@ export function SharedSavingsDetailPage() {
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [linkingGuest, setLinkingGuest] = useState<{ id: string; name: string } | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showApproversModal, setShowApproversModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -525,6 +529,7 @@ export function SharedSavingsDetailPage() {
             >
               <UserPlus size={14} /> {t("shared.invite")}
             </Button>
+            {(isOwner || isAccountHolder) && <Button type="button" variant="secondary" onClick={() => setShowGuestModal(true)} className="min-h-8 px-3 text-xs"><UserPlus size={14} /> {t("shared.addGuest")}</Button>}
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
@@ -550,6 +555,9 @@ export function SharedSavingsDetailPage() {
                           <span className="rounded-full bg-kash-emerald px-2 py-0.2 text-[10px] font-black text-white">
                             {t("shared.you")}
                           </span>
+                        )}
+                        {m.member_type === "guest" && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.2 text-[10px] font-black text-slate-600">{t("shared.guest")}{m.link_request_status === "pending" ? ` · ${t("shared.linkPending")}` : ""}</span>
                         )}
                         {m.is_owner && (
                           <span className="flex items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.2 text-[10px] font-black text-amber-800">
@@ -601,6 +609,7 @@ export function SharedSavingsDetailPage() {
                   </div>
 
                   {/* Remove Member Action (Owner Only for other members with 0 share) */}
+                  {isOwner && m.member_type === "guest" && m.participant_id && <div className="mt-3 flex justify-end border-t border-slate-100 pt-2">{m.link_request_status === "pending" ? <span className="text-[11px] font-bold text-slate-500">{t("shared.waitingConfirmation")}</span> : <button type="button" onClick={() => setLinkingGuest({ id: m.participant_id!, name: m.member_name || m.display_name || t("shared.guest") })} className="text-[11px] font-bold text-kash-emerald hover:underline">{t("shared.linkAccount")}</button>}</div>}
                   {isOwner && !isCurrentUser && !m.is_account_holder && currentShare === 0 && (
                     <div className="mt-3 flex justify-end border-t border-slate-100 pt-2">
                       <button
@@ -757,7 +766,12 @@ export function SharedSavingsDetailPage() {
                         )}
 
                         <p className="mt-1 text-[11px] text-slate-500">
-                          {formatDate(r.created_at)}
+                          {r.request_type === "contribution" && r.contribution_date ? (
+                            <>
+                              {t("shared.contributionDate")}: {formatDate(r.contribution_date)} · {t("shared.recordedOn")}: {formatDate(r.created_at)}
+                              {r.contribution_source_type === "linked_historical_movement" && <span className="ml-1 font-bold text-blue-700">· {t("shared.historicalEntry")}</span>}
+                            </>
+                          ) : formatDate(r.created_at)}
                         </p>
                       </div>
                     </div>
@@ -992,9 +1006,13 @@ export function SharedSavingsDetailPage() {
         spaceId={space.shared_savings_id}
         spaceName={space.name}
         spaceColor={space.color}
+        members={members}
+        canRecordReceived={isOwner || isAccountHolder}
         onClose={() => setShowContributeModal(false)}
         onSubmitted={() => void loadData()}
       />
+      <AddGuestMemberModal isOpen={showGuestModal} spaceId={space.shared_savings_id} onClose={() => setShowGuestModal(false)} onCreated={() => void loadData()} />
+      {linkingGuest && <LinkGuestAccountModal isOpen participantId={linkingGuest.id} memberName={linkingGuest.name} onClose={() => setLinkingGuest(null)} onRequested={() => void loadData()} />}
 
       <WithdrawSharedModal
         isOpen={showWithdrawModal}

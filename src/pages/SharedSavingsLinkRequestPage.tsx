@@ -1,0 +1,18 @@
+import { Check, Link2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Button } from "../components/ui/Button";
+import { getSharedSavingsGuestLinkRequest, respondSharedSavingsGuestAccountLink } from "../lib/sharedSavings";
+import { useI18n } from "../i18n";
+
+type LinkRequest = NonNullable<Awaited<ReturnType<typeof getSharedSavingsGuestLinkRequest>>>;
+
+export function SharedSavingsLinkRequestPage() {
+ const { id }=useParams(); const navigate=useNavigate(); const {t,formatCurrency,formatDate}=useI18n(); const [request,setRequest]=useState<LinkRequest | null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState<string|null>(null); const [acting,setActing]=useState(false);
+ useEffect(()=>{if(!id)return; setLoading(true); getSharedSavingsGuestLinkRequest(id).then((value)=>{setRequest(value); if(!value)setError(t("shared.linkRequestUnavailable"));}).catch(()=>setError(t("shared.linkRequestUnavailable"))).finally(()=>setLoading(false));},[id]);
+ const act=async(action:"accept"|"decline")=>{if(!id)return; setActing(true); setError(null); try{const accepted=await respondSharedSavingsGuestAccountLink(id,action); setRequest(current=>current?{...current,status:accepted?"accepted":"declined"}:current); if(accepted) setTimeout(()=>navigate("/shared-savings"),700);}catch(err:any){setError(err.message||t("common.error"));}finally{setActing(false);}};
+ if(loading)return <div className="min-h-[45dvh] animate-pulse rounded-2xl border border-slate-200 bg-white p-6"/>;
+ if(error||!request)return <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center"><h1 className="font-extrabold text-slate-900">{t("shared.linkRequestUnavailable")}</h1><Button className="mt-4" onClick={()=>navigate("/dashboard")}>{t("common.back")}</Button></div>;
+ const pending=request.status==="pending";
+ return <main className="mx-auto max-w-xl py-4"><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft sm:p-7"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kash-selected text-kash-emeraldDark"><Link2 size={21}/></span><h1 className="mt-4 text-xl font-extrabold text-slate-900">{t("shared.linkRequestTitle")}</h1><p className="mt-2 text-sm leading-6 text-slate-600">{t("shared.linkRequestFrom",{name:request.requester_name})}</p><div className="mt-5 space-y-3 rounded-xl bg-slate-50 p-4 text-sm"><p><span className="font-bold text-slate-600">{t("shared.linkRequestSpace")}: </span>{request.space_name}</p><p><span className="font-bold text-slate-600">{t("shared.member")}: </span>{request.member_name}</p><p><span className="font-bold text-slate-600">{t("shared.myShare")}: </span>{formatCurrency(request.current_share,"IDR")}</p><p><span className="font-bold text-slate-600">{t("shared.joined")}: </span>{formatDate(request.joined_at)}</p></div><p className="mt-5 text-sm leading-6 text-slate-600">{t("shared.linkRequestSafety")}</p>{error&&<p className="mt-3 text-sm font-bold text-kash-expense">{error}</p>}{pending?<div className="mt-6 flex gap-3"><Button variant="secondary" className="flex-1" disabled={acting} onClick={()=>void act("decline")}><X size={16}/>{t("shared.declineLink")}</Button><Button className="flex-1" disabled={acting} onClick={()=>void act("accept")}><Check size={16}/>{t("shared.acceptLink")}</Button></div>:<div className="mt-6 rounded-xl bg-kash-selected p-3 text-sm font-bold text-kash-emeraldDark">{request.status==="accepted"?t("shared.linkAccepted"):t("shared.linkDeclined")}</div>}</section></main>;
+}

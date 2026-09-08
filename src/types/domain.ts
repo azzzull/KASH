@@ -633,6 +633,7 @@ export type SharedSavingsMemberStatus = "active" | "left" | "removed";
 export type SharedSavingsInviteStatus = "pending" | "accepted" | "rejected" | "expired" | "cancelled";
 export type SharedSavingsRequestType = "contribution" | "withdrawal" | "shared_spending";
 export type SharedSavingsRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type SharedSavingsContributionSourceType = "wallet_contribution" | "linked_historical_movement" | "already_received";
 export type SharedSavingsEventType = "contribution" | "personal_withdrawal" | "shared_spending" | "reversal";
 
 export type SharedSavings = {
@@ -692,7 +693,11 @@ export type SharedSavingsRequest = {
   request_type: SharedSavingsRequestType;
   requested_by_user_id: string;
   amount: MoneyAmount;
+  contribution_date: string | null;
+  contribution_source_type: SharedSavingsContributionSourceType | null;
+  participant_id?: string | null;
   source_wallet_id: string | null;
+  source_transaction_id: string | null;
   destination_wallet_id: string | null;
   title: string | null;
   note: string | null;
@@ -756,6 +761,10 @@ export type SharedSavingsBalance = {
 export type SharedSavingsMemberShare = {
   shared_savings_id: string;
   user_id: string;
+  participant_id?: string;
+  member_type?: "kash_member" | "guest";
+  display_name?: string | null;
+  link_request_status?: "pending" | null;
   member_status: SharedSavingsMemberStatus;
   joined_at: string;
   left_at: string | null;
