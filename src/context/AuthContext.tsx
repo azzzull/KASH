@@ -113,6 +113,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const profileRequestIdRef = useRef(0);
+  const authenticatedUserIdRef = useRef<string | null>(null);
 
   const loadProfile = async (userId: string) => {
     const requestId = profileRequestIdRef.current + 1;
@@ -182,12 +183,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
+      const nextUserId = nextSession?.user.id ?? null;
+      const identityChanged = authenticatedUserIdRef.current !== nextUserId;
+      authenticatedUserIdRef.current = nextUserId;
       setSession(nextSession);
       setStatus(nextSession ? "authenticated" : "unauthenticated");
 
-      if (nextSession?.user.id) {
-        void loadProfile(nextSession.user.id);
-      } else {
+      // TOKEN_REFRESHED keeps the same identity. Its session update must not
+      // restart profile-dependent routes or their in-progress UI state.
+      if (nextUserId && identityChanged) {
+        void loadProfile(nextUserId);
+      } else if (!nextUserId) {
         clearProfile();
       }
     };

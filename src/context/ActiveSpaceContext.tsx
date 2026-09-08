@@ -48,6 +48,7 @@ const ActiveSpaceContext = createContext<ActiveSpaceContextValue | undefined>(un
 
 export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   const { status, user } = useAuth();
+  const userId = user?.id ?? null;
   const [spaces, setSpaces] = useState<FinancialSpace[]>([]);
   const [userRolesBySpaceId, setUserRolesBySpaceId] = useState<Record<string, ManagedSpaceRole | "owner">>({});
   const [activeSpaceId, setActiveSpaceIdState] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
   const activeUserIdRef = useRef<string | null>(null);
 
   const loadSpaces = useCallback(async (preferredSpaceId?: string) => {
-    if (status !== "authenticated" || !user) {
+    if (status !== "authenticated" || !userId) {
       initGenerationRef.current += 1;
       activeUserIdRef.current = null;
       setSpaces([]);
@@ -70,7 +71,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     }
 
     const currentGen = ++initGenerationRef.current;
-    const currentUserId = user.id;
+    const currentUserId = userId;
     activeUserIdRef.current = currentUserId;
 
     setLoading(true);
@@ -158,10 +159,10 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }
-  }, [status, user]);
+  }, [status, userId]);
 
   useEffect(() => {
-    if (status !== "authenticated" || !user) {
+    if (status !== "authenticated" || !userId) {
       initGenerationRef.current += 1;
       activeUserIdRef.current = null;
       setSpaces([]);
@@ -175,7 +176,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
     setActiveSpaceIdState(null);
     clearActiveSpaceState();
     void loadSpaces();
-  }, [status, user?.id, loadSpaces]);
+  }, [status, userId, loadSpaces]);
 
   const getUserRole = useCallback(
     (spaceOrId: FinancialSpace | string): ManagedSpaceRole | "owner" | null => {
