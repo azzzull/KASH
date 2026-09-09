@@ -197,12 +197,11 @@ export function EnvelopeDetailPage() {
 
   const { envelope, totalSpent, categoryBreakdown, transactions, activeBudget } = data;
   const IconComp = getCategoryIcon(envelope.icon || "layers");
-  const envelopeColor = envelope.color || "#4F7DF3";
 
   return (
     <div className="w-full min-w-0 space-y-4">
       {/* Top Breadcrumb, Month Selector & Actions */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-3">
         <Link
           to="/settings/categories"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 transition hover:text-kash-emerald"
@@ -212,17 +211,17 @@ export function EnvelopeDetailPage() {
         </Link>
 
         {/* Month Navigator Controls */}
-        <div className="flex items-center justify-between sm:justify-end gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white px-2 py-1 shadow-card">
           <button
             type="button"
             onClick={handlePrevMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             title={t("common.prevMonth") || "Bulan Sebelumnya"}
           >
             <ChevronLeft size={16} />
           </button>
 
-          <div className="w-44">
+          <div className="w-32 sm:w-36">
             <DatePickerField
               id="envelope-period-picker"
               value={currentMonth}
@@ -233,7 +232,7 @@ export function EnvelopeDetailPage() {
           <button
             type="button"
             onClick={handleNextMonth}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:border-kash-emerald/40 hover:bg-kash-selected/40 hover:text-kash-emeraldDark"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             title={t("common.nextMonth") || "Bulan Berikutnya"}
           >
             <ChevronRight size={16} />
@@ -241,38 +240,29 @@ export function EnvelopeDetailPage() {
         </div>
       </div>
 
-      {/* Main Header Banner */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4">
+      {/* Main Envelope Progress Header */}
+      <section className="kash-hero-card relative min-w-0 max-w-full p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
             <span
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-md text-xl"
-              style={{ backgroundColor: envelopeColor }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white shadow-xs"
             >
-              <IconComp aria-hidden="true" size={28} strokeWidth={2.2} />
+              <IconComp aria-hidden="true" size={22} strokeWidth={2.2} />
             </span>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-extrabold text-blue-700 border border-blue-200/60">
-                  {t("nav.envelopes") || "Amplop Pengeluaran"}
-                </span>
-                <span className="text-xs font-bold text-slate-500">
-                  {t("common.period") || "Periode"}: {currentMonthLabel}
-                </span>
-              </div>
-              <h1 className="mt-1 text-xl font-black text-slate-900 sm:text-2xl truncate">
+              <h1 className="truncate text-xl font-extrabold text-white sm:text-2xl">
                 {envelope.name}
               </h1>
-              <p className="mt-1 text-xs font-semibold text-slate-600">
-                {envelope.note || (t("categories.envelopeDefaultNote") || "Pengelompokan tujuan pengeluaran mandiri lintas kategori.")}
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="rounded-lg bg-white/15 px-2 py-0.5 text-xs font-bold text-white/90">{t("nav.envelopes") || "Envelope"}</span>
+                <span className="text-xs font-bold text-white/65">{t("common.period") || "Periode"}: {currentMonthLabel}</span>
+              </div>
             </div>
           </div>
 
-          {/* Envelope Action Buttons */}
-          <div className="flex items-center gap-2 self-start sm:self-center">
+          <div className="shrink-0">
             <EntityMoreActionsMenu
-              triggerVariant="default"
+              triggerVariant="hero"
               ariaLabel={`Opsi amplop ${envelope.name}`}
               items={[
                 {
@@ -298,7 +288,7 @@ export function EnvelopeDetailPage() {
             />
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Active Budget Relationship Banner */}
       {activeBudget ? (
