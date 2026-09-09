@@ -42,6 +42,7 @@ import { CashFlowChart } from "../components/analytics/CashFlowChart";
 import { useI18n, type TranslationKey } from "../i18n";
 import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
+import { SpendingBreakdownChart } from "../components/spending/SpendingBreakdownChart";
 
 const INCOME_COLOR = "#10B981";
 const EXPENSE_COLOR = "#E50914";
@@ -444,6 +445,7 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
 }
 
 function SpendingByCategory({ currency, items, onSelect }: { currency: string; items: AnalyticsSummary["categorySpending"]; onSelect: (item: AnalyticsSummary["categorySpending"][number]) => void }) {
+  return <SpendingBreakdownChart currency={currency} items={items} onSelect={(item) => { const selected = items.find((candidate) => candidate.id === item.id && candidate.groupType === item.groupType); if (selected) onSelect(selected); }} />;
   const { t, formatCurrency } = useI18n();
   const categories = items;
   const totalExpense = categories.reduce((sum, category) => sum + category.amount, 0);

@@ -56,6 +56,7 @@ import { TransactionRow } from "../components/transactions/TransactionRow";
 import { Button } from "../components/ui/Button";
 import { getTransactions, type TransactionWithMeta } from "../lib/transactions";
 import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
+import { SpendingBreakdownChart } from "../components/spending/SpendingBreakdownChart";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -943,6 +944,8 @@ function SpendingDonut({
         return totals;
     }, new Map<string, { name: string; amount: number }>());
 
+    return <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card sm:p-6"><h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingBreakdown") || "Spending Breakdown"}</h2><SpendingBreakdownChart currency={currency} items={categories} onSelect={(item) => { const selected = categories.find((candidate) => candidate.id === item.id && candidate.groupType === item.groupType); if (selected) setSelectedGroup(selected); }} /><SpendingBreakdownSheet group={selectedGroup} currency={currency} periodLabel={summary.period.label} loading={previewLoading} onClose={() => setSelectedGroup(null)} transactionHref="/transactions" transactions={previewTransactions.map((transaction) => ({ id: transaction.id, amount: transaction.amount, title: transaction.title, categoryName: transaction.category?.name ?? (t("categories.uncategorized") || "Uncategorized"), envelopeName: transaction.envelope?.name ?? null, walletName: transaction.wallet?.name ?? undefined }))} /></section>;
+
     return (
         <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
             <h2 className="text-sm font-extrabold text-slate-900">
@@ -1035,7 +1038,7 @@ function SpendingDonut({
                     ))}
                 </div>
             </div>
-            <SpendingBreakdownSheet group={selectedGroup} currency={currency} periodLabel={activeMonth ? monthKey(activeMonth) : undefined} loading={previewLoading} onClose={() => setSelectedGroup(null)} transactionHref={selectedGroup ? `/transactions?${new URLSearchParams(selectedGroup.groupType === "envelope" ? { type: "expense", envelope: selectedGroup.id, month: activeMonth ? monthKey(activeMonth) : "" } : { type: "expense", category: selectedGroup.id, withoutEnvelope: "true", month: activeMonth ? monthKey(activeMonth) : "" }).toString()}` : "/transactions"} transactions={previewTransactions.map((transaction) => ({ id: transaction.id, amount: transaction.amount, title: transaction.title, categoryName: transaction.category?.name ?? (t("categories.uncategorized") || "Uncategorized"), envelopeName: transaction.envelope?.name ?? null, walletName: transaction.wallet?.name ?? undefined }))} />
+            <SpendingBreakdownSheet group={selectedGroup} currency={currency} loading={previewLoading} onClose={() => setSelectedGroup(null)} transactionHref="/transactions" transactions={previewTransactions.map((transaction) => ({ id: transaction.id, amount: transaction.amount, title: transaction.title, categoryName: transaction.category?.name ?? (t("categories.uncategorized") || "Uncategorized"), envelopeName: transaction.envelope?.name ?? null, walletName: transaction.wallet?.name ?? undefined }))} />
         </DashboardCard>
     );
 }
