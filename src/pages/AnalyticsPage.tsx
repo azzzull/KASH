@@ -41,6 +41,7 @@ import { CashFlowChart } from "../components/analytics/CashFlowChart";
 
 import { useI18n, type TranslationKey } from "../i18n";
 import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
+import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
 
 const INCOME_COLOR = "#10B981";
 const EXPENSE_COLOR = "#E50914";
@@ -544,7 +545,7 @@ type SpendingDrilldownContext = {
   groupId: string;
 };
 
-function SpendingDrilldown({ context, currency, summary, onClose }: { context: SpendingDrilldownContext | null; currency: string; summary: AnalyticsSummary; onClose: () => void }) {
+function SpendingDrilldownLegacy({ context, currency, summary, onClose }: { context: SpendingDrilldownContext | null; currency: string; summary: AnalyticsSummary; onClose: () => void }) {
   const { t, formatCurrency, formatDate } = useI18n();
   const group = context ? (context.mode === "hybrid" ? summary.spendingBreakdown : summary.categorySpending).find((item) => item.id === context.groupId && item.groupType === context.groupType) : null;
   const transactions = !context ? [] : filterSpendingDrilldown(summary.spendingTransactions, context);
@@ -560,6 +561,13 @@ function SpendingDrilldown({ context, currency, summary, onClose }: { context: S
       <Link to={`/transactions?${new URLSearchParams(context.groupType === "envelope" ? { type: "expense", envelope: context.groupId } : context.mode === "hybrid" ? { type: "expense", category: context.groupId, withoutEnvelope: "true" } : { type: "expense", category: context.groupId }).toString()}`} className="flex w-full items-center justify-center rounded-xl bg-kash-emerald px-4 py-2.5 text-sm font-bold text-white transition hover:bg-kash-emeraldDark">{t("common.viewAll") || "Lihat Detail Transaksi"} →</Link>
     </div> : null}
   </Modal>;
+}
+
+function SpendingDrilldown({ context, currency, summary, onClose }: { context: SpendingDrilldownContext | null; currency: string; summary: AnalyticsSummary; onClose: () => void }) {
+  const group = context ? (context.mode === "hybrid" ? summary.spendingBreakdown : summary.categorySpending).find((item) => item.id === context.groupId && item.groupType === context.groupType) : null;
+  const transactions = context ? filterSpendingDrilldown(summary.spendingTransactions, context) : [];
+  const href = context ? `/transactions?${new URLSearchParams(context.groupType === "envelope" ? { type: "expense", envelope: context.groupId } : context.mode === "hybrid" ? { type: "expense", category: context.groupId, withoutEnvelope: "true" } : { type: "expense", category: context.groupId }).toString()}` : "/transactions";
+  return <SpendingBreakdownSheet group={group ?? null} currency={currency} periodLabel={summary.period.label} onClose={onClose} transactionHref={href} transactions={transactions.map((transaction) => ({ id: transaction.id, amount: transaction.amount, title: transaction.title, categoryName: transaction.categoryName, envelopeName: transaction.envelopeName, walletName: transaction.walletName }))} />;
 }
 
 function linePath(points: { x: number; y: number }[]) {

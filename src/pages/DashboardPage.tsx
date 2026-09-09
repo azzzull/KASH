@@ -53,9 +53,9 @@ import { CashFlowChart as SharedCashFlowChart } from "../components/analytics/Ca
 import { UpcomingTimeline } from "../components/financial/UpcomingTimeline";
 import { getRecurringObligations, type RecurringObligationWithMeta } from "../lib/subscriptions";
 import { TransactionRow } from "../components/transactions/TransactionRow";
-import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { getTransactions, type TransactionWithMeta } from "../lib/transactions";
+import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -1035,14 +1035,7 @@ function SpendingDonut({
                     ))}
                 </div>
             </div>
-            <Modal isOpen={Boolean(selectedGroup)} onClose={() => setSelectedGroup(null)} maxWidth="lg" showCloseButton={false} title={selectedGroup?.name ?? ""}>
-                {selectedGroup ? <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-                    <div className="flex items-center justify-between gap-3"><span className="rounded-full bg-kash-selected px-2 py-1 text-[11px] font-bold text-kash-emeraldDark">{selectedGroup.groupType === "envelope" ? (t("budgets.envelope") || "Envelope") : (t("reports.category") || "Category")}</span><strong className="text-lg text-slate-900">{formatPrivateAmount(selectedGroup.amount, currency, balancesVisible)}</strong></div>
-                    {selectedGroup.groupType === "envelope" ? <section><h3 className="text-sm font-extrabold text-slate-900">{t("reports.categoryBreakdown") || "Rincian Kategori"}</h3><div className="mt-2 space-y-2">{[...previewCategoryTotals.values()].sort((a, b) => b.amount - a.amount).map((item) => <div key={item.name} className="flex justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm"><span className="truncate font-semibold text-slate-700">{item.name}</span><span className="font-bold text-slate-900">{formatPrivateAmount(item.amount, currency, balancesVisible)}</span></div>)}</div></section> : null}
-                    <div className="divide-y divide-slate-100 rounded-xl border border-slate-100">{previewLoading ? <p className="p-4 text-sm font-semibold text-slate-500">{t("reports.loading") || "Memuat..."}</p> : previewTransactions.map((transaction) => <div key={transaction.id} className="flex items-start justify-between gap-3 p-3"><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{transaction.title || transaction.category?.name || t("transactions.transaction")}</p><p className="mt-1 text-xs font-semibold text-slate-500">{transaction.category?.name || t("categories.uncategorized")}{transaction.envelope?.name ? ` · ${t("budgets.envelope") || "Envelope"}: ${transaction.envelope.name}` : ""}</p></div><span className="shrink-0 text-sm font-extrabold text-slate-900">{formatPrivateAmount(toNumber(transaction.amount), currency, balancesVisible)}</span></div>)}</div>
-                    <Button className="w-full" onClick={openTransactions}>{t("common.viewAll") || "Lihat Detail Transaksi"} →</Button>
-                </div> : null}
-            </Modal>
+            <SpendingBreakdownSheet group={selectedGroup} currency={currency} periodLabel={activeMonth ? monthKey(activeMonth) : undefined} loading={previewLoading} onClose={() => setSelectedGroup(null)} transactionHref={selectedGroup ? `/transactions?${new URLSearchParams(selectedGroup.groupType === "envelope" ? { type: "expense", envelope: selectedGroup.id, month: activeMonth ? monthKey(activeMonth) : "" } : { type: "expense", category: selectedGroup.id, withoutEnvelope: "true", month: activeMonth ? monthKey(activeMonth) : "" }).toString()}` : "/transactions"} transactions={previewTransactions.map((transaction) => ({ id: transaction.id, amount: transaction.amount, title: transaction.title, categoryName: transaction.category?.name ?? (t("categories.uncategorized") || "Uncategorized"), envelopeName: transaction.envelope?.name ?? null, walletName: transaction.wallet?.name ?? undefined }))} />
         </DashboardCard>
     );
 }
