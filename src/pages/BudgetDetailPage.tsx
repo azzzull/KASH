@@ -415,7 +415,7 @@ export function BudgetDetailPage() {
             </div>
             {budget.envelope_id && (
               <Link
-                to={`/envelopes/${budget.envelope_id}?month=${currentMonth}`}
+                to="/settings/categories"
                 className="text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark"
               >
                 {t("budgets.openEnvelopePage") || "Buka Halaman Amplop →"}

@@ -10,7 +10,6 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
@@ -198,8 +197,8 @@ function EnvelopePill({
   const Icon = getCategoryIcon(envelope.icon || "layers");
 
   return (
-    <article className="group flex min-w-0 max-w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-kash-emerald hover:bg-kash-selected/30">
-      <Link to={`/envelopes/${envelope.id}`} className="flex min-w-0 flex-1 items-center gap-3.5">
+    <article className="group flex min-w-0 max-w-full items-center justify-between gap-3 overflow-visible rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-kash-emerald hover:bg-kash-selected/30">
+      <div className="flex min-w-0 flex-1 items-center gap-3.5">
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs transition group-hover:scale-105"
           style={{ backgroundColor: envelope.color ?? "#4F7DF3" }}
@@ -214,7 +213,7 @@ function EnvelopePill({
             {envelope.note || (t("categories.specialExpenseEnvelope") || "Amplop Pengeluaran Khusus")}
           </span>
         </div>
-      </Link>
+      </div>
 
       <div className="shrink-0">
         {/* Desktop buttons */}
@@ -632,7 +631,7 @@ export function CategoriesPage() {
   };
 
   const tabOptions = useMemo(() => [
-    { label: t("nav.categories") || "Kategori Transaksi", value: "categories" },
+    { label: t("categories.transactionCategories") || "Categories", value: "categories" },
     { label: t("nav.envelopes") || "Amplop Pengeluaran", value: "envelopes", count: envelopes.length },
   ], [envelopes.length, t]);
 
@@ -643,12 +642,8 @@ export function CategoriesPage() {
       <PageHeader
         eyebrow={t("categories.manageBudget") || "Kelola Anggaran"}
         icon={activeTab === "categories" ? Tags : Layers}
-        title={activeTab === "categories" ? (t("nav.categories") || "Kategori Transaksi") : (t("nav.envelopes") || "Amplop Pengeluaran")}
-        description={
-          activeTab === "categories"
-            ? (t("categories.categoriesDesc") || "Kelola kategori pengeluaran dan pemasukan dengan ikon dan warna kustom.")
-            : (t("categories.envelopesDesc") || "Kelola amplop alokasi tujuan khusus (seperti Date, Liburan, Proyek Rumah).")
-        }
+        title={t("nav.categories") || "Categories & Envelopes"}
+        description={t("categories.subtitle") || "Kelola kategori transaksi dan amplop pengeluaran."}
         actions={
           <div ref={createActionRef} className="hidden sm:block">
             {activeTab === "categories" ? (

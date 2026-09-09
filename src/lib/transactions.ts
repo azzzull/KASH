@@ -54,6 +54,7 @@ export type TransactionPeriodFilter = "all" | "this_month" | "last_month" | "thi
 export type TransactionFilters = {
   categoryId?: string;
   envelopeId?: string;
+  withoutEnvelope?: boolean;
   dateKey?: string;
   monthDate?: Date | string;
   page?: number;
@@ -525,6 +526,7 @@ export async function getTransactions(filters: TransactionFilters = {}) {
     query = query.eq("category_id", filters.categoryId);
   }
   if (filters.envelopeId) query = query.eq("envelope_id", filters.envelopeId);
+  if (filters.withoutEnvelope) query = query.is("envelope_id", null);
   if (filters.walletId) query = query.or(`wallet_id.eq.${filters.walletId},destination_wallet_id.eq.${filters.walletId}`);
   if (range) query = query.gte("transaction_date", range.start).lt("transaction_date", range.end);
 

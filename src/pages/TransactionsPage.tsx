@@ -890,9 +890,12 @@ export function TransactionsPage() {
     const initialDateKey = searchParams.get("date") ?? undefined;
     const initialWalletId = searchParams.get("wallet") ?? undefined;
     const initialCategoryId = searchParams.get("category") ?? searchParams.get("categoryId") ?? undefined;
+    const initialEnvelopeId = searchParams.get("envelope") ?? undefined;
     const initialType = (searchParams.get("type") as TransactionTypeFilter) ?? "all";
     return {
       categoryId: initialCategoryId,
+      envelopeId: initialEnvelopeId,
+      withoutEnvelope: searchParams.get("withoutEnvelope") === "true",
       dateKey: initialDateKey,
       monthDate: activeMonth,
       page: 0,
@@ -967,6 +970,8 @@ export function TransactionsPage() {
     const dateKey = searchParams.get("date") ?? undefined;
     const walletId = searchParams.get("wallet") ?? undefined;
     const categoryId = searchParams.get("category") ?? searchParams.get("categoryId") ?? undefined;
+    const envelopeId = searchParams.get("envelope") ?? undefined;
+    const withoutEnvelope = searchParams.get("withoutEnvelope") === "true";
     const type = (searchParams.get("type") as TransactionTypeFilter) ?? undefined;
     const monthParam = searchParams.get("month");
 
@@ -984,6 +989,8 @@ export function TransactionsPage() {
         current.dateKey === dateKey &&
         current.walletId === walletId &&
         current.categoryId === categoryId &&
+        current.envelopeId === envelopeId &&
+        current.withoutEnvelope === withoutEnvelope &&
         (type === undefined || current.type === type) &&
         current.monthDate === nextMonth
       ) {
@@ -997,6 +1004,8 @@ export function TransactionsPage() {
         type: type ?? current.type,
         walletId: walletId ?? current.walletId,
         categoryId: categoryId ?? current.categoryId,
+        envelopeId: envelopeId ?? current.envelopeId,
+        withoutEnvelope,
       };
     });
   }, [searchParams]);
