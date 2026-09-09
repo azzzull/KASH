@@ -1088,6 +1088,10 @@ export const en = {
     "subscriptions.tabSubscriptions": "Subscriptions",
     "subscriptions.tabInstallments": "Installments",
     "subscriptions.tabDueSoon": "Due Soon",
+    "subscriptions.tabPaid": "Paid Off",
+    "subscriptions.noPaidObligations": "No paid off bills yet",
+    "subscriptions.noPaidObligationsDesc":
+        "Bills or installments that have been fully paid will appear here.",
     "subscriptions.paidViaHint": "Recorded directly from your selected wallet.",
     "subscriptions.earlySettlementDefaultNote":
         "Early settlement of remaining installments",

@@ -38,7 +38,7 @@ import {
 import { getWallets, type WalletWithBalance } from "../lib/wallets";
 import type { RecurringPayment } from "../types/domain";
 
-type TabFilter = "all" | "subscriptions" | "installments" | "due_soon";
+type TabFilter = "all" | "subscriptions" | "installments" | "due_soon" | "paid";
 
 export function SubscriptionsPage() {
   const navigate = useNavigate();
@@ -136,17 +136,29 @@ export function SubscriptionsPage() {
     today.setHours(0, 0, 0, 0);
 
     return obligations.filter((ob) => {
+      const isInstallment = ob.type === "paylater" || ob.type === "installment";
+      const isPaid =
+        ob.status === "completed" ||
+        (isInstallment && (ob.remaining_count === 0 || toNumber(ob.remaining_amount) <= 0));
+      const isInactive = isPaid || ob.status === "cancelled";
+
       // Tab filter
-      if (activeTab === "subscriptions") {
+      if (activeTab === "all") {
+        if (isInactive) return false;
+      } else if (activeTab === "subscriptions") {
         if (ob.type !== "subscription" && ob.type !== "bill") return false;
+        if (isInactive) return false;
       } else if (activeTab === "installments") {
-        if (ob.type !== "paylater" && ob.type !== "installment") return false;
+        if (!isInstallment) return false;
+        if (isInactive) return false;
       } else if (activeTab === "due_soon") {
-        if (!ob.next_due_date || ob.status !== "active") return false;
+        if (isInactive || !ob.next_due_date || ob.status !== "active") return false;
         const dueDate = new Date(ob.next_due_date);
         dueDate.setHours(0, 0, 0, 0);
         const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
         if (diffDays > 7) return false;
+      } else if (activeTab === "paid") {
+        if (!isInactive) return false;
       }
 
       // Search query
@@ -167,6 +179,7 @@ export function SubscriptionsPage() {
     { label: t("subscriptions.tabSubscriptions") || "Langganan & Tagihan", value: "subscriptions" },
     { label: t("subscriptions.tabInstallments") || "PayLater & Cicilan", value: "installments" },
     { label: t("subscriptions.tabDueSoon") || "Segera Jatuh Tempo", value: "due_soon" },
+    { label: t("subscriptions.tabPaid") || "Lunas", value: "paid" },
   ], [t]);
 
   const createActionRef = useRef<HTMLDivElement>(null);
@@ -253,15 +266,21 @@ export function SubscriptionsPage() {
       ) : filteredObligations.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-kash-selected text-kash-emerald">
-            <Repeat size={22} />
+            {activeTab === "paid" ? <CheckCircle2 size={22} /> : <Repeat size={22} />}
           </div>
-          <h4 className="mt-4 text-base font-extrabold text-slate-900">{terms.subscriptionsNoObligations}</h4>
+          <h4 className="mt-4 text-base font-extrabold text-slate-900">
+            {activeTab === "paid"
+              ? (t("subscriptions.noPaidObligations") || "Belum ada tagihan lunas")
+              : terms.subscriptionsNoObligations}
+          </h4>
           <p className="mt-1 text-xs font-semibold text-slate-600">
             {searchQuery
               ? (t("subscriptions.adjustSearchHint") || "Coba sesuaikan pencarian atau filter aktif Anda.")
-              : terms.subscriptionsEmptyDesc}
+              : activeTab === "paid"
+                ? (t("subscriptions.noPaidObligationsDesc") || "Tagihan atau cicilan yang telah selesai dibayar akan tercatat di sini.")
+                : terms.subscriptionsEmptyDesc}
           </p>
-          {!searchQuery && (
+          {!searchQuery && activeTab !== "paid" && (
             <Button onClick={() => setCreateModalOpen(true)} className="mt-4 gap-2">
               <Plus size={16} />
               {t("subscriptions.addFirstObligation") || "Tambah Tagihan Pertama"}
@@ -272,7 +291,9 @@ export function SubscriptionsPage() {
         <div className="grid grid-cols-1 gap-3">
           {filteredObligations.map((ob) => {
             const isInstallment = ob.type === "paylater" || ob.type === "installment";
-            const isCompleted = ob.status === "completed";
+            const isCompleted =
+              ob.status === "completed" ||
+              (isInstallment && (ob.remaining_count === 0 || toNumber(ob.remaining_amount) <= 0));
             const isCancelled = ob.status === "cancelled";
 
             // Next Due Status calculations
@@ -300,7 +321,9 @@ export function SubscriptionsPage() {
                 dueBadgeClass = "bg-slate-100 text-slate-700 font-semibold";
               }
             } else if (isCompleted) {
-              dueStatusLabel = t("goals.completed") || "Selesai";
+              dueStatusLabel = isInstallment
+                ? (t("debts.settled") || "Lunas")
+                : (t("goals.completed") || "Selesai");
               dueBadgeClass = "bg-kash-selected text-kash-emeraldDark font-bold";
             } else if (isCancelled) {
               dueStatusLabel = t("debts.cancelled") || "Dibatalkan";

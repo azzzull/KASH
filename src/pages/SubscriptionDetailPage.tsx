@@ -192,7 +192,7 @@ export function SubscriptionDetailPage() {
                 </>
               ) : obligation.status === "completed" ? (
                 <>
-                  <CheckCircle2 size={13} /> {t("goals.completed") || "Selesai"}
+                  <CheckCircle2 size={13} /> {isInstallment ? (t("debts.settled") || "Lunas") : (t("goals.completed") || "Selesai")}
                 </>
               ) : (
                 <>

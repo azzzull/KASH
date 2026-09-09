@@ -1098,6 +1098,10 @@ export const id = {
     "subscriptions.tabSubscriptions": "Langganan",
     "subscriptions.tabInstallments": "Cicilan",
     "subscriptions.tabDueSoon": "Jatuh Tempo Segera",
+    "subscriptions.tabPaid": "Lunas",
+    "subscriptions.noPaidObligations": "Belum ada tagihan lunas",
+    "subscriptions.noPaidObligationsDesc":
+        "Tagihan atau cicilan yang telah selesai dibayar akan tercatat di sini.",
     "subscriptions.paidViaHint":
         "Dicatat langsung dari dompet yang Anda pilih.",
     "subscriptions.earlySettlementDefaultNote":
