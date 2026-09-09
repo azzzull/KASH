@@ -46,6 +46,7 @@ export const en = {
     "common.retry": "Retry",
     "common.viewDetail": "View Details",
     "common.viewAll": "View All",
+    "common.viewTransactionDetails": "View Detail Transaction",
     "common.select": "Select",
     "common.optional": "Optional",
     "common.required": "Required",

@@ -46,6 +46,7 @@ export const id = {
     "common.retry": "Coba Lagi",
     "common.viewDetail": "Lihat Detail",
     "common.viewAll": "Lihat Semua",
+    "common.viewTransactionDetails": "Lihat Detail Transaksi",
     "common.select": "Pilih",
     "common.optional": "Opsional",
     "common.required": "Wajib",

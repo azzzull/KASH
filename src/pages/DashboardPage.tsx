@@ -944,7 +944,15 @@ function SpendingDonut({
         return totals;
     }, new Map<string, { name: string; amount: number }>());
 
-    return <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card sm:p-6"><h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingBreakdown") || "Spending Breakdown"}</h2><SpendingBreakdownChart currency={currency} items={categories} onSelect={(item) => { const selected = categories.find((candidate) => candidate.id === item.id && candidate.groupType === item.groupType); if (selected) setSelectedGroup(selected); }} /><SpendingBreakdownSheet group={selectedGroup} currency={currency} periodLabel={summary.period.label} loading={previewLoading} onClose={() => setSelectedGroup(null)} transactionHref="/transactions" transactions={previewTransactions.map((transaction) => ({ id: transaction.id, amount: transaction.amount, title: transaction.title, categoryName: transaction.category?.name ?? (t("categories.uncategorized") || "Uncategorized"), envelopeName: transaction.envelope?.name ?? null, walletName: transaction.wallet?.name ?? undefined }))} /></section>;
+    const selectedTransactionHref = (() => {
+        if (!selectedGroup) return "/transactions";
+        const params = new URLSearchParams({ type: "expense" });
+        if (activeMonth) params.set("month", monthKey(activeMonth));
+        if (selectedGroup.groupType === "envelope") params.set("envelope", selectedGroup.id);
+        else { params.set("category", selectedGroup.id); params.set("withoutEnvelope", "true"); }
+        return `/transactions?${params.toString()}`;
+    })();
+    return <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card sm:p-6"><h2 className="text-base font-extrabold text-slate-900">{t("dashboard.spendingBreakdown") || "Spending Breakdown"}</h2><SpendingBreakdownChart currency={currency} items={categories} onSelect={(item) => { const selected = categories.find((candidate) => candidate.id === item.id && candidate.groupType === item.groupType); if (selected) setSelectedGroup(selected); }} /><SpendingBreakdownSheet group={selectedGroup} currency={currency} periodLabel={summary.period.label} loading={previewLoading} onClose={() => setSelectedGroup(null)} transactionHref={selectedTransactionHref} transactions={previewTransactions.map((transaction) => ({ id: transaction.id, amount: transaction.amount, title: transaction.title, categoryName: transaction.category?.name ?? (t("categories.uncategorized") || "Uncategorized"), envelopeName: transaction.envelope?.name ?? null, walletName: transaction.wallet?.name ?? undefined }))} /></section>;
 
     return (
         <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
