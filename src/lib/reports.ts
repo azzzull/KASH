@@ -1,10 +1,11 @@
-import type { Category, Debt, DebtPayment, DebtPaymentAllocation, FinancialSpace, Goal, GoalContribution, Transaction, Wallet } from "../types/domain";
+import type { Category, Debt, DebtPayment, DebtPaymentAllocation, Envelope, FinancialSpace, Goal, GoalContribution, Transaction, Wallet } from "../types/domain";
 import type {
   FinancialReportData,
   FinancialHealthReportData,
   ReportCategoryBreakdown,
   ReportPeriod,
   ReportWalletBreakdown,
+  ReportSpendingBreakdown,
   TransactionRecapData,
   TransactionRecapFilters,
 } from "../types/reports";
@@ -13,6 +14,7 @@ import { isExternalTransfer, type TransactionWithMeta } from "./transactions";
 import { supabase } from "./supabase";
 import { addLocalDays, reportQueryRange } from "./reportPeriod";
 import { getMonthlyBudgets } from "./budgets";
+import { buildSpendingBreakdown } from "./spendingBreakdown";
 
 const REPORT_PAGE_SIZE = 500;
 
@@ -129,15 +131,21 @@ function feeOf(transaction: Transaction) {
   return transaction.type === "expense" || transaction.type === "transfer" ? toNumber(transaction.transfer_fee) : 0;
 }
 
-function attachMeta(transactions: Transaction[], wallets: Wallet[], categories: Category[]): TransactionWithMeta[] {
+function attachMeta(transactions: Transaction[], wallets: Wallet[], categories: Category[], envelopes: Envelope[]): TransactionWithMeta[] {
   const walletsById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const categoriesById = new Map(categories.map((category) => [category.id, category]));
+  const envelopesById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
   return transactions.map((transaction) => ({
     ...transaction,
     category: transaction.category_id ? categoriesById.get(transaction.category_id) ?? null : null,
+    envelope: transaction.envelope_id ? envelopesById.get(transaction.envelope_id) ?? null : null,
     wallet: transaction.wallet_id ? walletsById.get(transaction.wallet_id) ?? null : null,
     destinationWallet: transaction.destination_wallet_id ? walletsById.get(transaction.destination_wallet_id) ?? null : null,
   }));
+}
+
+function buildReportSpendingBreakdown(transactions: Transaction[], categories: Category[], envelopes: Envelope[], totalExpense: number): ReportSpendingBreakdown[] {
+  return buildSpendingBreakdown(transactions, { categories, envelopes }).map((item) => ({ ...item, percentage: totalExpense > 0 ? item.amount / totalExpense * 100 : 0 }));
 }
 
 function calculateSummary(transactions: Transaction[]): TransactionRecapData["summary"] {
@@ -185,19 +193,22 @@ function buildWalletBreakdown(transactions: Transaction[], wallets: Wallet[]): R
 
 export async function getTransactionRecapData({ space, period, filters: partialFilters }: { space: FinancialSpace; period: ReportPeriod; filters?: Partial<TransactionRecapFilters> }): Promise<TransactionRecapData> {
   const filters = { ...defaultFilters(), ...partialFilters };
-  const [allTransactions, walletResult, categoryResult] = await Promise.all([
+  const [allTransactions, walletResult, categoryResult, envelopeResult] = await Promise.all([
     getAllTransactions(space.id, period),
     supabase.from("wallets").select("*").eq("space_id", space.id).order("created_at", { ascending: true }),
     supabase.from("categories").select("*").or(`is_system.eq.true,space_id.eq.${space.id}`).order("name", { ascending: true }),
+    supabase.from("envelopes").select("*").eq("space_id", space.id).order("name", { ascending: true }),
   ]);
   if (walletResult.error) throw walletResult.error;
   if (categoryResult.error) throw categoryResult.error;
+  if (envelopeResult.error) throw envelopeResult.error;
   const wallets = (walletResult.data ?? []) as Wallet[];
   const categories = (categoryResult.data ?? []) as Category[];
+  const envelopes = (envelopeResult.data ?? []) as Envelope[];
   const filteredTransactions = allTransactions.filter((transaction) => matchesFilters(transaction, filters));
-  const transactions = attachMeta(filteredTransactions, wallets, categories);
+  const transactions = attachMeta(filteredTransactions, wallets, categories, envelopes);
   const summary = calculateSummary(filteredTransactions);
-  return { space, period, filters, summary, transactions, categoryBreakdown: buildCategoryBreakdown(transactions, summary.expensePrincipal), walletBreakdown: buildWalletBreakdown(filteredTransactions, wallets), wallets, categories };
+  return { space, period, filters, summary, transactions, categoryBreakdown: buildCategoryBreakdown(transactions, summary.expensePrincipal), spendingBreakdown: buildReportSpendingBreakdown(filteredTransactions, categories, envelopes, summary.expensePrincipal), walletBreakdown: buildWalletBreakdown(filteredTransactions, wallets), wallets, categories };
 }
 
 export async function getFinancialReportData({ space, period }: { space: FinancialSpace; period: ReportPeriod }): Promise<FinancialReportData> {

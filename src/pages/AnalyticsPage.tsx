@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Scale,
   Sparkles,
+  Tags,
   TrendingDown,
   TrendingUp,
   WalletCards,
@@ -25,6 +26,7 @@ import {
   type AnalyticsSummary,
 } from "../lib/analytics";
 import { donutRingColor } from "../lib/reportCharts";
+import { filterSpendingDrilldown } from "../lib/spendingBreakdown";
 import { getMonthlyBudgets } from "../lib/budgets";
 import type { BudgetWithProgress } from "../types/domain";
 import { formatCompactCurrency, formatCurrency } from "../lib/money";
@@ -34,6 +36,7 @@ import { useAuth } from "../context/AuthContext";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { DatePickerField } from "../components/ui/DatePickerField";
 import { PageHeader } from "../components/ui/PageHeader";
+import { Modal } from "../components/ui/Modal";
 import { CashFlowChart } from "../components/analytics/CashFlowChart";
 
 import { useI18n, type TranslationKey } from "../i18n";
@@ -439,9 +442,9 @@ function CashFlowOverview({ currency, summary }: { currency: string; summary: An
   return <CashFlowChart currency={currency} points={points} variant="detailed" />;
 }
 
-function SpendingByCategory({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
+function SpendingByCategory({ currency, items, onSelect }: { currency: string; items: AnalyticsSummary["categorySpending"]; onSelect: (item: AnalyticsSummary["categorySpending"][number]) => void }) {
   const { t, formatCurrency } = useI18n();
-  const categories = summary.categorySpending;
+  const categories = items;
   const totalExpense = categories.reduce((sum, category) => sum + category.amount, 0);
 
   if (categories.length === 0 || totalExpense <= 0) {
@@ -495,6 +498,8 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
               strokeLinecap="round"
               strokeDasharray={seg.dasharray}
               strokeDashoffset={seg.dashoffset}
+              className="cursor-pointer"
+              onClick={() => onSelect(seg)}
             />
           ))}
         </svg>
@@ -511,7 +516,7 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
       {/* Legend - Responsive full width under donut on mobile, vertically centered on desktop */}
       <div className="w-full min-w-0 max-w-full space-y-2.5 md:flex-1">
         {segments.map((category) => (
-          <div key={category.id} className="min-w-0 text-xs sm:text-sm">
+          <button type="button" onClick={() => onSelect(category)} key={category.id} className="block w-full min-w-0 rounded-lg text-left text-xs transition hover:bg-slate-50 sm:text-sm">
             <div className="flex items-center justify-between gap-2.5">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} />
@@ -526,11 +531,34 @@ function SpendingByCategory({ currency, summary }: { currency: string; summary: 
                 <span className="ml-1.5 text-xs font-semibold text-slate-500">{Math.round(category.percent)}%</span>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>
   );
+}
+
+type SpendingDrilldownContext = {
+  mode: "hybrid" | "category";
+  groupType: "envelope" | "category";
+  groupId: string;
+};
+
+function SpendingDrilldown({ context, currency, summary, onClose }: { context: SpendingDrilldownContext | null; currency: string; summary: AnalyticsSummary; onClose: () => void }) {
+  const { t, formatCurrency, formatDate } = useI18n();
+  const group = context ? (context.mode === "hybrid" ? summary.spendingBreakdown : summary.categorySpending).find((item) => item.id === context.groupId && item.groupType === context.groupType) : null;
+  const transactions = !context ? [] : filterSpendingDrilldown(summary.spendingTransactions, context);
+  const categoryTotals = new Map<string, { name: string; amount: number }>();
+  transactions.forEach((transaction) => { const current = categoryTotals.get(transaction.category_id ?? "uncategorized") ?? { name: transaction.categoryName, amount: 0 }; current.amount += Number(transaction.amount) || 0; categoryTotals.set(transaction.category_id ?? "uncategorized", current); });
+  const total = transactions.reduce((sum, transaction) => sum + (Number(transaction.amount) || 0), 0);
+  const totalSpending = summary.spendingBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  return <Modal isOpen={Boolean(context)} onClose={onClose} maxWidth="lg" title={group?.name ?? (t("dashboard.spendingBreakdown") || "Spending Breakdown")}>
+    {context && group ? <div className="max-h-[70vh] space-y-5 overflow-y-auto pr-1">
+      <div className="flex items-start justify-between gap-3"><div><span className="inline-flex items-center gap-1 rounded-full bg-kash-selected px-2 py-1 text-[11px] font-bold text-kash-emeraldDark"><Tags size={12} />{context.groupType === "envelope" ? (t("budgets.envelope") || "Envelope") : (t("reports.category") || "Category")}</span><p className="mt-2 text-xl font-extrabold text-slate-900">{formatCurrency(total, currency)}</p><p className="mt-1 text-xs font-semibold text-slate-500">{summary.period.label} · {totalSpending > 0 ? Math.round(total / totalSpending * 100) : 0}%</p></div><p className="text-xs font-semibold text-slate-500">{transactions.length} {t("reports.transactions")}</p></div>
+      {context.groupType === "envelope" ? <section><h3 className="text-sm font-extrabold text-slate-900">{t("reports.categoryBreakdown") || "Category Breakdown"}</h3><div className="mt-2 space-y-2">{[...categoryTotals.values()].sort((a, b) => b.amount - a.amount).map((item) => <div key={item.name} className="flex justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm"><span className="truncate font-semibold text-slate-700">{item.name}</span><span className="font-bold text-slate-900">{formatCurrency(item.amount, currency)}</span></div>)}</div></section> : null}
+      <section><h3 className="text-sm font-extrabold text-slate-900">{t("reports.transactions")}</h3><div className="mt-2 divide-y divide-slate-100 rounded-xl border border-slate-100">{transactions.map((transaction) => <div key={transaction.id} className="flex items-start justify-between gap-3 p-3"><div className="min-w-0"><p className="truncate text-sm font-bold text-slate-900">{transaction.title || transaction.categoryName}</p><p className="mt-0.5 text-xs text-slate-500">{formatDate(transaction.transaction_date)} · {transaction.walletName}</p><p className="mt-1 text-xs font-semibold text-slate-600">{transaction.categoryName}{transaction.envelopeName ? ` · ${t("budgets.envelope") || "Envelope"}: ${transaction.envelopeName}` : ""}</p></div><span className="shrink-0 text-sm font-extrabold text-slate-900">{formatCurrency(transaction.amount, currency)}</span></div>)}</div></section>
+    </div> : null}
+  </Modal>;
 }
 
 function linePath(points: { x: number; y: number }[]) {
@@ -927,6 +955,8 @@ export function AnalyticsPage() {
   const { activeSpace, activeSpaceId, loading: spaceLoading } = useActiveSpace();
   const currency = profile?.default_currency ?? "IDR";
   const [period, setPeriod] = useState<AnalyticsPeriodKey>("this_month");
+  const [spendingMode, setSpendingMode] = useState<"breakdown" | "category">("breakdown");
+  const [drilldown, setDrilldown] = useState<SpendingDrilldownContext | null>(null);
   const [customStartDate, setCustomStartDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10),
   );
@@ -1023,8 +1053,14 @@ export function AnalyticsPage() {
       {/* 3. Main Visual Charts Grid (Donut Ring + Cash Flow Line Chart in 2 Columns) */}
       <div className="grid gap-4 lg:grid-cols-2 min-w-0 max-w-full">
         <AnalyticsCard className="p-5 flex flex-col justify-between h-full">
-          <h2 className="text-base font-extrabold text-slate-900">{terms.spendingByCategoryTitle}</h2>
-          <SpendingByCategory summary={summary} currency={currency} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base font-extrabold text-slate-900">{spendingMode === "breakdown" ? (t("dashboard.spendingBreakdown") || "Spending Breakdown") : (t("analytics.byCategory") || "By Category")}</h2>
+            <div className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-bold">
+              <button type="button" onClick={() => setSpendingMode("breakdown")} className={`rounded-md px-2.5 py-1.5 transition ${spendingMode === "breakdown" ? "bg-white text-kash-emerald shadow-sm" : "text-slate-500"}`}>{t("dashboard.spendingBreakdown") || "Spending Breakdown"}</button>
+              <button type="button" onClick={() => setSpendingMode("category")} className={`rounded-md px-2.5 py-1.5 transition ${spendingMode === "category" ? "bg-white text-kash-emerald shadow-sm" : "text-slate-500"}`}>{t("analytics.byCategory") || "By Category"}</button>
+            </div>
+          </div>
+          <SpendingByCategory items={spendingMode === "breakdown" ? summary.spendingBreakdown : summary.categorySpending} currency={currency} onSelect={(item) => setDrilldown({ mode: spendingMode === "breakdown" ? "hybrid" : "category", groupType: item.groupType, groupId: item.id })} />
         </AnalyticsCard>
 
         <AnalyticsCard className="p-5 flex flex-col justify-between h-full">
@@ -1050,6 +1086,8 @@ export function AnalyticsPage() {
 
       {/* 4. Editorial Insights Section */}
       <AnalyticsInsights summary={summary} currency={currency} />
+
+      <SpendingDrilldown context={drilldown} currency={currency} summary={summary} onClose={() => setDrilldown(null)} />
 
       {/* 5. Net Worth Trend */}
       <AnalyticsCard className="p-5">

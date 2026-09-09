@@ -486,6 +486,8 @@ export const en = {
     "dashboard.income": "Income",
     "dashboard.expense": "Expense",
     "dashboard.spendingByCategory": "Spending by Category",
+    "dashboard.spendingBreakdown": "Spending Breakdown",
+    "analytics.byCategory": "By Category",
     "dashboard.calendar": "Financial Calendar",
     "dashboard.newThisMonth": "new this month",
     "dashboard.vsLastMonth": "compared to last month",

@@ -1,9 +1,10 @@
 import { createCategoryColorResolver } from "./chartColors";
+import { buildCategoryBreakdown, buildSpendingBreakdown } from "./spendingBreakdown";
 import { toNumber } from "./money";
 import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
-import type { Category, Transaction, Wallet, WalletBalance } from "../types/domain";
+import type { Category, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
 
 export type AnalyticsPeriodKey = "this_month" | "last_month" | "3_months" | "6_months" | "this_year" | "custom";
 export type AnalyticsAggregation = "daily" | "monthly";
@@ -47,6 +48,13 @@ export type AnalyticsCategorySpend = {
   id: string;
   name: string;
   percent: number;
+  groupType: "category" | "envelope";
+};
+
+export type AnalyticsSpendingTransaction = Transaction & {
+  categoryName: string;
+  envelopeName: string | null;
+  walletName: string;
 };
 
 export type AnalyticsWalletDistribution = {
@@ -65,6 +73,8 @@ export type AnalyticsNetWorthPoint = {
 
 export type AnalyticsSummary = {
   categorySpending: AnalyticsCategorySpend[];
+  spendingBreakdown: AnalyticsCategorySpend[];
+  spendingTransactions: AnalyticsSpendingTransaction[];
   expense: AnalyticsMetric;
   income: AnalyticsMetric;
   incomeExpenseTrend: AnalyticsTrendPoint[];
@@ -311,46 +321,27 @@ function buildIncomeExpenseTrend(period: AnalyticsPeriod, transactions: Transact
   });
 }
 
-function buildSpendingByCategory(transactions: Transaction[], categories: Category[], previousTransactions: Transaction[] = []): AnalyticsCategorySpend[] {
+function buildSpendingGroups(transactions: Transaction[], categories: Category[], envelopes: Envelope[], mode: "category" | "hybrid", previousTransactions: Transaction[] = []): AnalyticsCategorySpend[] {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
   const resolveCategoryColor = createCategoryColorResolver(categories);
-  const totals = new Map<string, { amount: number; color: string; name: string }>();
+  const envelopeById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
+  const groups = mode === "hybrid" ? buildSpendingBreakdown(transactions, { categories, envelopes }) : buildCategoryBreakdown(transactions, { categories });
+  const previousGroups = mode === "hybrid" ? buildSpendingBreakdown(previousTransactions, { categories, envelopes }) : buildCategoryBreakdown(previousTransactions, { categories });
   const previousTotals = new Map<string, number>();
-
-  transactions
-    .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
-    .forEach((transaction) => {
-      const category = transaction.category_id ? categoryById.get(transaction.category_id) : null;
-      const id = category?.id ?? "uncategorized";
-      const previous = totals.get(id);
-
-      totals.set(id, {
-        amount: (previous?.amount ?? 0) + moneyValue(transaction.amount),
-        color: previous?.color ?? resolveCategoryColor(category),
-        name: category?.name ?? "Uncategorized",
-      });
-    });
-
-  previousTransactions
-    .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
-    .forEach((transaction) => {
-      const category = transaction.category_id ? categoryById.get(transaction.category_id) : null;
-      const id = category?.id ?? "uncategorized";
-      previousTotals.set(id, (previousTotals.get(id) ?? 0) + moneyValue(transaction.amount));
-    });
-
-  const totalAmount = Array.from(totals.values()).reduce((sum, item) => sum + item.amount, 0);
-
-  return Array.from(totals.entries())
-    .map(([id, item]) => ({
-      amount: item.amount,
-      change: calculateMetricChange(item.amount, previousTotals.get(id) ?? 0),
-      color: item.color,
-      id,
-      name: item.name,
-      percent: totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
-    }))
-    .sort((first, second) => second.amount - first.amount);
+  previousGroups.forEach((group) => previousTotals.set(`${group.groupType}:${group.groupId}`, group.amount));
+  const totalAmount = groups.reduce((sum, group) => sum + group.amount, 0);
+  return groups.map((group) => {
+    const category = group.groupType === "category" ? categoryById.get(group.groupId) : null;
+    return {
+      amount: group.amount,
+      change: calculateMetricChange(group.amount, previousTotals.get(`${group.groupType}:${group.groupId}`) ?? 0),
+      color: group.groupType === "envelope" ? envelopeById.get(group.groupId)?.color ?? "#0F766E" : resolveCategoryColor(category),
+      groupType: group.groupType,
+      id: group.groupId,
+      name: group.groupName,
+      percent: totalAmount > 0 ? group.amount / totalAmount * 100 : 0,
+    };
+  });
 }
 
 function walletCurrentBalance(wallet: WalletWithBalance) {
@@ -450,6 +441,8 @@ export function getEmptyAnalyticsSummary(options: AnalyticsSummaryOptions): Anal
 
   return {
     categorySpending: [],
+    spendingBreakdown: [],
+    spendingTransactions: [],
     expense: {
       amount: 0,
       change: calculateMetricChange(0, 0),
@@ -517,6 +510,10 @@ export async function getAnalyticsSummary(
     categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.is.null`);
   }
 
+  let envelopeQuery = supabase.from("envelopes").select("*").order("name", { ascending: true });
+  if (targetSpaceId) envelopeQuery = envelopeQuery.eq("space_id", targetSpaceId);
+  else envelopeQuery = envelopeQuery.eq("user_id", userId);
+
   let currentTxnQuery = supabase
     .from("transactions")
     .select("*")
@@ -559,11 +556,12 @@ export async function getAnalyticsSummary(
     ? supabase.from("wallet_balance_view").select("*")
     : supabase.from("wallet_balance_view").select("*").eq("user_id", userId);
 
-  const [walletResult, balanceResult, categoryResult, currentTransactionResult, previousTransactionResult, historicalTransactionResult] =
+  const [walletResult, balanceResult, categoryResult, envelopeResult, currentTransactionResult, previousTransactionResult, historicalTransactionResult] =
     await Promise.all([
       walletQuery,
       walletBalanceQuery,
       categoryQuery,
+      envelopeQuery,
       currentTxnQuery,
       prevTxnQuery,
       histTxnQuery,
@@ -572,6 +570,7 @@ export async function getAnalyticsSummary(
   if (walletResult.error) throw walletResult.error;
   if (balanceResult.error) throw balanceResult.error;
   if (categoryResult.error) throw categoryResult.error;
+  if (envelopeResult.error) throw envelopeResult.error;
   if (currentTransactionResult.error) throw currentTransactionResult.error;
   if (previousTransactionResult.error) throw previousTransactionResult.error;
   if (historicalTransactionResult.error) throw historicalTransactionResult.error;
@@ -582,9 +581,21 @@ export async function getAnalyticsSummary(
     balance: balancesByWalletId.get(wallet.id) ?? null,
   }));
   const categories = categoryResult.data ?? [];
+  const envelopes = envelopeResult.data ?? [];
   const currentTransactions = currentTransactionResult.data ?? [];
   const previousTransactions = previousTransactionResult.data ?? [];
   const historicalTransactions = historicalTransactionResult.data ?? [];
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const envelopeById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
+  const walletById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
+  const spendingTransactions: AnalyticsSpendingTransaction[] = currentTransactions
+    .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
+    .map((transaction) => ({
+      ...transaction,
+      categoryName: transaction.category_id ? categoryById.get(transaction.category_id)?.name ?? "Uncategorized" : "Uncategorized",
+      envelopeName: transaction.envelope_id ? envelopeById.get(transaction.envelope_id)?.name ?? "Unknown Envelope" : null,
+      walletName: transaction.wallet_id ? walletById.get(transaction.wallet_id)?.name ?? "Wallet" : "Wallet",
+    }));
   const currentMetrics = calculateCashFlowMetrics(currentTransactions);
   const previousMetrics = calculateCashFlowMetrics(previousTransactions);
   const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions);
@@ -592,7 +603,9 @@ export async function getAnalyticsSummary(
   const previousWalletNetWorth = netWorthAtCutoff(wallets, historicalTransactions, new Date(period.previousEnd));
 
   return {
-    categorySpending: buildSpendingByCategory(currentTransactions, categories, previousTransactions),
+    categorySpending: buildSpendingGroups(currentTransactions, categories, envelopes, "category", previousTransactions),
+    spendingBreakdown: buildSpendingGroups(currentTransactions, categories, envelopes, "hybrid", previousTransactions),
+    spendingTransactions,
     income: {
       amount: currentMetrics.income,
       change: calculateMetricChange(currentMetrics.income, previousMetrics.income),

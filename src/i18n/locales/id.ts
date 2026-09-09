@@ -490,6 +490,8 @@ export const id = {
     "dashboard.income": "Pemasukan",
     "dashboard.expense": "Pengeluaran",
     "dashboard.spendingByCategory": "Pengeluaran per Kategori",
+    "dashboard.spendingBreakdown": "Rincian Pengeluaran",
+    "analytics.byCategory": "Berdasarkan Kategori",
     "dashboard.calendar": "Kalender Keuangan",
     "dashboard.newThisMonth": "baru bulan ini",
     "dashboard.vsLastMonth": "dibandingkan bulan lalu",

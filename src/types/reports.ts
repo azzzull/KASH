@@ -38,6 +38,15 @@ export type ReportCategoryBreakdown = {
   percentage: number;
 };
 
+export type ReportSpendingBreakdown = {
+  groupType: "category" | "envelope";
+  groupId: string;
+  groupName: string;
+  amount: number;
+  transactionCount: number;
+  percentage: number;
+};
+
 export type ReportWalletBreakdown = {
   wallet: Wallet;
   cashIn: number;
@@ -53,6 +62,7 @@ export type TransactionRecapData = {
   summary: TransactionRecapSummary;
   transactions: TransactionWithMeta[];
   categoryBreakdown: ReportCategoryBreakdown[];
+  spendingBreakdown: ReportSpendingBreakdown[];
   walletBreakdown: ReportWalletBreakdown[];
   wallets: Wallet[];
   categories: Category[];

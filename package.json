@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "verify:report-period": "node --experimental-strip-types scripts/verify-report-period.mts",
+    "verify:spending-breakdown": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/verify-spending-breakdown.mts",
     "preview": "vite preview"
   },
   "dependencies": {

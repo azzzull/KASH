@@ -16,6 +16,7 @@ import {
     RefreshCw,
     Scale,
     Target,
+    Tags,
     TrendingDown,
     TrendingUp,
     WalletCards,
@@ -899,7 +900,7 @@ function SpendingDonut({
     return (
         <DashboardCard className="p-5 max-w-full min-w-0 overflow-hidden">
             <h2 className="text-sm font-extrabold text-slate-900">
-                {terms.spendingByCategoryTitle}
+                {t("dashboard.spendingBreakdown") || "Spending Breakdown"}
             </h2>
             <div className="mt-4 flex flex-col items-center justify-center gap-6 md:flex-row md:items-center">
                 {/* Donut - Larger ring & vertically centered on desktop */}
@@ -951,6 +952,10 @@ function SpendingDonut({
                             onClick={() => {
                                 const monthParam = activeMonth ? monthKey(activeMonth) : undefined;
                                 const params = new URLSearchParams();
+                                if (category.groupType === "envelope") {
+                                    navigate(`/envelopes/${category.id}`);
+                                    return;
+                                }
                                 if (category.id) params.set("category", category.id);
                                 params.set("type", "expense");
                                 if (monthParam) params.set("month", monthParam);
@@ -967,6 +972,10 @@ function SpendingDonut({
                                     {category.id === "uncategorized"
                                         ? (t("categories.uncategorized") || "Tanpa Kategori")
                                         : category.name}
+                                </span>
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                                    {category.groupType === "envelope" ? <Tags size={10} aria-hidden="true" /> : null}
+                                    {category.groupType === "envelope" ? (t("budgets.envelope") || "Envelope") : (t("reports.category") || "Category")}
                                 </span>
                             </div>
                             <div className="shrink-0 text-right">

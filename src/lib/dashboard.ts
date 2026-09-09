@@ -4,8 +4,9 @@ import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
 import { localDateKey } from "./calendar";
 import { createCategoryColorResolver } from "./chartColors";
+import { buildSpendingBreakdown } from "./spendingBreakdown";
 import { getCounterparties } from "./debts";
-import type { Category, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
+import type { Category, Envelope, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
   bank: "#10B981",
@@ -42,6 +43,7 @@ export type DashboardCashflowPoint = {
 };
 
 export type DashboardCategorySpend = {
+  groupType: "category" | "envelope";
   id: string;
   name: string;
   amount: number;
@@ -259,36 +261,23 @@ function buildCalendarActivity(transactions: Transaction[]) {
     .sort((first, second) => first.dateKey.localeCompare(second.dateKey));
 }
 
-function buildSpendingByCategory(transactions: Transaction[], categories: Category[]) {
+function buildSpendingByCategory(transactions: Transaction[], categories: Category[], envelopes: Envelope[]) {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
   const resolveCategoryColor = createCategoryColorResolver(categories);
-  const totals = new Map<string, { name: string; amount: number; color: string }>();
-
-  transactions
-    .filter((transaction) => transaction.type === "expense")
-    .forEach((transaction) => {
-      const category = transaction.category_id ? categoryById.get(transaction.category_id) : null;
-      const id = category?.id ?? "uncategorized";
-      const previous = totals.get(id);
-
-      totals.set(id, {
-        name: category?.name ?? "Uncategorized",
-        amount: (previous?.amount ?? 0) + moneyValue(transaction.amount),
-        color: previous?.color ?? resolveCategoryColor(category),
-      });
-    });
-
-  const totalAmount = Array.from(totals.values()).reduce((sum, item) => sum + item.amount, 0);
-
-  return Array.from(totals.entries())
-    .map(([id, item]) => ({
-      id,
-      name: item.name,
-      amount: item.amount,
-      percent: totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
-      color: item.color,
-    }))
-    .sort((a, b) => b.amount - a.amount);
+  const envelopeById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
+  const groups = buildSpendingBreakdown(transactions, { categories, envelopes });
+  const totalAmount = groups.reduce((sum, group) => sum + group.amount, 0);
+  return groups.map((group) => {
+    const category = group.groupType === "category" ? categoryById.get(group.groupId) : null;
+    return {
+      groupType: group.groupType,
+      id: group.groupId,
+      name: group.groupName,
+      amount: group.amount,
+      percent: totalAmount > 0 ? group.amount / totalAmount * 100 : 0,
+      color: group.groupType === "envelope" ? envelopeById.get(group.groupId)?.color ?? "#0F766E" : resolveCategoryColor(category),
+    };
+  });
 }
 
 function calculateMonthlyMetrics(transactions: Transaction[]) {
@@ -500,6 +489,10 @@ export async function getDashboardSummary(
     categoryQuery = categoryQuery.or(`is_system.eq.true,space_id.is.null`);
   }
 
+  let envelopeQuery = supabase.from("envelopes").select("*").order("name", { ascending: true });
+  if (targetSpaceId) envelopeQuery = envelopeQuery.eq("space_id", targetSpaceId);
+  else envelopeQuery = envelopeQuery.eq("user_id", userId);
+
   let monthTxnQuery = supabase
     .from("transactions")
     .select("*")
@@ -586,6 +579,7 @@ export async function getDashboardSummary(
     walletResult,
     balanceResult,
     categoryResult,
+    envelopeResult,
     monthTransactionResult,
     previousMonthTransactionResult,
     recentTransactionResult,
@@ -598,6 +592,7 @@ export async function getDashboardSummary(
     walletQuery,
     walletBalanceQuery,
     categoryQuery,
+    envelopeQuery,
     monthTxnQuery,
     prevMonthTxnQuery,
     recentTxnQuery,
@@ -611,6 +606,7 @@ export async function getDashboardSummary(
   if (walletResult.error) throw walletResult.error;
   if (balanceResult.error) throw balanceResult.error;
   if (categoryResult.error) throw categoryResult.error;
+  if (envelopeResult.error) throw envelopeResult.error;
   if (monthTransactionResult.error) throw monthTransactionResult.error;
   if (previousMonthTransactionResult.error) throw previousMonthTransactionResult.error;
   if (recentTransactionResult.error) throw recentTransactionResult.error;
@@ -625,6 +621,7 @@ export async function getDashboardSummary(
     balance: balancesByWalletId.get(wallet.id) ?? null,
   }));
   const categories = categoryResult.data ?? [];
+  const envelopes = envelopeResult.data ?? [];
   const monthTransactions = monthTransactionResult.data ?? [];
   const previousMonthTransactions = previousMonthTransactionResult.data ?? [];
   const netWorthTransactions = netWorthTransactionResult.data ?? [];
@@ -736,7 +733,7 @@ export async function getDashboardSummary(
     transferFees: { amount: currentMonthMetrics.transferFees },
     walletCount: dashboardWallets.length,
     cashflow: buildCashflow(month.daysInMonth, monthTransactions),
-    spendingByCategory: buildSpendingByCategory(monthTransactions, categories),
+    spendingByCategory: buildSpendingByCategory(monthTransactions, categories, envelopes),
     walletDistribution: buildWalletDistribution(dashboardWallets),
     wallets: dashboardWallets,
     goals: dashboardGoals,
