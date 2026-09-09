@@ -198,8 +198,8 @@ function EnvelopePill({
   const Icon = getCategoryIcon(envelope.icon || "layers");
 
   return (
-    <article className="group flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-kash-emerald hover:bg-kash-selected/30">
-      <Link to={`/envelopes/${envelope.id}`} className="flex items-center gap-3.5 min-w-0 flex-1">
+    <article className="group flex min-w-0 max-w-full items-center justify-between gap-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs transition hover:border-kash-emerald hover:bg-kash-selected/30">
+      <Link to={`/envelopes/${envelope.id}`} className="flex min-w-0 flex-1 items-center gap-3.5">
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs transition group-hover:scale-105"
           style={{ backgroundColor: envelope.color ?? "#4F7DF3" }}
@@ -777,7 +777,7 @@ export function CategoriesPage() {
           </div>
 
           {envelopes.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2">
               {envelopes.map((env) => (
                 <EnvelopePill
                   key={env.id}

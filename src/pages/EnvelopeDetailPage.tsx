@@ -195,10 +195,9 @@ export function EnvelopeDetailPage() {
     );
   }
 
-  const { envelope, totalSpent, transactionCount, categoryBreakdown, transactions, activeBudget } = data;
+  const { envelope, totalSpent, categoryBreakdown, transactions, activeBudget } = data;
   const IconComp = getCategoryIcon(envelope.icon || "layers");
   const envelopeColor = envelope.color || "#4F7DF3";
-  const topCategory = categoryBreakdown[0] || null;
 
   return (
     <div className="w-full min-w-0 space-y-4">
@@ -378,36 +377,6 @@ export function EnvelopeDetailPage() {
           </Button>
         </section>
       )}
-
-      {/* Metrics Row */}
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-            {t("categories.totalEnvelopeExpenses") || "Total Pengeluaran Amplop"}
-          </span>
-          <p className="mt-1.5 text-xl font-black text-slate-900">
-            {formatCurrency(totalSpent)}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-            {t("categories.transactionCount") || "Jumlah Transaksi"}
-          </span>
-          <p className="mt-1.5 text-xl font-black text-slate-900">
-            {transactionCount} {t("categories.transactions") || "transaksi"}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-normal text-slate-600">
-            {t("categories.topCategory") || "Kategori Terbesar"}
-          </span>
-          <p className="mt-1.5 text-base font-black text-slate-900 truncate">
-            {topCategory ? `${topCategory.categoryName} (${topCategory.percentage.toFixed(1)}%)` : "—"}
-          </p>
-        </div>
-      </section>
 
       {/* Dynamic Category Breakdown & Visual Distribution Bar */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
