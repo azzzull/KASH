@@ -1035,7 +1035,7 @@ function SpendingDonut({
                     ))}
                 </div>
             </div>
-            <Modal isOpen={Boolean(selectedGroup)} onClose={() => setSelectedGroup(null)} maxWidth="lg" title={selectedGroup?.name ?? ""}>
+            <Modal isOpen={Boolean(selectedGroup)} onClose={() => setSelectedGroup(null)} maxWidth="lg" showCloseButton={false} title={selectedGroup?.name ?? ""}>
                 {selectedGroup ? <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
                     <div className="flex items-center justify-between gap-3"><span className="rounded-full bg-kash-selected px-2 py-1 text-[11px] font-bold text-kash-emeraldDark">{selectedGroup.groupType === "envelope" ? (t("budgets.envelope") || "Envelope") : (t("reports.category") || "Category")}</span><strong className="text-lg text-slate-900">{formatPrivateAmount(selectedGroup.amount, currency, balancesVisible)}</strong></div>
                     {selectedGroup.groupType === "envelope" ? <section><h3 className="text-sm font-extrabold text-slate-900">{t("reports.categoryBreakdown") || "Rincian Kategori"}</h3><div className="mt-2 space-y-2">{[...previewCategoryTotals.values()].sort((a, b) => b.amount - a.amount).map((item) => <div key={item.name} className="flex justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm"><span className="truncate font-semibold text-slate-700">{item.name}</span><span className="font-bold text-slate-900">{formatPrivateAmount(item.amount, currency, balancesVisible)}</span></div>)}</div></section> : null}
