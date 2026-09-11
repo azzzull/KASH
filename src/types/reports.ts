@@ -80,15 +80,17 @@ export type FinancialReportData = {
   unbudgetedSpending?: ReportCategoryBreakdown[];
   budgetCoverage?: { budgeted: number; unbudgeted: number; percentage: number };
   financialAllocation?: { savings: number; goals: number; debt: number; total: number };
-  planningInsights?: string[];
+  planningInsights?: PlanningInsight[];
 };
+
+export type PlanningInsight = { type: "outside_budget" | "over_budget" | "target_shortfall" | "target_ahead" | "coverage"; priority: number; title: string; message: string; suggestedAction: string };
 
 export type BudgetVsActualItem = BudgetPerformance & { id: string; name: string; kind: BudgetPerformanceKind; periodStart: string };
 export type BudgetVsActualReportData = { spending: BudgetVsActualItem[]; targets: BudgetVsActualItem[] };
 
 export type FinancialHealthReportData = {
   position?: { beginningNetWorth: number; endingNetWorth: number; change: number; changePercent: number | null; investmentValuationLimited: boolean };
-  budgets: Array<{ id: string; name: string; periodStart: string; budgeted: number; spent: number; remaining: number; utilizationPercent: number; status: "on_track" | "near_limit" | "over_budget"; targetType: "category" | "envelope" | "debt" | "goal"; goalId: string | null }>;
+  budgets: Array<{ id: string; name: string; periodStart: string; budgeted: number; spent: number; remaining: number; utilizationPercent: number; status: "on_track" | "near_limit" | "over_budget"; targetType: "category" | "envelope" | "debt" | "goal"; goalId: string | null; categoryId: string | null; envelopeId: string | null }>;
   goals: Array<{ id: string; name: string; target: number; progress: number; progressPercent: number; remaining: number; contributedDuringPeriod: number; progressAtPeriodEnd: boolean }>;
   receivables: { outstanding: number; collectedDuringPeriod: number };
   debts: { outstanding: number; paidDuringPeriod: number };

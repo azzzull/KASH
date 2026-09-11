@@ -30,3 +30,7 @@ export function budgetPerformanceKind(targetType: "category" | "envelope" | "deb
   if (targetType === "debt") return "debt_target";
   return hasGoal ? "goal_target" : "savings_target";
 }
+
+export function budgetPerformanceStatusLabel(status: BudgetPerformanceStatus) {
+  return status === "within_budget" ? "Within Budget" : status === "on_budget" ? "On Budget" : status === "over_budget" ? "Over Budget" : status === "below_target" ? "Below Target" : status === "target_met" ? "Target Met" : "Ahead of Target";
+}
