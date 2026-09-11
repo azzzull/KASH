@@ -1,5 +1,6 @@
 import type { Category, FinancialSpace, TransactionStatus, TransactionType, Wallet } from "./domain";
 import type { TransactionWithMeta } from "../lib/transactions";
+import type { BudgetPerformance, BudgetPerformanceKind } from "../lib/budgetPerformance";
 
 export type ReportPeriodPreset = "this_month" | "last_month" | "specific_month" | "this_year" | "custom_range";
 
@@ -74,11 +75,20 @@ export type FinancialReportData = {
   transactionRecap: TransactionRecapData;
   currentBalance: number;
   financialHealth?: FinancialHealthReportData;
+  budgetVsActual?: BudgetVsActualReportData;
+  incomeBreakdown?: ReportCategoryBreakdown[];
+  unbudgetedSpending?: ReportCategoryBreakdown[];
+  budgetCoverage?: { budgeted: number; unbudgeted: number; percentage: number };
+  financialAllocation?: { savings: number; goals: number; debt: number; total: number };
+  planningInsights?: string[];
 };
+
+export type BudgetVsActualItem = BudgetPerformance & { id: string; name: string; kind: BudgetPerformanceKind; periodStart: string };
+export type BudgetVsActualReportData = { spending: BudgetVsActualItem[]; targets: BudgetVsActualItem[] };
 
 export type FinancialHealthReportData = {
   position?: { beginningNetWorth: number; endingNetWorth: number; change: number; changePercent: number | null; investmentValuationLimited: boolean };
-  budgets: Array<{ id: string; name: string; periodStart: string; budgeted: number; spent: number; remaining: number; utilizationPercent: number; status: "on_track" | "near_limit" | "over_budget" }>;
+  budgets: Array<{ id: string; name: string; periodStart: string; budgeted: number; spent: number; remaining: number; utilizationPercent: number; status: "on_track" | "near_limit" | "over_budget"; targetType: "category" | "envelope" | "debt" | "goal"; goalId: string | null }>;
   goals: Array<{ id: string; name: string; target: number; progress: number; progressPercent: number; remaining: number; contributedDuringPeriod: number; progressAtPeriodEnd: boolean }>;
   receivables: { outstanding: number; collectedDuringPeriod: number };
   debts: { outstanding: number; paidDuringPeriod: number };

@@ -15,6 +15,7 @@ import { supabase } from "./supabase";
 import { addLocalDays, reportQueryRange } from "./reportPeriod";
 import { getMonthlyBudgets } from "./budgets";
 import { buildSpendingBreakdown } from "./spendingBreakdown";
+import { budgetPerformanceKind, resolveBudgetPerformance } from "./budgetPerformance";
 
 const REPORT_PAGE_SIZE = 500;
 
@@ -108,7 +109,7 @@ async function getFinancialHealth(space: FinancialSpace, period: ReportPeriod, w
     return debt?.type === type && payment && payment.payment_date >= period.start && payment.payment_date <= period.end ? sum + toNumber(allocation.allocated_amount) : sum;
   }, 0);
   const budgetRows = (await Promise.all(monthStarts(period).map(async (periodStart) => (await getMonthlyBudgets(periodStart, space.id)).map((budget) => ({ ...budget, periodStart }))))).flat();
-  const budgets: FinancialHealthReportData["budgets"] = budgetRows.map((budget) => ({ id: `${budget.budget_id}:${budget.periodStart}`, name: budget.name, periodStart: budget.periodStart, budgeted: toNumber(budget.effective_budget), spent: toNumber(budget.spent), remaining: toNumber(budget.remaining), utilizationPercent: budget.usage_percentage, status: budget.status === "healthy" ? "on_track" : budget.status === "near_limit" ? "near_limit" : "over_budget" }));
+  const budgets: FinancialHealthReportData["budgets"] = budgetRows.map((budget) => ({ id: `${budget.budget_id}:${budget.periodStart}`, name: budget.name, periodStart: budget.periodStart, budgeted: toNumber(budget.effective_budget), spent: toNumber(budget.spent), remaining: toNumber(budget.remaining), utilizationPercent: budget.usage_percentage, status: budget.status === "healthy" ? "on_track" : budget.status === "near_limit" ? "near_limit" : "over_budget", targetType: budget.target_type, goalId: budget.goal_id }));
   const goalWallets = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const goalData = goals.filter((goal) => goal.wallet_id && new Date(goal.created_at).toISOString() < range.endExclusive).map((goal) => {
     const wallet = goal.wallet_id ? goalWallets.get(goal.wallet_id) : undefined; const progress = wallet ? walletBalanceAt(wallet, historicalTransactions, range.endExclusive) : 0; const target = toNumber(goal.target_amount);
@@ -214,7 +215,25 @@ export async function getTransactionRecapData({ space, period, filters: partialF
 export async function getFinancialReportData({ space, period }: { space: FinancialSpace; period: ReportPeriod }): Promise<FinancialReportData> {
   const transactionRecap = await getTransactionRecapData({ space, period });
   const walletIds = transactionRecap.wallets.map((wallet) => wallet.id);
-  if (!walletIds.length) return { space, period, transactionRecap, currentBalance: 0, financialHealth: await getFinancialHealth(space, period, transactionRecap.wallets) };
+  const financialHealth = await getFinancialHealth(space, period, transactionRecap.wallets);
+  const completedEconomicExpenses = transactionRecap.transactions.filter((tx) => tx.status === "completed" && tx.type === "expense" && !isEconomicDebtOrGoalMovement(tx));
+  const budgetRows = financialHealth?.budgets ?? [];
+  const budgetItems = budgetRows.map((budget) => {
+    const kind = budgetPerformanceKind(budget.targetType, Boolean(budget.goalId));
+    return { id: budget.id, name: budget.name, periodStart: budget.periodStart, kind, ...resolveBudgetPerformance(kind, budget.budgeted, budget.spent) };
+  });
+  const budgeted = budgetItems.filter((item) => item.kind === "spending").reduce((sum, item) => sum + item.actual, 0);
+  const eligibleSpending = completedEconomicExpenses.reduce((sum, item) => sum + toNumber(item.amount), 0);
+  const unbudgeted = Math.max(0, eligibleSpending - budgeted);
+  const incomeGroups = new Map<string, ReportCategoryBreakdown>();
+  transactionRecap.transactions.filter((tx) => tx.status === "completed" && tx.type === "income" && !isEconomicDebtOrGoalMovement(tx)).forEach((tx) => { const key = tx.category_id ?? "uncategorized"; const current = incomeGroups.get(key) ?? { categoryId: tx.category_id, categoryName: tx.category?.name ?? "Uncategorized", amount: 0, transactionCount: 0, percentage: 0 }; current.amount += toNumber(tx.amount); current.transactionCount += 1; incomeGroups.set(key, current); });
+  const incomeBreakdown = Array.from(incomeGroups.values()).map((item) => ({ ...item, percentage: transactionRecap.summary.income ? item.amount / transactionRecap.summary.income * 100 : 0 })).sort((a, b) => b.amount - a.amount);
+  const unbudgetedSpending = unbudgeted > 0 ? [{ categoryId: null, categoryName: "Unbudgeted eligible spending", amount: unbudgeted, transactionCount: 0, percentage: eligibleSpending ? unbudgeted / eligibleSpending * 100 : 0 }] : [];
+  const financialAllocation = { savings: budgetItems.filter((item) => item.kind === "savings_target").reduce((sum, item) => sum + item.actual, 0), goals: budgetItems.filter((item) => item.kind === "goal_target").reduce((sum, item) => sum + item.actual, 0), debt: budgetItems.filter((item) => item.kind === "debt_target").reduce((sum, item) => sum + item.actual, 0), total: 0 };
+  financialAllocation.total = financialAllocation.savings + financialAllocation.goals + financialAllocation.debt;
+  const planningInsights = budgetItems.flatMap((item) => item.status === "over_budget" ? [`${item.name} exceeded its budget by ${formatReportMoney(item.variance)} (${item.progressPercent.toFixed(0)}%). Review whether this increase was exceptional before changing next month's plan.`] : item.status === "ahead_of_target" ? [`${item.name} is ${formatReportMoney(item.variance)} ahead of its monthly target.`] : item.status === "below_target" ? [`${item.name} is ${formatReportMoney(Math.abs(item.variance))} below its monthly target.`] : []).concat(unbudgeted > 0 ? [`${formatReportMoney(unbudgeted)} of eligible spending was outside a monthly budget.`] : [], transactionRecap.summary.netCashFlow < 0 ? [`Economic spending exceeded income by ${formatReportMoney(Math.abs(transactionRecap.summary.netCashFlow))}.`] : []);
+  const normalized = { budgetVsActual: { spending: budgetItems.filter((item) => item.kind === "spending"), targets: budgetItems.filter((item) => item.kind !== "spending") }, incomeBreakdown, unbudgetedSpending, budgetCoverage: { budgeted, unbudgeted, percentage: eligibleSpending ? budgeted / eligibleSpending * 100 : 0 }, financialAllocation, planningInsights };
+  if (!walletIds.length) return { space, period, transactionRecap, currentBalance: 0, financialHealth, ...normalized };
   const { data: balances, error } = await supabase
     .from("wallet_balance_view")
     .select("wallet_id, current_balance")
@@ -224,5 +243,7 @@ export async function getFinancialReportData({ space, period }: { space: Financi
     throw error;
   }
   const currentBalance = (balances ?? []).reduce((total, row) => total + toNumber(row.current_balance), 0);
-  return { space, period, transactionRecap, currentBalance, financialHealth: await getFinancialHealth(space, period, transactionRecap.wallets) };
+  return { space, period, transactionRecap, currentBalance, financialHealth, ...normalized };
 }
+
+function formatReportMoney(value: number) { return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value); }

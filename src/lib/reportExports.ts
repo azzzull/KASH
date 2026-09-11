@@ -1,6 +1,6 @@
 import type { jsPDF } from "jspdf";
 import kashLogoUrl from "../../logo/SVG/KASHLogo.svg";
-import type { FinancialReportData, TransactionRecapData } from "../types/reports";
+import type { BudgetVsActualItem, FinancialReportData, TransactionRecapData } from "../types/reports";
 import { formatCompactCurrency, formatCurrency, toNumber } from "./money";
 import { buildCashFlowScale, buildCashFlowTrend } from "./reportCharts";
 import { getDonutChartColor } from "./chartColors";
@@ -46,7 +46,8 @@ function slug(value: string) { return value.replace(/[\\/:*?"<>|]/g, " ").replac
 function periodFilePart(data: TransactionRecapData) { return data.period.month !== undefined && data.period.year !== undefined ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(new Date(data.period.year, data.period.month, 1)).replace(" ", "-") : `${data.period.start}-to-${data.period.end}`; }
 export function reportFilename(kind: ExportKind, data: TransactionRecapData, extension: "pdf" | "xlsx" | "csv") { const prefix = kind === "financial" ? "KASH-Financial-Report" : kind === "recap" ? "KASH-Transaction-Recap" : "KASH-Transactions"; return `${prefix}-${slug(data.space.name)}-${periodFilePart(data)}.${extension}`; }
 function download(blob: Blob, filename: string) { const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1_000); }
-function displayTitle(transaction: TransactionRecapData["transactions"][number]) { if (transaction.title) return transaction.title; if (isExternalTransfer(transaction)) return "Transfer Keluar"; return transaction.category?.name ?? transaction.type; }
+function displayTitle(transaction: TransactionRecapData["transactions"][number]) { if (transaction.type === "transfer") return isExternalTransfer(transaction) ? "External Transfer" : "Internal Transfer"; if (transaction.title) return transaction.title; return transaction.category?.name ?? transaction.type; }
+function transactionDescription(transaction: TransactionRecapData["transactions"][number]) { return transaction.type === "transfer" ? `${displayTitle(transaction)}\n${transaction.wallet?.name ?? "-"} → ${transaction.destinationWallet?.name ?? "External"}` : displayTitle(transaction); }
 function transactionTotal(transaction: TransactionRecapData["transactions"][number]) { const amount = toNumber(transaction.amount); return transaction.type === "expense" || transaction.type === "transfer" ? amount + toNumber(transaction.transfer_fee) : amount; }
 function labels(data: TransactionRecapData) { const managed = data.space.space_type === "managed"; return { balance: managed ? "Managed Balance" : "Net Worth", income: managed ? "Funding" : "Income", expense: managed ? "Spending Principal" : "Expense Principal", total: managed ? "Total Spending" : "Total Expense", net: managed ? "Net Flow" : "Net Cash Flow", category: "Spending Breakdown" }; }
 function clipped(doc: jsPDF, value: string, width: number) { return doc.splitTextToSize(value || "-", width)[0] as string; }
@@ -89,7 +90,7 @@ function metricCards(doc: jsPDF, metrics: Metric[], startY: number) {
 }
 
 function drawTableHeader(doc: jsPDF, y: number) {
-  const columns = [16, 34, 70, 100, 128, 150, 171]; const labels = ["Date", "Transaction", "Category", "Wallet", "Principal", "Fee", "Total"];
+  const columns = [16, 34, 76, 106, 132, 152, 172]; const labels = ["Date", "Transaction / direction", "Category", "Wallet", "Principal", "Fee", "Total"];
   doc.setFillColor(...EMERALD); doc.roundedRect(PAGE.left, y, 178, 8, 1.5, 1.5, "F"); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255); doc.setFontSize(7);
   labels.forEach((label, index) => doc.text(label, columns[index] + 2, y + 5));
   return y + 8;
@@ -135,6 +136,25 @@ function drawFinancialHealth(doc: jsPDF, data: FinancialReportData) {
   fit(26); y = healthSection(doc, "Financial Health Snapshot", y); const snapshotY = y; const metrics = [["Receivables Collected", health.receivables.collectedDuringPeriod], ["Debt Paid", health.debts.paidDuringPeriod], ["Goal Contributions", health.goals.reduce((sum, goal) => sum + goal.contributedDuringPeriod, 0)], ["Budgets", health.budgets.length ? `${health.budgets.filter((item) => item.status === "over_budget").length} over budget` : "No budget data"]] as const; metrics.forEach(([label, value], index) => { const x = PAGE.left + index * 45.25; healthCard(doc, label, x, snapshotY, 42.25, 18, index === 0); doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42); doc.setFontSize(typeof value === "number" ? 7 : 6.3); doc.text(typeof value === "number" ? formatCurrency(value) : value, x + HEALTH.pad, snapshotY + 14); });
 }
 
+function performanceLabel(item: BudgetVsActualItem) { return item.status === "within_budget" ? "Within Budget" : item.status === "on_budget" ? "On Budget" : item.status === "over_budget" ? "Over Budget" : item.status === "below_target" ? "Below Target" : item.status === "target_met" ? "Target Met" : "Ahead of Target"; }
+function drawBudgetVsActual(doc: jsPDF, data: FinancialReportData) {
+  const report = data.budgetVsActual;
+  if (!report || (!report.spending.length && !report.targets.length)) return;
+  doc.addPage(); let y = 20;
+  const drawRows = (title: string, rows: BudgetVsActualItem[]) => {
+    if (!rows.length) return;
+    sectionTitle(doc, title, y); y += 5;
+    doc.setFillColor(...EMERALD); doc.roundedRect(PAGE.left, y, 178, 7, 1.5, 1.5, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(6.3);
+    [["Plan", 18], ["Actual", 85], ["Variance", 118], ["Progress", 151], ["Status", 190]].forEach(([label, x]) => doc.text(label as string, x as number, y + 4.7, { align: (x as number) === 18 ? "left" : "right" })); y += 7;
+    rows.forEach((item, index) => { if (y > 267) { doc.addPage(); y = 20; sectionTitle(doc, `${title} (continued)`, y); y += 7; } if (index % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(PAGE.left, y, 178, 12, "F"); } const color: readonly [number, number, number] = item.isFavorable ? EMERALD : [190, 85, 50]; doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42); doc.setFontSize(7); doc.text(clipped(doc, item.name, 64), 18, y + 4.5); doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(5.4); doc.text(item.kind === "spending" ? "Spending budget" : item.kind === "debt_target" ? "Debt payment target" : item.kind === "goal_target" ? "Goal target" : "Savings target", 18, y + 8.7); doc.setFontSize(6.2); doc.text(formatCurrency(item.planned), 85, y + 5, { align: "right" }); doc.text(formatCurrency(item.actual), 118, y + 5, { align: "right" }); doc.text(signedCurrency(item.variance), 151, y + 5, { align: "right" }); doc.setTextColor(...color); doc.setFont("helvetica", "bold"); doc.text(`${item.progressPercent.toFixed(0)}% · ${performanceLabel(item)}`, 190, y + 5, { align: "right" }); progressBar(doc, 85, y + 8, 105, item.progressPercent, color); doc.setDrawColor(226, 232, 240); doc.line(PAGE.left, y + 12, PAGE.right, y + 12); y += 12; }); y += 8;
+  };
+  drawRows("Budget vs Actual · Spending Budgets", report.spending);
+  drawRows("Financial Targets", report.targets);
+  if (data.budgetCoverage) { sectionTitle(doc, "Budget Coverage", y); y += 5; doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(7); doc.text(`Budget-covered eligible spending ${formatCurrency(data.budgetCoverage.budgeted)} · Unbudgeted ${formatCurrency(data.budgetCoverage.unbudgeted)} · Coverage ${data.budgetCoverage.percentage.toFixed(0)}%`, PAGE.left, y); y += 9; }
+  if (data.unbudgetedSpending?.length) { sectionTitle(doc, "Unbudgeted Spending", y); y += 5; doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(7); data.unbudgetedSpending.forEach((item) => { doc.text(item.categoryName, PAGE.left, y); doc.text(formatCurrency(item.amount), PAGE.right, y, { align: "right" }); y += 5; }); y += 4; }
+  if (data.planningInsights?.length) { sectionTitle(doc, "Monthly Planning Insights", y); y += 5; doc.setFont("helvetica", "normal"); doc.setTextColor(71, 85, 105); doc.setFontSize(6.8); data.planningInsights.slice(0, 5).forEach((item) => { const lines = doc.splitTextToSize(`• ${item}`, 172); if (y + lines.length * 4 > 276) return; doc.text(lines, PAGE.left, y); y += lines.length * 4 + 2; }); }
+}
+
 function escapeXml(value: string) { return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[character] ?? character); }
 function shortened(value: string, maxLength: number) { return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value; }
 
@@ -166,13 +186,14 @@ export async function exportTransactionRecapPdf(data: TransactionRecapData) {
   const { jsPDF } = await import("jspdf"); const doc = new jsPDF({ format: "a4", orientation: "portrait", unit: "mm" }); const l = labels(data); const s = data.summary;
   await pdfHeader(doc, "Transaction Recap", data); let y = metricCards(doc, [[l.income, s.income], [l.expense, s.expensePrincipal], [l.net, s.netCashFlow], ["Transactions", s.transactionCount, true]], 46) + 4;
   sectionTitle(doc, "Transactions", y); y = drawTableHeader(doc, y + 5); let page = 1;
-  const positions = [16, 34, 70, 100, 128, 150, 171]; const widths = [16, 33, 27, 25, 20, 19, 21];
+  const positions = [16, 34, 76, 106, 132, 152, 172]; const widths = [16, 41, 29, 26, 20, 20, 21];
   data.transactions.forEach((transaction, index) => {
-    if (y > 273) { footer(doc, data, page); doc.addPage(); page += 1; y = drawTableHeader(doc, 16); }
-    const fee = toNumber(transaction.transfer_fee); const cells = [new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(transaction.transaction_date)), displayTitle(transaction), transaction.category?.name ?? "-", transaction.wallet?.name ?? "-", formatCurrency(transaction.amount), fee ? formatCurrency(fee) : "-", formatCurrency(transactionTotal(transaction))];
-    if (index % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(PAGE.left, y, 178, 8, "F"); }
-    doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "normal"); doc.setFontSize(6.7); cells.forEach((cell, cellIndex) => { const align = cellIndex >= 4 ? "right" : "left"; doc.text(clipped(doc, cell, widths[cellIndex] - 2), align === "right" ? positions[cellIndex] + widths[cellIndex] - 1 : positions[cellIndex] + 2, y + 5, { align }); });
-    doc.setDrawColor(226, 232, 240); doc.line(PAGE.left, y + 8, PAGE.right, y + 8); y += 8;
+    const rowHeight = transaction.type === "transfer" ? 12 : 8;
+    if (y + rowHeight > 273) { footer(doc, data, page); doc.addPage(); page += 1; y = drawTableHeader(doc, 16); }
+    const fee = toNumber(transaction.transfer_fee); const cells = [new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(transaction.transaction_date)), transactionDescription(transaction), transaction.category?.name ?? "-", transaction.wallet?.name ?? "-", formatCurrency(transaction.amount), fee ? formatCurrency(fee) : "-", formatCurrency(transactionTotal(transaction))];
+    if (index % 2 === 0) { doc.setFillColor(248, 250, 252); doc.rect(PAGE.left, y, 178, rowHeight, "F"); }
+    doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "normal"); doc.setFontSize(6.7); cells.forEach((cell, cellIndex) => { const align = cellIndex >= 4 ? "right" : "left"; const x = align === "right" ? positions[cellIndex] + widths[cellIndex] - 1 : positions[cellIndex] + 2; doc.text(cellIndex === 1 ? doc.splitTextToSize(cell, widths[cellIndex] - 2) : clipped(doc, cell, widths[cellIndex] - 2), x, y + 4.5, { align }); });
+    doc.setDrawColor(226, 232, 240); doc.line(PAGE.left, y + rowHeight, PAGE.right, y + rowHeight); y += rowHeight;
   });
   footer(doc, data, page); download(doc.output("blob"), reportFilename("recap", data, "pdf"));
 }
@@ -189,6 +210,7 @@ export async function createFinancialReportPdfBlob(rawData: FinancialReportData)
   try { drawRankedChart(doc, "Cash Out by Wallet", recap.walletBreakdown.map((item) => ({ label: item.wallet.name, value: item.cashOut })), PAGE.left, 212, 178, 62); } catch (error) { console.error("[KASH Financial Report Export][chart-wallet]", error); chartPanel(doc, "Cash Out by Wallet", PAGE.left, 212, 178, 62); }
   try {
     drawFinancialHealth(doc, data);
+    drawBudgetVsActual(doc, data);
     doc.addPage();
     sectionTitle(doc, "Category Analysis", 20);
     doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.setFontSize(7);
