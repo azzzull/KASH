@@ -635,7 +635,8 @@ export async function getDashboardSummary(
   if (!isManagedSpace) {
     try {
       spendableCash = await getSpendableCash({
-        dueBy: month.end,
+        periodStart: month.start.toISOString(),
+        periodEnd: new Date(month.end.getTime() - 1).toISOString(),
         spaceId: targetSpaceId ?? undefined,
       });
     } catch {

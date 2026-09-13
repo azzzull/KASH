@@ -28,13 +28,15 @@ export type MandatoryObligation = {
   id: string;
   amount: number | string;
   dueDate: string | null;
-  kind: "recurring" | "debt";
+  kind: "recurring" | "debt_allocation" | "other";
+  status?: "pending" | "overdue" | "paid";
+  currentPeriod?: boolean;
   name?: string;
 };
 
 export type SpendableCashComponent = {
   id: string;
-  kind: "liquid_wallet" | "protected_wallet" | "mandatory_obligation" | "operating_buffer";
+  kind: "liquid_wallet" | "protected_wallet" | "scheduled_bill" | "debt_allocation" | "other_mandatory" | "operating_buffer";
   amount: number;
   name?: string;
   alreadyExcludedFromLiquidCash?: boolean;
@@ -42,6 +44,13 @@ export type SpendableCashComponent = {
 
 export type SpendableCashBreakdown = {
   liquidCash: number;
+  unpaidScheduledBills: number;
+  remainingDebtAllocation: number;
+  otherMandatoryObligations: number;
+  totalRemainingObligations: number;
+  availableToSpend: number;
+  reminder: { unpaidObligationCount: number; nearestDueDate: string | null; nearestDueAmount: number | null; overdueCount: number };
+  // Compatibility aliases for the existing Phase 2 consumer contract.
   mandatoryObligations: number;
   protectedAmounts: number;
   operatingBuffer: number;
@@ -86,15 +95,21 @@ function moneyValue(value: string | number | null | undefined) {
   return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
+export function remainingDebtAllocationThisPeriod(currentPeriodDebtTarget: number | string | null | undefined, qualifyingDebtPaymentsThisPeriod: number | string | null | undefined) {
+  return Math.max(moneyValue(currentPeriodDebtTarget) - moneyValue(qualifyingDebtPaymentsThisPeriod), 0);
+}
+
 function isLiquidWalletType(walletType: Wallet["wallet_type"]) {
   return walletType === "bank" || walletType === "digital_bank" || walletType === "ewallet" || walletType === "cash";
 }
 
-function isDateDueBy(dueDate: string | null, horizon: string | Date) {
+function isDateInCurrentPeriod(dueDate: string | null, periodStart: string | Date, periodEnd: string | Date, status?: MandatoryObligation["status"]) {
   if (!dueDate) return false;
   const dueTime = new Date(dueDate).getTime();
-  const horizonTime = new Date(horizon).getTime();
-  return Number.isFinite(dueTime) && Number.isFinite(horizonTime) && dueTime <= horizonTime;
+  const startTime = new Date(periodStart).getTime();
+  const endTime = new Date(periodEnd).getTime();
+  if (!Number.isFinite(dueTime) || !Number.isFinite(startTime) || !Number.isFinite(endTime)) return false;
+  return status === "overdue" ? dueTime <= endTime : dueTime >= startTime && dueTime <= endTime;
 }
 
 export function isEconomicIncomeOrExpense(transaction: Transaction) {
@@ -187,7 +202,8 @@ export function walletNetWorthAt(wallets: Pick<Wallet, "id" | "created_at" | "in
 export function calculateSpendableCash(input: {
   wallets: FinancialMetricsWallet[];
   obligations?: MandatoryObligation[];
-  dueBy: string | Date;
+  periodStart: string | Date;
+  periodEnd: string | Date;
   spaceId?: string;
   goalWalletIds?: string[];
   operatingBuffer?: number;
@@ -196,28 +212,46 @@ export function calculateSpendableCash(input: {
   const spaceWallets = input.wallets.filter((wallet) => !wallet.is_archived && (!input.spaceId || wallet.space_id === input.spaceId));
   const protectedWallets = spaceWallets.filter((wallet) => wallet.wallet_type === "savings" || goalWalletIds.has(wallet.id));
   const liquidWallets = spaceWallets.filter((wallet) => isLiquidWalletType(wallet.wallet_type) && !goalWalletIds.has(wallet.id));
-  const dueObligations = (input.obligations ?? []).filter((obligation) => isDateDueBy(obligation.dueDate, input.dueBy));
+  const dueObligations = (input.obligations ?? []).filter((obligation) => {
+    if (obligation.status === "paid") return false;
+    if (obligation.kind === "debt_allocation") return obligation.currentPeriod === true;
+    return isDateInCurrentPeriod(obligation.dueDate, input.periodStart, input.periodEnd, obligation.status);
+  });
   const liquidCash = liquidWallets.reduce((sum, wallet) => sum + moneyValue(wallet.currentBalance), 0);
   const protectedAmounts = protectedWallets.reduce((sum, wallet) => sum + moneyValue(wallet.currentBalance), 0);
-  const mandatoryObligations = dueObligations.reduce((sum, obligation) => sum + Math.max(0, moneyValue(obligation.amount)), 0);
+  const unpaidScheduledBills = dueObligations.filter((obligation) => obligation.kind === "recurring").reduce((sum, obligation) => sum + Math.max(0, moneyValue(obligation.amount)), 0);
+  const remainingDebtAllocation = dueObligations.filter((obligation) => obligation.kind === "debt_allocation").reduce((sum, obligation) => sum + Math.max(0, moneyValue(obligation.amount)), 0);
+  const otherMandatoryObligations = dueObligations.filter((obligation) => obligation.kind === "other").reduce((sum, obligation) => sum + Math.max(0, moneyValue(obligation.amount)), 0);
+  const totalRemainingObligations = unpaidScheduledBills + remainingDebtAllocation + otherMandatoryObligations;
   const operatingBuffer = input.operatingBuffer ?? 0;
   const limitations = [
     ...(input.operatingBuffer === undefined ? ["Operating buffer is not configured in KASH and is therefore zero."] : []),
-    ...((input.obligations ?? []).some((obligation) => !obligation.dueDate) ? ["Undated obligations are not reserved because KASH has no reliable payment horizon for them."] : []),
+    ...((input.obligations ?? []).some((obligation) => obligation.kind !== "debt_allocation" && !obligation.dueDate) ? ["Undated scheduled obligations are not reserved because KASH has no reliable payment horizon for them."] : []),
   ];
   const components: SpendableCashComponent[] = [
     ...liquidWallets.map((wallet) => ({ id: wallet.id, kind: "liquid_wallet" as const, amount: moneyValue(wallet.currentBalance), name: wallet.name })),
     ...protectedWallets.map((wallet) => ({ id: wallet.id, kind: "protected_wallet" as const, amount: moneyValue(wallet.currentBalance), name: wallet.name, alreadyExcludedFromLiquidCash: true })),
-    ...dueObligations.map((obligation) => ({ id: obligation.id, kind: "mandatory_obligation" as const, amount: Math.max(0, moneyValue(obligation.amount)), name: obligation.name })),
+    ...dueObligations.map((obligation) => ({ id: obligation.id, kind: obligation.kind === "recurring" ? "scheduled_bill" as const : obligation.kind === "debt_allocation" ? "debt_allocation" as const : "other_mandatory" as const, amount: Math.max(0, moneyValue(obligation.amount)), name: obligation.name })),
     ...(operatingBuffer > 0 ? [{ id: "operating-buffer", kind: "operating_buffer" as const, amount: operatingBuffer }] : []),
   ];
 
   return {
     liquidCash,
-    mandatoryObligations,
+    unpaidScheduledBills,
+    remainingDebtAllocation,
+    otherMandatoryObligations,
+    totalRemainingObligations,
+    availableToSpend: liquidCash - totalRemainingObligations - operatingBuffer,
+    reminder: (() => {
+      const dated = dueObligations.filter((obligation) => obligation.dueDate).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+      const nearest = dated[0];
+      const now = new Date(input.periodStart).getTime();
+      return { unpaidObligationCount: dueObligations.length, nearestDueDate: nearest?.dueDate ?? null, nearestDueAmount: nearest ? Math.max(0, moneyValue(nearest.amount)) : null, overdueCount: dueObligations.filter((obligation) => obligation.status === "overdue" || (obligation.dueDate !== null && new Date(obligation.dueDate).getTime() < now)).length };
+    })(),
+    mandatoryObligations: totalRemainingObligations,
     protectedAmounts,
     operatingBuffer,
-    spendableCash: liquidCash - mandatoryObligations - operatingBuffer,
+    spendableCash: liquidCash - totalRemainingObligations - operatingBuffer,
     components,
     limitations,
   };
