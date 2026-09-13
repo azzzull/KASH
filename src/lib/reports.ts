@@ -16,6 +16,7 @@ import { addLocalDays, reportQueryRange } from "./reportPeriod";
 import { getMonthlyBudgets } from "./budgets";
 import { buildSpendingBreakdown } from "./spendingBreakdown";
 import { budgetPerformanceKind, resolveBudgetPerformance } from "./budgetPerformance";
+import { financialMetrics, isEconomicIncomeOrExpense, transactionFee, walletBalanceAt as calculateWalletBalanceAt } from "./financialMetrics";
 
 const REPORT_PAGE_SIZE = 500;
 
@@ -70,17 +71,7 @@ function monthStarts(period: ReportPeriod) {
 }
 
 function walletBalanceAt(wallet: Wallet, transactions: Transaction[], endExclusive: string) {
-  const initial = new Date(wallet.created_at).toISOString() < endExclusive ? toNumber(wallet.initial_balance) : 0;
-  return transactions.reduce((total, transaction) => {
-    if (transaction.status !== "completed" || transaction.transaction_date >= endExclusive) return total;
-    const amount = toNumber(transaction.amount); const fee = feeOf(transaction);
-    if (transaction.type === "income" && transaction.wallet_id === wallet.id) return total + amount;
-    if (transaction.type === "expense" && transaction.wallet_id === wallet.id) return total - amount - fee;
-    if (transaction.type === "adjustment" && transaction.wallet_id === wallet.id) return total + amount;
-    if (transaction.type === "transfer" && transaction.wallet_id === wallet.id) return total - amount - fee;
-    if (transaction.type === "transfer" && transaction.destination_wallet_id === wallet.id) return total + amount;
-    return total;
-  }, initial);
+  return calculateWalletBalanceAt(wallet, transactions, endExclusive);
 }
 
 async function getFinancialHealth(space: FinancialSpace, period: ReportPeriod, wallets: Wallet[]) {
@@ -123,13 +114,11 @@ async function getFinancialHealth(space: FinancialSpace, period: ReportPeriod, w
 }
 
 function isEconomicDebtOrGoalMovement(transaction: Transaction) {
-  return ["debt_creation", "receivable_creation", "debt_payment", "receivable_payment", "goal_contribution", "goal_refund"].includes(
-    transaction.related_entity_type ?? "",
-  );
+  return !isEconomicIncomeOrExpense(transaction);
 }
 
 function feeOf(transaction: Transaction) {
-  return transaction.type === "expense" || transaction.type === "transfer" ? toNumber(transaction.transfer_fee) : 0;
+  return transactionFee(transaction);
 }
 
 function attachMeta(transactions: Transaction[], wallets: Wallet[], categories: Category[], envelopes: Envelope[]): TransactionWithMeta[] {
@@ -150,12 +139,8 @@ function buildReportSpendingBreakdown(transactions: Transaction[], categories: C
 }
 
 function calculateSummary(transactions: Transaction[]): TransactionRecapData["summary"] {
-  const completed = transactions.filter((transaction) => transaction.status === "completed");
-  const income = completed.reduce((total, transaction) => total + (transaction.type === "income" && !isEconomicDebtOrGoalMovement(transaction) ? toNumber(transaction.amount) : 0), 0);
-  const expensePrincipal = completed.reduce((total, transaction) => total + (transaction.type === "expense" && !isEconomicDebtOrGoalMovement(transaction) ? toNumber(transaction.amount) : 0), 0);
-  const adminFees = completed.reduce((total, transaction) => total + feeOf(transaction), 0);
-  const totalExpense = expensePrincipal + adminFees;
-  return { income, expensePrincipal, adminFees, totalExpense, netCashFlow: income - totalExpense, transactionCount: completed.length };
+  const metrics = financialMetrics(transactions);
+  return { income: metrics.income, expensePrincipal: metrics.expensePrincipal, adminFees: metrics.transferFees, totalExpense: metrics.totalExpense, netCashFlow: metrics.netCashFlow, transactionCount: metrics.transactionCount };
 }
 
 function buildCategoryBreakdown(transactions: TransactionWithMeta[], totalExpense: number): ReportCategoryBreakdown[] {
@@ -171,25 +156,10 @@ function buildCategoryBreakdown(transactions: TransactionWithMeta[], totalExpens
 }
 
 function buildWalletBreakdown(transactions: Transaction[], wallets: Wallet[]): ReportWalletBreakdown[] {
-  const data = new Map(wallets.map((wallet) => [wallet.id, { wallet, cashIn: 0, cashOut: 0, netMovement: 0, transactionCount: 0 }]));
-  const apply = (walletId: string | null, incoming: number, outgoing: number) => {
-    if (!walletId) return;
-    const item = data.get(walletId);
-    if (!item) return;
-    item.cashIn += incoming;
-    item.cashOut += outgoing;
-    item.netMovement += incoming - outgoing;
-    item.transactionCount += 1;
-  };
-  transactions.filter((transaction) => transaction.status === "completed").forEach((transaction) => {
-    const amount = toNumber(transaction.amount);
-    const fee = feeOf(transaction);
-    if (transaction.type === "income") apply(transaction.wallet_id, amount, 0);
-    else if (transaction.type === "expense") apply(transaction.wallet_id, 0, amount + fee);
-    else if (transaction.type === "adjustment") apply(transaction.wallet_id, Math.max(amount, 0), Math.max(-amount, 0));
-    else { apply(transaction.wallet_id, 0, amount + fee); apply(transaction.destination_wallet_id, amount, 0); }
-  });
-  return Array.from(data.values()).filter((item) => item.transactionCount > 0);
+  return wallets.map((wallet) => {
+    const metrics = financialMetrics(transactions, wallet.id);
+    return { wallet, cashIn: metrics.walletInflow, cashOut: metrics.walletOutflow, netMovement: metrics.walletNetMovement, transactionCount: metrics.transactionCount };
+  }).filter((item) => item.transactionCount > 0);
 }
 
 export async function getTransactionRecapData({ space, period, filters: partialFilters }: { space: FinancialSpace; period: ReportPeriod; filters?: Partial<TransactionRecapFilters> }): Promise<TransactionRecapData> {

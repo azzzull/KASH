@@ -4,6 +4,7 @@ import { toNumber } from "./money";
 import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
+import { financialMetrics, walletNetWorthAt } from "./financialMetrics";
 import type { Category, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
 
 export type AnalyticsPeriodKey = "this_month" | "last_month" | "3_months" | "6_months" | "this_year" | "custom";
@@ -226,26 +227,6 @@ function moneyValue(value: unknown) {
   return toNumber(typeof value === "string" || typeof value === "number" || value == null ? value : 0);
 }
 
-function feeExpense(transaction: Transaction) {
-  return moneyValue(transaction.transfer_fee);
-}
-
-function calculateCashFlowMetrics(transactions: Transaction[]) {
-  const completed = transactions.filter((transaction) => transaction.status === "completed");
-  const income = completed.reduce((sum, transaction) => (transaction.type === "income" ? sum + moneyValue(transaction.amount) : sum), 0);
-  const expensePrincipal = completed.reduce((sum, transaction) => (transaction.type === "expense" ? sum + moneyValue(transaction.amount) : sum), 0);
-  const transferFees = completed.reduce((sum, transaction) => (transaction.type === "transfer" || transaction.type === "expense" ? sum + moneyValue(transaction.transfer_fee) : sum), 0);
-  const expense = expensePrincipal + transferFees;
-
-  return {
-    expense,
-    expensePrincipal,
-    income,
-    netCashFlow: income - expense,
-    transferFees,
-  };
-}
-
 function calculateMetricChange(current: number, previous: number): AnalyticsMetricChange {
   if (previous > 0) {
     const percent = ((current - previous) / previous) * 100;
@@ -308,7 +289,7 @@ function transactionInRange(transaction: Transaction, start: Date, end: Date) {
 
 function buildIncomeExpenseTrend(period: AnalyticsPeriod, transactions: Transaction[]): AnalyticsTrendPoint[] {
   return periodBucketRanges(period).map((bucket) => {
-    const metrics = calculateCashFlowMetrics(transactions.filter((transaction) => transactionInRange(transaction, bucket.start, bucket.end)));
+    const metrics = financialMetrics(transactions.filter((transaction) => transactionInRange(transaction, bucket.start, bucket.end)));
 
     return {
       end: bucket.end.toISOString(),
@@ -384,53 +365,9 @@ function buildWalletDistribution(wallets: WalletWithBalance[]): AnalyticsWalletD
     .sort((first, second) => second.amount - first.amount);
 }
 
-function walletInitialBalanceAt(wallet: Wallet, cutoffExclusive: Date) {
-  const createdAt = new Date(wallet.created_at);
-  return createdAt < cutoffExclusive ? moneyValue(wallet.initial_balance) : 0;
-}
-
-function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: Set<string>) {
-  if (transaction.status === "void") return 0;
-
-  const sourceIncluded = includedWalletIds.has(transaction.wallet_id || "");
-  const destinationIncluded = transaction.destination_wallet_id ? includedWalletIds.has(transaction.destination_wallet_id) : false;
-
-  if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;
-  if (transaction.type === "expense") return sourceIncluded ? -(moneyValue(transaction.amount) + feeExpense(transaction)) : 0;
-  if (transaction.type === "adjustment") {
-    if (
-      transaction.related_entity_type === "debt_creation" ||
-      transaction.related_entity_type === "receivable_creation" ||
-      transaction.related_entity_type === "debt_payment" ||
-      transaction.related_entity_type === "receivable_payment"
-    ) {
-      return 0; // Asset/Liability 1:1 exchange doesn't affect Net Worth
-    }
-    return sourceIncluded ? moneyValue(transaction.amount) : 0;
-  }
-  if (transaction.type === "transfer") {
-    const outgoing = sourceIncluded ? -(moneyValue(transaction.amount) + moneyValue(transaction.transfer_fee)) : 0;
-    const incoming = destinationIncluded ? moneyValue(transaction.amount) : 0;
-    return outgoing + incoming;
-  }
-
-  return 0;
-}
-
-function netWorthAtCutoff(wallets: WalletWithBalance[], transactions: Transaction[], cutoffExclusive: Date) {
-  const includedWallets = wallets.filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived);
-  const includedWalletIds = new Set(includedWallets.map((wallet) => wallet.id));
-  const initialBalance = includedWallets.reduce((sum, wallet) => sum + walletInitialBalanceAt(wallet, cutoffExclusive), 0);
-  const ledgerEffect = transactions
-    .filter((transaction) => new Date(transaction.transaction_date) < cutoffExclusive)
-    .reduce((sum, transaction) => sum + transactionNetWorthEffect(transaction, includedWalletIds), 0);
-
-  return initialBalance + ledgerEffect;
-}
-
 function buildNetWorthTrend(period: AnalyticsPeriod, wallets: WalletWithBalance[], transactionsUntilEnd: Transaction[]): AnalyticsNetWorthPoint[] {
   return periodBucketRanges(period).map((bucket) => ({
-    amount: netWorthAtCutoff(wallets, transactionsUntilEnd, bucket.end),
+    amount: walletNetWorthAt(wallets, transactionsUntilEnd, bucket.end),
     key: bucket.key,
     label: bucket.label,
   }));
@@ -596,11 +533,11 @@ export async function getAnalyticsSummary(
       envelopeName: transaction.envelope_id ? envelopeById.get(transaction.envelope_id)?.name ?? "Unknown Envelope" : null,
       walletName: transaction.wallet_id ? walletById.get(transaction.wallet_id)?.name ?? "Wallet" : "Wallet",
     }));
-  const currentMetrics = calculateCashFlowMetrics(currentTransactions);
-  const previousMetrics = calculateCashFlowMetrics(previousTransactions);
+  const currentMetrics = financialMetrics(currentTransactions);
+  const previousMetrics = financialMetrics(previousTransactions);
   const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions);
   const walletNetWorth = netWorthTrend.length > 0 ? netWorthTrend[netWorthTrend.length - 1].amount : 0;
-  const previousWalletNetWorth = netWorthAtCutoff(wallets, historicalTransactions, new Date(period.previousEnd));
+  const previousWalletNetWorth = walletNetWorthAt(wallets, historicalTransactions, new Date(period.previousEnd));
 
   return {
     categorySpending: buildSpendingGroups(currentTransactions, categories, envelopes, "category", previousTransactions),

@@ -5,7 +5,6 @@ You are working on **KASH**, a personal finance management application.
 This file contains permanent project guardrails only.
 Detailed product/feature/database behavior belongs in `catatan/`.
 
-
 ## 1. Priority
 
 Use this order:
@@ -25,7 +24,6 @@ Relevant docs:
 Newer approved implementation may supersede stale docs.
 Do not regress current behavior to outdated requirements.
 
-
 ## 2. Scope
 
 Implement only the requested scope.
@@ -41,7 +39,6 @@ Do not use a small task to:
 
 Preserve approved behavior unless explicitly changed.
 
-
 ## 3. Stack
 
 Use the existing stack:
@@ -50,7 +47,6 @@ React, TypeScript, Vite, Tailwind, Supabase/PostgreSQL, React Router,
 Lucide Icons, PWA.
 
 Inspect existing code before adding dependencies or abstractions.
-
 
 ## 4. Visual Source of Truth
 
@@ -62,7 +58,6 @@ Old wireframes are not authoritative unless explicitly requested.
 Equivalent interactions across pages must reuse the same component/design tokens.
 
 Do not create page-local design systems.
-
 
 ## 5. UI Consistency
 
@@ -92,7 +87,6 @@ Global rules:
 - inner card actions remain independent
 - do not create new routes just to make cards clickable
 
-
 ## 6. Layout & Modal
 
 Desktop authenticated pages use the full available width after the sidebar with
@@ -107,7 +101,6 @@ slide-up, slide-down, grabber, drag dismiss, snap-back, internal scroll,
 safe-area support.
 
 Desktop modals remain centered dialogs.
-
 
 ## 7. Localization & Formatting
 
@@ -130,7 +123,6 @@ Indonesian IDR examples:
 
 Do not use K/M/B for Indonesian compact money.
 
-
 ## 8. Financial Correctness
 
 Financial correctness is authoritative in the established database/views/RPC/
@@ -151,6 +143,58 @@ Frontend calculations are for previews/presentation only.
 Inspect current implementation + relevant docs before changing financial
 semantics.
 
+### Financial Domain Invariants
+
+For any task that changes financial calculations, transaction semantics,
+wallet movement, reporting, analytics, or financial insights, also read:
+
+- `catatan/financial-domain-model.md`
+- `catatan/financial-invariants.md`
+
+Financial event classification and wallet movement are separate concepts.
+
+Examples:
+
+- internal transfers are not income or expense
+- receivable principal movement is not income/expense
+- debt principal repayment is not ordinary consumption spending
+- goal/savings allocation must not be double-counted as spending
+- investment valuation changes are not transaction income
+
+Do not duplicate authoritative financial calculation logic inside UI components.
+Prefer centralized database/views/RPC/services according to the established
+architecture.
+
+If a requested implementation conflicts with a documented financial invariant,
+report the conflict instead of silently changing the invariant.
+
+## 8A. Financial Intelligence & AI
+
+KASH financial truth must remain deterministic.
+
+AI/LLM output must never be authoritative for:
+
+- balances
+- Income / Expense
+- Net Worth
+- wallet movement
+- budget usage
+- debt/receivable balances
+- goal progress
+- Spendable Cash
+- financial reconciliation
+
+Financial insights must originate from deterministic metrics and evidence.
+
+AI may be used only as an optional presentation/narration layer over
+structured financial evidence.
+
+The application must remain functionally correct when AI is unavailable.
+
+For work involving simplified financial UX or financial insights, read:
+
+- `catatan/simplified-money-flow-ux.md`
+- `catatan/financial-insight-engine.md`
 
 ## 9. Database & Security
 
@@ -171,7 +215,6 @@ For DB changes:
 - do not edit applied migrations
 - do not silently redesign architecture
 
-
 ## 10. Code Quality
 
 Prefer modular, feature-oriented TypeScript.
@@ -186,7 +229,6 @@ Use consistent loading and EmptyState patterns.
 
 Maintain keyboard accessibility, visible focus, semantic HTML, and reasonable
 touch targets.
-
 
 ## 11. Before / After Implementation
 
@@ -211,7 +253,6 @@ Before completion:
 - verify no unrelated regressions
 
 Do not claim real-device verification unless actually tested on a real device.
-
 
 ## 12. Final Rule
 
@@ -241,6 +282,7 @@ This runs:
 `tsc -b && vite build`
 
 Rules:
+
 - `npx tsc --noEmit` alone is NOT sufficient.
 - Before reporting success, always run `npm run build`.
 - If production build fails, task is NOT complete.
@@ -250,6 +292,7 @@ Rules:
 ### Git / Deployment Readiness
 
 Before saying changes are ready to deploy:
+
 - run `git status`
 - verify all required source/type/i18n/config files are tracked
 - verify newly created production files are not accidentally gitignored
@@ -261,6 +304,7 @@ Do not assume a local file will exist in Netlify just because it exists on disk.
 ### Database Migrations
 
 Never claim a migration is deployed unless:
+
 1. migration status was checked
 2. `supabase db push` actually succeeded
 3. remote migration history confirms it
@@ -271,6 +315,7 @@ A locally created migration is NOT deployed.
 Never infer remote values from local SQL.
 
 If a migration fails:
+
 - STOP
 - report the exact database error
 - do not perform broad automatic repairs
@@ -278,6 +323,7 @@ If a migration fails:
 ### Evidence-Based Reporting
 
 Do not report:
+
 - "deployed"
 - "verified"
 - "build successful"
@@ -294,6 +340,7 @@ If something was not directly verified, explicitly say:
 ### Cross-Layer Changes
 
 When a task changes any combination of:
+
 - database/schema
 - generated/manual DB types
 - domain types
@@ -322,6 +369,7 @@ If any step fails:
 DO NOT report the task as complete.
 
 Final report must include:
+
 - production build: PASS / FAIL
 - database deployment: APPLIED / NOT APPLICABLE / NOT APPLIED
 - git state: CLEAN / CHANGES PENDING

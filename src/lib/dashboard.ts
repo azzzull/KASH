@@ -6,6 +6,7 @@ import { localDateKey } from "./calendar";
 import { createCategoryColorResolver } from "./chartColors";
 import { buildSpendingBreakdown } from "./spendingBreakdown";
 import { getCounterparties } from "./debts";
+import { financialMetrics, walletNetWorthAt } from "./financialMetrics";
 import type { Category, Envelope, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
@@ -227,20 +228,9 @@ function buildCashflow(daysInMonth: number, transactions: Transaction[]) {
     const day = new Date(transaction.transaction_date).getDate();
     const bucket = daily[day - 1];
     if (!bucket) return;
-
-    if (transaction.type === "income") {
-      bucket.income += moneyValue(transaction.amount);
-      return;
-    }
-
-    if (transaction.type === "expense") {
-      bucket.expense += moneyValue(transaction.amount) + feeExpense(transaction);
-      return;
-    }
-
-    if (transaction.type === "transfer") {
-      bucket.expense += moneyValue(transaction.transfer_fee);
-    }
+    const metrics = financialMetrics([transaction]);
+    bucket.income += metrics.income;
+    bucket.expense += metrics.totalExpense;
   });
 
   return daily;
@@ -280,27 +270,6 @@ function buildSpendingByCategory(transactions: Transaction[], categories: Catego
   });
 }
 
-function calculateMonthlyMetrics(transactions: Transaction[]) {
-  const income = transactions
-    .filter((transaction) => transaction.type === "income")
-    .reduce((sum, transaction) => sum + moneyValue(transaction.amount), 0);
-  const expensePrincipal = transactions
-    .filter((transaction) => transaction.type === "expense")
-    .reduce((sum, transaction) => sum + moneyValue(transaction.amount), 0);
-  const transferFees = transactions
-    .filter((transaction) => transaction.type === "transfer" || transaction.type === "expense")
-    .reduce((sum, transaction) => sum + moneyValue(transaction.transfer_fee), 0);
-  const expense = expensePrincipal + transferFees;
-
-  return {
-    income,
-    expense,
-    expensePrincipal,
-    netCashFlow: income - expense,
-    transferFees,
-  };
-}
-
 function calculateMetricChange(current: number, previous: number): DashboardMetricChange {
   const previousMagnitude = Math.abs(previous);
 
@@ -329,53 +298,6 @@ function calculateMetricChange(current: number, previous: number): DashboardMetr
     percent: null,
     state: "none",
   };
-}
-
-function walletInitialBalanceAt(wallet: Wallet, cutoffExclusive: Date) {
-  const createdAt = new Date(wallet.created_at);
-  return createdAt < cutoffExclusive ? moneyValue(wallet.initial_balance) : 0;
-}
-
-function transactionNetWorthEffect(transaction: Transaction, includedWalletIds: Set<string>) {
-  if (transaction.status === "void") return 0;
-
-  const sourceIncluded = includedWalletIds.has(transaction.wallet_id || "");
-  const destinationIncluded = transaction.destination_wallet_id ? includedWalletIds.has(transaction.destination_wallet_id) : false;
-
-  if (transaction.type === "income") return sourceIncluded ? moneyValue(transaction.amount) : 0;
-  if (transaction.type === "expense") return sourceIncluded ? -(moneyValue(transaction.amount) + feeExpense(transaction)) : 0;
-
-  if (transaction.type === "adjustment") {
-    if (
-      transaction.related_entity_type === "debt_creation" ||
-      transaction.related_entity_type === "receivable_creation" ||
-      transaction.related_entity_type === "debt_payment" ||
-      transaction.related_entity_type === "receivable_payment"
-    ) {
-      return 0;
-    }
-
-    return sourceIncluded ? moneyValue(transaction.amount) : 0;
-  }
-
-  if (transaction.type === "transfer") {
-    const outgoing = sourceIncluded ? -(moneyValue(transaction.amount) + moneyValue(transaction.transfer_fee)) : 0;
-    const incoming = destinationIncluded ? moneyValue(transaction.amount) : 0;
-    return outgoing + incoming;
-  }
-
-  return 0;
-}
-
-function netWorthAtCutoff(wallets: Wallet[], transactions: Transaction[], cutoffExclusive: Date) {
-  const includedWallets = wallets.filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived);
-  const includedWalletIds = new Set(includedWallets.map((wallet) => wallet.id));
-  const initialBalance = includedWallets.reduce((sum, wallet) => sum + walletInitialBalanceAt(wallet, cutoffExclusive), 0);
-  const ledgerEffect = transactions
-    .filter((transaction) => new Date(transaction.transaction_date) < cutoffExclusive)
-    .reduce((sum, transaction) => sum + transactionNetWorthEffect(transaction, includedWalletIds), 0);
-
-  return initialBalance + ledgerEffect;
 }
 
 function buildWalletDistribution(wallets: DashboardWalletItem[]) {
@@ -677,8 +599,8 @@ export async function getDashboardSummary(
   const sharedSavingsShares = isManagedSpace ? 0 : rawSharedSavingsShares;
   const sharedSavingsSpaceCount = isManagedSpace ? 0 : rawSharedSavingsSpaceCount;
 
-  const currentMonthMetrics = calculateMonthlyMetrics(monthTransactions);
-  const previousMonthMetrics = calculateMonthlyMetrics(previousMonthTransactions);
+  const currentMonthMetrics = financialMetrics(monthTransactions);
+  const previousMonthMetrics = financialMetrics(previousMonthTransactions);
 
   const availableCash = dashboardWallets
     .filter((wallet) => wallet.includeInNetWorth && isLiquidWallet(wallet.walletType))
@@ -699,7 +621,7 @@ export async function getDashboardSummary(
 
   const netWorth = availableCash + savingsTotal + investmentsTotal + otherWalletsTotal + totalReceivable - totalDebt;
   const previousPeriodNetWorth =
-    netWorthAtCutoff(wallets, netWorthTransactions, previousMonth.end) +
+    walletNetWorthAt(wallets, netWorthTransactions, previousMonth.end) +
     sharedSavingsShares +
     totalReceivable -
     totalDebt;
