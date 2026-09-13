@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   BarChart3,
   CalendarDays,
   Check,
@@ -43,6 +44,8 @@ import { useI18n, type TranslationKey } from "../i18n";
 import { useSpaceTerminology } from "../hooks/useSpaceTerminology";
 import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
 import { SpendingBreakdownChart } from "../components/spending/SpendingBreakdownChart";
+import { AnalyticsMoneyFlow } from "../components/analytics/AnalyticsMoneyFlow";
+import { formatRecommendation } from "../lib/dashboardPresentation";
 
 const INCOME_COLOR = "#10B981";
 const EXPENSE_COLOR = "#E50914";
@@ -398,6 +401,55 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
           <div className="mt-auto"><p className="text-2xl font-extrabold text-slate-900">{formatCurrency(summary.transferFees, currency)}</p><p className="mt-1 text-xs font-semibold text-slate-500">{summary.transferFees > 0 ? (t("analytics.transferFeesStory") || "Biaya transfer bulan ini") : (t("analytics.zeroTransferFees") || "Bebas biaya transfer pada periode ini")}</p></div>
         </InsightCard>
       </div>
+
+      {/* Ranked Action-Oriented Insights (Personal Space only) */}
+      {!terms.isManaged && summary.insights && summary.insights.length > 0 ? (
+        <div className="mt-4 space-y-3">
+          <h4 className="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+            {t("analytics.actionableInsights") || "Rekomendasi Tindakan & Analisis"}
+          </h4>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {summary.insights.map((insight) => {
+              const rec = formatRecommendation(insight, t);
+              return (
+                <div
+                  key={insight.id}
+                  className="flex flex-col justify-between rounded-xl border border-slate-200/70 bg-white p-4 shadow-sm"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/50">
+                        <Sparkles size={11} />
+                        {rec.title || t("dashboard.recommendationHeading")}
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-900 leading-snug">
+                      {rec.observation}
+                    </p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {rec.whyItMatters}
+                    </p>
+                    {rec.suggestedAction ? (
+                      <p className="text-xs font-semibold text-kash-emeraldDark pt-1">
+                        👉 {rec.suggestedAction}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-slate-100">
+                    <Link
+                      to={rec.ctaPath || "/analytics"}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark transition"
+                    >
+                      <span>{rec.ctaText || t("common.viewDetails")}</span>
+                      <ArrowRight size={13} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -1095,7 +1147,12 @@ export function AnalyticsPage() {
         </AnalyticsCard>
       </div>
 
-      {/* 4. Editorial Insights Section */}
+      {/* 4. Analytics Money Flow (Personal Space only) */}
+      {!terms.isManaged && summary.moneyFlow ? (
+        <AnalyticsMoneyFlow moneyFlow={summary.moneyFlow} currency={currency} />
+      ) : null}
+
+      {/* 5. Editorial Insights Section */}
       <AnalyticsInsights summary={summary} currency={currency} />
 
       <SpendingDrilldown context={drilldown} currency={currency} summary={summary} onClose={() => setDrilldown(null)} />

@@ -58,9 +58,8 @@ import { Button } from "../components/ui/Button";
 import { getTransactions, type TransactionWithMeta } from "../lib/transactions";
 import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
 import { SpendingBreakdownChart } from "../components/spending/SpendingBreakdownChart";
-import { AvailableToSpendCard } from "../components/dashboard/AvailableToSpendCard";
-import { SimpleMoneyFlowCard } from "../components/dashboard/SimpleMoneyFlowCard";
-import { FinancialInsightsSection } from "../components/dashboard/FinancialInsightsSection";
+import { DashboardRecommendationCard } from "../components/dashboard/DashboardRecommendationCard";
+import { getSpendableCashReminderMessage } from "../lib/dashboardPresentation";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -517,7 +516,11 @@ function HeroCard({
 }) {
     const { t, locale } = useI18n();
     const terms = useSpaceTerminology();
+    const [isSpendableExpanded, setIsSpendableExpanded] = useState(false);
     const previousMonthLabel = getPreviousMonthLabel(selectedMonth, locale);
+    const reminderMessage = summary.spendableCash
+        ? getSpendableCashReminderMessage(summary.spendableCash, t, formatAmount, currency)
+        : null;
     const breakdown = summary.netWorthBreakdown;
     const assetTotal = breakdown
         ? Math.max(
@@ -682,6 +685,101 @@ function HeroCard({
                     })}
                 </div>
             ) : null}
+
+            {/* Available to Spend (Personal Space only) */}
+            {!terms.isManaged && summary.spendableCash ? (
+                <div className="mt-5 border-t border-white/15 pt-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <span className="text-[11px] font-extrabold uppercase tracking-wide text-white/70">
+                                {t("dashboard.availableToSpend") || "Sisa Dana Aman"}
+                            </span>
+                            <div className="mt-1 flex items-baseline gap-2">
+                                <PrivacyAmount
+                                    onToggle={onToggleBalances}
+                                    label={balancesVisible
+                                        ? (t("dashboard.hideBalances") || "Hide dashboard balances")
+                                        : (t("dashboard.showBalances") || "Show dashboard balances")}
+                                >
+                                    <span className="text-xl md:text-2xl font-extrabold tracking-tight text-white">
+                                        {formatPrivateAmount(
+                                            summary.spendableCash.spendableCash,
+                                            currency,
+                                            balancesVisible,
+                                        )}
+                                    </span>
+                                </PrivacyAmount>
+                                {summary.spendableCash.spendableCash < 0 ? (
+                                    <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-200 ring-1 ring-amber-400/30">
+                                        {t("dashboard.deficit") || "Defisit"}
+                                    </span>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsSpendableExpanded((prev) => !prev)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                        >
+                            <span>
+                                {isSpendableExpanded
+                                    ? t("dashboard.hideDetails") || "Tutup rincian"
+                                    : t("dashboard.viewDetails") || "Lihat rincian"}
+                            </span>
+                            <ChevronDown
+                                size={14}
+                                className={`transition-transform duration-200 ${isSpendableExpanded ? "rotate-180" : ""}`}
+                            />
+                        </button>
+                    </div>
+
+                    {/* Contextual Reminder Line */}
+                    {reminderMessage ? (
+                        <p className="mt-2 text-xs font-semibold text-emerald-100/95 flex items-center gap-1.5">
+                            <Info size={13} className="shrink-0 text-emerald-200" />
+                            <span>{reminderMessage}</span>
+                        </p>
+                    ) : null}
+
+                    {/* Progressive Disclosure Breakdown */}
+                    {isSpendableExpanded ? (
+                        <div className="mt-3 space-y-2 rounded-xl bg-black/15 p-3.5 text-xs text-white/90 backdrop-blur-sm">
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium text-white/70">{t("dashboard.liquidCash") || "Kas & Bank Likuid"}</span>
+                                <span className="font-extrabold text-white">
+                                    +{formatPrivateAmount(summary.spendableCash.liquidCash, currency, balancesVisible)}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="font-medium text-white/70">{t("dashboard.scheduledObligations") || "Komitmen & Tagihan"}</span>
+                                <span className="font-extrabold text-red-200">
+                                    -{formatPrivateAmount(summary.spendableCash.mandatoryObligations, currency, balancesVisible)}
+                                </span>
+                            </div>
+                            {summary.spendableCash.operatingBuffer > 0 ? (
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium text-white/70">{t("dashboard.operatingBuffer") || "Buffer Operasional"}</span>
+                                    <span className="font-extrabold text-amber-200">
+                                        -{formatPrivateAmount(summary.spendableCash.operatingBuffer, currency, balancesVisible)}
+                                    </span>
+                                </div>
+                            ) : null}
+                            <div className="flex items-center justify-between border-t border-white/10 pt-2 font-extrabold text-white">
+                                <span>{t("dashboard.availableToSpend") || "Sisa Dana Aman"}</span>
+                                <span className={summary.spendableCash.spendableCash < 0 ? "text-amber-200" : "text-emerald-200"}>
+                                    ={formatPrivateAmount(summary.spendableCash.spendableCash, currency, balancesVisible)}
+                                </span>
+                            </div>
+                            {summary.spendableCash.protectedAmounts > 0 ? (
+                                <p className="text-[11px] text-white/60 pt-1">
+                                    • {t("dashboard.protectedFunds") || "Dana Terproteksi"}: {formatPrivateAmount(summary.spendableCash.protectedAmounts, currency, balancesVisible)}
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -784,41 +882,54 @@ function CashFlowRow({
     ];
 
     return (
-        <DashboardCard className="grid grid-cols-3 divide-x divide-slate-100 min-w-0 max-w-full overflow-hidden">
-            {items.map((item) => (
-                <div
-                    key={item.key}
-                    className="min-w-0 px-2 py-2.5 first:pl-3 last:pr-3 md:px-4 md:py-3.5 md:first:pl-5 md:last:pr-5"
-                >
-                    <p className="truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                        {item.label}
-                    </p>
-                    <PrivacyAmount
-                        onToggle={onToggleBalances}
-                        aria-label={balancesVisible ? "Hide balances" : "Show balances"}
+        <DashboardCard className="min-w-0 max-w-full overflow-hidden">
+            <div className="grid grid-cols-3 divide-x divide-slate-100">
+                {items.map((item) => (
+                    <div
+                        key={item.key}
+                        className="min-w-0 px-2 py-2.5 first:pl-3 last:pr-3 md:px-4 md:py-3.5 md:first:pl-5 md:last:pr-5"
                     >
-                        <p
-                            className={`mt-1 truncate text-base font-extrabold md:text-xl ${item.tone}`}
-                        >
-                            {formatPrivateAmount(
-                                item.value,
-                                currency,
-                                balancesVisible,
-                            )}
+                        <p className="truncate text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                            {item.label}
                         </p>
-                    </PrivacyAmount>
-                    <div className="mt-1 min-w-0">
-                        <CompactComparisonLine
-                            balancesVisible={balancesVisible}
-                            change={item.change}
-                            currency={currency}
-                            metric={item.metric}
-                            variant="cashflow"
-                            withPreviousLabel={previousMonthLabel}
-                        />
+                        <PrivacyAmount
+                            onToggle={onToggleBalances}
+                            aria-label={balancesVisible ? "Hide balances" : "Show balances"}
+                        >
+                            <p
+                                className={`mt-1 truncate text-base font-extrabold md:text-xl ${item.tone}`}
+                            >
+                                {formatPrivateAmount(
+                                    item.value,
+                                    currency,
+                                    balancesVisible,
+                                )}
+                            </p>
+                        </PrivacyAmount>
+                        <div className="mt-1 min-w-0">
+                            <CompactComparisonLine
+                                balancesVisible={balancesVisible}
+                                change={item.change}
+                                currency={currency}
+                                metric={item.metric}
+                                variant="cashflow"
+                                withPreviousLabel={previousMonthLabel}
+                            />
+                        </div>
                     </div>
+                ))}
+            </div>
+            {!terms.isManaged ? (
+                <div className="border-t border-slate-100 bg-slate-50/50 px-3 py-2 sm:px-5 flex justify-end">
+                    <Link
+                        to="/analytics"
+                        className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark transition"
+                    >
+                        <span>{t("dashboard.viewAnalytics") || "Lihat detail arus kas"}</span>
+                        <ArrowRight size={13} />
+                    </Link>
                 </div>
-            ))}
+            ) : null}
         </DashboardCard>
     );
 }
@@ -2085,16 +2196,6 @@ export function DashboardPage() {
             {/* Quick Actions */}
             <QuickActions />
 
-            {/* Available to Spend (Personal Space only) */}
-            {!terms.isManaged && summary.spendableCash ? (
-                <AvailableToSpendCard
-                    balancesVisible={balancesVisible}
-                    currency={currency}
-                    onToggleBalances={() => setBalancesVisible((v) => !v)}
-                    spendableCash={summary.spendableCash}
-                />
-            ) : null}
-
             {/* Monthly Cash Flow — compact row */}
             <CashFlowRow
                 balancesVisible={balancesVisible}
@@ -2104,19 +2205,9 @@ export function DashboardPage() {
                 currency={currency}
             />
 
-            {/* Simple Money Flow (Personal Space only) */}
-            {!terms.isManaged && summary.moneyFlow ? (
-                <SimpleMoneyFlowCard
-                    balancesVisible={balancesVisible}
-                    currency={currency}
-                    moneyFlow={summary.moneyFlow}
-                    onToggleBalances={() => setBalancesVisible((v) => !v)}
-                />
-            ) : null}
-
-            {/* Financial Insights Section (Personal Space only: 1 prominent, up to 2 compact) */}
+            {/* Action-Oriented Recommendation (Personal Space only: 1 compact recommendation) */}
             {!terms.isManaged && summary.insights && summary.insights.length > 0 ? (
-                <FinancialInsightsSection insights={summary.insights} />
+                <DashboardRecommendationCard insights={summary.insights} />
             ) : null}
 
             {/* Middle: Spending Donut + Cash Flow Chart */}

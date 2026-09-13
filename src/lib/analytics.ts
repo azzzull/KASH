@@ -4,7 +4,8 @@ import { toNumber } from "./money";
 import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
-import { financialMetrics, walletNetWorthAt } from "./financialMetrics";
+import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation } from "./financialMetrics";
+import { detectFinancialInsights, type FinancialInsight } from "./financialInsights";
 import type { Category, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
 
 export type AnalyticsPeriodKey = "this_month" | "last_month" | "3_months" | "6_months" | "this_year" | "custom";
@@ -87,6 +88,8 @@ export type AnalyticsSummary = {
   walletDistribution: AnalyticsWalletDistribution[];
   walletNetWorth: number;
   walletNetWorthChange: AnalyticsMetricChange;
+  moneyFlow: MoneyFlowReconciliation | null;
+  insights: FinancialInsight[];
 };
 
 export type AnalyticsSummaryOptions = {
@@ -411,6 +414,8 @@ export function getEmptyAnalyticsSummary(options: AnalyticsSummaryOptions): Anal
     walletDistribution: [],
     walletNetWorth: 0,
     walletNetWorthChange: calculateMetricChange(0, 0),
+    moneyFlow: null,
+    insights: [],
   };
 }
 
@@ -538,6 +543,36 @@ export async function getAnalyticsSummary(
   const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions);
   const walletNetWorth = netWorthTrend.length > 0 ? netWorthTrend[netWorthTrend.length - 1].amount : 0;
   const previousWalletNetWorth = walletNetWorthAt(wallets, historicalTransactions, new Date(period.previousEnd));
+  const isManagedSpace = Boolean(targetSpaceId);
+
+  const moneyFlow = isManagedSpace
+    ? null
+    : calculateMoneyFlowReconciliation({
+        transactions: currentTransactions,
+        wallets: wallets.map((w) => ({
+          id: w.id,
+          wallet_type: w.wallet_type,
+          is_archived: w.is_archived,
+          space_id: w.space_id,
+        })),
+        spaceId: targetSpaceId ?? undefined,
+      });
+
+  const primaryLiquidWallet = wallets.find((w) => isLiquidWallet(w.wallet_type));
+  const insights = isManagedSpace
+    ? []
+    : detectFinancialInsights({
+        metrics: currentMetrics,
+        moneyFlow: moneyFlow ?? undefined,
+        primaryWallet: primaryLiquidWallet
+          ? {
+              id: primaryLiquidWallet.id,
+              currentBalance: walletCurrentBalance(primaryLiquidWallet),
+              spaceId: targetSpaceId ?? undefined,
+            }
+          : undefined,
+        spaceId: targetSpaceId ?? undefined,
+      });
 
   return {
     categorySpending: buildSpendingGroups(currentTransactions, categories, envelopes, "category", previousTransactions),
@@ -563,5 +598,7 @@ export async function getAnalyticsSummary(
       amount: currentMetrics.expense,
       change: calculateMetricChange(currentMetrics.expense, previousMetrics.expense),
     },
+    moneyFlow,
+    insights,
   };
 }

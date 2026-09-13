@@ -41,6 +41,71 @@ export function getSpendableCashStatus(
   };
 }
 
+/**
+ * Priority rule for Available to Spend contextual reminder:
+ * overdue > due soon > remaining unpaid obligation > unpaid count
+ */
+export function getSpendableCashReminderMessage(
+  spendableCash: SpendableCashBreakdown,
+  t: Translator,
+  formatCurrencyFn: (amount: number, currency: string) => string,
+  currency: string,
+): string | null {
+  const { reminder, totalRemainingObligations } = spendableCash;
+
+  // 1. Overdue: highest priority
+  if (reminder.overdueCount > 0) {
+    return t("dashboard.reminderOverdue", {
+      count: reminder.overdueCount,
+    });
+  }
+
+  // 2. Due soon: nearest due date within active scope
+  if (
+    reminder.nearestDueDate &&
+    reminder.nearestDueAmount != null &&
+    reminder.nearestDueAmount > 0
+  ) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(reminder.nearestDueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const formattedAmount = formatCurrencyFn(reminder.nearestDueAmount, currency);
+
+    if (diffDays <= 0) {
+      return t("dashboard.reminderDueToday", { amount: formattedAmount });
+    }
+    if (diffDays <= 7) {
+      return t("dashboard.reminderDueSoon", {
+        days: diffDays,
+        amount: formattedAmount,
+      });
+    }
+    return t("dashboard.reminderDueLater", {
+      date: reminder.nearestDueDate,
+      amount: formattedAmount,
+    });
+  }
+
+  // 3. Remaining unpaid obligation amount
+  if (totalRemainingObligations > 0) {
+    return t("dashboard.reminderRemainingObligations", {
+      amount: formatCurrencyFn(totalRemainingObligations, currency),
+    });
+  }
+
+  // 4. Unpaid count
+  if (reminder.unpaidObligationCount > 0) {
+    return t("dashboard.reminderUnpaidCount", {
+      count: reminder.unpaidObligationCount,
+    });
+  }
+
+  return null;
+}
+
 export type MoneyFlowPresentationItem = {
   key: string;
   label: string;
@@ -50,7 +115,11 @@ export type MoneyFlowPresentationItem = {
 
 export type MoneyFlowPresentation = {
   genuineIncome: number;
+  ordinarySpending: number;
+  totalAllocations: number;
   totalUsage: number;
+  spendingItems: MoneyFlowPresentationItem[];
+  allocationItems: MoneyFlowPresentationItem[];
   usageItems: MoneyFlowPresentationItem[];
   otherMovementItems: MoneyFlowPresentationItem[];
   hasOtherMovements: boolean;
@@ -64,13 +133,14 @@ export function formatMoneyFlowPresentation(
   flow: MoneyFlowReconciliation,
   t: Translator,
 ): MoneyFlowPresentation {
-  const usageItems: MoneyFlowPresentationItem[] = [];
+  const spendingItems: MoneyFlowPresentationItem[] = [];
+  const allocationItems: MoneyFlowPresentationItem[] = [];
   const otherMovementItems: MoneyFlowPresentationItem[] = [];
 
   // Consumption spending + transfer fees
   const consumptionTotal = flow.ordinarySpending + flow.transferFees;
   if (consumptionTotal > 0) {
-    usageItems.push({
+    spendingItems.push({
       key: "consumption",
       label: t("dashboard.consumptionSpending"),
       amount: consumptionTotal,
@@ -80,7 +150,7 @@ export function formatMoneyFlowPresentation(
 
   // Savings allocation
   if (flow.savingsAllocation > 0) {
-    usageItems.push({
+    allocationItems.push({
       key: "savings",
       label: t("dashboard.savingsAllocated"),
       amount: flow.savingsAllocation,
@@ -90,7 +160,7 @@ export function formatMoneyFlowPresentation(
 
   // Goal contribution
   if (flow.goalContributions > 0) {
-    usageItems.push({
+    allocationItems.push({
       key: "goals",
       label: t("dashboard.goalContributions"),
       amount: flow.goalContributions,
@@ -100,7 +170,7 @@ export function formatMoneyFlowPresentation(
 
   // Debt principal payment
   if (flow.debtPrincipalPayments > 0) {
-    usageItems.push({
+    allocationItems.push({
       key: "debt_payment",
       label: t("dashboard.debtPayments"),
       amount: flow.debtPrincipalPayments,
@@ -110,7 +180,7 @@ export function formatMoneyFlowPresentation(
 
   // Receivable advance (covering for others)
   if (flow.receivableOutflow > 0) {
-    usageItems.push({
+    allocationItems.push({
       key: "receivable_outflow",
       label: t("dashboard.receivableOutflow"),
       amount: flow.receivableOutflow,
@@ -120,7 +190,7 @@ export function formatMoneyFlowPresentation(
 
   // Investment contribution
   if (flow.investmentContribution > 0) {
-    usageItems.push({
+    allocationItems.push({
       key: "investment_contribution",
       label: t("dashboard.investmentAllocated"),
       amount: flow.investmentContribution,
@@ -165,11 +235,18 @@ export function formatMoneyFlowPresentation(
     });
   }
 
+  const ordinarySpending = spendingItems.reduce((sum, item) => sum + item.amount, 0);
+  const totalAllocations = allocationItems.reduce((sum, item) => sum + item.amount, 0);
+  const usageItems = [...spendingItems, ...allocationItems];
   const totalUsage = usageItems.reduce((sum, item) => sum + item.amount, 0);
 
   return {
     genuineIncome: flow.genuineIncome,
+    ordinarySpending,
+    totalAllocations,
     totalUsage,
+    spendingItems,
+    allocationItems,
     usageItems,
     otherMovementItems,
     hasOtherMovements: otherMovementItems.length > 0,
@@ -179,6 +256,18 @@ export function formatMoneyFlowPresentation(
     unreconciledAmount: flow.unreconciledAmount,
   };
 }
+
+export type FormattedRecommendation = {
+  id: string;
+  type: FinancialInsight["type"];
+  severity: FinancialInsight["severity"];
+  title: string;
+  observation: string;
+  whyItMatters: string;
+  suggestedAction: string;
+  ctaText: string;
+  ctaPath: string;
+};
 
 export type FormattedInsight = {
   id: string;
@@ -190,19 +279,24 @@ export type FormattedInsight = {
   ctaPath?: string;
 };
 
-export function formatInsightPresentation(
+export function formatRecommendation(
   insight: FinancialInsight,
   t: Translator,
-): FormattedInsight {
+): FormattedRecommendation {
+  const viewDetailsLabel = t("common.viewDetails") || "Lihat detail";
+  const viewAnalysisLabel = t("dashboard.viewAnalysis") || "Lihat analisis";
+
   switch (insight.type) {
     case "POSITIVE_CASH_FLOW":
       return {
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.positiveCashFlowHeadline"),
-        explanation: t("insights.positiveCashFlowExplanation"),
-        ctaText: t("insights.positiveCashFlowCta"),
+        title: t("insights.positiveCashFlowHeadline"),
+        observation: t("insights.positiveCashFlowObservation"),
+        whyItMatters: t("insights.positiveCashFlowWhy"),
+        suggestedAction: t("insights.positiveCashFlowAction"),
+        ctaText: viewAnalysisLabel,
         ctaPath: "/analytics",
       };
 
@@ -211,9 +305,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.surplusMovedHeadline"),
-        explanation: t("insights.surplusMovedExplanation"),
-        ctaText: t("insights.surplusMovedCta"),
+        title: t("insights.surplusMovedHeadline"),
+        observation: t("insights.surplusMovedObservation"),
+        whyItMatters: t("insights.surplusMovedWhy"),
+        suggestedAction: t("insights.surplusMovedAction"),
+        ctaText: viewAnalysisLabel,
         ctaPath: "/analytics",
       };
 
@@ -222,9 +318,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.primaryWalletLowHeadline"),
-        explanation: t("insights.primaryWalletLowExplanation"),
-        ctaText: t("insights.primaryWalletLowCta"),
+        title: t("insights.primaryWalletLowHeadline"),
+        observation: t("insights.primaryWalletLowObservation"),
+        whyItMatters: t("insights.primaryWalletLowWhy"),
+        suggestedAction: t("insights.primaryWalletLowAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/wallets",
       };
 
@@ -233,9 +331,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.lowSpendableCashHeadline"),
-        explanation: t("insights.lowSpendableCashExplanation"),
-        ctaText: t("insights.lowSpendableCashCta"),
+        title: t("insights.lowSpendableCashHeadline"),
+        observation: t("insights.lowSpendableCashObservation"),
+        whyItMatters: t("insights.lowSpendableCashWhy"),
+        suggestedAction: t("insights.lowSpendableCashAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/calendar",
       };
 
@@ -244,9 +344,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.highTransfersHeadline"),
-        explanation: t("insights.highTransfersExplanation"),
-        ctaText: t("insights.highTransfersCta"),
+        title: t("insights.highTransfersHeadline"),
+        observation: t("insights.highTransfersObservation"),
+        whyItMatters: t("insights.highTransfersWhy"),
+        suggestedAction: t("insights.highTransfersAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/transactions",
       };
 
@@ -255,9 +357,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.unbudgetedSpendingHeadline"),
-        explanation: t("insights.unbudgetedSpendingExplanation"),
-        ctaText: t("insights.unbudgetedSpendingCta"),
+        title: t("insights.unbudgetedSpendingHeadline"),
+        observation: t("insights.unbudgetedSpendingObservation"),
+        whyItMatters: t("insights.unbudgetedSpendingWhy"),
+        suggestedAction: t("insights.unbudgetedSpendingAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/budgets",
       };
 
@@ -266,9 +370,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.budgetOverspendHeadline"),
-        explanation: t("insights.budgetOverspendExplanation"),
-        ctaText: t("insights.budgetOverspendCta"),
+        title: t("insights.budgetOverspendHeadline"),
+        observation: t("insights.budgetOverspendObservation"),
+        whyItMatters: t("insights.budgetOverspendWhy"),
+        suggestedAction: t("insights.budgetOverspendAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/budgets",
       };
 
@@ -277,9 +383,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.savingsAheadHeadline"),
-        explanation: t("insights.savingsAheadExplanation"),
-        ctaText: t("insights.savingsAheadCta"),
+        title: t("insights.savingsAheadHeadline"),
+        observation: t("insights.savingsAheadObservation"),
+        whyItMatters: t("insights.savingsAheadWhy"),
+        suggestedAction: t("insights.savingsAheadAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/goals",
       };
 
@@ -288,9 +396,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.savingsBehindHeadline"),
-        explanation: t("insights.savingsBehindExplanation"),
-        ctaText: t("insights.savingsBehindCta"),
+        title: t("insights.savingsBehindHeadline"),
+        observation: t("insights.savingsBehindObservation"),
+        whyItMatters: t("insights.savingsBehindWhy"),
+        suggestedAction: t("insights.savingsBehindAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/goals",
       };
 
@@ -299,9 +409,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.goalAheadHeadline"),
-        explanation: t("insights.goalAheadExplanation"),
-        ctaText: t("insights.goalAheadCta"),
+        title: t("insights.goalAheadHeadline"),
+        observation: t("insights.goalAheadObservation"),
+        whyItMatters: t("insights.goalAheadWhy"),
+        suggestedAction: t("insights.goalAheadAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/goals",
       };
 
@@ -310,9 +422,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.goalBehindHeadline"),
-        explanation: t("insights.goalBehindExplanation"),
-        ctaText: t("insights.goalBehindCta"),
+        title: t("insights.goalBehindHeadline"),
+        observation: t("insights.goalBehindObservation"),
+        whyItMatters: t("insights.goalBehindWhy"),
+        suggestedAction: t("insights.goalBehindAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/goals",
       };
 
@@ -321,9 +435,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.debtAheadHeadline"),
-        explanation: t("insights.debtAheadExplanation"),
-        ctaText: t("insights.debtAheadCta"),
+        title: t("insights.debtAheadHeadline"),
+        observation: t("insights.debtAheadObservation"),
+        whyItMatters: t("insights.debtAheadWhy"),
+        suggestedAction: t("insights.debtAheadAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/debts",
       };
 
@@ -332,9 +448,11 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.receivableLockingHeadline"),
-        explanation: t("insights.receivableLockingExplanation"),
-        ctaText: t("insights.receivableLockingCta"),
+        title: t("insights.receivableLockingHeadline"),
+        observation: t("insights.receivableLockingObservation"),
+        whyItMatters: t("insights.receivableLockingWhy"),
+        suggestedAction: t("insights.receivableLockingAction"),
+        ctaText: viewDetailsLabel,
         ctaPath: "/debts?tab=receivables",
       };
 
@@ -343,10 +461,12 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.spendingSpikeHeadline"),
-        explanation: t("insights.spendingSpikeExplanation"),
-        ctaText: t("insights.spendingSpikeCta"),
-        ctaPath: "/transactions?type=expense",
+        title: t("insights.spendingSpikeHeadline"),
+        observation: t("insights.spendingSpikeObservation"),
+        whyItMatters: t("insights.spendingSpikeWhy"),
+        suggestedAction: t("insights.spendingSpikeAction"),
+        ctaText: viewDetailsLabel,
+        ctaPath: "/transactions",
       };
 
     default:
@@ -354,8 +474,28 @@ export function formatInsightPresentation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        headline: t("insights.title"),
-        explanation: "",
+        title: t("insights.title"),
+        observation: "",
+        whyItMatters: "",
+        suggestedAction: "",
+        ctaText: viewAnalysisLabel,
+        ctaPath: "/analytics",
       };
   }
+}
+
+export function formatInsightPresentation(
+  insight: FinancialInsight,
+  t: Translator,
+): FormattedInsight {
+  const rec = formatRecommendation(insight, t);
+  return {
+    id: rec.id,
+    type: rec.type,
+    severity: rec.severity,
+    headline: rec.title,
+    explanation: rec.observation || rec.suggestedAction,
+    ctaText: rec.ctaText,
+    ctaPath: rec.ctaPath,
+  };
 }
