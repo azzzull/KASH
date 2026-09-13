@@ -32,6 +32,41 @@ export type MandatoryObligation = {
   status?: "pending" | "overdue" | "paid";
   currentPeriod?: boolean;
   name?: string;
+  debtId?: string | null;
+  counterpartyName?: string | null;
+  targetThisPeriod?: number | string;
+  paidThisPeriod?: number | string;
+};
+
+export type LiquidCashSource = {
+  walletId: string;
+  walletName: string;
+  walletType: Wallet["wallet_type"];
+  amount: number;
+};
+
+export type ScheduledObligationEvidence = {
+  id: string;
+  name: string;
+  amount: number;
+  dueDate: string | null;
+  status: "pending" | "overdue";
+};
+
+export type DebtAllocationObligationEvidence = {
+  id: string;
+  debtId: string | null;
+  counterpartyName: string | null;
+  targetThisPeriod: number;
+  paidThisPeriod: number;
+  remainingThisPeriod: number;
+};
+
+export type OtherMandatoryObligationEvidence = {
+  id: string;
+  name: string;
+  amount: number;
+  dueDate: string | null;
 };
 
 export type SpendableCashComponent = {
@@ -44,9 +79,13 @@ export type SpendableCashComponent = {
 
 export type SpendableCashBreakdown = {
   liquidCash: number;
+  liquidSources: LiquidCashSource[];
   unpaidScheduledBills: number;
+  scheduledObligations: ScheduledObligationEvidence[];
   remainingDebtAllocation: number;
+  debtObligations: DebtAllocationObligationEvidence[];
   otherMandatoryObligations: number;
+  otherMandatoryObligationItems: OtherMandatoryObligationEvidence[];
   totalRemainingObligations: number;
   availableToSpend: number;
   reminder: { unpaidObligationCount: number; nearestDueDate: string | null; nearestDueAmount: number | null; overdueCount: number };
@@ -222,6 +261,34 @@ export function calculateSpendableCash(input: {
   const unpaidScheduledBills = dueObligations.filter((obligation) => obligation.kind === "recurring").reduce((sum, obligation) => sum + Math.max(0, moneyValue(obligation.amount)), 0);
   const remainingDebtAllocation = dueObligations.filter((obligation) => obligation.kind === "debt_allocation").reduce((sum, obligation) => sum + Math.max(0, moneyValue(obligation.amount)), 0);
   const otherMandatoryObligations = dueObligations.filter((obligation) => obligation.kind === "other").reduce((sum, obligation) => sum + Math.max(0, moneyValue(obligation.amount)), 0);
+  const liquidSources = liquidWallets.map((wallet) => ({
+    walletId: wallet.id,
+    walletName: wallet.name ?? wallet.id,
+    walletType: wallet.wallet_type,
+    amount: moneyValue(wallet.currentBalance),
+  }));
+  const scheduledObligations = dueObligations
+    .filter((obligation) => obligation.kind === "recurring" && moneyValue(obligation.amount) > 0)
+    .map((obligation) => ({
+      id: obligation.id,
+      name: obligation.name ?? obligation.id,
+      amount: moneyValue(obligation.amount),
+      dueDate: obligation.dueDate,
+      status: obligation.status === "overdue" ? "overdue" as const : "pending" as const,
+    }));
+  const debtObligations = dueObligations
+    .filter((obligation) => obligation.kind === "debt_allocation" && moneyValue(obligation.amount) > 0)
+    .map((obligation) => ({
+      id: obligation.id,
+      debtId: obligation.debtId ?? null,
+      counterpartyName: obligation.counterpartyName ?? null,
+      targetThisPeriod: moneyValue(obligation.targetThisPeriod ?? obligation.amount),
+      paidThisPeriod: moneyValue(obligation.paidThisPeriod),
+      remainingThisPeriod: moneyValue(obligation.amount),
+    }));
+  const otherMandatoryObligationItems = dueObligations
+    .filter((obligation) => obligation.kind === "other" && moneyValue(obligation.amount) > 0)
+    .map((obligation) => ({ id: obligation.id, name: obligation.name ?? obligation.id, amount: moneyValue(obligation.amount), dueDate: obligation.dueDate }));
   const totalRemainingObligations = unpaidScheduledBills + remainingDebtAllocation + otherMandatoryObligations;
   const operatingBuffer = input.operatingBuffer ?? 0;
   const limitations = [
@@ -237,9 +304,13 @@ export function calculateSpendableCash(input: {
 
   return {
     liquidCash,
+    liquidSources,
     unpaidScheduledBills,
+    scheduledObligations,
     remainingDebtAllocation,
+    debtObligations,
     otherMandatoryObligations,
+    otherMandatoryObligationItems,
     totalRemainingObligations,
     availableToSpend: liquidCash - totalRemainingObligations - operatingBuffer,
     reminder: (() => {

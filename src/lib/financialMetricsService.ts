@@ -77,7 +77,18 @@ export async function getSpendableCash(input: { periodStart?: string; periodEnd?
       status: payment.status === "overdue" ? "overdue" as const : "pending" as const,
       name: obligationNames.get(payment.obligation_id),
     })),
-    ...budgets.filter((budget) => budget.target_type === "debt").map((budget) => ({ id: budget.budget_id, kind: "debt_allocation" as const, amount: remainingDebtAllocationThisPeriod(budget.effective_budget, budget.spent), dueDate: null, currentPeriod: true, name: budget.name })),
+    ...budgets.filter((budget) => budget.target_type === "debt").map((budget) => ({
+      id: budget.budget_id,
+      kind: "debt_allocation" as const,
+      amount: remainingDebtAllocationThisPeriod(budget.effective_budget, budget.spent),
+      dueDate: null,
+      currentPeriod: true,
+      name: budget.name,
+      debtId: budget.debt_id ?? null,
+      counterpartyName: budget.counterparty_name ?? null,
+      targetThisPeriod: budget.effective_budget,
+      paidThisPeriod: budget.spent,
+    })),
   ];
 
   return calculateSpendableCash({ wallets: metricWallets, obligations, periodStart, periodEnd, spaceId: spaceId ?? undefined, goalWalletIds, operatingBuffer: input.operatingBuffer });

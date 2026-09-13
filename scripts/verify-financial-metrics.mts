@@ -110,6 +110,12 @@ spendable = calculateSpendableCash({ wallets: [currentWallet(sourceWallet, "bank
 assert.equal(spendable.remainingDebtAllocation, 0);
 spendable = calculateSpendableCash({ wallets: [currentWallet(sourceWallet, "bank", 1000)], obligations: [{ id: "bill-one", kind: "recurring", amount: 150, dueDate: "2026-09-10", status: "pending" }, { id: "bill-two", kind: "recurring", amount: 100, dueDate: "2026-09-20", status: "pending" }, { id: "debt", kind: "debt_allocation", amount: 200, dueDate: null, currentPeriod: true }], periodStart, periodEnd, spaceId: spaceA });
 assert.deepEqual({ bills: spendable.unpaidScheduledBills, debt: spendable.remainingDebtAllocation, total: spendable.totalRemainingObligations }, { bills: 250, debt: 200, total: 450 });
+assert.deepEqual({
+  liquid: spendable.liquidSources.reduce((sum, source) => sum + source.amount, 0),
+  bills: spendable.scheduledObligations.reduce((sum, obligation) => sum + obligation.amount, 0),
+  debt: spendable.debtObligations.reduce((sum, obligation) => sum + obligation.remainingThisPeriod, 0),
+}, { liquid: spendable.liquidCash, bills: spendable.unpaidScheduledBills, debt: spendable.remainingDebtAllocation });
+assert.deepEqual(spendable.debtObligations[0], { id: "debt", debtId: null, counterpartyName: null, targetThisPeriod: 200, paidThisPeriod: 0, remainingThisPeriod: 200 });
 // Moving the same money between liquid wallets does not create additional available cash.
 spendable = calculateSpendableCash({ wallets: [currentWallet(sourceWallet, "bank", 600), currentWallet(destinationWallet, "cash", 400)], periodStart, periodEnd, spaceId: spaceA });
 assert.equal(spendable.availableToSpend, 1000);
