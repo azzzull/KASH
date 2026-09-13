@@ -5,7 +5,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  HelpCircle,
+  CreditCard,
+  Landmark,
   PiggyBank,
   Receipt,
   Scale,
@@ -18,7 +19,6 @@ import React, { useState } from "react";
 import type { MoneyFlowReconciliation } from "../../lib/financialMetrics";
 import { formatCurrency } from "../../lib/money";
 import { useI18n } from "../../i18n";
-import { formatMoneyFlowPresentation } from "../../lib/dashboardPresentation";
 
 type AnalyticsMoneyFlowProps = {
   moneyFlow: MoneyFlowReconciliation | null;
@@ -35,10 +35,32 @@ export function AnalyticsMoneyFlow({
 
   if (!moneyFlow) return null;
 
-  const presentation = formatMoneyFlowPresentation(moneyFlow, t);
+  const genuineIncome = moneyFlow.genuineIncome;
+  const ordinarySpending = moneyFlow.ordinarySpending + moneyFlow.transferFees;
+  const totalAllocations =
+    moneyFlow.savingsAllocation +
+    moneyFlow.goalContributions +
+    moneyFlow.debtPrincipalPayments +
+    moneyFlow.receivableOutflow +
+    moneyFlow.investmentContribution;
+  const netCashChange = moneyFlow.resultingLiquidityChange;
+  const isFullyReconciled = Math.abs(moneyFlow.unreconciledAmount) < 1;
+
+  // Has balance movement items
+  const hasDebtOrReceivable =
+    moneyFlow.debtPrincipalPayments > 0 ||
+    moneyFlow.debtPrincipalInflow > 0 ||
+    moneyFlow.receivableOutflow > 0 ||
+    moneyFlow.receivableCollection > 0;
+
+  const hasInvestment =
+    moneyFlow.investmentContribution > 0 || moneyFlow.investmentWithdrawal > 0;
 
   return (
-    <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card sm:p-6 space-y-5">
+    <section
+      id="money-flow"
+      className="scroll-mt-6 min-w-0 max-w-full rounded-2xl border border-slate-200/60 bg-white p-5 shadow-card sm:p-6 space-y-5"
+    >
       {/* Header */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -55,7 +77,7 @@ export function AnalyticsMoneyFlow({
           </p>
         </div>
 
-        {presentation.isFullyReconciled ? (
+        {isFullyReconciled ? (
           <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-kash-emeraldDark border border-emerald-200/60">
             <CheckCircle2 size={13} aria-hidden="true" />
             <span>{t("dashboard.fullyReconciled")}</span>
@@ -72,7 +94,7 @@ export function AnalyticsMoneyFlow({
             <span>{t("analytics.moneyIn")}</span>
           </div>
           <p className="mt-1.5 break-words text-lg font-extrabold text-slate-900 sm:text-xl">
-            {formatCurrency(presentation.genuineIncome, currency)}
+            {formatCurrency(genuineIncome, currency)}
           </p>
           <p className="mt-0.5 text-[11px] font-medium text-slate-500">
             {t("analytics.moneyInSubtitle")}
@@ -86,7 +108,7 @@ export function AnalyticsMoneyFlow({
             <span>{t("analytics.ordinaryExpense")}</span>
           </div>
           <p className="mt-1.5 break-words text-lg font-extrabold text-slate-900 sm:text-xl">
-            {formatCurrency(presentation.ordinarySpending, currency)}
+            {formatCurrency(ordinarySpending, currency)}
           </p>
           <p className="mt-0.5 text-[11px] font-medium text-slate-500">
             {t("analytics.ordinaryExpenseSubtitle")}
@@ -100,7 +122,7 @@ export function AnalyticsMoneyFlow({
             <span>{t("analytics.allocationsAndMovements")}</span>
           </div>
           <p className="mt-1.5 break-words text-lg font-extrabold text-slate-900 sm:text-xl">
-            {formatCurrency(presentation.totalAllocations, currency)}
+            {formatCurrency(totalAllocations, currency)}
           </p>
           <p className="mt-0.5 text-[11px] font-medium text-slate-500">
             {t("analytics.allocationsAndMovementsSubtitle")}
@@ -110,7 +132,7 @@ export function AnalyticsMoneyFlow({
         {/* 4. Perubahan Kas Cair */}
         <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-            {presentation.resultingLiquidityChange >= 0 ? (
+            {netCashChange >= 0 ? (
               <TrendingUp size={14} className="text-kash-emeraldDark" aria-hidden="true" />
             ) : (
               <TrendingDown size={14} className="text-[#E50914]" aria-hidden="true" />
@@ -119,13 +141,11 @@ export function AnalyticsMoneyFlow({
           </div>
           <p
             className={`mt-1.5 break-words text-lg font-extrabold sm:text-xl ${
-              presentation.resultingLiquidityChange >= 0
-                ? "text-kash-emeraldDark"
-                : "text-[#E50914]"
+              netCashChange >= 0 ? "text-kash-emeraldDark" : "text-[#E50914]"
             }`}
           >
-            {presentation.resultingLiquidityChange >= 0 ? "+" : ""}
-            {formatCurrency(presentation.resultingLiquidityChange, currency)}
+            {netCashChange >= 0 ? "+" : ""}
+            {formatCurrency(netCashChange, currency)}
           </p>
           <p className="mt-0.5 text-[11px] font-medium text-slate-500">
             {t("analytics.cashChangeSubtitle")}
@@ -133,7 +153,7 @@ export function AnalyticsMoneyFlow({
         </div>
       </div>
 
-      {/* Expandable Movement Categories */}
+      {/* Expandable Detailed Categories (7 Distinct Groups) */}
       <div className="rounded-xl border border-slate-200/70 bg-slate-50/50 p-3.5">
         <button
           type="button"
@@ -155,70 +175,161 @@ export function AnalyticsMoneyFlow({
 
         {showCategories ? (
           <div className="mt-4 grid gap-4 divide-y divide-slate-200/60 pt-1 text-xs">
-            {/* Spending Items */}
-            {presentation.spendingItems.length > 0 ? (
-              <div className="space-y-2">
-                <p className="font-extrabold uppercase tracking-wider text-slate-400 text-[10px]">
-                  {t("analytics.economicActivity")}
-                </p>
-                {presentation.spendingItems.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between text-slate-700">
-                    <span className="font-semibold">{item.label}</span>
-                    <span className="font-extrabold text-[#E50914]">
-                      -{formatCurrency(item.amount, currency)}
-                    </span>
-                  </div>
-                ))}
+            {/* 1. Uang Masuk (Genuine Income Only) */}
+            <div className="space-y-2">
+              <p className="font-extrabold uppercase tracking-wider text-slate-400 text-[10px]">
+                {t("analytics.moneyIn")}
+              </p>
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="font-semibold">{t("dashboard.moneyInDesc")}</span>
+                <span className="font-extrabold text-kash-emeraldDark">
+                  +{formatCurrency(moneyFlow.genuineIncome, currency)}
+                </span>
               </div>
-            ) : null}
+            </div>
 
-            {/* Allocation Items */}
-            {presentation.allocationItems.length > 0 ? (
+            {/* 2. Pengeluaran (Ordinary Consumption Spending + Fees) */}
+            <div className="pt-3 space-y-2">
+              <p className="font-extrabold uppercase tracking-wider text-slate-400 text-[10px]">
+                {t("analytics.economicActivity")}
+              </p>
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="font-semibold">{t("dashboard.consumptionSpending")}</span>
+                <span className="font-extrabold text-[#E50914]">
+                  -{formatCurrency(moneyFlow.ordinarySpending, currency)}
+                </span>
+              </div>
+              {moneyFlow.transferFees > 0 ? (
+                <div className="flex items-center justify-between text-slate-700">
+                  <span className="font-semibold">{t("dashboard.transferFeesPaid")}</span>
+                  <span className="font-extrabold text-[#E50914]">
+                    -{formatCurrency(moneyFlow.transferFees, currency)}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* 3. Alokasi Tabungan & Target (Savings & Goals) */}
+            {(moneyFlow.savingsAllocation > 0 || moneyFlow.goalContributions > 0) ? (
               <div className="pt-3 space-y-2">
                 <p className="font-extrabold uppercase tracking-wider text-slate-400 text-[10px]">
-                  {t("analytics.allocations")}
+                  {t("analytics.allocations")} (Tabungan & Target)
                 </p>
-                {presentation.allocationItems.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between text-slate-700">
-                    <span className="font-semibold">{item.label}</span>
+                {moneyFlow.savingsAllocation > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.savingsAllocated")}</span>
                     <span className="font-extrabold text-sky-700">
-                      -{formatCurrency(item.amount, currency)}
+                      -{formatCurrency(moneyFlow.savingsAllocation, currency)}
                     </span>
                   </div>
-                ))}
+                ) : null}
+                {moneyFlow.goalContributions > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.goalContributions")}</span>
+                    <span className="font-extrabold text-sky-700">
+                      -{formatCurrency(moneyFlow.goalContributions, currency)}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
-            {/* Other Movements */}
-            {presentation.hasOtherMovements ? (
+            {/* 4. Kewajiban & Pergerakan Neraca (Debt Principal & Receivables) */}
+            {hasDebtOrReceivable ? (
               <div className="pt-3 space-y-2">
                 <p className="font-extrabold uppercase tracking-wider text-slate-400 text-[10px]">
-                  {t("analytics.otherMovements")}
+                  Kewajiban & Pergerakan Neraca (Utang & Piutang)
                 </p>
-                {presentation.otherMovementItems.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between text-slate-700">
-                    <span className="font-semibold">{item.label}</span>
+                {moneyFlow.debtPrincipalPayments > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.debtPayments")}</span>
                     <span className="font-extrabold text-slate-800">
-                      {item.amount >= 0 ? "+" : ""}
-                      {formatCurrency(item.amount, currency)}
+                      -{formatCurrency(moneyFlow.debtPrincipalPayments, currency)}
                     </span>
                   </div>
-                ))}
+                ) : null}
+                {moneyFlow.debtPrincipalInflow > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.debtPrincipalInflow")}</span>
+                    <span className="font-extrabold text-kash-emeraldDark">
+                      +{formatCurrency(moneyFlow.debtPrincipalInflow, currency)}
+                    </span>
+                  </div>
+                ) : null}
+                {moneyFlow.receivableOutflow > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.receivableOutflow")}</span>
+                    <span className="font-extrabold text-slate-800">
+                      -{formatCurrency(moneyFlow.receivableOutflow, currency)}
+                    </span>
+                  </div>
+                ) : null}
+                {moneyFlow.receivableCollection > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.receivableCollected")}</span>
+                    <span className="font-extrabold text-kash-emeraldDark">
+                      +{formatCurrency(moneyFlow.receivableCollection, currency)}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
-            {/* Internal Transfers Note */}
-            <div className="pt-3 flex items-center justify-between text-slate-500 font-medium">
-              <span>{t("analytics.internalTransfers")}</span>
-              <span className="font-bold text-slate-700">
-                {formatCurrency(presentation.internalTransfers, currency)}
-              </span>
+            {/* 5. Investasi (Investments) */}
+            {hasInvestment ? (
+              <div className="pt-3 space-y-2">
+                <p className="font-extrabold uppercase tracking-wider text-slate-400 text-[10px]">
+                  {t("dashboard.investments") || "Investasi"}
+                </p>
+                {moneyFlow.investmentContribution > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.investmentAllocated")}</span>
+                    <span className="font-extrabold text-slate-800">
+                      -{formatCurrency(moneyFlow.investmentContribution, currency)}
+                    </span>
+                  </div>
+                ) : null}
+                {moneyFlow.investmentWithdrawal > 0 ? (
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span className="font-semibold">{t("dashboard.investmentWithdrawn")}</span>
+                    <span className="font-extrabold text-kash-emeraldDark">
+                      +{formatCurrency(moneyFlow.investmentWithdrawal, currency)}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* 6. Pergerakan Internal (Inter-Wallet Transfers & Adjustments) */}
+            <div className="pt-3 space-y-2">
+              <p className="font-extrabold uppercase tracking-wider text-slate-400 text-[10px]">
+                {t("analytics.internalTransfers")} (Bukan Belanja)
+              </p>
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="font-medium text-slate-600">
+                  {t("dashboard.internalTransfersDesc", {
+                    amount: formatCurrency(moneyFlow.internalWalletMovement, currency),
+                  })}
+                </span>
+                <span className="font-bold text-slate-700">
+                  {formatCurrency(moneyFlow.internalWalletMovement, currency)}
+                </span>
+              </div>
+              {moneyFlow.balanceAdjustments !== 0 ? (
+                <div className="flex items-center justify-between text-slate-700">
+                  <span className="font-semibold">{t("dashboard.balanceAdjustments")}</span>
+                  <span className="font-extrabold text-slate-800">
+                    {moneyFlow.balanceAdjustments >= 0 ? "+" : ""}
+                    {formatCurrency(moneyFlow.balanceAdjustments, currency)}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
       </div>
 
-      {/* Detailed Reconciliation Accordion */}
+      {/* 7. Detailed Reconciliation Accordion */}
       <div className="rounded-xl border border-slate-100 bg-white p-3.5">
         <button
           type="button"
@@ -243,16 +354,16 @@ export function AnalyticsMoneyFlow({
             <div className="flex items-center justify-between">
               <span>{t("dashboard.reconciliationStatus")}</span>
               <span className="font-bold text-slate-900">
-                {presentation.isFullyReconciled
+                {isFullyReconciled
                   ? t("dashboard.fullyReconciled")
                   : t("dashboard.unreconciledDifference", {
-                      amount: formatCurrency(presentation.unreconciledAmount, currency),
+                      amount: formatCurrency(moneyFlow.unreconciledAmount, currency),
                     })}
               </span>
             </div>
             <p className="text-[11px] leading-relaxed text-slate-500">
               {t("dashboard.internalTransfersDesc", {
-                amount: formatCurrency(presentation.internalTransfers, currency),
+                amount: formatCurrency(moneyFlow.internalWalletMovement, currency),
               })}
             </p>
           </div>

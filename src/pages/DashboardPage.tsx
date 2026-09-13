@@ -59,6 +59,7 @@ import { getTransactions, type TransactionWithMeta } from "../lib/transactions";
 import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
 import { SpendingBreakdownChart } from "../components/spending/SpendingBreakdownChart";
 import { DashboardRecommendationCard } from "../components/dashboard/DashboardRecommendationCard";
+import { AvailableToSpendDetailModal } from "../components/dashboard/AvailableToSpendDetailModal";
 import { getSpendableCashReminderMessage } from "../lib/dashboardPresentation";
 
 /* ─── Constants ─── */
@@ -516,7 +517,7 @@ function HeroCard({
 }) {
     const { t, locale } = useI18n();
     const terms = useSpaceTerminology();
-    const [isSpendableExpanded, setIsSpendableExpanded] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const previousMonthLabel = getPreviousMonthLabel(selectedMonth, locale);
     const reminderMessage = summary.spendableCash
         ? getSpendableCashReminderMessage(summary.spendableCash, t, formatAmount, currency)
@@ -719,18 +720,13 @@ function HeroCard({
 
                         <button
                             type="button"
-                            onClick={() => setIsSpendableExpanded((prev) => !prev)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-1 text-xs font-bold text-white/90 transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
+                            onClick={() => setIsDetailModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/30"
                         >
                             <span>
-                                {isSpendableExpanded
-                                    ? t("dashboard.hideDetails") || "Tutup rincian"
-                                    : t("dashboard.viewDetails") || "Lihat rincian"}
+                                {t("dashboard.viewSpendableCalculation") || "Lihat rincian perhitungan"}
                             </span>
-                            <ChevronDown
-                                size={14}
-                                className={`transition-transform duration-200 ${isSpendableExpanded ? "rotate-180" : ""}`}
-                            />
+                            <ArrowRight size={13} aria-hidden="true" />
                         </button>
                     </div>
 
@@ -742,42 +738,14 @@ function HeroCard({
                         </p>
                     ) : null}
 
-                    {/* Progressive Disclosure Breakdown */}
-                    {isSpendableExpanded ? (
-                        <div className="mt-3 space-y-2 rounded-xl bg-black/15 p-3.5 text-xs text-white/90 backdrop-blur-sm">
-                            <div className="flex items-center justify-between">
-                                <span className="font-medium text-white/70">{t("dashboard.liquidCash") || "Kas & Bank Likuid"}</span>
-                                <span className="font-extrabold text-white">
-                                    +{formatPrivateAmount(summary.spendableCash.liquidCash, currency, balancesVisible)}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="font-medium text-white/70">{t("dashboard.scheduledObligations") || "Komitmen & Tagihan"}</span>
-                                <span className="font-extrabold text-red-200">
-                                    -{formatPrivateAmount(summary.spendableCash.mandatoryObligations, currency, balancesVisible)}
-                                </span>
-                            </div>
-                            {summary.spendableCash.operatingBuffer > 0 ? (
-                                <div className="flex items-center justify-between">
-                                    <span className="font-medium text-white/70">{t("dashboard.operatingBuffer") || "Buffer Operasional"}</span>
-                                    <span className="font-extrabold text-amber-200">
-                                        -{formatPrivateAmount(summary.spendableCash.operatingBuffer, currency, balancesVisible)}
-                                    </span>
-                                </div>
-                            ) : null}
-                            <div className="flex items-center justify-between border-t border-white/10 pt-2 font-extrabold text-white">
-                                <span>{t("dashboard.availableToSpend") || "Sisa Dana Aman"}</span>
-                                <span className={summary.spendableCash.spendableCash < 0 ? "text-amber-200" : "text-emerald-200"}>
-                                    ={formatPrivateAmount(summary.spendableCash.spendableCash, currency, balancesVisible)}
-                                </span>
-                            </div>
-                            {summary.spendableCash.protectedAmounts > 0 ? (
-                                <p className="text-[11px] text-white/60 pt-1">
-                                    • {t("dashboard.protectedFunds") || "Dana Terproteksi"}: {formatPrivateAmount(summary.spendableCash.protectedAmounts, currency, balancesVisible)}
-                                </p>
-                            ) : null}
-                        </div>
-                    ) : null}
+                    {/* Auditable Detail Modal (Desktop Centered / Mobile Draggable Bottom Sheet) */}
+                    <AvailableToSpendDetailModal
+                        isOpen={isDetailModalOpen}
+                        onClose={() => setIsDetailModalOpen(false)}
+                        spendableCash={summary.spendableCash}
+                        currency={currency}
+                        balancesVisible={balancesVisible}
+                    />
                 </div>
             ) : null}
         </div>
@@ -922,10 +890,10 @@ function CashFlowRow({
             {!terms.isManaged ? (
                 <div className="border-t border-slate-100 bg-slate-50/50 px-3 py-2 sm:px-5 flex justify-end">
                     <Link
-                        to="/analytics"
+                        to="/analytics#money-flow"
                         className="inline-flex items-center gap-1 text-xs font-bold text-kash-emerald hover:text-kash-emeraldDark transition"
                     >
-                        <span>{t("dashboard.viewAnalytics") || "Lihat detail arus kas"}</span>
+                        <span>{t("dashboard.viewMoneyFlow") || "Lihat aliran uang"}</span>
                         <ArrowRight size={13} />
                     </Link>
                 </div>

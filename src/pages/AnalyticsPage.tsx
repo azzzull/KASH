@@ -18,7 +18,7 @@ import {
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   getAnalyticsSummary,
   getEmptyAnalyticsSummary,
@@ -325,6 +325,7 @@ function AnalyticsHeroStory({
 function AnalyticsInsights({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
   const terms = useSpaceTerminology();
+  const [showAllInsights, setShowAllInsights] = useState(false);
   const savingsRate = summary.income.amount > 0 ? (summary.netCashFlow.amount / summary.income.amount) * 100 : null;
   const topCategory = summary.categorySpending[0] ?? null;
   const previousSpending = summary.expense.change.previous;
@@ -340,7 +341,7 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
   );
 
   return (
-    <section className="space-y-3">
+    <section id="insights" className="scroll-mt-6 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-extrabold text-slate-900">
           {t("analytics.editorialInsights") || "Editorial Insights & Analisis Lanjutan"}
@@ -405,16 +406,22 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
       {/* Ranked Action-Oriented Insights (Personal Space only) */}
       {!terms.isManaged && summary.insights && summary.insights.length > 0 ? (
         <div className="mt-4 space-y-3">
-          <h4 className="text-xs font-extrabold uppercase tracking-wide text-slate-500">
-            {t("analytics.actionableInsights") || "Rekomendasi Tindakan & Analisis"}
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-extrabold uppercase tracking-wide text-slate-500">
+              {t("analytics.actionableInsights") || "Rekomendasi Tindakan & Analisis"}
+            </h4>
+            <span className="text-xs font-bold text-slate-400">
+              {summary.insights.length} {summary.insights.length === 1 ? "insight" : "insights"}
+            </span>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {summary.insights.map((insight) => {
+            {(showAllInsights ? summary.insights : summary.insights.slice(0, 3)).map((insight) => {
               const rec = formatRecommendation(insight, t);
               return (
                 <div
                   key={insight.id}
-                  className="flex flex-col justify-between rounded-xl border border-slate-200/70 bg-white p-4 shadow-sm"
+                  className="flex flex-col justify-between rounded-xl border border-slate-200/70 bg-white p-4 shadow-xs"
                 >
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
@@ -448,6 +455,30 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
               );
             })}
           </div>
+
+          {summary.insights.length > 3 ? (
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => setShowAllInsights((prev) => !prev)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-kash-emeraldDark transition rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 shadow-xs"
+              >
+                <span>
+                  {showAllInsights
+                    ? t("dashboard.hideDetails") || "Tutup sebagian"
+                    : t("dashboard.viewMoreInsights", {
+                        count: summary.insights.length - 3,
+                      }) || `Tampilkan ${summary.insights.length - 3} insight lainnya`}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    showAllInsights ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -1063,6 +1094,36 @@ export function AnalyticsPage() {
       void loadAnalytics();
     }
   }, [loadAnalytics, spaceLoading]);
+
+  const location = useLocation();
+  const lastScrolledHashRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!summary) return;
+    const currentHash = location.hash;
+    if (!currentHash) {
+      lastScrolledHashRef.current = null;
+      return;
+    }
+
+    if (lastScrolledHashRef.current === currentHash) return;
+
+    const targetId = currentHash.replace("#", "");
+    const element = document.getElementById(targetId);
+    if (element) {
+      lastScrolledHashRef.current = currentHash;
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+      window.requestAnimationFrame(() => {
+        element.scrollIntoView({
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    }
+  }, [summary, location.hash]);
 
   useAppEvent(appEvents.transactionSaved, () => void loadAnalytics());
   useAppEvent(appEvents.spaceChanged, () => void loadAnalytics());

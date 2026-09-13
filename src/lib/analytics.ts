@@ -4,7 +4,9 @@ import { toNumber } from "./money";
 import { getActiveSpaceId } from "./spaces";
 import { supabase } from "./supabase";
 import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
-import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation } from "./financialMetrics";
+import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation, type SpendableCashBreakdown } from "./financialMetrics";
+import { getSpendableCash } from "./financialMetricsService";
+import { getCounterparties } from "./debts";
 import { detectFinancialInsights, type FinancialInsight } from "./financialInsights";
 import type { Category, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
 
@@ -558,11 +560,36 @@ export async function getAnalyticsSummary(
         spaceId: targetSpaceId ?? undefined,
       });
 
-  const primaryLiquidWallet = wallets.find((w) => isLiquidWallet(w.wallet_type));
+  let spendableCash: SpendableCashBreakdown | null = null;
+  let debtSummaryResult: { totalDebt: number; totalReceivable: number } = { totalDebt: 0, totalReceivable: 0 };
+  if (!isManagedSpace) {
+    try {
+      const [spendableResult, counterpartiesResult] = await Promise.all([
+        getSpendableCash({
+          periodStart: period.start,
+          periodEnd: new Date(new Date(period.end).getTime() - 1).toISOString(),
+          spaceId: targetSpaceId ?? undefined,
+        }),
+        getCounterparties(undefined, targetSpaceId ?? undefined),
+      ]);
+      spendableCash = spendableResult;
+      debtSummaryResult = counterpartiesResult;
+    } catch {
+      spendableCash = null;
+      debtSummaryResult = { totalDebt: 0, totalReceivable: 0 };
+    }
+  }
+
+  const liquidWallets = wallets
+    .filter((w) => isLiquidWallet(w.wallet_type))
+    .sort((a, b) => walletCurrentBalance(b) - walletCurrentBalance(a));
+  const primaryLiquidWallet = liquidWallets[0];
+
   const insights = isManagedSpace
     ? []
     : detectFinancialInsights({
         metrics: currentMetrics,
+        spendableCash: spendableCash ?? undefined,
         moneyFlow: moneyFlow ?? undefined,
         primaryWallet: primaryLiquidWallet
           ? {
@@ -571,7 +598,9 @@ export async function getAnalyticsSummary(
               spaceId: targetSpaceId ?? undefined,
             }
           : undefined,
+        receivableOutstanding: debtSummaryResult.totalReceivable,
         spaceId: targetSpaceId ?? undefined,
+        metricsSpaceId: targetSpaceId ?? undefined,
       });
 
   return {

@@ -31,12 +31,12 @@ export function DashboardRecommendationCard({
   // Exactly ONE primary recommendation
   const primaryInsight = insights[0];
   const rec = formatRecommendation(primaryInsight, t);
-  const totalInsights = insights.length;
-  const hasMoreInsights = totalInsights > 1;
+  const remainingCount = insights.length - 1;
+  const hasMoreInsights = remainingCount > 0;
 
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/60 bg-white p-4 sm:p-5 shadow-card transition">
-      {/* Header: Title + optional "Lihat analisis (X)" if more insights exist */}
+      {/* Header: Title + optional "Lihat N insight lainnya" if more insights exist */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
@@ -49,10 +49,11 @@ export function DashboardRecommendationCard({
 
         {hasMoreInsights ? (
           <Link
-            to="/analytics"
+            to="/analytics#insights"
             className="text-xs font-bold text-slate-400 hover:text-kash-emeraldDark transition"
           >
-            {t("dashboard.seeAllInsights", { count: totalInsights }) || `Lihat analisis (${totalInsights})`}
+            {t("dashboard.viewMoreInsights", { count: remainingCount }) ||
+              `Lihat ${remainingCount} insight lainnya`}
           </Link>
         ) : null}
       </div>
