@@ -23,6 +23,7 @@ import {
     Plus,
     MoveRight,
     UserPlus,
+    Users,
 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -57,6 +58,9 @@ import { Button } from "../components/ui/Button";
 import { getTransactions, type TransactionWithMeta } from "../lib/transactions";
 import { SpendingBreakdownSheet } from "../components/spending/SpendingBreakdownSheet";
 import { SpendingBreakdownChart } from "../components/spending/SpendingBreakdownChart";
+import { AvailableToSpendCard } from "../components/dashboard/AvailableToSpendCard";
+import { SimpleMoneyFlowCard } from "../components/dashboard/SimpleMoneyFlowCard";
+import { FinancialInsightsSection } from "../components/dashboard/FinancialInsightsSection";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -1572,6 +1576,60 @@ function GoalsSummary({
     );
 }
 
+function SharedSavingsSummary({
+    balancesVisible,
+    currency,
+    onToggleBalances,
+    summary,
+}: {
+    balancesVisible: boolean;
+    currency: string;
+    onToggleBalances: () => void;
+    summary: DashboardSummary;
+}) {
+    const { t } = useI18n();
+    if (summary.sharedSavings.spaceCount === 0) {
+        return (
+            <EmptyPanel
+                title={t("dashboard.sharedSavingsOverview")}
+                description={t("dashboard.noSharedSavings")}
+            />
+        );
+    }
+
+    return (
+        <div className="space-y-2.5">
+            <div className="rounded-xl bg-slate-50 p-2.5">
+                <span className="text-[11px] font-bold text-slate-500">
+                    {t("dashboard.totalShare")}
+                </span>
+                <PrivacyAmount onToggle={onToggleBalances}>
+                    <p className="mt-0.5 text-sm font-extrabold text-kash-emeraldDark">
+                        {formatPrivateAmount(
+                            summary.sharedSavings.totalShare,
+                            currency,
+                            balancesVisible,
+                        )}
+                    </p>
+                </PrivacyAmount>
+                <p className="mt-1 text-[11px] font-medium text-slate-500">
+                    {t("dashboard.activeSpaces", {
+                        count: summary.sharedSavings.spaceCount,
+                    })}
+                </p>
+            </div>
+            <div className="pt-1 text-center">
+                <Link
+                    to="/shared-savings"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-kash-emeraldDark hover:text-kash-emerald"
+                >
+                    {t("common.viewAll")} →
+                </Link>
+            </div>
+        </div>
+    );
+}
+
 function DebtReceivableSummary({
     balancesVisible,
     currency,
@@ -1874,6 +1932,7 @@ export function DashboardPage() {
     const [summary, setSummary] = useState<DashboardSummary | null>(null);
     const [upcomingObligations, setUpcomingObligations] = useState<RecurringObligationWithMeta[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadedSpaceId, setLoadedSpaceId] = useState<string | null | undefined>(undefined);
     const [balancesVisible, setBalancesVisible] = useState(
         getStoredBalancesVisibility,
     );
@@ -1890,6 +1949,7 @@ export function DashboardPage() {
         if (spaceLoading) return;
         setIsLoading(true);
         setError(null);
+        const targetSpaceId = activeSpaceId ?? null;
 
         try {
             const nextSummary = await getDashboardSummary(
@@ -1897,6 +1957,7 @@ export function DashboardPage() {
                 activeSpaceId ?? undefined
             );
             setSummary(nextSummary);
+            setLoadedSpaceId(targetSpaceId);
         } catch (caughtError) {
             setError(
                 caughtError instanceof Error
@@ -1936,7 +1997,10 @@ export function DashboardPage() {
         );
     }, [balancesVisible]);
 
-    if (isLoading && !summary) return <DashboardSkeleton />;
+    const currentSpaceId = activeSpaceId ?? null;
+    const isSpaceMismatch = loadedSpaceId !== undefined && loadedSpaceId !== currentSpaceId;
+
+    if ((isLoading && !summary) || isSpaceMismatch) return <DashboardSkeleton />;
 
     if (error && !summary) {
         return (
@@ -2021,6 +2085,16 @@ export function DashboardPage() {
             {/* Quick Actions */}
             <QuickActions />
 
+            {/* Available to Spend (Personal Space only) */}
+            {!terms.isManaged && summary.spendableCash ? (
+                <AvailableToSpendCard
+                    balancesVisible={balancesVisible}
+                    currency={currency}
+                    onToggleBalances={() => setBalancesVisible((v) => !v)}
+                    spendableCash={summary.spendableCash}
+                />
+            ) : null}
+
             {/* Monthly Cash Flow — compact row */}
             <CashFlowRow
                 balancesVisible={balancesVisible}
@@ -2029,6 +2103,21 @@ export function DashboardPage() {
                 summary={summary}
                 currency={currency}
             />
+
+            {/* Simple Money Flow (Personal Space only) */}
+            {!terms.isManaged && summary.moneyFlow ? (
+                <SimpleMoneyFlowCard
+                    balancesVisible={balancesVisible}
+                    currency={currency}
+                    moneyFlow={summary.moneyFlow}
+                    onToggleBalances={() => setBalancesVisible((v) => !v)}
+                />
+            ) : null}
+
+            {/* Financial Insights Section (Personal Space only: 1 prominent, up to 2 compact) */}
+            {!terms.isManaged && summary.insights && summary.insights.length > 0 ? (
+                <FinancialInsightsSection insights={summary.insights} />
+            ) : null}
 
             {/* Middle: Spending Donut + Cash Flow Chart */}
             <div className="grid gap-4 lg:grid-cols-2">
@@ -2201,6 +2290,35 @@ export function DashboardPage() {
                         currency={currency}
                     />
                 </DashboardCard>
+
+                {!terms.isManaged ? (
+                    <DashboardCard className="p-5">
+                        <div className="mb-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Users
+                                    aria-hidden="true"
+                                    className="text-kash-emerald"
+                                    size={16}
+                                />
+                                <h2 className="text-sm font-extrabold text-slate-900">
+                                    {t("dashboard.sharedSavingsOverview")}
+                                </h2>
+                            </div>
+                            <Link
+                                to="/shared-savings"
+                                className="text-xs font-bold text-slate-500 hover:text-kash-emerald"
+                            >
+                                {t("common.viewAll")}
+                            </Link>
+                        </div>
+                        <SharedSavingsSummary
+                            balancesVisible={balancesVisible}
+                            currency={currency}
+                            onToggleBalances={() => setBalancesVisible((v) => !v)}
+                            summary={summary}
+                        />
+                    </DashboardCard>
+                ) : null}
 
                 <DashboardCard className="p-5">
                     <div className="mb-3 flex items-center justify-between">

@@ -6,7 +6,9 @@ import { localDateKey } from "./calendar";
 import { createCategoryColorResolver } from "./chartColors";
 import { buildSpendingBreakdown } from "./spendingBreakdown";
 import { getCounterparties } from "./debts";
-import { financialMetrics, walletNetWorthAt } from "./financialMetrics";
+import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation, type SpendableCashBreakdown } from "./financialMetrics";
+import { getSpendableCash } from "./financialMetricsService";
+import { detectFinancialInsights, type FinancialInsight } from "./financialInsights";
 import type { Category, Envelope, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
@@ -157,6 +159,9 @@ export type DashboardSummary = {
   sharedSavings: DashboardSharedSavingsSummary;
   calendarActivity: DashboardCalendarActivity[];
   recentTransactions: DashboardRecentTransaction[];
+  spendableCash: SpendableCashBreakdown | null;
+  moneyFlow: MoneyFlowReconciliation | null;
+  insights: FinancialInsight[];
 };
 
 export type DashboardSummaryOptions = {
@@ -626,6 +631,48 @@ export async function getDashboardSummary(
     totalReceivable -
     totalDebt;
 
+  let spendableCash: SpendableCashBreakdown | null = null;
+  if (!isManagedSpace) {
+    try {
+      spendableCash = await getSpendableCash({
+        dueBy: month.end,
+        spaceId: targetSpaceId ?? undefined,
+      });
+    } catch {
+      spendableCash = null;
+    }
+  }
+
+  const moneyFlow = isManagedSpace
+    ? null
+    : calculateMoneyFlowReconciliation({
+        transactions: monthTransactions,
+        wallets: wallets.map((w) => ({
+          id: w.id,
+          wallet_type: w.wallet_type,
+          is_archived: w.is_archived,
+          space_id: w.space_id,
+        })),
+        spaceId: targetSpaceId ?? undefined,
+      });
+
+  const primaryLiquidWallet = dashboardWallets.find((w) => isLiquidWallet(w.walletType));
+  const insights = isManagedSpace
+    ? []
+    : detectFinancialInsights({
+        metrics: currentMonthMetrics,
+        spendableCash: spendableCash ?? undefined,
+        moneyFlow: moneyFlow ?? undefined,
+        primaryWallet: primaryLiquidWallet ? {
+          id: primaryLiquidWallet.id,
+          currentBalance: primaryLiquidWallet.balance,
+          spaceId: targetSpaceId ?? undefined,
+        } : undefined,
+        receivableOutstanding: totalReceivable,
+        spaceId: targetSpaceId ?? undefined,
+        metricsSpaceId: targetSpaceId ?? undefined,
+      }, 3);
+
   return {
     period: {
       label: month.label,
@@ -691,5 +738,8 @@ export async function getDashboardSummary(
         walletName: description.walletName,
       };
     }),
+    spendableCash,
+    moneyFlow,
+    insights,
   };
 }

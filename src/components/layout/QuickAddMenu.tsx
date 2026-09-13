@@ -65,13 +65,17 @@ export function QuickAddMenu({
       mode: "transfer",
       tone: "text-kash-transfer",
     },
-    {
-      label: t("quickAdd.reimbursable"),
-      helper: t("quickAdd.reimbursableHelper"),
-      icon: ReceiptText,
-      mode: "reimbursable_expense",
-      tone: "text-teal-600",
-    },
+    ...(!terms.isManaged
+      ? [
+          {
+            label: t("quickAdd.reimbursable"),
+            helper: t("quickAdd.reimbursableHelper"),
+            icon: ReceiptText,
+            mode: "reimbursable_expense" as QuickAddMode,
+            tone: "text-teal-600",
+          },
+        ]
+      : []),
   ];
 
   if (!canCreate) {
