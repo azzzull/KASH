@@ -174,7 +174,10 @@ export function DashboardRecommendationCard({
   const revealProgress = Math.min(dragProgress / 0.7, 1);
 
   return (
-    <section aria-label={t("analytics.insightsRecommendations")} className="min-w-0 max-w-full">
+    <section
+      aria-label={t("analytics.insightsRecommendations")}
+      className="min-w-0 max-w-full overflow-x-clip"
+    >
       <div className="relative z-20 mb-2 px-1">
         <div className="flex min-w-0 items-center gap-2">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">

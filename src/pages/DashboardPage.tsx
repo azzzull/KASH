@@ -2113,7 +2113,7 @@ export function DashboardPage() {
     if (!summary) return null;
 
     return (
-        <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4">
+        <div className="w-full min-w-0 space-y-4">
             {/* Greeting */}
             <div>
                 <h1 className="text-xl font-extrabold text-slate-900 md:text-2xl">
@@ -2182,8 +2182,8 @@ export function DashboardPage() {
             />
 
             {/* Middle: Spending Donut + Cash Flow Chart */}
-            <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-4">
+            <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+                <div className="min-w-0 space-y-4">
                     <SpendingDonut
                         activeMonth={selectedMonth}
                         balancesVisible={balancesVisible}
@@ -2197,15 +2197,15 @@ export function DashboardPage() {
                     ) : null}
                 </div>
 
-                <DashboardCard className="p-5">
-                    <div className="mb-3 flex items-center justify-between gap-4">
-                        <h2 className="text-sm font-extrabold text-slate-900">
+                <DashboardCard className="min-w-0 max-w-full p-4 sm:p-5">
+                    <div className="mb-3 flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                        <h2 className="min-w-0 text-sm font-extrabold leading-snug text-slate-900">
                             {terms.cashflowTitle}{" "}
                             <span className="font-medium text-slate-500">
                                 ({summary.period.label})
                             </span>
                         </h2>
-                        <div className="flex items-center gap-4 text-[11px] font-bold text-slate-500">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-bold text-slate-500">
                             <span className="inline-flex items-center gap-1.5">
                                 <span
                                     className="h-2 w-2 rounded-full"
