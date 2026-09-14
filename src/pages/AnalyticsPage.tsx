@@ -1,15 +1,15 @@
 import {
   ArrowRight,
   BarChart3,
+  CircleAlert,
   CalendarDays,
   Check,
   ChevronDown,
   CircleDollarSign,
   PieChart,
   Receipt,
-  RefreshCw,
   Scale,
-  Sparkles,
+  RefreshCw,
   Tags,
   TrendingDown,
   TrendingUp,
@@ -322,6 +322,22 @@ function AnalyticsHeroStory({
   );
 }
 
+function InsightRecommendationIcon({ type }: { type: AnalyticsSummary["insights"][number]["type"] }) {
+  switch (type) {
+    case "BUDGET_CATEGORY_OVERSPEND":
+    case "SPENDING_SPIKE":
+      return <CircleAlert size={13} aria-hidden="true" />;
+    case "BUDGET_REALLOCATION_OPPORTUNITY":
+      return <RefreshCw size={13} aria-hidden="true" />;
+    case "RECEIVABLE_LOCKING_CASH":
+      return <Scale size={13} aria-hidden="true" />;
+    case "SURPLUS_MOVED_ELSEWHERE":
+      return <TrendingUp size={13} aria-hidden="true" />;
+    default:
+      return <WalletCards size={13} aria-hidden="true" />;
+  }
+}
+
 function AnalyticsInsights({ currency, summary }: { currency: string; summary: AnalyticsSummary }) {
   const { t, formatCurrency } = useI18n();
   const terms = useSpaceTerminology();
@@ -344,7 +360,9 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
     <section id="insights" className="scroll-mt-6 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-extrabold text-slate-900">
-          {t("analytics.editorialInsights") || "Editorial Insights & Analisis Lanjutan"}
+          {terms.isManaged
+            ? t("analytics.editorialInsights")
+            : t("analytics.insightsRecommendations")}
         </h3>
       </div>
 
@@ -426,7 +444,7 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/50">
-                        <Sparkles size={11} />
+                        <InsightRecommendationIcon type={rec.type} />
                         {rec.title || t("dashboard.recommendationHeading")}
                       </span>
                     </div>
@@ -437,8 +455,9 @@ function AnalyticsInsights({ currency, summary }: { currency: string; summary: A
                       {rec.whyItMatters}
                     </p>
                     {rec.suggestedAction ? (
-                      <p className="text-xs font-semibold text-kash-emeraldDark pt-1">
-                        👉 {rec.suggestedAction}
+                      <p className="flex gap-1.5 text-xs font-semibold text-kash-emeraldDark pt-1">
+                        <ArrowRight className="mt-0.5 shrink-0" size={13} aria-hidden="true" />
+                        <span>{rec.suggestedAction}</span>
                       </p>
                     ) : null}
                   </div>
@@ -1068,6 +1087,7 @@ export function AnalyticsPage() {
     const summaryOptions = {
       customEndDate: period === "custom" ? customEndDate : undefined,
       customStartDate: period === "custom" ? customStartDate : undefined,
+      isManagedSpace: activeSpace?.space_type === "managed",
       period,
     };
 
@@ -1087,7 +1107,7 @@ export function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [customEndDate, customStartDate, period, activeSpaceId, spaceLoading]);
+  }, [activeSpace?.space_type, customEndDate, customStartDate, period, activeSpaceId, spaceLoading]);
 
   useEffect(() => {
     if (!spaceLoading) {
@@ -1210,7 +1230,11 @@ export function AnalyticsPage() {
 
       {/* 4. Analytics Money Flow (Personal Space only) */}
       {!terms.isManaged && summary.moneyFlow ? (
-        <AnalyticsMoneyFlow moneyFlow={summary.moneyFlow} currency={currency} />
+        <AnalyticsMoneyFlow
+          currency={currency}
+          moneyFlow={summary.moneyFlow}
+          receivableOutstanding={summary.receivableOutstanding}
+        />
       ) : null}
 
       {/* 5. Editorial Insights Section */}

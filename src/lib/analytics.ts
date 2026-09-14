@@ -7,7 +7,8 @@ import { getWalletTypeOption, isLiquidWallet } from "./walletMeta";
 import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation, type SpendableCashBreakdown } from "./financialMetrics";
 import { getSpendableCash } from "./financialMetricsService";
 import { getCounterparties } from "./debts";
-import { detectFinancialInsights, type FinancialInsight } from "./financialInsights";
+import { getMonthlyBudgets } from "./budgets";
+import { detectFinancialInsights, summarizeUnbudgetedSpending, type FinancialInsight } from "./financialInsights";
 import type { Category, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
 
 export type AnalyticsPeriodKey = "this_month" | "last_month" | "3_months" | "6_months" | "this_year" | "custom";
@@ -91,12 +92,18 @@ export type AnalyticsSummary = {
   walletNetWorth: number;
   walletNetWorthChange: AnalyticsMetricChange;
   moneyFlow: MoneyFlowReconciliation | null;
+  receivableOutstanding: number;
   insights: FinancialInsight[];
 };
 
 export type AnalyticsSummaryOptions = {
   customEndDate?: string;
   customStartDate?: string;
+  /**
+   * A space ID scopes the data query; it does not by itself mean the space is
+   * managed. Personal spaces also have IDs.
+   */
+  isManagedSpace?: boolean;
   period: AnalyticsPeriodKey;
   referenceDate?: Date;
 };
@@ -417,6 +424,7 @@ export function getEmptyAnalyticsSummary(options: AnalyticsSummaryOptions): Anal
     walletNetWorth: 0,
     walletNetWorthChange: calculateMetricChange(0, 0),
     moneyFlow: null,
+    receivableOutstanding: 0,
     insights: [],
   };
 }
@@ -545,7 +553,7 @@ export async function getAnalyticsSummary(
   const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions);
   const walletNetWorth = netWorthTrend.length > 0 ? netWorthTrend[netWorthTrend.length - 1].amount : 0;
   const previousWalletNetWorth = walletNetWorthAt(wallets, historicalTransactions, new Date(period.previousEnd));
-  const isManagedSpace = Boolean(targetSpaceId);
+  const isManagedSpace = options.isManagedSpace ?? false;
 
   const moneyFlow = isManagedSpace
     ? null
@@ -580,6 +588,35 @@ export async function getAnalyticsSummary(
     }
   }
 
+  const periodEndInclusive = new Date(new Date(currentEnd).getTime() - 1);
+  const isSingleCalendarMonth = new Date(currentStart).getFullYear() === periodEndInclusive.getFullYear()
+    && new Date(currentStart).getMonth() === periodEndInclusive.getMonth();
+  const insightBudgetRows = !isManagedSpace && isSingleCalendarMonth
+    ? await getMonthlyBudgets(formatLocalDate(new Date(currentStart)), targetSpaceId ?? undefined)
+    : [];
+  const insightBudgets = insightBudgetRows.map((budget) => ({
+        id: budget.budget_id,
+        targetType: budget.target_type,
+        name: budget.name,
+        coveredCategoryIds: budget.included_category_ids,
+        coveredEnvelopeId: budget.envelope_id,
+        effectiveBudget: Number(budget.effective_budget),
+        spent: Number(budget.spent),
+        remaining: Number(budget.remaining),
+        spaceId: targetSpaceId ?? undefined,
+      }));
+  const unbudgetedSpending = summarizeUnbudgetedSpending(
+    currentTransactions
+      .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
+      .map((transaction) => ({
+        amount: Number(transaction.amount),
+        categoryId: transaction.category_id,
+        categoryName: transaction.category_id ? categoryById.get(transaction.category_id)?.name ?? "Uncategorized" : "Uncategorized",
+        envelopeId: transaction.envelope_id,
+      })),
+    insightBudgets,
+  );
+
   const liquidWallets = wallets
     .filter((w) => isLiquidWallet(w.wallet_type))
     .sort((a, b) => walletCurrentBalance(b) - walletCurrentBalance(a));
@@ -599,6 +636,8 @@ export async function getAnalyticsSummary(
             }
           : undefined,
         receivableOutstanding: debtSummaryResult.totalReceivable,
+        budgets: insightBudgets,
+        unbudgetedSpending,
         spaceId: targetSpaceId ?? undefined,
         metricsSpaceId: targetSpaceId ?? undefined,
       });
@@ -628,6 +667,7 @@ export async function getAnalyticsSummary(
       change: calculateMetricChange(currentMetrics.expense, previousMetrics.expense),
     },
     moneyFlow,
+    receivableOutstanding: isManagedSpace ? 0 : debtSummaryResult.totalReceivable,
     insights,
   };
 }

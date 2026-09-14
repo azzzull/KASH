@@ -188,6 +188,17 @@ export function formatMoneyFlowPresentation(
     });
   }
 
+  // Advances paid from savings or asset wallets still represent money out,
+  // but are intentionally excluded from the liquid-cash reconciliation.
+  if (flow.receivableOutflowFromNonLiquidWallets > 0) {
+    allocationItems.push({
+      key: "receivable_outflow_non_liquid",
+      label: t("analytics.advanceFromSavingsTitle"),
+      amount: flow.receivableOutflowFromNonLiquidWallets,
+      kind: "receivable",
+    });
+  }
+
   // Investment contribution
   if (flow.investmentContribution > 0) {
     allocationItems.push({
@@ -358,9 +369,13 @@ export function formatRecommendation(
         type: insight.type,
         severity: insight.severity,
         title: t("insights.unbudgetedSpendingHeadline"),
-        observation: t("insights.unbudgetedSpendingObservation"),
+        observation: t("insights.unbudgetedSpendingObservation", {
+          category: String(insight.evidence.topCategoryName ?? "pengeluaran lainnya"),
+        }),
         whyItMatters: t("insights.unbudgetedSpendingWhy"),
-        suggestedAction: t("insights.unbudgetedSpendingAction"),
+        suggestedAction: t("insights.unbudgetedSpendingAction", {
+          category: String(insight.evidence.topCategoryName ?? "kategori ini"),
+        }),
         ctaText: viewDetailsLabel,
         ctaPath: "/budgets",
       };
@@ -370,10 +385,33 @@ export function formatRecommendation(
         id: insight.id,
         type: insight.type,
         severity: insight.severity,
-        title: t("insights.budgetOverspendHeadline"),
-        observation: t("insights.budgetOverspendObservation"),
+        title: t("insights.budgetOverspendHeadline", { budget: String(insight.evidence.budgetName ?? "") }),
+        observation: t("insights.budgetOverspendObservation", {
+          budget: String(insight.evidence.budgetName ?? ""),
+          percent: Number(insight.evidence.usagePercent ?? 0),
+        }),
         whyItMatters: t("insights.budgetOverspendWhy"),
-        suggestedAction: t("insights.budgetOverspendAction"),
+        suggestedAction: t("insights.budgetOverspendAction", { budget: String(insight.evidence.budgetName ?? "") }),
+        ctaText: viewDetailsLabel,
+        ctaPath: "/budgets",
+      };
+
+    case "BUDGET_REALLOCATION_OPPORTUNITY":
+      return {
+        id: insight.id,
+        type: insight.type,
+        severity: insight.severity,
+        title: t("insights.budgetReallocationHeadline"),
+        observation: t("insights.budgetReallocationObservation", {
+          from: String(insight.evidence.sourceBudgetName ?? ""),
+          to: String(insight.evidence.destinationBudgetName ?? ""),
+          percent: Number(insight.evidence.destinationBudgetUsagePercent ?? 0),
+        }),
+        whyItMatters: t("insights.budgetReallocationWhy"),
+        suggestedAction: t("insights.budgetReallocationAction", {
+          from: String(insight.evidence.sourceBudgetName ?? ""),
+          to: String(insight.evidence.destinationBudgetName ?? ""),
+        }),
         ctaText: viewDetailsLabel,
         ctaPath: "/budgets",
       };

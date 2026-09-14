@@ -6,9 +6,10 @@ import { localDateKey } from "./calendar";
 import { createCategoryColorResolver } from "./chartColors";
 import { buildSpendingBreakdown } from "./spendingBreakdown";
 import { getCounterparties } from "./debts";
+import { getMonthlyBudgets } from "./budgets";
 import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation, type SpendableCashBreakdown } from "./financialMetrics";
 import { getSpendableCash } from "./financialMetricsService";
-import { detectFinancialInsights, type FinancialInsight } from "./financialInsights";
+import { detectFinancialInsights, summarizeUnbudgetedSpending, type FinancialInsight } from "./financialInsights";
 import type { Category, Envelope, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
@@ -59,6 +60,7 @@ export type DashboardWalletItem = {
   name: string;
   walletType: WalletType;
   walletTypeLabel: string;
+  icon: string | null;
   color: string;
   balance: number;
   availableBalance: number;
@@ -585,7 +587,8 @@ export async function getDashboardSummary(
       name: wallet.name,
       walletType: wallet.wallet_type,
       walletTypeLabel: getWalletTypeOption(wallet.wallet_type).label,
-      color: walletVisualColor(wallet.wallet_type),
+      icon: wallet.icon,
+      color: wallet.color ?? walletVisualColor(wallet.wallet_type),
       balance: walletCurrentBalance(wallet),
       availableBalance: walletAvailableBalance(wallet),
       includeInNetWorth: wallet.include_in_net_worth,
@@ -657,6 +660,32 @@ export async function getDashboardSummary(
         spaceId: targetSpaceId ?? undefined,
       });
 
+  const insightBudgetRows = !isManagedSpace
+    ? await getMonthlyBudgets(localDateKey(month.start), targetSpaceId ?? undefined)
+    : [];
+  const insightBudgets = insightBudgetRows.map((budget) => ({
+        id: budget.budget_id,
+        targetType: budget.target_type,
+        name: budget.name,
+        coveredCategoryIds: budget.included_category_ids,
+        coveredEnvelopeId: budget.envelope_id,
+        effectiveBudget: Number(budget.effective_budget),
+        spent: Number(budget.spent),
+        remaining: Number(budget.remaining),
+        spaceId: targetSpaceId ?? undefined,
+      }));
+  const unbudgetedSpending = summarizeUnbudgetedSpending(
+    monthTransactions
+      .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
+      .map((transaction) => ({
+        amount: moneyValue(transaction.amount),
+        categoryId: transaction.category_id,
+        categoryName: transaction.category_id ? categoriesById.get(transaction.category_id)?.name ?? "Uncategorized" : "Uncategorized",
+        envelopeId: transaction.envelope_id,
+      })),
+    insightBudgets,
+  );
+
   const primaryLiquidWallet = dashboardWallets.find((w) => isLiquidWallet(w.walletType));
   const insights = isManagedSpace
     ? []
@@ -670,9 +699,11 @@ export async function getDashboardSummary(
           spaceId: targetSpaceId ?? undefined,
         } : undefined,
         receivableOutstanding: totalReceivable,
+        budgets: insightBudgets,
+        unbudgetedSpending,
         spaceId: targetSpaceId ?? undefined,
         metricsSpaceId: targetSpaceId ?? undefined,
-      }, 3);
+      });
 
   return {
     period: {

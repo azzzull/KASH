@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { detectFinancialInsights, rankFinancialInsights } from "../src/lib/financialInsights.ts";
+import { detectFinancialInsights, rankFinancialInsights, summarizeUnbudgetedSpending } from "../src/lib/financialInsights.ts";
 import type { FinancialMetrics, MoneyFlowReconciliation } from "../src/lib/financialMetrics.ts";
 
 function metrics(overrides: Partial<FinancialMetrics> = {}): FinancialMetrics {
@@ -7,7 +7,7 @@ function metrics(overrides: Partial<FinancialMetrics> = {}): FinancialMetrics {
 }
 
 const spendable = (amount: number, obligations = 0) => ({ liquidCash: Math.max(amount, 0) + obligations, mandatoryObligations: obligations, protectedAmounts: 0, operatingBuffer: 0, spendableCash: amount, components: [], limitations: [] });
-const moneyFlow = (overrides: Partial<MoneyFlowReconciliation> = {}): MoneyFlowReconciliation => ({ genuineIncome: 0, ordinarySpending: 0, savingsAllocation: 0, goalContributions: 0, debtPrincipalPayments: 0, debtPrincipalInflow: 0, receivableOutflow: 0, receivableCollection: 0, investmentContribution: 0, investmentWithdrawal: 0, transferFees: 0, internalWalletMovement: 0, otherAssetMovement: 0, balanceAdjustments: 0, resultingLiquidityChange: 0, explainedLiquidityChange: 0, unreconciledAmount: 0, ...overrides });
+const moneyFlow = (overrides: Partial<MoneyFlowReconciliation> = {}): MoneyFlowReconciliation => ({ genuineIncome: 0, ordinarySpending: 0, savingsAllocation: 0, goalContributions: 0, debtPrincipalPayments: 0, debtPrincipalInflow: 0, receivableOutflow: 0, receivableOutflowFromNonLiquidWallets: 0, receivableCollection: 0, investmentContribution: 0, investmentWithdrawal: 0, transferFees: 0, internalWalletMovement: 0, otherAssetMovement: 0, balanceAdjustments: 0, resultingLiquidityChange: 0, explainedLiquidityChange: 0, unreconciledAmount: 0, ...overrides });
 const types = (items: ReturnType<typeof detectFinancialInsights>) => items.map((item) => item.type);
 
 // Healthy cash flow and allocations surface different evidence-backed insights.
@@ -22,8 +22,18 @@ assert.deepEqual(types(insights), ["LOW_SPENDABLE_CASH"]);
 
 insights = detectFinancialInsights({ metrics: metrics({ income: 1000, expensePrincipal: 200, internalTransfers: 700 }) });
 assert(types(insights).includes("HIGH_INTERNAL_TRANSFER_ACTIVITY"));
-insights = detectFinancialInsights({ metrics: metrics(), unbudgetedSpending: { amount: 400, totalOrdinarySpending: 1000 }, budgets: [{ id: "food", targetType: "category", effectiveBudget: 300, spent: 400 }] });
+insights = detectFinancialInsights({ metrics: metrics(), unbudgetedSpending: { amount: 400, totalOrdinarySpending: 1000, topCategoryName: "Food", topCategoryAmount: 400, transactionCount: 2 }, budgets: [{ id: "food", name: "Food", targetType: "category", coveredCategoryIds: ["food-category"], coveredEnvelopeId: null, effectiveBudget: 300, spent: 400, remaining: -100 }] });
 assert(types(insights).includes("HIGH_UNBUDGETED_SPENDING") && types(insights).includes("BUDGET_CATEGORY_OVERSPEND"));
+insights = detectFinancialInsights({ metrics: metrics(), budgets: [
+  { id: "shopping", name: "Shopping", targetType: "category", coveredCategoryIds: ["shopping-category"], coveredEnvelopeId: null, effectiveBudget: 150, spent: 145, remaining: 5 },
+  { id: "health", name: "Health", targetType: "category", coveredCategoryIds: ["health-category"], coveredEnvelopeId: null, effectiveBudget: 200, spent: 50, remaining: 150 },
+] });
+assert(types(insights).includes("BUDGET_REALLOCATION_OPPORTUNITY"));
+assert(!types(detectFinancialInsights({ metrics: metrics(), budgets: [{ id: "debt", name: "Debt payoff", targetType: "debt", coveredCategoryIds: [], coveredEnvelopeId: null, effectiveBudget: 100, spent: 180, remaining: -80 }] })).includes("BUDGET_CATEGORY_OVERSPEND"));
+assert.deepEqual(summarizeUnbudgetedSpending([
+  { amount: 300, categoryId: "fuel", categoryName: "Fuel", envelopeId: null },
+  { amount: 100, categoryId: "shopping-category", categoryName: "Shopping", envelopeId: null },
+], [{ id: "shopping", name: "Shopping", targetType: "category", coveredCategoryIds: ["shopping-category"], coveredEnvelopeId: null, effectiveBudget: 150, spent: 100, remaining: 50 }]), { amount: 300, totalOrdinarySpending: 400, topCategoryName: "Fuel", topCategoryAmount: 300, transactionCount: 1 });
 
 // Savings, goals, and debt use supplied authoritative target progress.
 insights = detectFinancialInsights({ metrics: metrics(), targets: [
@@ -42,7 +52,7 @@ assert(types(insights).includes("RECEIVABLE_LOCKING_CASH") && types(insights).in
 const healthy = detectFinancialInsights({ metrics: metrics({ income: 1000, totalExpense: 400, netCashFlow: 600 }), metricsSpaceId: "a", spaceId: "a" });
 const mismatchedSpace = detectFinancialInsights({ metrics: metrics({ income: 1000, totalExpense: 400, netCashFlow: 600 }), metricsSpaceId: "b", spaceId: "a" });
 assert(healthy.length > 0 && mismatchedSpace.length === 0);
-assert.deepEqual(types(detectFinancialInsights({ metrics: metrics(), budgets: [{ id: "other", targetType: "category", effectiveBudget: 10, spent: 50, spaceId: "b" }], spaceId: "a" })), []);
+assert.deepEqual(types(detectFinancialInsights({ metrics: metrics(), budgets: [{ id: "other", name: "Other", targetType: "category", coveredCategoryIds: ["other-category"], coveredEnvelopeId: null, effectiveBudget: 10, spent: 50, remaining: -40, spaceId: "b" }], spaceId: "a" })), []);
 
 // Ranking is deterministic and callers can request the future dashboard limit.
 const ranked = rankFinancialInsights([

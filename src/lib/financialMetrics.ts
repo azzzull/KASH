@@ -106,6 +106,8 @@ export type MoneyFlowReconciliation = {
   debtPrincipalPayments: number;
   debtPrincipalInflow: number;
   receivableOutflow: number;
+  /** Reimbursable advances paid from savings/investment wallets, not liquid cash. */
+  receivableOutflowFromNonLiquidWallets: number;
   receivableCollection: number;
   investmentContribution: number;
   investmentWithdrawal: number;
@@ -341,7 +343,7 @@ export function calculateMoneyFlowReconciliation(input: {
   const liquidWalletIds = new Set(Array.from(walletsById.values()).filter((wallet) => isLiquidWalletType(wallet.wallet_type)).map((wallet) => wallet.id));
   const result: MoneyFlowReconciliation = {
     genuineIncome: 0, ordinarySpending: 0, savingsAllocation: 0, goalContributions: 0,
-    debtPrincipalPayments: 0, debtPrincipalInflow: 0, receivableOutflow: 0, receivableCollection: 0,
+    debtPrincipalPayments: 0, debtPrincipalInflow: 0, receivableOutflow: 0, receivableOutflowFromNonLiquidWallets: 0, receivableCollection: 0,
     investmentContribution: 0, investmentWithdrawal: 0, transferFees: 0, internalWalletMovement: 0,
     otherAssetMovement: 0, balanceAdjustments: 0, resultingLiquidityChange: 0,
     explainedLiquidityChange: 0, unreconciledAmount: 0,
@@ -362,12 +364,16 @@ export function calculateMoneyFlowReconciliation(input: {
     if (transaction.type === "expense" && sourceIsLiquid && isEconomicIncomeOrExpense(transaction)) result.ordinarySpending += amount;
     if (sourceIsLiquid) result.transferFees += fee;
 
-    if (transaction.type === "adjustment" && sourceIsLiquid) {
-      if (transaction.related_entity_type === "debt_payment") result.debtPrincipalPayments += Math.max(-amount, 0);
-      else if (transaction.related_entity_type === "debt_creation") result.debtPrincipalInflow += Math.max(amount, 0);
-      else if (transaction.related_entity_type === "receivable_creation") result.receivableOutflow += Math.max(-amount, 0);
-      else if (transaction.related_entity_type === "receivable_payment") result.receivableCollection += Math.max(amount, 0);
-      else result.balanceAdjustments += amount;
+    if (transaction.type === "adjustment") {
+      if (transaction.related_entity_type === "receivable_creation" && transaction.wallet_id && !sourceIsLiquid) {
+        result.receivableOutflowFromNonLiquidWallets += Math.max(-amount, 0);
+      } else if (sourceIsLiquid) {
+        if (transaction.related_entity_type === "debt_payment") result.debtPrincipalPayments += Math.max(-amount, 0);
+        else if (transaction.related_entity_type === "debt_creation") result.debtPrincipalInflow += Math.max(amount, 0);
+        else if (transaction.related_entity_type === "receivable_creation") result.receivableOutflow += Math.max(-amount, 0);
+        else if (transaction.related_entity_type === "receivable_payment") result.receivableCollection += Math.max(amount, 0);
+        else result.balanceAdjustments += amount;
+      }
     }
 
     if (transaction.type === "transfer") {

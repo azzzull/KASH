@@ -61,6 +61,7 @@ import { SpendingBreakdownChart } from "../components/spending/SpendingBreakdown
 import { DashboardRecommendationCard } from "../components/dashboard/DashboardRecommendationCard";
 import { AvailableToSpendDetailModal } from "../components/dashboard/AvailableToSpendDetailModal";
 import { getSpendableCashReminderMessage } from "../lib/dashboardPresentation";
+import { getWalletIcon } from "../lib/walletMeta";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -1548,17 +1549,23 @@ function WalletSummary({
 
     return (
         <div className="space-y-1">
-            {summary.wallets.slice(0, 4).map((wallet) => (
+            {summary.wallets.slice(0, 4).map((wallet) => {
+                const Icon = getWalletIcon(wallet.icon, wallet.walletType);
+
+                return (
                 <div
                     key={wallet.id}
                     className="flex items-center justify-between gap-3 rounded-lg px-1 py-2"
                 >
                     <div className="flex min-w-0 items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                            <span
-                                className="h-3.5 w-3.5 rounded-sm"
-                                style={{ backgroundColor: wallet.color }}
-                            />
+                        <span
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                            style={{
+                                backgroundColor: `${wallet.color}15`,
+                                color: wallet.color,
+                            }}
+                        >
+                            <Icon aria-hidden="true" size={16} strokeWidth={2.2} />
                         </span>
                         <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-slate-900">
@@ -1579,7 +1586,8 @@ function WalletSummary({
                         </span>
                     </PrivacyAmount>
                 </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
@@ -2173,20 +2181,21 @@ export function DashboardPage() {
                 currency={currency}
             />
 
-            {/* Action-Oriented Recommendation (Personal Space only: 1 compact recommendation) */}
-            {!terms.isManaged && summary.insights && summary.insights.length > 0 ? (
-                <DashboardRecommendationCard insights={summary.insights} />
-            ) : null}
-
             {/* Middle: Spending Donut + Cash Flow Chart */}
             <div className="grid gap-4 lg:grid-cols-2">
-                <SpendingDonut
-                    activeMonth={selectedMonth}
-                    balancesVisible={balancesVisible}
-                    onToggleBalances={() => setBalancesVisible((v) => !v)}
-                    summary={summary}
-                    currency={currency}
-                />
+                <div className="space-y-4">
+                    <SpendingDonut
+                        activeMonth={selectedMonth}
+                        balancesVisible={balancesVisible}
+                        onToggleBalances={() => setBalancesVisible((v) => !v)}
+                        summary={summary}
+                        currency={currency}
+                    />
+
+                    {!terms.isManaged && summary.insights && summary.insights.length > 0 ? (
+                        <DashboardRecommendationCard insights={summary.insights} />
+                    ) : null}
+                </div>
 
                 <DashboardCard className="p-5">
                     <div className="mb-3 flex items-center justify-between gap-4">
