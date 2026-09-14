@@ -244,6 +244,7 @@ export function Modal({
     // Gesture state
     const [dragY, setDragY] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
+    const [isBodyExpanding, setIsBodyExpanding] = useState(false);
     const [expansionHeight, setExpansionHeight] = useState<number | null>(null);
     const [hasExpanded, setHasExpanded] = useState(false);
     const startYRef = useRef<number>(0);
@@ -306,6 +307,7 @@ export function Modal({
             setIsClosing(false);
             setDragY(0);
             setIsDragging(false);
+            setIsBodyExpanding(false);
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent("medium");
@@ -326,6 +328,7 @@ export function Modal({
             setMounted(false);
             setDragY(0);
             setIsDragging(false);
+            setIsBodyExpanding(false);
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent("medium");
@@ -779,14 +782,56 @@ export function Modal({
             } else {
                 setExpansionHeight(null);
             }
-        } else if (deltaY > 100 || (deltaY > 30 && velocity > 0.4)) {
-            // Threshold passed -> Dismiss with animated exit
+        } else if (deltaY >= getDetentHeights().medium * 0.5) {
+            // Only a deliberate half-sheet pull on the handle dismisses it.
             setDragY(400);
             handleRequestClose();
         } else {
             // Snap back smoothly
             setDragY(0);
         }
+    };
+
+    const handleBodyTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+        if (isClosing || !isTopModal || sheetDetentRef.current !== "medium") return;
+        const touch = event.touches[0];
+        startYRef.current = touch.clientY;
+        currentYRef.current = touch.clientY;
+        startTimeRef.current = Date.now();
+        setExpansionHeight(null);
+        setIsBodyExpanding(true);
+    };
+
+    const handleBodyTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+        if (!isBodyExpanding || isClosing || !isTopModal) return;
+        const scrollBody = scrollBodyRef.current;
+        if (!scrollBody || sheetDetentRef.current !== "medium") return;
+
+        const touch = event.touches[0];
+        const deltaY = touch.clientY - startYRef.current;
+        currentYRef.current = touch.clientY;
+
+        // A pull up from the content's top expands the sheet first. Once large,
+        // the browser owns subsequent gestures for normal content scrolling.
+        if (deltaY < 0 && scrollBody.scrollTop <= 0) {
+            if (event.cancelable) event.preventDefault();
+            updateExpansionFromGesture(deltaY);
+        }
+    };
+
+    const handleBodyTouchEnd = () => {
+        if (isBodyExpanding && sheetDetentRef.current === "medium") {
+            const deltaY = currentYRef.current - startYRef.current;
+            const elapsed = Math.max(1, Date.now() - startTimeRef.current);
+            const velocity = deltaY / elapsed;
+
+            if (deltaY < 0 && shouldSettleExpanded(deltaY, velocity)) {
+                expandSheet();
+            } else {
+                setExpansionHeight(null);
+            }
+        }
+        setIsBodyExpanding(false);
     };
 
     // Non-passive TouchMove prevention on drag handle for iOS Safari
@@ -957,11 +1002,15 @@ export function Modal({
                         </div>
                     ) : null}
 
-                    {/* Scrollable content owns its native touch scroll. The handle remains the sheet drag target. */}
+                    {/* Content expands a compact sheet from its top, then scrolls natively once expanded. */}
                     <div
                         ref={scrollBodyRef}
                         data-modal-body="true"
                         data-bottom-sheet-scroll-owner="true"
+                        onTouchStart={handleBodyTouchStart}
+                        onTouchMove={handleBodyTouchMove}
+                        onTouchEnd={handleBodyTouchEnd}
+                        onTouchCancel={handleBodyTouchEnd}
                         className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))] md:max-h-[75vh] md:px-6 md:pt-1 md:pb-4 ${bodyClassName}`}
                     >
                         {children}
