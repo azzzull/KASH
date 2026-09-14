@@ -244,12 +244,14 @@ export function Modal({
     // Gesture state
     const [dragY, setDragY] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
-    const [isBodyExpanding, setIsBodyExpanding] = useState(false);
     const [expansionHeight, setExpansionHeight] = useState<number | null>(null);
     const [hasExpanded, setHasExpanded] = useState(false);
     const startYRef = useRef<number>(0);
     const currentYRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
+    const bodyExpansionActiveRef = useRef(false);
+    const expansionFrameRef = useRef<number | null>(null);
+    const pendingExpansionHeightRef = useRef<number | null>(null);
     const dragHandleRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const scrollBodyRef = useRef<HTMLDivElement>(null);
@@ -296,6 +298,9 @@ export function Modal({
             if (keyboardFallbackTimeoutRef.current !== null) {
                 window.clearTimeout(keyboardFallbackTimeoutRef.current);
             }
+            if (expansionFrameRef.current !== null) {
+                window.cancelAnimationFrame(expansionFrameRef.current);
+            }
             keyboardDetentExpansionPendingRef.current = false;
         };
     }, []);
@@ -307,7 +312,8 @@ export function Modal({
             setIsClosing(false);
             setDragY(0);
             setIsDragging(false);
-            setIsBodyExpanding(false);
+            bodyExpansionActiveRef.current = false;
+            pendingExpansionHeightRef.current = null;
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent("medium");
@@ -328,7 +334,8 @@ export function Modal({
             setMounted(false);
             setDragY(0);
             setIsDragging(false);
-            setIsBodyExpanding(false);
+            bodyExpansionActiveRef.current = false;
+            pendingExpansionHeightRef.current = null;
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent("medium");
@@ -720,14 +727,36 @@ export function Modal({
     };
 
     const expandSheet = () => {
+        if (expansionFrameRef.current !== null) {
+            window.cancelAnimationFrame(expansionFrameRef.current);
+            expansionFrameRef.current = null;
+        }
+        pendingExpansionHeightRef.current = null;
         setHasExpanded(true);
         setExpansionHeight(null);
         setSheetDetent("large");
     };
 
+    const clearExpansionPreview = () => {
+        if (expansionFrameRef.current !== null) {
+            window.cancelAnimationFrame(expansionFrameRef.current);
+            expansionFrameRef.current = null;
+        }
+        pendingExpansionHeightRef.current = null;
+        setExpansionHeight(null);
+    };
+
     const updateExpansionFromGesture = (deltaY: number) => {
         const { medium, range } = getDetentHeights();
-        setExpansionHeight(medium + Math.min(-deltaY, range));
+        pendingExpansionHeightRef.current = medium + Math.min(-deltaY, range);
+        if (expansionFrameRef.current !== null) return;
+
+        expansionFrameRef.current = window.requestAnimationFrame(() => {
+            expansionFrameRef.current = null;
+            const nextHeight = pendingExpansionHeightRef.current;
+            pendingExpansionHeightRef.current = null;
+            if (nextHeight !== null) setExpansionHeight(nextHeight);
+        });
     };
 
     const shouldSettleExpanded = (deltaY: number, velocity: number) => {
@@ -744,7 +773,7 @@ export function Modal({
         startYRef.current = touch.clientY;
         currentYRef.current = touch.clientY;
         startTimeRef.current = Date.now();
-        setExpansionHeight(null);
+        clearExpansionPreview();
         setIsDragging(true);
     };
 
@@ -780,7 +809,7 @@ export function Modal({
             if (shouldSettleExpanded(deltaY, velocity)) {
                 expandSheet();
             } else {
-                setExpansionHeight(null);
+                clearExpansionPreview();
             }
         } else if (deltaY >= getDetentHeights().medium * 0.5) {
             // Only a deliberate half-sheet pull on the handle dismisses it.
@@ -798,12 +827,12 @@ export function Modal({
         startYRef.current = touch.clientY;
         currentYRef.current = touch.clientY;
         startTimeRef.current = Date.now();
-        setExpansionHeight(null);
-        setIsBodyExpanding(true);
+        clearExpansionPreview();
+        bodyExpansionActiveRef.current = true;
     };
 
     const handleBodyTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
-        if (!isBodyExpanding || isClosing || !isTopModal) return;
+        if (!bodyExpansionActiveRef.current || isClosing || !isTopModal) return;
         const scrollBody = scrollBodyRef.current;
         if (!scrollBody || sheetDetentRef.current !== "medium") return;
 
@@ -820,7 +849,8 @@ export function Modal({
     };
 
     const handleBodyTouchEnd = () => {
-        if (isBodyExpanding && sheetDetentRef.current === "medium") {
+        const wasExpanding = bodyExpansionActiveRef.current;
+        if (wasExpanding && sheetDetentRef.current === "medium") {
             const deltaY = currentYRef.current - startYRef.current;
             const elapsed = Math.max(1, Date.now() - startTimeRef.current);
             const velocity = deltaY / elapsed;
@@ -828,10 +858,10 @@ export function Modal({
             if (deltaY < 0 && shouldSettleExpanded(deltaY, velocity)) {
                 expandSheet();
             } else {
-                setExpansionHeight(null);
+                clearExpansionPreview();
             }
         }
-        setIsBodyExpanding(false);
+        bodyExpansionActiveRef.current = false;
     };
 
     // Non-passive TouchMove prevention on drag handle for iOS Safari
