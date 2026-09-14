@@ -244,7 +244,6 @@ export function Modal({
     // Gesture state
     const [dragY, setDragY] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
-    const [isBodyDragging, setIsBodyDragging] = useState(false);
     const [expansionHeight, setExpansionHeight] = useState<number | null>(null);
     const [hasExpanded, setHasExpanded] = useState(false);
     const startYRef = useRef<number>(0);
@@ -307,7 +306,6 @@ export function Modal({
             setIsClosing(false);
             setDragY(0);
             setIsDragging(false);
-            setIsBodyDragging(false);
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent("medium");
@@ -328,7 +326,6 @@ export function Modal({
             setMounted(false);
             setDragY(0);
             setIsDragging(false);
-            setIsBodyDragging(false);
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent("medium");
@@ -792,52 +789,6 @@ export function Modal({
         }
     };
 
-    const handleBodyTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (isClosing || !isTopModal) return;
-        const touch = e.touches[0];
-        startYRef.current = touch.clientY;
-        currentYRef.current = touch.clientY;
-        startTimeRef.current = Date.now();
-        setExpansionHeight(null);
-        setIsBodyDragging(true);
-    };
-
-    const handleBodyTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (!isBodyDragging || isClosing || !isTopModal) return;
-
-        const scrollBody = scrollBodyRef.current;
-        if (!scrollBody) return;
-
-        const touch = e.touches[0];
-        const deltaY = touch.clientY - startYRef.current;
-        currentYRef.current = touch.clientY;
-        const hasOverflow =
-            scrollBody.scrollHeight > scrollBody.clientHeight + 2;
-
-        if (sheetDetentRef.current === "medium" && hasOverflow && deltaY < 0) {
-            if (e.cancelable) e.preventDefault();
-            // Before the first expansion, content drag owns the progressive
-            // compact-to-expanded gesture. Once expanded, body gestures are
-            // left entirely to the native scroll container.
-            updateExpansionFromGesture(deltaY);
-        }
-    };
-
-    const handleBodyTouchEnd = () => {
-        if (isBodyDragging && sheetDetentRef.current === "medium") {
-            const deltaY = currentYRef.current - startYRef.current;
-            const elapsed = Math.max(1, Date.now() - startTimeRef.current);
-            const velocity = deltaY / elapsed;
-
-            if (deltaY < 0 && shouldSettleExpanded(deltaY, velocity)) {
-                expandSheet();
-            } else {
-                setExpansionHeight(null);
-            }
-        }
-        setIsBodyDragging(false);
-    };
-
     // Non-passive TouchMove prevention on drag handle for iOS Safari
     useEffect(() => {
         const handleEl = dragHandleRef.current;
@@ -1006,15 +957,11 @@ export function Modal({
                         </div>
                     ) : null}
 
-                    {/* Scrollable Content Body (Protected from gesture interception) */}
+                    {/* Scrollable content owns its native touch scroll. The handle remains the sheet drag target. */}
                     <div
                         ref={scrollBodyRef}
                         data-modal-body="true"
                         data-bottom-sheet-scroll-owner="true"
-                        onTouchStart={handleBodyTouchStart}
-                        onTouchMove={handleBodyTouchMove}
-                        onTouchEnd={handleBodyTouchEnd}
-                        onTouchCancel={handleBodyTouchEnd}
                         className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))] md:max-h-[75vh] md:px-6 md:pt-1 md:pb-4 ${bodyClassName}`}
                     >
                         {children}

@@ -18,7 +18,8 @@ type DashboardRecommendationCardProps = {
   loading?: boolean;
 };
 
-const SWIPE_THRESHOLD = 72;
+const SWIPE_THRESHOLD = 44;
+const GESTURE_DIRECTION_THRESHOLD = 8;
 const EXIT_DURATION_MS = 180;
 
 function InsightRecommendationIcon({ type }: Pick<FinancialInsight, "type">) {
@@ -48,7 +49,9 @@ export function DashboardRecommendationCard({
   const [isDragging, setIsDragging] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [exitDirection, setExitDirection] = useState<-1 | 1 | null>(null);
-  const pointerStartX = useRef<number | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const dragXRef = useRef(0);
+  const gestureIntentRef = useRef<"pending" | "horizontal" | "vertical">("pending");
   const exitTimer = useRef<number | null>(null);
   const resetFrame = useRef<number | null>(null);
 
@@ -113,25 +116,56 @@ export function DashboardRecommendationCard({
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!canCycle || exitDirection !== null) return;
     if (event.target instanceof Element && event.target.closest("a, button")) return;
-    pointerStartX.current = event.clientX;
-    setIsDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+    dragXRef.current = 0;
+    gestureIntentRef.current = "pending";
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging || pointerStartX.current === null) return;
-    setDragX(event.clientX - pointerStartX.current);
+    const pointerStart = pointerStartRef.current;
+    if (!pointerStart || gestureIntentRef.current === "vertical") return;
+
+    const deltaX = event.clientX - pointerStart.x;
+    const deltaY = event.clientY - pointerStart.y;
+
+    if (gestureIntentRef.current === "pending") {
+      if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < GESTURE_DIRECTION_THRESHOLD) return;
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        gestureIntentRef.current = "vertical";
+        return;
+      }
+
+      gestureIntentRef.current = "horizontal";
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setIsDragging(true);
+    }
+
+    dragXRef.current = deltaX;
+    setDragX(deltaX);
   };
 
   const handlePointerEnd = () => {
-    if (!isDragging) return;
-    pointerStartX.current = null;
-    if (Math.abs(dragX) >= SWIPE_THRESHOLD) {
-      finishSwipe(dragX < 0 ? -1 : 1);
+    const finalDragX = dragXRef.current;
+    const completedHorizontalSwipe = gestureIntentRef.current === "horizontal";
+    pointerStartRef.current = null;
+    gestureIntentRef.current = "pending";
+    dragXRef.current = 0;
+
+    if (!completedHorizontalSwipe) return;
+    if (Math.abs(finalDragX) >= SWIPE_THRESHOLD) {
+      finishSwipe(finalDragX < 0 ? -1 : 1);
     } else {
       setIsDragging(false);
       setDragX(0);
     }
+  };
+
+  const handlePointerCancel = () => {
+    pointerStartRef.current = null;
+    gestureIntentRef.current = "pending";
+    dragXRef.current = 0;
+    setIsDragging(false);
+    setDragX(0);
   };
 
   const rotation = exitDirection !== null ? exitDirection * 7 : dragX / 28;
@@ -191,7 +225,7 @@ export function DashboardRecommendationCard({
           aria-roledescription="carousel"
           aria-label={t("insights.deckPosition", { current: activeIndex + 1, total: insights.length })}
           className="relative z-10 cursor-grab select-none active:cursor-grabbing"
-          onPointerCancel={handlePointerEnd}
+          onPointerCancel={handlePointerCancel}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerEnd}
