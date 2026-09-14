@@ -250,6 +250,7 @@ export function Modal({
     const currentYRef = useRef<number>(0);
     const startTimeRef = useRef<number>(0);
     const bodyExpansionActiveRef = useRef(false);
+    const bodyGestureStartedAtTopRef = useRef(false);
     const expansionFrameRef = useRef<number | null>(null);
     const pendingExpansionHeightRef = useRef<number | null>(null);
     const dragHandleRef = useRef<HTMLDivElement>(null);
@@ -313,6 +314,7 @@ export function Modal({
             setDragY(0);
             setIsDragging(false);
             bodyExpansionActiveRef.current = false;
+            bodyGestureStartedAtTopRef.current = false;
             pendingExpansionHeightRef.current = null;
             setExpansionHeight(null);
             setHasExpanded(false);
@@ -335,6 +337,7 @@ export function Modal({
             setDragY(0);
             setIsDragging(false);
             bodyExpansionActiveRef.current = false;
+            bodyGestureStartedAtTopRef.current = false;
             pendingExpansionHeightRef.current = null;
             setExpansionHeight(null);
             setHasExpanded(false);
@@ -823,12 +826,15 @@ export function Modal({
 
     const handleBodyTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         if (isClosing || !isTopModal || sheetDetentRef.current !== "medium") return;
+        const scrollBody = scrollBodyRef.current;
+        if (!scrollBody) return;
         const touch = event.touches[0];
         startYRef.current = touch.clientY;
         currentYRef.current = touch.clientY;
         startTimeRef.current = Date.now();
         clearExpansionPreview();
-        bodyExpansionActiveRef.current = true;
+        bodyGestureStartedAtTopRef.current = scrollBody.scrollTop <= 1;
+        bodyExpansionActiveRef.current = bodyGestureStartedAtTopRef.current;
     };
 
     const handleBodyTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -842,7 +848,11 @@ export function Modal({
 
         // A pull up from the content's top expands the sheet first. Once large,
         // the browser owns subsequent gestures for normal content scrolling.
-        if (deltaY < 0 && scrollBody.scrollTop <= 0) {
+        if (deltaY < 0 && bodyGestureStartedAtTopRef.current) {
+            // Keep this gesture with the sheet. Without resetting the native
+            // scroll position, iOS can start scrolling the content mid-drag
+            // and make the expansion appear to pause.
+            scrollBody.scrollTop = 0;
             if (event.cancelable) event.preventDefault();
             updateExpansionFromGesture(deltaY);
         }
@@ -862,6 +872,7 @@ export function Modal({
             }
         }
         bodyExpansionActiveRef.current = false;
+        bodyGestureStartedAtTopRef.current = false;
     };
 
     // Non-passive TouchMove prevention on drag handle for iOS Safari
@@ -880,6 +891,35 @@ export function Modal({
         });
         return () => {
             handleEl.removeEventListener("touchmove", preventScroll);
+        };
+    }, [mounted]);
+
+    // React touch events are not guaranteed to be non-passive across mobile
+    // browsers. This native listener keeps a top-originating expansion from
+    // leaking into the scroll body during the same finger movement.
+    useEffect(() => {
+        const scrollBody = scrollBodyRef.current;
+        if (!scrollBody) return;
+
+        const preventBodyScrollWhileExpanding = (event: TouchEvent) => {
+            const touch = event.touches[0];
+            if (
+                !touch ||
+                !bodyExpansionActiveRef.current ||
+                !bodyGestureStartedAtTopRef.current ||
+                sheetDetentRef.current !== "medium"
+            ) return;
+
+            if (touch.clientY < startYRef.current && event.cancelable) {
+                event.preventDefault();
+            }
+        };
+
+        scrollBody.addEventListener("touchmove", preventBodyScrollWhileExpanding, {
+            passive: false,
+        });
+        return () => {
+            scrollBody.removeEventListener("touchmove", preventBodyScrollWhileExpanding);
         };
     }, [mounted]);
 
