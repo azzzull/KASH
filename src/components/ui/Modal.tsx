@@ -959,7 +959,7 @@ export function Modal({
 
     const mobileTransition = isDragging || expansionHeight !== null
         ? "none"
-        : "transform 0.32s cubic-bezier(0.22, 0.8, 0.3, 1), max-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1)";
+        : "transform 0.32s cubic-bezier(0.22, 0.8, 0.3, 1), min-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1), max-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1)";
 
     // Backdrop opacity calculation
     const backdropOpacity =
@@ -988,6 +988,13 @@ export function Modal({
               ? `${largeDetentPx}px`
               : `min(${LARGE_DETENT_DVH}dvh, calc(100dvh - env(safe-area-inset-top) - ${LARGE_TOP_GAP_PX}px))`
           : `${MEDIUM_DETENT_DVH}dvh`;
+
+    // A detent is a sheet height, not merely a cap on content height. Without
+    // this minimum, a short form remains visually compact after callers ask
+    // the shared sheet to expand for a picker or focused field.
+    const mobileMinHeight = !hasChildModal && sheetDetent === "large"
+        ? mobileMaxHeight
+        : "0px";
 
     const isBaseModal = stackIndex === 0;
     const backdropClassName = isBaseModal
@@ -1018,13 +1025,14 @@ export function Modal({
                             transform: mobileTransform,
                             transition: mobileTransition,
                             "--mobile-sheet-max-height": mobileMaxHeight,
+                            "--mobile-sheet-min-height": mobileMinHeight,
                         } as React.CSSProperties
                     }
                     tabIndex={-1}
                     data-bottom-sheet-panel="true"
                     data-bottom-sheet-detent={sheetDetent}
                     data-bottom-sheet-expanded={hasExpanded ? "true" : "false"}
-                    className={`kash-bottom-sheet ${isTopModal ? "pointer-events-auto" : "pointer-events-none"} flex max-h-[var(--mobile-sheet-max-height)] w-full flex-col ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:block md:max-h-[85vh] md:rounded-2xl md:pb-6 md:!transform-none md:transition-all md:duration-200 ${
+                    className={`kash-bottom-sheet ${isTopModal ? "pointer-events-auto" : "pointer-events-none"} flex min-h-[var(--mobile-sheet-min-height)] max-h-[var(--mobile-sheet-max-height)] w-full flex-col ${maxWidthClasses[maxWidth]} overflow-hidden rounded-t-2xl bg-white text-left shadow-2xl md:block md:min-h-0 md:max-h-[85vh] md:rounded-2xl md:pb-6 md:!transform-none md:transition-all md:duration-200 ${
                         entered && !isClosing
                             ? "md:scale-100 md:opacity-100"
                             : "md:scale-95 md:opacity-0"
