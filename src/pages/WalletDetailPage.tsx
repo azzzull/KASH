@@ -1156,7 +1156,9 @@ export function WalletDetailPage() {
           <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 bg-white">
             {recentTransactions.map((tx) => {
               const IconComp = transactionIcon(tx.type);
-              const title = transactionTitle(tx);
+              const title = tx.title === "Reimbursement Received" && tx.related_entity_type === "receivable_payment"
+                ? t("reimbursement.received")
+                : transactionTitle(tx);
               const tone = transactionTone[tx.type];
               const formattedDate = formatDate(new Date(tx.transaction_date));
               const isSourceWallet = tx.wallet_id === wallet.id;

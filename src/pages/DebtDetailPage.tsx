@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
 import { DatePickerField } from "../components/ui/DatePickerField";
@@ -54,16 +54,22 @@ import { SettlementModal } from "./DebtsPage";
 import { recordCrossSpaceSettlement } from "../lib/transactions";
 import { supabase } from "../lib/supabase";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
+import { ReimbursementReceiptsPanel } from "../components/debts/ReimbursementReceiptsPanel";
+import { getManagedReimbursementHistory } from "../lib/reimbursementReceipts";
+
+type ManagedReimbursementHistoryRow = Awaited<ReturnType<typeof getManagedReimbursementHistory>>[number];
 
 type ActiveTab = "active" | "settled" | "history";
 
 export function DebtDetailPage() {
   const { counterpartyId } = useParams<{ counterpartyId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, formatDate, formatCurrency } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<CounterpartyDetail | null>(null);
+  const [managedHistory, setManagedHistory] = useState<Map<string, ManagedReimbursementHistoryRow>>(new Map());
   const [activeTab, setActiveTab] = useState<ActiveTab>("active");
 
   const [settlementTarget, setSettlementTarget] = useState<DebtType | null>(null);
@@ -74,7 +80,14 @@ export function DebtDetailPage() {
   const [renameModalOpen, setRenameModalOpen] = useState(false);
 
   // Must be called unconditionally (before any early returns)
-  const { activeSpace, userRole, loading: spaceLoading } = useActiveSpace();
+  const { activeSpace, userRole, loading: spaceLoading, spaces, setActiveSpace } = useActiveSpace();
+  useEffect(() => {
+    if (spaceLoading) return;
+    const requestedSpaceId = new URLSearchParams(location.search).get("space_id");
+    if (!requestedSpaceId || requestedSpaceId === activeSpace?.id) return;
+    const requestedSpace = spaces.find((space) => space.id === requestedSpaceId && space.space_type === "personal" && !space.is_archived && !space.deleted_at);
+    if (requestedSpace) setActiveSpace(requestedSpace);
+  }, [location.search, spaceLoading, activeSpace?.id, spaces, setActiveSpace]);
   // Only Owner/Admin may settle Managed cross-space reimbursement Payables.
   const isManagedSpace = activeSpace?.space_type === "managed";
   const canSettleManagedCrossSpace = isManagedSpace && (userRole === "owner" || userRole === "admin");
@@ -85,12 +98,19 @@ export function DebtDetailPage() {
       setLoading(true);
       const data = await getCounterpartyDetail(counterpartyId);
       setDetail(data);
+      if (canSettleManagedCrossSpace) {
+        const eventIds = [...new Set(data.debts.filter((debt) => debt.cross_space_role === "managed_payable" && debt.cross_space_event_id).map((debt) => debt.cross_space_event_id!))];
+        const history = await Promise.all(eventIds.map((eventId) => getManagedReimbursementHistory(eventId)));
+        setManagedHistory(new Map(history.flat().map((row) => [row.settlement_id, row])));
+      } else {
+        setManagedHistory(new Map());
+      }
     } catch (err) {
       console.error("Failed to load counterparty detail", err);
     } finally {
       setLoading(false);
     }
-  }, [counterpartyId, spaceLoading]);
+  }, [counterpartyId, spaceLoading, canSettleManagedCrossSpace]);
 
   useEffect(() => {
     if (!spaceLoading) {
@@ -249,6 +269,13 @@ export function DebtDetailPage() {
         }
       />
 
+      {activeSpace?.space_type === "personal" && (
+        <ReimbursementReceiptsPanel
+          personalSpaceId={activeSpace.id}
+          eventIds={debts.filter((debt) => debt.cross_space_role === "personal_receivable" && debt.cross_space_event_id).map((debt) => debt.cross_space_event_id!)}
+        />
+      )}
+
       {/* Primary Actions Row Below Hero - Single Horizontal Scrollable Row Aligned Left */}
       <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {summary.totalDebtRemaining > 0 && !hasCrossSpaceManagedPayable && (
@@ -341,8 +368,8 @@ export function DebtDetailPage() {
                       : undefined
                     : () => setSettlingItem(item)
                 }
-                onEdit={() => setEditingItem(item)}
-                onDelete={() => setDeletingItem(item)}
+                onEdit={item.cross_space_event_id ? undefined : () => setEditingItem(item)}
+                onDelete={item.cross_space_event_id ? undefined : () => setDeletingItem(item)}
               />
             ))
           )}
@@ -361,8 +388,8 @@ export function DebtDetailPage() {
               <ItemCard
                 key={item.debt_id}
                 item={item}
-                onEdit={() => setEditingItem(item)}
-                onDelete={() => setDeletingItem(item)}
+                onEdit={item.cross_space_event_id ? undefined : () => setEditingItem(item)}
+                onDelete={item.cross_space_event_id ? undefined : () => setDeletingItem(item)}
               />
             ))
           )}
@@ -378,7 +405,7 @@ export function DebtDetailPage() {
               <p className="mt-1 text-xs font-semibold text-slate-600">{t("debts.noSettlementHistoryDesc") || "Catatan pembayaran dan penerimaan akan tercantum di sini."}</p>
             </div>
           ) : (
-            payments.map((payment) => <PaymentHistoryCard key={payment.id} payment={payment} />)
+            payments.map((payment) => <PaymentHistoryCard key={payment.id} payment={payment} managedHistory={payment.cross_space_settlement_id ? managedHistory.get(payment.cross_space_settlement_id) : undefined} />)
           )}
         </div>
       )}
@@ -487,8 +514,8 @@ function ItemCard({
 }: {
   item: DebtProgress;
   onSettle?: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const { t, formatDate, formatCurrency } = useI18n();
   const isDebt = item.type === "debt";
@@ -516,22 +543,22 @@ function ItemCard({
         </div>
 
         <div className="flex items-center gap-1">
-          <button
+          {onEdit && <button
             type="button"
             onClick={onEdit}
             aria-label={t("common.edit")}
             className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           >
             <Edit3 size={15} />
-          </button>
-          <button
+          </button>}
+          {onDelete && <button
             type="button"
             onClick={onDelete}
             aria-label={t("common.delete")}
             className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-kash-expense"
           >
             <Trash2 size={15} />
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -614,11 +641,11 @@ function ItemCard({
   );
 }
 
-function PaymentHistoryCard({ payment }: { payment: DebtPaymentWithMeta }) {
+function PaymentHistoryCard({ payment, managedHistory }: { payment: DebtPaymentWithMeta; managedHistory?: ManagedReimbursementHistoryRow }) {
   const { t, formatDate, formatCurrency } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const isDebt = payment.debt_type === "debt";
-  const isWallet = payment.payment_mode === "wallet";
+  const isWallet = payment.payment_mode === "wallet" && !payment.cross_space_settlement_id;
 
   const formattedDate = formatDate(new Date(payment.payment_date));
 
@@ -636,11 +663,16 @@ function PaymentHistoryCard({ payment }: { payment: DebtPaymentWithMeta }) {
             </span>
 
             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">
-              {isWallet ? `${t("wallets.walletFallback") || "Dompet"}: ${payment.wallet?.name ?? "KASH Wallet"}` : (t("debts.recordPreviousPaymentTab") || "Riwayat Lampau (Luar Dompet)")}
+              {managedHistory
+                ? (managedHistory.settlement_source === "external_direct" ? t("reimbursement.externalDirect") : t("reimbursement.managedWallet"))
+                : payment.cross_space_settlement_id
+                  ? t("reimbursement.paymentRecorded")
+                  : isWallet ? `${t("wallets.walletFallback") || "Dompet"}: ${payment.wallet?.name ?? "KASH Wallet"}` : (t("debts.recordPreviousPaymentTab") || "Riwayat Lampau (Luar Dompet)")}
             </span>
           </div>
 
           <p className="mt-1 text-xs font-semibold text-slate-600">{formattedDate}</p>
+          {managedHistory && <p className="mt-1 text-xs font-semibold text-slate-600">{t("reimbursement.recordedBy", { name: managedHistory.recorded_by_name })} · {managedHistory.allocation_status === "pending" ? t("reimbursement.allocationPending") : managedHistory.allocation_status === "allocated" ? t("reimbursement.allocated") : t("reimbursement.legacyAllocation")}</p>}
           {payment.note && <p className="mt-1 text-xs font-medium text-slate-700">{payment.note}</p>}
         </div>
 
@@ -1514,6 +1546,8 @@ function CrossSpaceItemSettlementModal({
   const remaining = toNumber(item.remaining_amount);
   const [amount, setAmount] = useState("");
   const [managedWalletId, setManagedWalletId] = useState("");
+  const [settlementSource, setSettlementSource] = useState<"managed_wallet" | "external_direct">("external_direct");
+  const [clientRequestId] = useState(() => crypto.randomUUID());
   
   const [paymentDate, setPaymentDate] = useState(() => {
     const now = new Date();
@@ -1548,7 +1582,7 @@ function CrossSpaceItemSettlementModal({
   const remainingAfterPayment = Math.max(0, remaining - parsedAmount);
   const selectedManagedWallet = managedWallets.find((wallet) => wallet.id === managedWalletId) ?? null;
   const selectedManagedWalletBalance = selectedManagedWallet?.balance?.current_balance ?? selectedManagedWallet?.initial_balance ?? "0";
-  const hasInsufficientBalance = Boolean(
+  const hasInsufficientBalance = settlementSource === "managed_wallet" && Boolean(
     selectedManagedWallet && parsedAmount > 0 && isMoneyGreaterThan(parsedAmount, selectedManagedWalletBalance)
   );
 
@@ -1562,7 +1596,7 @@ function CrossSpaceItemSettlementModal({
       setError(t("debts.amountExceedsItemBalance", { remaining: formatCurrency(remaining, "IDR") }) || `Nominal tidak boleh melebihi sisa tagihan item (${formatCurrency(remaining, "IDR")}).`);
       return;
     }
-    if (!managedWalletId) {
+    if (settlementSource === "managed_wallet" && !managedWalletId) {
       setError(t("debts.selectWalletError") || "Pilih dompet Managed.");
       return;
     }
@@ -1578,9 +1612,11 @@ function CrossSpaceItemSettlementModal({
       await recordCrossSpaceSettlement({
         eventId: item.cross_space_event_id!,
         amount: parsedAmount,
-        managedWalletId,
+        settlementSource,
+        managedWalletId: settlementSource === "managed_wallet" ? managedWalletId : null,
         settlementDate: paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString(),
         note: note.trim() || undefined,
+        clientRequestId,
       });
 
       onSaved();
@@ -1604,12 +1640,13 @@ function CrossSpaceItemSettlementModal({
         <div>
           <div className="flex items-center gap-2">
             <span className="rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-black uppercase text-purple-700">
-              Settlement Cross-Space
+              {t("reimbursement.settleTitle")}
             </span>
           </div>
           <h2 className="mt-1 text-xl font-extrabold text-slate-900">
             {item.title}
           </h2>
+          <p className="mt-1 text-sm font-semibold text-slate-700">{t("reimbursement.recipient")}: {counterparty.name}</p>
           <p className="mt-1 text-sm font-semibold text-slate-700">
             {t("debts.remainingItemBill") || "Sisa Tagihan Item"}:{" "}
             <span className="font-bold text-slate-900">{formatCurrency(remaining, "IDR")}</span>
@@ -1650,7 +1687,21 @@ function CrossSpaceItemSettlementModal({
             />
           </div>
 
-          <SelectField
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-bold text-slate-900">{t("reimbursement.paymentSource")}</legend>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-800">
+              <input type="radio" name="reimbursement-source" checked={settlementSource === "managed_wallet"} onChange={() => setSettlementSource("managed_wallet")} className="accent-kash-emerald" />
+              {t("reimbursement.managedWallet")}
+            </label>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-800">
+              <input type="radio" name="reimbursement-source" checked={settlementSource === "external_direct"} onChange={() => setSettlementSource("external_direct")} className="accent-kash-emerald" />
+              {t("reimbursement.externalDirect")}
+            </label>
+          </fieldset>
+
+          {settlementSource === "external_direct" && <p className="text-xs text-slate-600">{t("reimbursement.directHelper")}</p>}
+
+          {settlementSource === "managed_wallet" && <SelectField
             id="cross-space-managed-wallet"
             label={`${t("debts.payFromWalletLabel") || "Pilih Dompet Pembayar (Managed)"} *`}
             value={managedWalletId}
@@ -1663,9 +1714,9 @@ function CrossSpaceItemSettlementModal({
                 {w.name} ({formatCurrency(w.balance?.current_balance ?? w.initial_balance, w.currency)})
               </option>
             ))}
-          </SelectField>
+          </SelectField>}
 
-          {selectedManagedWallet ? (
+          {settlementSource === "managed_wallet" && selectedManagedWallet ? (
             <div className={`rounded-lg border px-3 py-2 text-xs font-semibold ${hasInsufficientBalance ? "border-kash-expense/30 bg-kash-expense/10 text-slate-900" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
               <p>
                 {t("debts.availableWalletBalance") || "Saldo tersedia"}: {formatCurrency(selectedManagedWalletBalance, selectedManagedWallet.currency)}
@@ -1700,7 +1751,7 @@ function CrossSpaceItemSettlementModal({
           <div className="mt-2">
             <Button disabled={saving || hasInsufficientBalance} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
-              {t("debts.confirmPayThisItem") || "Konfirmasi Pembayaran Item Ini"}
+              {t("reimbursement.markPaid")}
             </Button>
           </div>
         </form>

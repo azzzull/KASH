@@ -77,15 +77,17 @@ function walletBalanceAt(wallet: Wallet, transactions: Transaction[], endExclusi
 async function getFinancialHealth(space: FinancialSpace, period: ReportPeriod, wallets: Wallet[]) {
   if (space.space_type === "managed") return undefined;
   const range = reportQueryRange(period); const beginningExclusive = range.start;
-  const [historicalTransactions, goalsResult, contributionsResult, debtsResult] = await Promise.all([
+  const [historicalTransactions, goalsResult, contributionsResult, debtsResult, receiptsResult] = await Promise.all([
     getTransactionsBefore(space.id, range.endExclusive),
     supabase.from("goals").select("*").eq("space_id", space.id).neq("status", "cancelled"),
     supabase.from("goal_contributions").select("*").gte("contribution_date", period.start).lte("contribution_date", period.end),
     supabase.from("debts").select("*").eq("space_id", space.id),
+    supabase.from("reimbursement_receipts").select("amount,payment_date,destination_wallet_id").eq("personal_space_id", space.id),
   ]);
   if (goalsResult.error) throw goalsResult.error;
   if (contributionsResult.error) throw contributionsResult.error;
   if (debtsResult.error) throw debtsResult.error;
+  if (receiptsResult.error) throw receiptsResult.error;
   const goals = (goalsResult.data ?? []) as Goal[]; const contributions = (contributionsResult.data ?? []) as GoalContribution[]; const debts = (debtsResult.data ?? []) as Debt[];
   const debtIds = debts.map((debt) => debt.id);
   const { data: allocationsRaw, error: allocationError } = debtIds.length ? await supabase.from("debt_payment_allocations").select("*").in("debt_id", debtIds) : { data: [], error: null };
@@ -108,7 +110,8 @@ async function getFinancialHealth(space: FinancialSpace, period: ReportPeriod, w
     return { id: goal.id, name: goal.name, target, progress, progressPercent: target > 0 ? Math.min(100, progress / target * 100) : 0, remaining: Math.max(0, target - progress), contributedDuringPeriod, progressAtPeriodEnd: true };
   });
   const investmentValuationLimited = wallets.some((wallet) => wallet.wallet_type === "investment" && wallet.current_market_value !== null);
-  const netWorthAt = (cutoff: string) => wallets.filter((wallet) => wallet.include_in_net_worth).reduce((sum, wallet) => sum + walletBalanceAt(wallet, historicalTransactions, cutoff), 0) + outstandingAt("receivable", cutoff) - outstandingAt("debt", cutoff);
+  const includedWalletIds = new Set(wallets.filter((wallet) => wallet.include_in_net_worth).map((wallet) => wallet.id));
+  const netWorthAt = (cutoff: string) => wallets.filter((wallet) => wallet.include_in_net_worth).reduce((sum, wallet) => sum + walletBalanceAt(wallet, historicalTransactions, cutoff), 0) + outstandingAt("receivable", cutoff) - outstandingAt("debt", cutoff) + (receiptsResult.data ?? []).filter((receipt) => receipt.payment_date < cutoff && (!receipt.destination_wallet_id || !includedWalletIds.has(receipt.destination_wallet_id))).reduce((sum, receipt) => sum + toNumber(receipt.amount), 0);
   const beginningNetWorth = netWorthAt(beginningExclusive); const endingNetWorth = netWorthAt(range.endExclusive); const change = endingNetWorth - beginningNetWorth;
   return { position: { beginningNetWorth, endingNetWorth, change, changePercent: beginningNetWorth === 0 ? null : change / Math.abs(beginningNetWorth) * 100, investmentValuationLimited }, budgets, goals: goalData, receivables: { outstanding: outstandingAt("receivable", range.endExclusive), collectedDuringPeriod: paidInPeriod("receivable") }, debts: { outstanding: outstandingAt("debt", range.endExclusive), paidDuringPeriod: paidInPeriod("debt") } };
 }

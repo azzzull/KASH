@@ -242,6 +242,7 @@ export function TransactionDetailModal({
   const isAdvanceEvent = crossSpaceDetails?.eventType === "personal_advance_to_managed";
 
   const getTranslatedTitle = () => {
+    if (transaction.title === "Reimbursement Received" && transaction.related_entity_type === "receivable_payment") return t("reimbursement.received");
     if (transaction.title) return transaction.title;
     if (isReimbursableEvent) return t("reimbursable.title") || "Pengeluaran Reimburse";
     if (isAdvanceEvent) return t("spaces.personalAdvance") || "Talangan ke Managed";

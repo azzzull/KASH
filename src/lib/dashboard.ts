@@ -10,7 +10,7 @@ import { getMonthlyBudgets } from "./budgets";
 import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation, type SpendableCashBreakdown } from "./financialMetrics";
 import { getSpendableCash } from "./financialMetricsService";
 import { detectFinancialInsights, summarizeUnbudgetedSpending, type FinancialInsight } from "./financialInsights";
-import type { Category, Envelope, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
+import type { Category, Debt, DebtPayment, DebtPaymentAllocation, Envelope, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
   bank: "#10B981",
@@ -504,6 +504,13 @@ export async function getDashboardSummary(
     ? supabase.from("goal_progress_view").select("*")
     : supabase.from("goal_progress_view").select("*").eq("user_id", userId);
 
+  const pendingReceiptsQuery = targetSpaceId
+    ? supabase.from("reimbursement_receipts").select("amount,payment_date,destination_wallet_id").eq("personal_space_id", targetSpaceId)
+    : supabase.from("reimbursement_receipts").select("amount,payment_date,destination_wallet_id").eq("recipient_user_id", userId);
+  const debtHistoryQuery = targetSpaceId
+    ? supabase.from("debts").select("*").eq("space_id", targetSpaceId)
+    : supabase.from("debts").select("*").eq("user_id", userId);
+
   const [
     walletResult,
     balanceResult,
@@ -517,6 +524,8 @@ export async function getDashboardSummary(
     goalProgressResult,
     debtSummaryResult,
     sharedSavingsResult,
+    pendingReceiptsResult,
+    debtHistoryResult,
   ] = await Promise.all([
     walletQuery,
     walletBalanceQuery,
@@ -530,6 +539,8 @@ export async function getDashboardSummary(
     goalProgressQuery,
     getCounterparties(undefined, targetSpaceId ?? undefined),
     sharedSavingsQuery,
+    pendingReceiptsQuery,
+    debtHistoryQuery,
   ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -543,6 +554,8 @@ export async function getDashboardSummary(
   if (goalResult.error) throw goalResult.error;
   if (goalProgressResult.error) throw goalProgressResult.error;
   if (sharedSavingsResult.error) throw sharedSavingsResult.error;
+  if (pendingReceiptsResult.error) throw pendingReceiptsResult.error;
+  if (debtHistoryResult.error) throw debtHistoryResult.error;
 
   const balancesByWalletId = new Map((balanceResult.data ?? []).map((balance) => [balance.wallet_id, balance]));
   const wallets = (walletResult.data ?? []).map((wallet) => ({
@@ -567,6 +580,30 @@ export async function getDashboardSummary(
 
   const totalDebt = debtSummaryResult.totalDebt;
   const totalReceivable = debtSummaryResult.totalReceivable;
+  const includedWalletIds = new Set(wallets.filter((wallet) => wallet.include_in_net_worth).map((wallet) => wallet.id));
+  const receiptAssets = (pendingReceiptsResult.data ?? []).filter((receipt) => !receipt.destination_wallet_id || !includedWalletIds.has(receipt.destination_wallet_id));
+  const receiptAssetAmount = receiptAssets.reduce((sum, receipt) => sum + toNumber(receipt.amount), 0);
+  const previousReceiptAssetAmount = receiptAssets
+    .filter((receipt) => receipt.payment_date < previousMonth.end.toISOString())
+    .reduce((sum, receipt) => sum + toNumber(receipt.amount), 0);
+  const debts = (debtHistoryResult.data ?? []) as Debt[];
+  const debtIds = debts.map((debt) => debt.id);
+  const { data: allocationsRaw, error: allocationError } = debtIds.length
+    ? await supabase.from("debt_payment_allocations").select("*").in("debt_id", debtIds)
+    : { data: [], error: null };
+  if (allocationError) throw allocationError;
+  const allocations = (allocationsRaw ?? []) as DebtPaymentAllocation[];
+  const paymentIds = [...new Set(allocations.map((allocation) => allocation.debt_payment_id))];
+  const { data: paymentsRaw, error: paymentError } = paymentIds.length
+    ? await supabase.from("debt_payments").select("*").in("id", paymentIds)
+    : { data: [], error: null };
+  if (paymentError) throw paymentError;
+  const paymentsById = new Map(((paymentsRaw ?? []) as DebtPayment[]).map((payment) => [payment.id, payment]));
+  const previousOutstanding = (type: Debt["type"]) => debts
+    .filter((debt) => debt.type === type && debt.status !== "cancelled" && debt.created_at < previousMonth.end.toISOString())
+    .reduce((sum, debt) => sum + Math.max(0, toNumber(debt.original_amount) - allocations
+      .filter((allocation) => allocation.debt_id === debt.id && (paymentsById.get(allocation.debt_payment_id)?.payment_date ?? "") < previousMonth.end.toISOString())
+      .reduce((paid, allocation) => paid + toNumber(allocation.allocated_amount), 0)), 0);
   const activeDebtCount = debtSummaryResult.allCounterparties.reduce((sum, cp) => sum + cp.activeDebtCount, 0);
   const activeReceivableCount = debtSummaryResult.allCounterparties.reduce((sum, cp) => sum + cp.activeReceivableCount, 0);
 
@@ -627,12 +664,13 @@ export async function getDashboardSummary(
     .filter((wallet) => wallet.includeInNetWorth && !isLiquidWallet(wallet.walletType) && wallet.walletType !== "savings" && wallet.walletType !== "investment")
     .reduce((sum, wallet) => sum + wallet.balance, 0);
 
-  const netWorth = availableCash + savingsTotal + investmentsTotal + otherWalletsTotal + totalReceivable - totalDebt;
+  const netWorth = availableCash + savingsTotal + investmentsTotal + otherWalletsTotal + receiptAssetAmount + totalReceivable - totalDebt;
   const previousPeriodNetWorth =
     walletNetWorthAt(wallets, netWorthTransactions, previousMonth.end) +
     sharedSavingsShares +
-    totalReceivable -
-    totalDebt;
+    previousReceiptAssetAmount +
+    previousOutstanding("receivable") -
+    previousOutstanding("debt");
 
   let spendableCash: SpendableCashBreakdown | null = null;
   if (!isManagedSpace) {
@@ -720,7 +758,7 @@ export async function getDashboardSummary(
       investments: investmentsTotal,
       debt: totalDebt,
       receivables: totalReceivable,
-      other: otherWalletsTotal,
+      other: otherWalletsTotal + receiptAssetAmount,
     },
     availableBalance: { amount: availableCash },
     monthlyIncome: { amount: currentMonthMetrics.income },

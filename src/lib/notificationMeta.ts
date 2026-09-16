@@ -214,7 +214,9 @@ export function getNotificationContent(
       const remaining = notificationMetadataNumber(notification, "remaining_amount");
       return {
         title: t("notifications.managedReimbursementPartiallyPaidTitle"),
-        message: t("notifications.managedReimbursementPartiallyPaidMessage", {
+        message: t(notification.metadata?.settlement_source === "external_direct"
+          ? "notifications.managedReimbursementPartiallyPaidDirectMessage"
+          : "notifications.managedReimbursementPartiallyPaidMessage", {
           actor: notificationMetadataString(notification, "settled_by_name", "Pengguna"),
           amount: Number.isFinite(amount) ? formatCurrency(amount, "IDR") : "-",
           remaining: Number.isFinite(remaining) ? formatCurrency(remaining, "IDR") : "-",
@@ -226,7 +228,9 @@ export function getNotificationContent(
       const amount = notificationMetadataNumber(notification, "amount");
       return {
         title: t("notifications.managedReimbursementPaidTitle"),
-        message: t("notifications.managedReimbursementPaidMessage", {
+        message: t(notification.metadata?.settlement_source === "external_direct"
+          ? "notifications.managedReimbursementPaidDirectMessage"
+          : "notifications.managedReimbursementPaidMessage", {
           actor: notificationMetadataString(notification, "settled_by_name", "Pengguna"),
           amount: Number.isFinite(amount) ? formatCurrency(amount, "IDR") : "-",
           space,
@@ -247,6 +251,12 @@ export function getNotificationTargetPath(notification: Notification): string | 
     case "recurring_obligation":
       return `/subscriptions/${notification.entity_id}`;
     case "counterparty":
+      if ((notification.type === "managed_reimbursement_paid" || notification.type === "managed_reimbursement_partially_paid")
+        && typeof notification.metadata?.settlement_id === "string") {
+        const spaceId = notification.metadata?.target_space_id;
+        const spaceQuery = typeof spaceId === "string" ? `&space_id=${encodeURIComponent(spaceId)}` : "";
+        return `/debts/${notification.entity_id}?settlement_id=${encodeURIComponent(notification.metadata.settlement_id)}${spaceQuery}`;
+      }
       return `/debts/${notification.entity_id}`;
     case "debt":
     case "receivable":

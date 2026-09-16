@@ -20,6 +20,7 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
+import { ReimbursementReceiptsPanel } from "../components/debts/ReimbursementReceiptsPanel";
 import { Button } from "../components/ui/Button";
 import { ContextualCreateAction } from "../components/ui/ContextualCreateAction";
 import { DatePickerField } from "../components/ui/DatePickerField";
@@ -59,7 +60,7 @@ export function DebtsPage() {
   const { t } = useI18n();
   const terms = useSpaceTerminology();
   const navigate = useNavigate();
-  const { activeSpaceId, loading: spaceLoading } = useActiveSpace();
+  const { activeSpaceId, activeSpace, loading: spaceLoading } = useActiveSpace();
   const [loading, setLoading] = useState(true);
   const [counterparties, setCounterparties] = useState<CounterpartyWithSummary[]>([]);
   const [allCounterparties, setAllCounterparties] = useState<Counterparty[]>([]);
@@ -174,6 +175,10 @@ export function DebtsPage() {
           </div>
         }
       />
+
+      {activeSpace?.space_type === "personal" && activeSpaceId && (
+        <ReimbursementReceiptsPanel personalSpaceId={activeSpaceId} pendingOnly />
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -9,7 +9,7 @@ import { getSpendableCash } from "./financialMetricsService";
 import { getCounterparties } from "./debts";
 import { getMonthlyBudgets } from "./budgets";
 import { detectFinancialInsights, summarizeUnbudgetedSpending, type FinancialInsight } from "./financialInsights";
-import type { Category, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
+import type { Category, Debt, DebtPayment, DebtPaymentAllocation, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
 
 export type AnalyticsPeriodKey = "this_month" | "last_month" | "3_months" | "6_months" | "this_year" | "custom";
 export type AnalyticsAggregation = "daily" | "monthly";
@@ -377,9 +377,9 @@ function buildWalletDistribution(wallets: WalletWithBalance[]): AnalyticsWalletD
     .sort((first, second) => second.amount - first.amount);
 }
 
-function buildNetWorthTrend(period: AnalyticsPeriod, wallets: WalletWithBalance[], transactionsUntilEnd: Transaction[]): AnalyticsNetWorthPoint[] {
+function buildNetWorthTrend(period: AnalyticsPeriod, wallets: WalletWithBalance[], transactionsUntilEnd: Transaction[], additionalAssetsAt?: (cutoff: string) => number): AnalyticsNetWorthPoint[] {
   return periodBucketRanges(period).map((bucket) => ({
-    amount: walletNetWorthAt(wallets, transactionsUntilEnd, bucket.end),
+    amount: walletNetWorthAt(wallets, transactionsUntilEnd, bucket.end) + (additionalAssetsAt?.(bucket.end.toISOString()) ?? 0),
     key: bucket.key,
     label: bucket.label,
   }));
@@ -438,6 +438,7 @@ export async function getAnalyticsSummary(
   const period = resolvePeriod(options);
   const currentStart = period.start;
   const currentEnd = period.end;
+  const isManagedSpace = options.isManagedSpace ?? false;
 
   let walletQuery = supabase
     .from("wallets")
@@ -508,7 +509,14 @@ export async function getAnalyticsSummary(
     ? supabase.from("wallet_balance_view").select("*")
     : supabase.from("wallet_balance_view").select("*").eq("user_id", userId);
 
-  const [walletResult, balanceResult, categoryResult, envelopeResult, currentTransactionResult, previousTransactionResult, historicalTransactionResult] =
+  const debtQuery = targetSpaceId
+    ? supabase.from("debts").select("*").eq("space_id", targetSpaceId)
+    : supabase.from("debts").select("*").eq("user_id", userId);
+  const receiptQuery = targetSpaceId
+    ? supabase.from("reimbursement_receipts").select("amount,payment_date,destination_wallet_id").eq("personal_space_id", targetSpaceId)
+    : supabase.from("reimbursement_receipts").select("amount,payment_date,destination_wallet_id").eq("recipient_user_id", userId);
+
+  const [walletResult, balanceResult, categoryResult, envelopeResult, currentTransactionResult, previousTransactionResult, historicalTransactionResult, debtResult, receiptResult] =
     await Promise.all([
       walletQuery,
       walletBalanceQuery,
@@ -517,6 +525,8 @@ export async function getAnalyticsSummary(
       currentTxnQuery,
       prevTxnQuery,
       histTxnQuery,
+      isManagedSpace ? Promise.resolve({ data: [], error: null }) : debtQuery,
+      isManagedSpace ? Promise.resolve({ data: [], error: null }) : receiptQuery,
     ]);
 
   if (walletResult.error) throw walletResult.error;
@@ -526,6 +536,8 @@ export async function getAnalyticsSummary(
   if (currentTransactionResult.error) throw currentTransactionResult.error;
   if (previousTransactionResult.error) throw previousTransactionResult.error;
   if (historicalTransactionResult.error) throw historicalTransactionResult.error;
+  if (debtResult.error) throw debtResult.error;
+  if (receiptResult.error) throw receiptResult.error;
 
   const balancesByWalletId = new Map((balanceResult.data ?? []).map((balance) => [balance.wallet_id, balance]));
   const wallets = (walletResult.data ?? []).map((wallet) => ({
@@ -550,10 +562,34 @@ export async function getAnalyticsSummary(
     }));
   const currentMetrics = financialMetrics(currentTransactions);
   const previousMetrics = financialMetrics(previousTransactions);
-  const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions);
-  const walletNetWorth = netWorthTrend.length > 0 ? netWorthTrend[netWorthTrend.length - 1].amount : 0;
+  const debts = (debtResult.data ?? []) as Debt[];
+  const debtIds = debts.map((debt) => debt.id);
+  const { data: allocationsRaw, error: allocationError } = debtIds.length
+    ? await supabase.from("debt_payment_allocations").select("*").in("debt_id", debtIds)
+    : { data: [], error: null };
+  if (allocationError) throw allocationError;
+  const allocations = (allocationsRaw ?? []) as DebtPaymentAllocation[];
+  const paymentIds = [...new Set(allocations.map((allocation) => allocation.debt_payment_id))];
+  const { data: paymentsRaw, error: paymentError } = paymentIds.length
+    ? await supabase.from("debt_payments").select("*").in("id", paymentIds)
+    : { data: [], error: null };
+  if (paymentError) throw paymentError;
+  const paymentsById = new Map(((paymentsRaw ?? []) as DebtPayment[]).map((payment) => [payment.id, payment]));
+  const includedWalletIds = new Set(wallets.filter((wallet) => wallet.include_in_net_worth).map((wallet) => wallet.id));
+  const additionalAssetsAt = (cutoff: string) => {
+    const outstanding = (type: Debt["type"]) => debts
+      .filter((debt) => debt.type === type && debt.status !== "cancelled" && debt.created_at < cutoff)
+      .reduce((sum, debt) => sum + Math.max(0, toNumber(debt.original_amount) - allocations
+        .filter((allocation) => allocation.debt_id === debt.id && (paymentsById.get(allocation.debt_payment_id)?.payment_date ?? "") < cutoff)
+        .reduce((paid, allocation) => paid + toNumber(allocation.allocated_amount), 0)), 0);
+    const pending = (receiptResult.data ?? [])
+      .filter((receipt) => receipt.payment_date < cutoff && (!receipt.destination_wallet_id || !includedWalletIds.has(receipt.destination_wallet_id)))
+      .reduce((sum, receipt) => sum + toNumber(receipt.amount), 0);
+    return outstanding("receivable") - outstanding("debt") + pending;
+  };
+  const netWorthTrend = buildNetWorthTrend(period, wallets, historicalTransactions, isManagedSpace ? undefined : additionalAssetsAt);
+  const walletNetWorth = walletNetWorthAt(wallets, historicalTransactions, new Date(period.end));
   const previousWalletNetWorth = walletNetWorthAt(wallets, historicalTransactions, new Date(period.previousEnd));
-  const isManagedSpace = options.isManagedSpace ?? false;
 
   const moneyFlow = isManagedSpace
     ? null

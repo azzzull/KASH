@@ -405,19 +405,20 @@ export async function recordCrossSpaceAdvance(input: {
 export async function recordCrossSpaceSettlement(input: {
   eventId: string;
   amount: number;
-  managedWalletId: string;
-  personalWalletId?: string | null;
+  settlementSource: "managed_wallet" | "external_direct";
+  managedWalletId: string | null;
   settlementDate: string;
   note?: string;
+  clientRequestId: string;
 }) {
   await getAuthenticatedUserId();
-  const { data, error } = await supabase.rpc("record_cross_space_settlement", {
-    p_client_request_id: crypto.randomUUID(),
+  const { data, error } = await supabase.rpc("record_reimbursement_settlement_v2", {
+    p_client_request_id: input.clientRequestId,
     p_event_id: input.eventId,
     p_amount: input.amount,
+    p_settlement_source: input.settlementSource,
     p_managed_wallet_id: input.managedWalletId,
-    p_personal_wallet_id: null,
-    p_settlement_date: input.settlementDate,
+    p_payment_date: input.settlementDate,
     p_note: input.note ?? null,
   });
   if (error) throw error;

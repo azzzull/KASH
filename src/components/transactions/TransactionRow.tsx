@@ -90,7 +90,9 @@ export function TransactionRow({
     categoryLabel = transaction.category?.name ?? (t("categories.uncategorized") || "Tanpa Kategori");
   }
 
-  const title = transaction.title || (transaction.type === "transfer"
+  const title = transaction.title === "Reimbursement Received" && transaction.related_entity_type === "receivable_payment"
+    ? t("reimbursement.received")
+    : transaction.title || (transaction.type === "transfer"
     ? `${t("transactions.transferTo") || "Transfer ke"} ${transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")}`
     : externalTransfer
       ? t("transactions.outgoingTransfer") || "Transfer Keluar"

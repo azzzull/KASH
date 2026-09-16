@@ -64,6 +64,7 @@ import type {
   SharedSavingsMemberShare,
   CrossSpaceEvent,
   CrossSpaceSettlement,
+  ReimbursementReceipt,
   CrossSpaceEventType,
   CrossSpaceTxRole,
   CrossSpaceDebtRole,
@@ -621,6 +622,12 @@ export type Database = {
         Update: Partial<CrossSpaceSettlement>;
         Relationships: [];
       };
+      reimbursement_receipts: {
+        Row: ReimbursementReceipt;
+        Insert: Partial<ReimbursementReceipt>;
+        Update: Partial<ReimbursementReceipt>;
+        Relationships: [];
+      };
     };
     Functions: {
       delete_wallet_permanently: {
@@ -1094,6 +1101,38 @@ export type Database = {
           p_note?: string | null;
         };
         Returns: Json;
+      };
+      record_reimbursement_settlement_v2: {
+        Args: {
+          p_client_request_id: string;
+          p_event_id: string;
+          p_amount: number;
+          p_settlement_source: "managed_wallet" | "external_direct";
+          p_managed_wallet_id: string | null;
+          p_payment_date: string;
+          p_note: string | null;
+        };
+        Returns: Json;
+      };
+      allocate_reimbursement_receipt: {
+        Args: {
+          p_settlement_id: string;
+          p_destination_wallet_id: string;
+          p_client_request_id: string;
+        };
+        Returns: Json;
+      };
+      get_managed_reimbursement_history: {
+        Args: { p_event_id: string };
+        Returns: {
+          settlement_id: string;
+          amount: number;
+          payment_date: string;
+          settlement_source: "managed_wallet" | "external_direct";
+          note: string | null;
+          recorded_by_name: string;
+          allocation_status: "pending" | "allocated" | "legacy";
+        }[];
       };
       create_shared_savings_guest_member: {
         Args: { p_shared_savings_id: string; p_name: string; p_joined_at?: string; p_note?: string | null; p_phone?: string | null; p_email?: string | null; };

@@ -1359,7 +1359,9 @@ export function TransactionsPage() {
           description={t("transactions.voidConfirmDesc") || "Transaksi ini tidak akan lagi mempengaruhi saldo dompet Anda, namun tetap tercatat dalam riwayat untuk keperluan audit."}
           icon={ReceiptText}
           isLoading={voidSaving}
-          itemLabel={transactionTitle(voidTarget)}
+          itemLabel={voidTarget.title === "Reimbursement Received" && voidTarget.related_entity_type === "receivable_payment"
+            ? t("reimbursement.received")
+            : transactionTitle(voidTarget)}
           onCancel={() => setVoidTarget(null)}
           onConfirm={() => void handleVoid()}
           title={t("transactions.voidConfirmTitle") || "Batalkan transaksi ini?"}

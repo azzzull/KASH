@@ -830,10 +830,25 @@ export type CrossSpaceSettlement = {
   user_id: string;
   event_id: string;
   amount: MoneyAmount;
-  managed_wallet_id: string;
-  personal_wallet_id: string;
+  managed_wallet_id: string | null;
+  personal_wallet_id: string | null;
+  settlement_source: "managed_wallet" | "external_direct";
+  recorded_by_user_id: string | null;
+  note: string | null;
   settlement_date: string;
   status: string;
   client_request_id?: string | null;
+  created_at: string;
+};
+
+export type ReimbursementReceipt = {
+  settlement_id: string;
+  recipient_user_id: string;
+  personal_space_id: string;
+  amount: MoneyAmount;
+  payment_date: string;
+  destination_wallet_id: string | null;
+  allocation_request_id: string | null;
+  allocated_at: string | null;
   created_at: string;
 };
