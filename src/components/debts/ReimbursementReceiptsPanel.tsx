@@ -31,6 +31,7 @@ export function ReimbursementReceiptsPanel({
   const [error, setError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const handledDeepLink = useRef<string | null>(null);
+  const walletPickerPreviousSheetDetent = useRef<"medium" | "large" | null>(null);
 
   const reload = useCallback(async () => {
     setReceipts(await getReimbursementReceipts(personalSpaceId));
@@ -146,8 +147,22 @@ export function ReimbursementReceiptsPanel({
           <div className="space-y-4">
             <p className="text-sm text-slate-700">{selected.managedSpaceName} · {formatCurrency(toNumber(selected.amount), "IDR")}</p>
             <SelectField
+              expandBottomSheetOnOpen
               id="reimbursement-destination-wallet"
               label={t("reimbursement.receivedInto")}
+              onOpenChange={(open, triggerElement) => {
+                if (open) {
+                  const sheetPanel = triggerElement?.closest('[data-bottom-sheet-panel="true"]') as HTMLElement | null;
+                  const detent = sheetPanel?.dataset.bottomSheetDetent;
+                  walletPickerPreviousSheetDetent.current = detent === "large" ? "large" : "medium";
+                  return;
+                }
+
+                // Selecting a wallet closes the list without collapsing the receipt sheet.
+                // This preserves an already-expanded sheet and keeps Confirm reachable.
+                walletPickerPreviousSheetDetent.current = null;
+              }}
+              optionsClassName="max-h-[min(20rem,calc(100dvh-16rem))] overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-h-64"
               value={walletId}
               onChange={(event) => setWalletId(event.target.value)}
             >

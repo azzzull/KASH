@@ -15,11 +15,14 @@ type SelectFieldProps = {
   className?: string;
   defaultValue?: string;
   disabled?: boolean;
+  expandBottomSheetOnOpen?: boolean;
   hasError?: boolean;
   id?: string;
   label?: string;
   name?: string;
   onChange?: (event: SelectFieldChangeEvent) => void;
+  onOpenChange?: (open: boolean, triggerElement: HTMLButtonElement | null) => void;
+  optionsClassName?: string;
   placeholder?: string;
   required?: boolean;
   value?: string;
@@ -130,11 +133,14 @@ export function SelectField({
   className = "",
   defaultValue,
   disabled,
+  expandBottomSheetOnOpen = false,
   hasError,
   id,
   label,
   name,
   onChange,
+  onOpenChange,
+  optionsClassName = "",
   placeholder,
   required,
   value,
@@ -160,12 +166,15 @@ export function SelectField({
           buttonRef={buttonRef}
           className={className}
           disabled={disabled}
+          expandBottomSheetOnOpen={expandBottomSheetOnOpen}
           hasError={hasError}
           id={id}
           label={label}
           name={name}
           open={open}
+          onOpenChange={onOpenChange}
           options={options}
+          optionsClassName={optionsClassName}
           placeholder={placeholder}
           required={required}
           selectedOption={selectedOption}
@@ -182,12 +191,15 @@ function SelectFieldContent({
   buttonRef,
   className,
   disabled,
+  expandBottomSheetOnOpen,
   hasError,
   id,
   label,
   name,
   open,
+  onOpenChange,
   options,
+  optionsClassName,
   placeholder,
   required,
   selectedOption,
@@ -198,22 +210,44 @@ function SelectFieldContent({
   buttonRef: React.RefObject<HTMLButtonElement>;
   className: string;
   disabled?: boolean;
+  expandBottomSheetOnOpen: boolean;
   hasError?: boolean;
   id?: string;
   label?: string;
   name?: string;
   open: boolean;
+  onOpenChange?: (open: boolean, triggerElement: HTMLButtonElement | null) => void;
   options: SelectOption[];
+  optionsClassName: string;
   placeholder?: string;
   required?: boolean;
   selectedOption?: SelectOption;
   selectedValue: string;
 }) {
+  const previousOpenRef = useRef(open);
+
   useEffect(() => {
-    if (open && buttonRef.current) {
-      autoScrollFieldIntoContainer(buttonRef.current);
+    const triggerElement = buttonRef.current;
+
+    if (previousOpenRef.current !== open) {
+      previousOpenRef.current = open;
+      onOpenChange?.(open, triggerElement);
     }
-  }, [open, buttonRef]);
+
+    if (open && triggerElement) {
+      const sheetPanel = triggerElement.closest('[data-bottom-sheet-panel="true"]') as HTMLElement | null;
+      const shouldExpandSheet = expandBottomSheetOnOpen
+        && sheetPanel
+        && window.matchMedia("(max-width: 767px)").matches
+        && sheetPanel.dataset.bottomSheetDetent !== "large";
+
+      if (shouldExpandSheet) {
+        sheetPanel.dispatchEvent(new CustomEvent("kash:bottom-sheet-expand", { bubbles: true }));
+      }
+
+      autoScrollFieldIntoContainer(triggerElement);
+    }
+  }, [buttonRef, expandBottomSheetOnOpen, onOpenChange, open]);
 
   const isPlaceholderSelected = !selectedValue || selectedValue === "" || selectedOption?.value === "";
   const displayLabel = selectedOption?.label ?? placeholder ?? "Select";
@@ -249,7 +283,7 @@ function SelectFieldContent({
         <ChevronDown aria-hidden="true" className="shrink-0 text-slate-600 transition group-data-[open]:rotate-180" size={18} strokeWidth={2.2} />
       </ListboxButton>
 
-      <ListboxOptions className="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none">
+      <ListboxOptions className={`absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none ${optionsClassName}`}>
         {options.map((option) => (
           <ListboxOption
             key={option.value}
