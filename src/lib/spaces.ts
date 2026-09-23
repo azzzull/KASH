@@ -116,6 +116,52 @@ export async function getFinancialSpaces(): Promise<{
   }
 }
 
+/**
+ * Returns only Managed Spaces the signed-in user can actively operate.
+ *
+ * financial_spaces may include a managed space as minimal metadata for a
+ * cross-space reimbursement/history relationship. That must not make a former
+ * member eligible to select it as a Managed Space.
+ */
+export async function getActiveManagedSpaces(): Promise<{
+  data: FinancialSpace[] | null;
+  error: Error | null;
+}> {
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { data: [], error: null };
+    }
+
+    const [spacesResult, membersResult] = await Promise.all([
+      getFinancialSpaces(),
+      supabase
+        .from("managed_space_members")
+        .select("space_id")
+        .eq("user_id", user.id)
+        .eq("status", "active"),
+    ]);
+
+    if (spacesResult.error) throw spacesResult.error;
+    if (membersResult.error) throw membersResult.error;
+
+    const activeMemberSpaceIds = new Set(
+      (membersResult.data ?? []).map((member) => member.space_id),
+    );
+    const spaces = (spacesResult.data ?? []).filter(
+      (space) =>
+        space.space_type === "managed" &&
+        !space.deleted_at &&
+        !space.is_archived &&
+        (space.owner_user_id === user.id || activeMemberSpaceIds.has(space.id)),
+    );
+
+    return { data: spaces, error: null };
+  } catch (err: unknown) {
+    return { data: null, error: err instanceof Error ? err : new Error("Unable to load active Managed Spaces.") };
+  }
+}
+
 export async function getPersonalSpace(): Promise<{
   data: FinancialSpace | null;
   error: Error | null;
@@ -413,4 +459,3 @@ export async function leaveManagedSpace(
     return { error: err };
   }
 }
-

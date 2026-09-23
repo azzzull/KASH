@@ -113,8 +113,20 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const memberData = memberRes.data;
-      const spaceList = (data ?? []).filter((s) => !s.deleted_at);
+      const memberData = memberRes.data ?? [];
+      const activeMemberSpaceIds = new Set(memberData.map((member) => member.space_id));
+      // financial_spaces can also expose a Managed Space's minimal metadata for
+      // cross-space history. That relationship is not an active membership and
+      // must never make the space selectable in the active-space switcher.
+      const spaceList = (data ?? []).filter((space) => {
+        if (space.deleted_at) return false;
+
+        if (space.space_type === "personal") {
+          return space.owner_user_id === currentUserId;
+        }
+
+        return space.owner_user_id === currentUserId || activeMemberSpaceIds.has(space.id);
+      });
       setSpaces(spaceList);
 
       const roleMap: Record<string, ManagedSpaceRole | "owner"> = {};
@@ -122,7 +134,7 @@ export function ActiveSpaceProvider({ children }: { children: ReactNode }) {
         if (s.space_type === "personal" || s.owner_user_id === currentUserId) {
           roleMap[s.id] = "owner";
         } else {
-          const mem = memberData?.find((m) => m.space_id === s.id);
+          const mem = memberData.find((m) => m.space_id === s.id);
           roleMap[s.id] = (mem?.role as ManagedSpaceRole) ?? "viewer";
         }
       });

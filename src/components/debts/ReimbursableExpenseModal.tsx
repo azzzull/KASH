@@ -32,7 +32,7 @@ import {
 } from "../../lib/wallets";
 
 import {
-  getFinancialSpaces,
+  getActiveManagedSpaces,
   getPersonalSpace,
 } from "../../lib/spaces";
 
@@ -175,22 +175,21 @@ export function ReimbursableExpenseModal({
       setError(null);
 
       try {
-        const [pSpaceRes, allSpacesRes, cpRes] = await Promise.all([
+        const [pSpaceRes, managedSpacesRes, cpRes] = await Promise.all([
           getPersonalSpace(),
-          getFinancialSpaces(),
+          getActiveManagedSpaces(),
           getCounterparties(),
         ]);
+
+        if (pSpaceRes.error) throw pSpaceRes.error;
+        if (managedSpacesRes.error) throw managedSpacesRes.error;
 
         if (!isMounted) return;
 
         const pSpace = pSpaceRes.data;
-        const allSpaces = allSpacesRes.data;
-
         setPersonalSpace(pSpace);
 
-        const activeManaged = (allSpaces ?? []).filter(
-          (s) => s.space_type === "managed" && !s.is_archived,
-        );
+        const activeManaged = managedSpacesRes.data ?? [];
         setManagedSpaces(activeManaged);
 
         if (activeManaged.length > 0) {
