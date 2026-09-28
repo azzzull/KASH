@@ -9,6 +9,8 @@ import React, {
 import { createPortal } from "react-dom";
 import { IconButton } from "./IconButton";
 
+type SheetDetent = "medium" | "large";
+
 export type ModalProps = {
     isOpen: boolean;
     onClose: () => void;
@@ -20,6 +22,7 @@ export type ModalProps = {
     showCloseButton?: boolean;
     className?: string;
     bodyClassName?: string;
+    initialMobileDetent?: SheetDetent;
 };
 
 const maxWidthClasses = {
@@ -53,7 +56,6 @@ const KEYBOARD_TRACKING_FRAME_LIMIT = 36;
 const MODAL_LAYER_BASE = 1000;
 const MODAL_LAYER_STEP = 20;
 
-type SheetDetent = "medium" | "large";
 type ModalStackEntry = {
     id: number;
     opener: HTMLElement | null;
@@ -229,14 +231,19 @@ export function Modal({
     showCloseButton = true,
     className = "",
     bodyClassName = "",
+    initialMobileDetent = "medium",
 }: ModalProps) {
     const modalIdRef = useRef(nextModalId++);
     // Mounting & animation lifecycle
     const [mounted, setMounted] = useState(isOpen);
     const [entered, setEntered] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
-    const [sheetDetent, setSheetDetent] = useState<SheetDetent>("medium");
+    const [sheetDetent, setSheetDetent] =
+        useState<SheetDetent>(initialMobileDetent);
     const [baseViewportHeight, setBaseViewportHeight] = useState<
+        number | null
+    >(null);
+    const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<
         number | null
     >(null);
     const [, setStackVersion] = useState(0);
@@ -318,7 +325,8 @@ export function Modal({
             pendingExpansionHeightRef.current = null;
             setExpansionHeight(null);
             setHasExpanded(false);
-            setSheetDetent("medium");
+            setSheetDetent(initialMobileDetent);
+            setKeyboardViewportHeight(null);
 
             let frame2: number;
             const frame1 = requestAnimationFrame(() => {
@@ -341,9 +349,10 @@ export function Modal({
             pendingExpansionHeightRef.current = null;
             setExpansionHeight(null);
             setHasExpanded(false);
-            setSheetDetent("medium");
+            setSheetDetent(initialMobileDetent);
+            setKeyboardViewportHeight(null);
         }
-    }, [isOpen]);
+    }, [initialMobileDetent, isOpen]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -610,7 +619,9 @@ export function Modal({
                 stableFrames = viewportChanged ? 0 : stableFrames + 1;
                 lastViewportHeight = nextViewportHeight;
 
-                adjustFocusedField(viewportChanged ? "auto" : "smooth");
+                // Repeated smooth scrolls compound while the keyboard animates,
+                // which can push the focused field well past the visible area.
+                adjustFocusedField("auto");
 
                 frameCount += 1;
                 if (
@@ -638,7 +649,10 @@ export function Modal({
             focusedEditableRef.current = target;
             viewportHeightBeforeFocusRef.current =
                 window.visualViewport?.height ?? window.innerHeight;
-            scheduleFocusedFieldAdjustment("smooth");
+            setKeyboardViewportHeight(
+                window.visualViewport?.height ?? window.innerHeight,
+            );
+            scheduleFocusedFieldAdjustment("auto");
             startKeyboardTracking();
         };
 
@@ -646,13 +660,17 @@ export function Modal({
             if (event.target === focusedEditableRef.current) {
                 focusedEditableRef.current = null;
                 viewportHeightBeforeFocusRef.current = null;
+                setKeyboardViewportHeight(null);
                 stopKeyboardTracking();
             }
         };
 
         const handleViewportChange = () => {
             if (!focusedEditableRef.current) return;
-            scheduleFocusedFieldAdjustment("smooth");
+            setKeyboardViewportHeight(
+                window.visualViewport?.height ?? window.innerHeight,
+            );
+            scheduleFocusedFieldAdjustment("auto");
             startKeyboardTracking();
         };
 
@@ -969,12 +987,15 @@ export function Modal({
               ? `opacity-${Math.max(20, Math.round(100 - (dragY / 300) * 80))}`
               : "opacity-100";
 
-    const largeDetentPx = baseViewportHeight
+    // visualViewport shrinks when the soft keyboard opens. Keep the expanded
+    // bottom sheet inside that live viewport instead of its pre-keyboard size.
+    const detentViewportHeight = keyboardViewportHeight ?? baseViewportHeight;
+    const largeDetentPx = detentViewportHeight
         ? Math.max(
-              320,
+              keyboardViewportHeight === null ? 320 : 0,
               Math.min(
-                  baseViewportHeight * (LARGE_DETENT_DVH / 100),
-                  baseViewportHeight - LARGE_TOP_GAP_PX,
+                  detentViewportHeight * (LARGE_DETENT_DVH / 100),
+                  detentViewportHeight - LARGE_TOP_GAP_PX,
               ),
           )
         : undefined;

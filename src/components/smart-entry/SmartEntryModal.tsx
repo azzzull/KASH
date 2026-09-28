@@ -118,6 +118,7 @@ export function SmartEntryModal({
   const { activeSpace, activeSpaceId, spaces } = useActiveSpace();
   const { formatCurrency, locale, t } = useI18n();
   const [text, setText] = useState("");
+  const [submittedText, setSubmittedText] = useState<string | null>(null);
   const [resources, setResources] = useState<SmartEntryResources | null>(null);
   const [draft, setDraft] = useState<SmartEntryDraft | null>(null);
   const [loading, setLoading] = useState(false);
@@ -171,6 +172,7 @@ export function SmartEntryModal({
     if (isOpen) return;
     recognitionRef.current?.stop();
     setText("");
+    setSubmittedText(null);
     setDraft(null);
     setEditing(false);
     setError(null);
@@ -193,6 +195,7 @@ export function SmartEntryModal({
 
   const parse = async () => {
     if (loading || !text.trim()) return;
+    const entryText = text.trim();
     if (!navigator.onLine) {
       setError(t("smartEntry.offline"));
       return;
@@ -202,10 +205,11 @@ export function SmartEntryModal({
       return;
     }
     setLoading(true);
+    setSubmittedText(entryText);
     setError(null);
     setSuccess(false);
     try {
-      const raw = await parseSmartEntry(text, {
+      const raw = await parseSmartEntry(entryText, {
         activeSpace: activeSpace ? { name: activeSpace.name, type: activeSpace.space_type } : null,
         categories: resources.categories.map((category) => category.name),
         contextDate: effectiveDate,
@@ -222,6 +226,7 @@ export function SmartEntryModal({
         wallets: resources.wallets.map((wallet) => wallet.name),
       });
       setDraft(buildSmartEntryDraft(raw, resources, effectiveDate));
+      setText("");
       setEditing(false);
     } catch (parseError) {
       setError(parseErrorMessage(parseError, t));
@@ -389,10 +394,19 @@ export function SmartEntryModal({
 
   const reset = () => {
     setText("");
+    setSubmittedText(null);
     setDraft(null);
     setEditing(false);
     setError(null);
     setSuccess(false);
+  };
+
+  const returnToComposer = () => {
+    setDraft(null);
+    setEditing(false);
+    setError(null);
+    setText(submittedText ?? "");
+    setSubmittedText(null);
   };
 
   const selectOption = (id: string, options: NonNullable<typeof resources>["wallets"], idKey: "walletId" | "sourceWalletId" | "destinationWalletId") => {
@@ -412,6 +426,9 @@ export function SmartEntryModal({
       }}
       dismissible={!committing}
       maxWidth="md"
+      initialMobileDetent="large"
+      className="md:max-h-[44rem] md:pb-0"
+      bodyClassName="!p-0"
       title={
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-kash-selected text-kash-emeraldDark">
@@ -422,7 +439,16 @@ export function SmartEntryModal({
       }
       description={t("smartEntry.description")}
     >
-      <div className="space-y-4">
+      <div className="flex min-h-[max(9rem,calc(90dvh-9rem))] flex-col md:min-h-[32rem]">
+        <div className="flex-1 space-y-4 px-5 py-4 md:px-6">
+          <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2.5 text-sm font-semibold leading-5 text-slate-700">
+            {t("smartEntry.description")}
+          </div>
+          {submittedText ? (
+            <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-kash-emerald px-3 py-2.5 text-sm font-semibold leading-5 text-white">
+              {submittedText}
+            </div>
+          ) : null}
         {success ? (
           <div className="rounded-xl border border-kash-emerald/25 bg-kash-selected p-4">
             <p className="font-extrabold text-kash-emeraldDark">{t("smartEntry.success")}</p>
@@ -431,56 +457,32 @@ export function SmartEntryModal({
           </div>
         ) : !draft ? (
           <>
-            <div className="relative">
-              <label className="sr-only" htmlFor="smart-entry-composer">{t("smartEntry.description")}</label>
-              <textarea
-                id="smart-entry-composer"
-                autoFocus
-                className="min-h-28 w-full resize-y rounded-xl border border-slate-200 bg-white p-3 pr-14 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-kash-emerald focus:outline-none focus:ring-4 focus:ring-kash-emerald/20"
-                disabled={loading}
-                maxLength={1000}
-                onChange={(event) => setText(event.target.value)}
-                placeholder={t("smartEntry.placeholder")}
-                value={text}
-              />
-              {voiceAvailable ? (
-                <button
-                  aria-label={listening ? t("smartEntry.stopListening") : t("smartEntry.listening")}
-                  className={`absolute bottom-2 right-2 inline-flex h-9 w-9 items-center justify-center rounded-full border transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${listening ? "border-kash-emerald bg-kash-emerald text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
-                  disabled={loading}
-                  onClick={() => listening ? recognitionRef.current?.stop() : startListening()}
-                  type="button"
-                >
-                  {listening ? <Square aria-hidden="true" size={17} /> : <Mic aria-hidden="true" size={18} />}
-                </button>
-              ) : null}
-            </div>
-            {listening ? <p className="text-xs font-bold text-kash-emeraldDark">{t("smartEntry.listening")}</p> : null}
-            {!voiceAvailable ? <p className="text-xs font-semibold text-slate-600">{t("smartEntry.voiceUnavailable")}</p> : null}
-            {error ? (
-              <div className="flex items-start gap-2 rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-3 text-sm font-semibold text-slate-800">
-                {!navigator.onLine ? <WifiOff aria-hidden="true" className="mt-0.5 shrink-0" size={16} /> : null}
-                <span>{error}</span>
+            {loading ? (
+              <div className="flex w-fit items-center gap-2 rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2.5 text-sm font-bold text-slate-700">
+                <Loader2 aria-hidden="true" className="animate-spin text-kash-emerald" size={16} />
+                {t("smartEntry.parseLoading")}
               </div>
             ) : null}
-            <div className="flex flex-wrap justify-end gap-2">
-              {error ? <Button type="button" variant="secondary" onClick={onClose}>{t("smartEntry.manualEntry")}</Button> : null}
-              <Button disabled={loading || !text.trim()} isLoading={loading} type="button" onClick={() => void parse()}>
-                {!loading ? <SendHorizontal aria-hidden="true" size={17} /> : null}
-                {loading ? t("smartEntry.parseLoading") : t("smartEntry.send")}
-              </Button>
-            </div>
+            {error ? (
+              <div className="flex items-start gap-2 rounded-2xl rounded-tl-sm border border-kash-expense/30 bg-kash-expense/10 p-3 text-sm font-semibold text-slate-800">
+                {!navigator.onLine ? <WifiOff aria-hidden="true" className="mt-0.5 shrink-0" size={16} /> : null}
+                <div className="min-w-0">
+                  <span>{error}</span>
+                  <Button className="mt-3" type="button" variant="secondary" onClick={onClose}>{t("smartEntry.manualEntry")}</Button>
+                </div>
+              </div>
+            ) : null}
           </>
         ) : draft.multipleActions ? (
           <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4">
             <p className="text-sm font-bold text-amber-950">{t("smartEntry.multipleActions")}</p>
-            <Button type="button" variant="secondary" onClick={() => setDraft(null)}>{t("common.back")}</Button>
+            <Button type="button" variant="secondary" onClick={returnToComposer}>{t("common.back")}</Button>
           </div>
         ) : draft.intent === "unknown" ? (
           <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-bold text-slate-800">{draft.message || t("smartEntry.unsupported")}</p>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" onClick={() => setDraft(null)}>{t("common.back")}</Button>
+              <Button type="button" variant="secondary" onClick={returnToComposer}>{t("common.back")}</Button>
               <Button type="button" onClick={onClose}>{t("smartEntry.manualEntry")}</Button>
             </div>
           </div>
@@ -553,6 +555,51 @@ export function SmartEntryModal({
             </div>
           </>
         )}
+        </div>
+        <div className="sticky bottom-0 z-10 mt-auto shrink-0 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_20px_rgba(15,23,42,0.06)] backdrop-blur md:px-6">
+          <label className="sr-only" htmlFor="smart-entry-composer">{t("smartEntry.description")}</label>
+          <div className="flex items-end gap-2">
+            <textarea
+              id="smart-entry-composer"
+              autoFocus={isOpen && !draft && !success}
+              className="min-h-11 flex-1 resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold leading-5 text-slate-900 placeholder:text-slate-400 focus:border-kash-emerald focus:bg-white focus:outline-none focus:ring-4 focus:ring-kash-emerald/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+              disabled={loading || Boolean(draft) || success || committing}
+              maxLength={1000}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void parse();
+                }
+              }}
+              placeholder={t("smartEntry.placeholder")}
+              rows={1}
+              value={text}
+            />
+            {voiceAvailable ? (
+              <button
+                aria-label={listening ? t("smartEntry.stopListening") : t("smartEntry.listening")}
+                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20 ${listening ? "border-kash-emerald bg-kash-emerald text-white" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                disabled={loading || Boolean(draft) || success || committing}
+                onClick={() => listening ? recognitionRef.current?.stop() : startListening()}
+                type="button"
+              >
+                {listening ? <Square aria-hidden="true" size={17} /> : <Mic aria-hidden="true" size={18} />}
+              </button>
+            ) : null}
+            <button
+              aria-label={t("smartEntry.send")}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-kash-emerald text-white shadow-sm transition [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/20"
+              disabled={loading || !text.trim() || Boolean(draft) || success || committing}
+              onClick={() => void parse()}
+              type="button"
+            >
+              {loading ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : <SendHorizontal aria-hidden="true" size={18} />}
+            </button>
+          </div>
+          {listening ? <p className="mt-2 text-xs font-bold text-kash-emeraldDark">{t("smartEntry.listening")}</p> : null}
+          {!voiceAvailable ? <p className="mt-2 text-xs font-semibold text-slate-600">{t("smartEntry.voiceUnavailable")}</p> : null}
+        </div>
       </div>
     </Modal>
   );

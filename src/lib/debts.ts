@@ -165,11 +165,19 @@ export async function getCounterparties(
 
   const rawCounterparties = counterpartiesResult.data ?? [];
   const rawProgressItems = (progressResult.data ?? []) as DebtProgress[];
-  const payerNamesByEventId = await getCrossSpacePayerNames(
-    rawProgressItems
+  const isManagedSpace = rawCounterparties.some((counterparty: any) => counterparty.space?.space_type === "managed");
+  const currentCounterpartyIds = new Set(rawCounterparties.map((counterparty) => counterparty.id));
+  // Personal Space readers can see their reimbursement, but are not necessarily
+  // authorized to resolve the Managed payer identity. Do not issue the protected
+  // RPC outside the active Managed Space it belongs to.
+  const payerNamesByEventId = isManagedSpace && targetSpaceId
+    ? await getCrossSpacePayerNames(
+      rawProgressItems
+        .filter((item) => currentCounterpartyIds.has(item.counterparty_id) && item.cross_space_role === "managed_payable")
       .map((item) => item.cross_space_event_id)
       .filter((eventId): eventId is string => Boolean(eventId))
-  );
+    )
+    : new Map<string, string>();
   const payerNamesByCounterpartyId = new Map<string, string>();
   for (const item of rawProgressItems) {
     if (!item.cross_space_event_id) continue;
@@ -179,7 +187,6 @@ export async function getCounterparties(
 
   // Load Managed Space member identities ONLY if the space being queried is a Managed Space
   let membersByUserId = new Map<string, string>();
-  const isManagedSpace = rawCounterparties.some((c: any) => c.space?.space_type === "managed");
   if (isManagedSpace && targetSpaceId) {
     const { data: members } = await getManagedSpaceMemberIdentities(targetSpaceId);
     if (members && members.length > 0) {
@@ -390,16 +397,19 @@ export async function getCounterpartyDetail(counterpartyId: string): Promise<Cou
 
   const rawCounterparty = counterpartyResult.data as any;
   const debts = (progressResult.data ?? []) as DebtProgress[];
-  const payerNamesByEventId = await getCrossSpacePayerNames(
-    debts
+  const spaceId = rawCounterparty.space_id;
+  const isManagedSpace = rawCounterparty.space?.space_type === "managed";
+  const payerNamesByEventId = isManagedSpace
+    ? await getCrossSpacePayerNames(
+      debts
+        .filter((item) => item.cross_space_role === "managed_payable")
       .map((item) => item.cross_space_event_id)
       .filter((eventId): eventId is string => Boolean(eventId))
-  );
+    )
+    : new Map<string, string>();
   const eventPayerName = [...payerNamesByEventId.values()][0] ?? null;
 
   // Load Managed Space member identities ONLY if this counterparty belongs to a Managed Space
-  const spaceId = rawCounterparty.space_id;
-  const isManagedSpace = rawCounterparty.space?.space_type === "managed";
   let membersByUserId = new Map<string, string>();
   if (spaceId && isManagedSpace) {
     const { data: members } = await getManagedSpaceMemberIdentities(spaceId);

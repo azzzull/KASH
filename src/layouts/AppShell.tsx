@@ -19,6 +19,7 @@ import { SmartEntryModal } from "../components/smart-entry/SmartEntryModal";
 import type { SmartEntryReimbursablePrefill } from "../lib/smartEntry";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 import { canCreateTransaction } from "../lib/transactions";
 
 export function AppShell() {
@@ -29,6 +30,7 @@ export function AppShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   const { activeSpace, userRole, activeSpaceId, loading: spaceLoading, setActiveSpace, spaces } = useActiveSpace();
   const { user } = useAuth();
+  const { t } = useI18n();
   const shellUserIdRef = useRef<string | null>(null);
   const canCreate = canCreateTransaction(activeSpace, userRole);
   const [transactionMode, setTransactionMode] =
@@ -229,6 +231,17 @@ export function AppShell() {
             if (canCreate) setQuickAddOpen(true);
           }}
         />
+        {canCreate ? (
+          <button
+            aria-label={t("quickAdd.title")}
+            className="fixed bottom-8 right-8 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-kash-emerald text-white shadow-[0_12px_28px_rgba(5,150,105,0.32)] transition [@media(hover:hover)_and_(pointer:fine)]:hover:scale-105 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-kash-emeraldDark active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-kash-emerald/25 lg:inline-flex"
+            onClick={() => setQuickAddOpen(true)}
+            title={t("quickAdd.title")}
+            type="button"
+          >
+            <Plus aria-hidden="true" size={25} strokeWidth={2.7} />
+          </button>
+        ) : null}
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
         <SmartEntryModal
