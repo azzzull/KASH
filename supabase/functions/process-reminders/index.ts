@@ -250,6 +250,22 @@ serve(async (req: Request) => {
         ? reminderRows
         : []) as ReminderNotificationRow[];
 
+    const { data: dailyCheckinRows, error: dailyCheckinError } = await supabase.rpc(
+      "process_daily_checkin_reminders",
+    );
+
+    if (dailyCheckinError) {
+      throw new Error(
+        `process_daily_checkin_reminders failed: ${dailyCheckinError.message}`,
+      );
+    }
+
+    const dailyCheckinReminders =
+      (Array.isArray(dailyCheckinRows)
+        ? dailyCheckinRows
+        : []) as ReminderNotificationRow[];
+    const allReminders = [...reminders, ...dailyCheckinReminders];
+
     if (inspectCron) {
       // Safely test the Vault invoker function
       let vaultInvokerResult: unknown = null;
@@ -273,7 +289,7 @@ serve(async (req: Request) => {
           cron_run_history: cronHistory ?? [],
           vault_invoker_test: vaultInvokerResult,
         },
-        reminders_processed: reminders.length,
+        reminders_processed: allReminders.length,
         pushes_delivered: 0,
         devices_targeted: 0,
         expired_subscriptions_deactivated: 0,
@@ -281,7 +297,7 @@ serve(async (req: Request) => {
       });
     }
 
-    if (reminders.length === 0) {
+    if (allReminders.length === 0) {
       return jsonResponse({
         success: true,
         reminders_processed: 0,
@@ -299,13 +315,13 @@ serve(async (req: Request) => {
     return jsonResponse({
       success: true,
       reminders_processed:
-        reminders.length,
+        allReminders.length,
       pushes_delivered: 0,
       devices_targeted: 0,
       expired_subscriptions_deactivated: 0,
       push_dispatch:
         "handled_by_notifications_trigger",
-      details: reminders.map((reminder) => ({
+      details: allReminders.map((reminder) => ({
         notification_id:
           reminder.notification_id,
         user_id:

@@ -84,6 +84,25 @@ export type Profile = {
   timezone: string;
   locale: string;
   onboarding_completed: boolean;
+  daily_checkin_enabled: boolean;
+  daily_checkin_time: string;
+  daily_checkin_timezone: string;
+  daily_checkin_intro_seen: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DailyCheckinStatus = "pending" | "reviewed" | "no_spending";
+
+export type DailyCheckin = {
+  id: string;
+  user_id: string;
+  review_date: string;
+  status: DailyCheckinStatus;
+  reviewed_at: string | null;
+  snoozed_until: string | null;
+  last_reminded_at: string | null;
+  reminders_sent_count: number;
   created_at: string;
   updated_at: string;
 };

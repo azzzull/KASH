@@ -62,6 +62,7 @@ import { DashboardRecommendationCard } from "../components/dashboard/DashboardRe
 import { AvailableToSpendDetailModal } from "../components/dashboard/AvailableToSpendDetailModal";
 import { getSpendableCashReminderMessage } from "../lib/dashboardPresentation";
 import { getWalletIcon } from "../lib/walletMeta";
+import { DailyCheckinDashboardCard } from "../components/dashboard/DailyCheckinDashboardCard";
 
 /* ─── Constants ─── */
 const transactionTone: Record<TransactionType, string> = {
@@ -2171,6 +2172,8 @@ export function DashboardPage() {
 
             {/* Quick Actions */}
             <QuickActions />
+
+            {!terms.isManaged ? <DailyCheckinDashboardCard /> : null}
 
             {/* Monthly Cash Flow — compact row */}
             <CashFlowRow

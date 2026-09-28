@@ -69,6 +69,7 @@ import type {
   CrossSpaceTxRole,
   CrossSpaceDebtRole,
   CrossSpacePaymentRole,
+  DailyCheckin,
 } from "./domain";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
@@ -128,10 +129,31 @@ export type Database = {
           timezone?: string;
           locale?: string;
           onboarding_completed?: boolean;
+          daily_checkin_enabled?: boolean;
+          daily_checkin_time?: string;
+          daily_checkin_timezone?: string;
+          daily_checkin_intro_seen?: boolean;
           created_at?: string;
           updated_at?: string;
         };
         Update: Partial<Omit<Profile, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      daily_checkins: {
+        Row: DailyCheckin;
+        Insert: {
+          id?: string;
+          user_id: string;
+          review_date: string;
+          status?: DailyCheckin["status"];
+          reviewed_at?: string | null;
+          snoozed_until?: string | null;
+          last_reminded_at?: string | null;
+          reminders_sent_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<DailyCheckin, "id" | "user_id" | "review_date" | "created_at" | "updated_at">>;
         Relationships: [];
       };
       wallets: {
@@ -630,6 +652,32 @@ export type Database = {
       };
     };
     Functions: {
+      get_daily_checkin_summary: {
+        Args: { p_review_date: string };
+        Returns: {
+          transaction_id: string | null;
+          title: string | null;
+          amount: string | number | null;
+          transaction_date: string | null;
+          category_name: string | null;
+          category_icon: string | null;
+          category_color: string | null;
+          currency: string | null;
+          transaction_count: number | string;
+          total_expense: string | number;
+          review_status: DailyCheckin["status"] | null;
+          reviewed_at: string | null;
+          snoozed_until: string | null;
+        }[];
+      };
+      complete_daily_checkin: {
+        Args: { p_review_date: string; p_status: "reviewed" | "no_spending" };
+        Returns: DailyCheckin;
+      };
+      snooze_daily_checkin: {
+        Args: { p_review_date: string; p_minutes?: number };
+        Returns: DailyCheckin;
+      };
       delete_wallet_permanently: {
         Args: {
           p_wallet_id: string;

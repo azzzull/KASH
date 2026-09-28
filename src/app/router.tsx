@@ -21,6 +21,7 @@ const BudgetDetailPage = lazyPage(() => import("../pages/BudgetDetailPage"), "Bu
 const CalendarPage = lazyPage(() => import("../pages/CalendarPage"), "CalendarPage");
 const CategoriesPage = lazyPage(() => import("../pages/CategoriesPage"), "CategoriesPage");
 const DashboardPage = lazyPage(() => import("../pages/DashboardPage"), "DashboardPage");
+const DailyReviewPage = lazyPage(() => import("../pages/DailyReviewPage"), "DailyReviewPage");
 const DebtsPage = lazyPage(() => import("../pages/DebtsPage"), "DebtsPage");
 const DebtDetailPage = lazyPage(() => import("../pages/DebtDetailPage"), "DebtDetailPage");
 const ExportReportsPage = lazyPage(() => import("../pages/ExportReportsPage"), "ExportReportsPage");
@@ -86,6 +87,7 @@ export const router = createBrowserRouter([
         errorElement: <RouteErrorBoundary />,
         children: [
           { path: "/dashboard", element: routeElement(<DashboardPage />) },
+          { path: "/daily-review", element: routeElement(<DailyReviewPage />) },
           { path: "/transactions", element: routeElement(<TransactionsPage />) },
           { path: "/budgets", element: routeElement(<BudgetsPage />) },
           { path: "/budgets/:id", element: routeElement(<BudgetDetailPage />) },

@@ -3,8 +3,8 @@
 // Cache Management + Web Push + Persistent IndexedDB Navigation
 // ============================================================
 
-const CACHE_NAME = "kash-shell-v5";
-const PRECACHE_URLS = ["/", "/dashboard", "/manifest.webmanifest", "/icons/kash-icon.svg"];
+const CACHE_NAME = "kash-shell-v6";
+const PRECACHE_URLS = ["/", "/dashboard", "/daily-review", "/manifest.webmanifest", "/icons/kash-icon.svg"];
 
 const PWA_DB_NAME = "kash-pwa";
 const PWA_DB_VERSION = 1;

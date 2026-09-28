@@ -15,6 +15,7 @@ type QuickCreateEnvelopeModalProps = {
   isOpen: boolean;
   envelopeToEdit?: Envelope | null;
   initialName?: string;
+  spaceId?: string;
   onClose: () => void;
   onCreated: (envelope: Envelope) => void;
 };
@@ -23,6 +24,7 @@ export function QuickCreateEnvelopeModal({
   isOpen,
   envelopeToEdit,
   initialName = "",
+  spaceId,
   onClose,
   onCreated,
 }: QuickCreateEnvelopeModalProps) {
@@ -101,7 +103,7 @@ export function QuickCreateEnvelopeModal({
         color,
         icon,
         note: note.trim() || null,
-      });
+      }, spaceId);
       resultEnvelope = res.data;
       err = res.error;
     }

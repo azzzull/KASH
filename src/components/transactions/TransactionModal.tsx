@@ -26,9 +26,20 @@ export type QuickTransactionMode = "expense" | "income" | "transfer";
 
 type TransactionModalProps = {
   mode: QuickTransactionMode;
+  /** A date-only local key supplied by contextual entry points such as Daily Review. */
+  initialDate?: string;
+  /** Keeps a contextual entry point safely scoped to its intended financial space. */
+  spaceId?: string;
   onClose: () => void;
   onSaved?: () => void;
 };
+
+function initialTransactionDatetime(initialDate?: string) {
+  const current = getCurrentLocalDatetimeString();
+  return initialDate && /^\d{4}-\d{2}-\d{2}$/.test(initialDate)
+    ? `${initialDate}T${current.slice(11)}`
+    : current;
+}
 
 function isAmountError(error: string | null) {
   if (!error) return false;
@@ -36,11 +47,13 @@ function isAmountError(error: string | null) {
   return normalizedError.includes("amount") || normalizedError.includes("balance");
 }
 
-export function TransactionModal({ mode, onClose, onSaved }: TransactionModalProps) {
+export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved }: TransactionModalProps) {
   const { t, formatCurrency } = useI18n();
   const { activeSpace, userRole } = useActiveSpace();
   const terms = useSpaceTerminology();
-  const canCreate = canCreateTransaction(activeSpace, userRole);
+  const isContextualPersonalEntry = Boolean(spaceId);
+  const isManaged = !isContextualPersonalEntry && terms.isManaged;
+  const canCreate = isContextualPersonalEntry || canCreateTransaction(activeSpace, userRole);
 
   const modeCopy: Record<
     QuickTransactionMode,
@@ -86,7 +99,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
   const [showQuickEnvelopeModal, setShowQuickEnvelopeModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [transferFee, setTransferFee] = useState("0");
-  const [transactionDate, setTransactionDate] = useState(getCurrentLocalDatetimeString());
+  const [transactionDate, setTransactionDate] = useState(() => initialTransactionDatetime(initialDate));
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,10 +114,10 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setError(null);
 
     const [walletResult, categoryResult, envelopeResult, personalSpaceResult] = await Promise.all([
-      getWallets(),
-      getActiveCategories(),
-      getEnvelopes(),
-      terms.isManaged ? getPersonalSpace() : Promise.resolve({ data: null, error: null })
+      getWallets(spaceId),
+      getActiveCategories(spaceId),
+      getEnvelopes(false, spaceId),
+      isManaged ? getPersonalSpace() : Promise.resolve({ data: null, error: null })
     ]);
 
     if (walletResult.error || categoryResult.error || !walletResult.data || !categoryResult.data) {
@@ -117,7 +130,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     setCategories(categoryResult.data);
     setEnvelopes(envelopeResult.data ?? []);
 
-    if (terms.isManaged && personalSpaceResult.data) {
+    if (isManaged && personalSpaceResult.data) {
       setPersonalSpaceId(personalSpaceResult.data.id);
       const personalWalletsResult = await getWallets(personalSpaceResult.data.id);
       if (personalWalletsResult.data) {
@@ -130,7 +143,11 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [isManaged, spaceId]);
+
+  useEffect(() => {
+    setTransactionDate(initialTransactionDatetime(initialDate));
+  }, [initialDate]);
 
   useEffect(() => {
     if (!error) return;
@@ -177,7 +194,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
       return null;
     }
 
-    if (mode === "income" && terms.isManaged && paymentSource === "personal") {
+    if (mode === "income" && isManaged && paymentSource === "personal") {
       if (!walletId) return "Pilih dompet pribadi sumber dana.";
       if (!destinationWalletId) return "Pilih dompet tujuan.";
       return null;
@@ -190,8 +207,8 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
     return null;
   };
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submit = async (event?: FormEvent<HTMLFormElement>, saveAndAddAnother = false) => {
+    event?.preventDefault();
     if (saving) return;
 
     if (!canCreate) {
@@ -249,6 +266,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               title: noteValue ?? categoryName,
               transactionDate,
               walletId,
+              spaceId,
             })
             : isOutgoingTransfer
               ? await createExternalTransfer({
@@ -287,6 +305,14 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
       emitTransactionSaved();
       onSaved?.();
+      if (saveAndAddAnother) {
+        setAmount("");
+        setNote("");
+        setCategoryId("");
+        setEnvelopeId("");
+        setSaving(false);
+        return;
+      }
       onClose();
     } catch (transactionError: any) {
       console.error("Failed to create transaction", transactionError);
@@ -324,7 +350,11 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
         </div>
       }
       description={
-        mode === "transfer" ? (t("transactions.transferDesc") || "Pindahkan saldo antar dompet pribadi.") : (t("transactions.singleTransactionDesc") || "Catat satu transaksi keuangan.")
+        initialDate
+          ? `${t("transactions.singleTransactionDesc") || "Catat satu transaksi keuangan."} ${t("dailyCheckin.recordingFor") || "Mencatat untuk"} ${initialDate}.`
+          : mode === "transfer"
+            ? (t("transactions.transferDesc") || "Pindahkan saldo antar dompet pribadi.")
+            : (t("transactions.singleTransactionDesc") || "Catat satu transaksi keuangan.")
       }
     >
       <div>
@@ -341,7 +371,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
             <div className="h-12 rounded-lg bg-slate-100" />
           </div>
         ) : (
-          <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          <form className="mt-5 grid w-full max-w-full min-w-0 gap-4" onSubmit={(event) => void submit(event)}>
             <FormField
               hasError={amountHasError}
               id={`${mode}-amount`}
@@ -389,7 +419,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               />
             ) : null}
 
-            {(mode !== "transfer" || isOutgoingTransfer) && !(mode === "income" && terms.isManaged && paymentSource === "personal") ? (
+            {(mode !== "transfer" || isOutgoingTransfer) && !(mode === "income" && isManaged && paymentSource === "personal") ? (
               <SelectField
                 id={`${mode}-category`}
                 label={mode === "income" ? terms.incomeCategoryLabel : (isOutgoingTransfer ? t("transactions.category") || "Kategori" : (t("categories.title") || "Kategori"))}
@@ -455,7 +485,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </SelectField>
             ) : null}
 
-            {mode === "expense" && terms.isManaged ? (
+            {mode === "expense" && isManaged ? (
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-700">{t("transactions.paymentSource") || "Sumber Dana"}</label>
                 <div className="flex rounded-lg bg-slate-100 p-1">
@@ -465,7 +495,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               </div>
             ) : null}
 
-            {mode === "income" && terms.isManaged ? (
+            {mode === "income" && isManaged ? (
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-700">{t("transactions.paymentSource") || "Sumber Dana"}</label>
                 <div className="flex rounded-lg bg-slate-100 p-1">
@@ -480,9 +510,9 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               label={
                 mode === "transfer"
                   ? t("transactions.fromWallet") || "Dari Dompet"
-                  : mode === "income" && terms.isManaged && paymentSource === "personal"
+                  : mode === "income" && isManaged && paymentSource === "personal"
                   ? "Pilih Dompet Pribadi (Sumber Talangan)"
-                  : mode === "income" && terms.isManaged
+                  : mode === "income" && isManaged
                   ? t("transactions.fundingWalletDestination") || "Pilih Dompet Penerima Dana"
                   : paymentSource === "personal" ? t("transactions.personalWallet") || "Pilih Dompet Pribadi"
                   : t("wallets.title") || "Dompet"
@@ -498,7 +528,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               ))}
             </SelectField>
 
-            {mode === "income" && terms.isManaged && paymentSource === "personal" ? (
+            {mode === "income" && isManaged && paymentSource === "personal" ? (
               <SelectField id="income-destination" label="Pilih Dompet Penerima Dana" onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
                 <option value="">Pilih Dompet Tujuan</option>
                 {wallets.map((wallet) => (
@@ -590,12 +620,23 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
               {saving ? (t("common.saving") || "Menyimpan...") : copy.submitLabel}
             </Button>
+            {initialDate ? (
+              <Button
+                disabled={saving || (mode === "transfer" && !isOutgoingTransfer && wallets.length < 2)}
+                type="button"
+                variant="secondary"
+                onClick={() => void submit(undefined, true)}
+              >
+                {t("dailyCheckin.saveAndAddAnother") || "Simpan & Tambah Lagi"}
+              </Button>
+            ) : null}
           </form>
         )}
 
         <QuickCreateCategoryModal
           isOpen={showQuickCategoryModal}
           categoryType={mode === "income" ? "income" : "expense"}
+          spaceId={spaceId}
           onClose={() => setShowQuickCategoryModal(false)}
           onCreated={(newCat) => {
             setCategories((prev) => {
@@ -609,6 +650,7 @@ export function TransactionModal({ mode, onClose, onSaved }: TransactionModalPro
 
         <QuickCreateEnvelopeModal
           isOpen={showQuickEnvelopeModal}
+          spaceId={spaceId}
           onClose={() => setShowQuickEnvelopeModal(false)}
           onCreated={(newEnv) => {
             setEnvelopes((prev) => {

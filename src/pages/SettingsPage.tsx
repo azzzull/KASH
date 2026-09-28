@@ -36,12 +36,19 @@ import { updateProfileFullName } from "../lib/auth";
 import {
   getCurrentPushSubscription,
   getPushPermissionState,
+  isPushSupported,
   isIosStandalone,
   subscribeCurrentDevice,
   unsubscribeCurrentDevice,
   type PushPermissionState,
 } from "../lib/pushNotifications";
 import { supabase } from "../lib/supabase";
+import {
+  enableDailyCheckin,
+  getDailyCheckinPreferences,
+  updateDailyCheckinPreferences,
+  type DailyCheckinPreferences,
+} from "../lib/dailyCheckin";
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -66,6 +73,9 @@ export function SettingsPage() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushMessage, setPushMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [dailyCheckinPreferences, setDailyCheckinPreferences] = useState<DailyCheckinPreferences | null>(null);
+  const [dailyCheckinTime, setDailyCheckinTime] = useState("20:30");
+  const [dailyCheckinSaving, setDailyCheckinSaving] = useState(false);
 
   // Managed Space lifecycle states
   const [editingSpaceModal, setEditingSpaceModal] = useState(false);
@@ -109,6 +119,48 @@ export function SettingsPage() {
   useEffect(() => {
     void checkPushStatus();
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    void getDailyCheckinPreferences().then((preferences) => {
+      if (!isMounted) return;
+      setDailyCheckinPreferences(preferences);
+      setDailyCheckinTime(preferences.daily_checkin_time.slice(0, 5));
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  const saveDailyCheckin = async (enabled: boolean) => {
+    setDailyCheckinSaving(true);
+    try {
+      const next = enabled
+        ? await enableDailyCheckin(dailyCheckinTime)
+        : await updateDailyCheckinPreferences({ daily_checkin_enabled: false });
+      setDailyCheckinPreferences(next);
+      if (enabled && isPushSupported() && getPushPermissionState() === "default") {
+        const pushResult = await subscribeCurrentDevice();
+        if (!pushResult.success) {
+          setPushMessage({
+            type: "error",
+            text: t("dailyCheckin.pushInactive") || "Push notification tidak aktif. Check-in tetap tersedia di KASH.",
+          });
+        }
+        void checkPushStatus();
+      }
+    } finally {
+      setDailyCheckinSaving(false);
+    }
+  };
+
+  const saveDailyCheckinTime = async () => {
+    if (!dailyCheckinPreferences?.daily_checkin_enabled) return;
+    setDailyCheckinSaving(true);
+    try {
+      setDailyCheckinPreferences(await updateDailyCheckinPreferences({ daily_checkin_time: dailyCheckinTime }));
+    } finally {
+      setDailyCheckinSaving(false);
+    }
+  };
 
   const handleStartRenameSpace = () => {
     if (!activeSpace) return;
@@ -494,6 +546,26 @@ export function SettingsPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Daily Check-in preference is personal to the signed-in account, never the active Managed Space. */}
+        {dailyCheckinPreferences ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3.5">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-kash-selected text-kash-emeraldDark"><Bell size={20} /></span>
+                <div><h3 className="text-sm font-extrabold text-slate-900">{t("dailyCheckin.title") || "Check-in Harian"}</h3><p className="mt-0.5 text-xs font-semibold text-slate-600">{t("dailyCheckin.settingsDesc") || "Pengingat pribadi untuk mengecek apakah transaksi hari ini sudah lengkap."}</p></div>
+              </div>
+              <Button variant={dailyCheckinPreferences.daily_checkin_enabled ? "secondary" : "primary"} disabled={dailyCheckinSaving} onClick={() => void saveDailyCheckin(!dailyCheckinPreferences.daily_checkin_enabled)}>
+                {dailyCheckinSaving ? <Loader2 size={14} className="animate-spin" /> : dailyCheckinPreferences.daily_checkin_enabled ? <BellOff size={14} /> : <Bell size={14} />}
+                {dailyCheckinPreferences.daily_checkin_enabled ? (t("dailyCheckin.turnOff") || "Nonaktifkan") : (t("dailyCheckin.turnOn") || "Aktifkan")}
+              </Button>
+            </div>
+            <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-end sm:justify-between">
+              <label className="text-xs font-bold text-slate-700"><span className="mb-1.5 block">{t("dailyCheckin.reminderTime") || "Jam pengingat"}</span><input type="time" disabled={!dailyCheckinPreferences.daily_checkin_enabled || dailyCheckinSaving} value={dailyCheckinTime} onChange={(event) => setDailyCheckinTime(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-kash-emerald/30 disabled:bg-slate-100" /></label>
+              <Button size="sm" variant="secondary" disabled={!dailyCheckinPreferences.daily_checkin_enabled || dailyCheckinSaving || dailyCheckinTime === dailyCheckinPreferences.daily_checkin_time.slice(0, 5)} onClick={() => void saveDailyCheckinTime()}>{t("common.save") || "Simpan"}</Button>
             </div>
           </div>
         ) : null}
