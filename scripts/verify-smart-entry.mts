@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import {
   buildSmartEntryDraft,
   detectMultipleFinancialActions,
+  parseLocalSmartEntry,
+  parseRupiahAmount,
   validateSmartEntryRawDraft,
+  type SmartEntryParserContext,
   type SmartEntryRawDraft,
   type SmartEntryResources,
 } from "../src/lib/smartEntry.ts";
@@ -10,6 +13,7 @@ import {
 const resources: SmartEntryResources = {
   categories: [
     { id: "food", kind: "expense", name: "Food & Drink" },
+    { id: "transport", kind: "expense", name: "Transportation" },
     { id: "transfer-expense", kind: "expense", name: "Transfer" },
     { id: "salary", kind: "income", name: "Salary" },
   ],
@@ -23,6 +27,7 @@ const resources: SmartEntryResources = {
   wallets: [
     { id: "bca", name: "myBCA" },
     { id: "gopay", name: "GoPay" },
+    { id: "blu", name: "Blu" },
     { id: "cash", name: "Cash" },
   ],
 };
@@ -31,6 +36,7 @@ function raw(overrides: Partial<SmartEntryRawDraft>): SmartEntryRawDraft {
   return {
     amount: null,
     category: null,
+  clarification: null,
     confidence: {},
     counterparty: null,
     description: "Test entry",
@@ -52,6 +58,21 @@ function raw(overrides: Partial<SmartEntryRawDraft>): SmartEntryRawDraft {
 }
 
 const fallbackDate = "2026-09-28";
+const parserContext: SmartEntryParserContext = {
+  activeSpace: null,
+  categories: resources.categories.map((item) => item.name),
+  contextDate: fallbackDate,
+  envelopes: resources.envelopes.map((item) => item.name),
+  locale: "id",
+  managedSpaces: resources.managedSpaces.map((item) => item.name),
+  obligations: resources.obligations.map((item) => ({
+    counterpartyName: item.counterpartyName,
+    title: item.title,
+    type: item.type,
+  })),
+  timezone: "Asia/Jakarta",
+  wallets: resources.wallets.map((item) => item.name),
+};
 
 // 1–4: transaction intents route only to typed, existing transaction services.
 let draft = buildSmartEntryDraft(raw({ amount: 35_000, category: "Food & Drink", intent: "expense", wallet: "myBCA" }), resources, fallbackDate);
@@ -95,5 +116,68 @@ assert.equal(buildSmartEntryDraft(raw({ intent: "unknown" }), resources, fallbac
 assert.equal(detectMultipleFinancialActions("Tadi beli kopi 25 ribu pakai GoPay, terus makan 50 ribu pakai BCA."), true);
 assert.equal(detectMultipleFinancialActions("Pindahkan 500 ribu dari myBCA ke GoPay."), false);
 assert.equal(validateSmartEntryRawDraft({ intent: "expense", amount: "35k" }), null);
+
+// 19–25: hybrid local parser — no network or provider credential is involved.
+assert.equal(parseRupiahAmount("35rb").amount, 35_000);
+assert.equal(parseRupiahAmount("Rp35.000").amount, 35_000);
+assert.equal(parseRupiahAmount("1,5 juta").amount, 1_500_000);
+assert.equal(parseRupiahAmount("35").ambiguous, true);
+
+for (const phrase of [
+  "tadi makan 35rb pake gopay",
+  "makan siang 35 ribu bayar gopay",
+  "keluar 35k buat makan dari gopay",
+  "gue tadi makan nasi goreng 35000 pake gopay",
+]) {
+  const result = parseLocalSmartEntry(phrase, parserContext, resources);
+  assert.deepEqual(
+    { amount: result.draft.amount, category: result.draft.category, intent: result.draft.intent, wallet: result.draft.wallet },
+    { amount: 35_000, category: "Food & Drink", intent: "expense", wallet: "GoPay" },
+  );
+  assert.equal(result.shouldUseAiFallback, false);
+}
+
+for (const phrase of [
+  "dapet freelance 750rb masuk mybca",
+  "freelance masuk 750 ribu ke mybca",
+  "client bayar aku 750k ke mybca",
+]) {
+  const result = parseLocalSmartEntry(phrase, parserContext, resources);
+  assert.deepEqual(
+    { amount: result.draft.amount, intent: result.draft.intent, wallet: result.draft.wallet },
+    { amount: 750_000, intent: "income", wallet: "myBCA" },
+  );
+  assert.equal(result.shouldUseAiFallback, false);
+}
+
+for (const phrase of [
+  "pindahin 500rb dari mybca ke gopay",
+  "transfer 500 ribu mybca ke gopay",
+  "500k dari mybca masukin ke gopay",
+]) {
+  const result = parseLocalSmartEntry(phrase, parserContext, resources);
+  assert.deepEqual(
+    { amount: result.draft.amount, destination: result.draft.destinationWallet, intent: result.draft.intent, source: result.draft.sourceWallet },
+    { amount: 500_000, destination: "GoPay", intent: "internal_transfer", source: "myBCA" },
+  );
+  assert.equal(result.shouldUseAiFallback, false);
+}
+
+const reverseTransfer = parseLocalSmartEntry("pindahin 500rb dari gopay ke mybca", parserContext, resources);
+assert.deepEqual(
+  { destination: reverseTransfer.draft.destinationWallet, source: reverseTransfer.draft.sourceWallet },
+  { destination: "myBCA", source: "GoPay" },
+);
+
+assert.equal(parseLocalSmartEntry("aku pinjam 500rb dari Dimas", parserContext, resources).draft.intent, "debt_borrow");
+assert.equal(parseLocalSmartEntry("Dimas minjem 500rb dari aku", parserContext, resources).draft.intent, "receivable_lend");
+assert.equal(parseLocalSmartEntry("aku bayar utang Dimas 200rb", parserContext, resources).draft.intent, "debt_payment");
+assert.equal(parseLocalSmartEntry("Dimas balikin utang 150rb", parserContext, resources).draft.intent, "receivable_collection");
+assert.equal(parseLocalSmartEntry("aku pinjam Dimas 500rb", parserContext, resources).draft.clarification, "pinjam_direction");
+assert.equal(parseLocalSmartEntry("makan 35 pake gopay", parserContext, resources).draft.clarification, "amount_ambiguous");
+assert.equal(
+  parseLocalSmartEntry("kemarin habis kantor aku nombokin kabel buat teknisi 275rb pake BCA yang biasa, katanya nanti diganti bos", parserContext, resources).shouldUseAiFallback,
+  true,
+);
 
 console.log("smart entry resolver fixtures: PASS");

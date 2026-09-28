@@ -17,6 +17,7 @@ import {
   smartEntryDateTime,
   type SmartEntryDraft,
   type SmartEntryIntent,
+  type SmartEntryParserSource,
   type SmartEntryReimbursablePrefill,
   type SmartEntryResources,
 } from "../../lib/smartEntry";
@@ -105,7 +106,19 @@ function actionLabel(intent: SmartEntryIntent, t: ReturnType<typeof useI18n>["t"
 function parseErrorMessage(error: unknown, t: ReturnType<typeof useI18n>["t"]) {
   const code = error instanceof Error ? error.message : "";
   if (code === "SMART_ENTRY_INVALID_TEXT") return t("smartEntry.invalidText");
+  if (code === "SMART_ENTRY_GEMINI_ACCESS_DENIED") return t("smartEntry.apiAccessDenied");
+  if (code === "SMART_ENTRY_GEMINI_MODEL_UNAVAILABLE") return t("smartEntry.modelUnavailable");
+  if (code === "SMART_ENTRY_GEMINI_QUOTA_OR_RATE_LIMIT") return t("smartEntry.apiQuotaOrRateLimit");
+  if (code === "SMART_ENTRY_GEMINI_REQUEST_REJECTED") return t("smartEntry.apiRequestRejected");
   return t("smartEntry.parserUnavailable");
+}
+
+function draftMessage(draft: SmartEntryDraft, t: ReturnType<typeof useI18n>["t"]) {
+  if (draft.clarification === "amount_ambiguous") return t("smartEntry.amountAmbiguous");
+  if (draft.clarification === "pinjam_direction") return t("smartEntry.pinjamDirection");
+  if (draft.clarification === "wallet_ambiguous") return t("smartEntry.walletAmbiguous");
+  if (draft.clarification === "ai_unavailable") return t("smartEntry.aiFallbackUnavailable");
+  return draft.message || t("smartEntry.missingFields");
 }
 
 export function SmartEntryModal({
@@ -129,14 +142,19 @@ export function SmartEntryModal({
   const [voiceAvailable, setVoiceAvailable] = useState(false);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const resourceRequestRef = useRef(0);
+  const parserSourceRef = useRef<SmartEntryParserSource | null>(null);
+  const normalizedTextRef = useRef<string | null>(null);
   const effectiveDate = contextDate ?? localDateKey();
 
   const loadResources = async () => {
     if (!activeSpaceId) return;
+    const requestId = ++resourceRequestRef.current;
     const [support, obligations] = await Promise.all([
       getTransactionSupportData(activeSpaceId),
       getOutstandingDebtItems(activeSpaceId),
     ]);
+    if (requestId !== resourceRequestRef.current) return;
     setResources({
       categories: support.categories
         .filter((category) => !category.is_archived)
@@ -169,11 +187,26 @@ export function SmartEntryModal({
   }, [activeSpaceId, isOpen, spaces, t]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    setResources(null);
+    setText("");
+    setSubmittedText(null);
+    setDraft(null);
+    parserSourceRef.current = null;
+    normalizedTextRef.current = null;
+    setEditing(false);
+    setError(null);
+    setSuccess(false);
+  }, [activeSpaceId, isOpen]);
+
+  useEffect(() => {
     if (isOpen) return;
     recognitionRef.current?.stop();
     setText("");
     setSubmittedText(null);
     setDraft(null);
+    parserSourceRef.current = null;
+    normalizedTextRef.current = null;
     setEditing(false);
     setError(null);
     setSuccess(false);
@@ -209,7 +242,7 @@ export function SmartEntryModal({
     setError(null);
     setSuccess(false);
     try {
-      const raw = await parseSmartEntry(entryText, {
+      const result = await parseSmartEntry(entryText, {
         activeSpace: activeSpace ? { name: activeSpace.name, type: activeSpace.space_type } : null,
         categories: resources.categories.map((category) => category.name),
         contextDate: effectiveDate,
@@ -218,16 +251,18 @@ export function SmartEntryModal({
         managedSpaces: resources.managedSpaces.map((space) => space.name),
         obligations: resources.obligations.map((item) => ({
           counterpartyName: item.counterpartyName,
-          remainingAmount: item.remainingAmount,
           title: item.title,
           type: item.type,
         })),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Jakarta",
         wallets: resources.wallets.map((wallet) => wallet.name),
-      });
-      setDraft(buildSmartEntryDraft(raw, resources, effectiveDate));
+      }, resources);
+      const resolvedDraft = buildSmartEntryDraft(result.draft, resources, effectiveDate);
+      setDraft(resolvedDraft);
+      parserSourceRef.current = result.parserSource;
+      normalizedTextRef.current = result.normalizedText;
       setText("");
-      setEditing(false);
+      setEditing(resolvedDraft.missingFields.length > 0);
     } catch (parseError) {
       setError(parseErrorMessage(parseError, t));
     } finally {
@@ -279,7 +314,7 @@ export function SmartEntryModal({
 
     const amount = String(draft.amount);
     const transactionDate = smartEntryDateTime(draft.transactionDate, draft.transactionTime);
-    const note = text.trim() || null;
+    const note = submittedText?.trim() || null;
     setCommitting(true);
     setError(null);
     try {
@@ -396,6 +431,8 @@ export function SmartEntryModal({
     setText("");
     setSubmittedText(null);
     setDraft(null);
+    parserSourceRef.current = null;
+    normalizedTextRef.current = null;
     setEditing(false);
     setError(null);
     setSuccess(false);
@@ -403,6 +440,8 @@ export function SmartEntryModal({
 
   const returnToComposer = () => {
     setDraft(null);
+    parserSourceRef.current = null;
+    normalizedTextRef.current = null;
     setEditing(false);
     setError(null);
     setText(submittedText ?? "");
@@ -545,7 +584,7 @@ export function SmartEntryModal({
               )}
             </div>
             {error ? <div className="rounded-lg border border-kash-expense/30 bg-kash-expense/10 p-3 text-sm font-semibold text-slate-800">{error}</div> : null}
-            {!isReady ? <p className="text-sm font-semibold text-kash-expense">{draft.message || t("smartEntry.missingFields")}</p> : null}
+            {!isReady ? <p className="text-sm font-semibold text-kash-expense">{draftMessage(draft, t)}</p> : null}
             <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setEditing((value) => !value)}>
                 <Pencil aria-hidden="true" size={16} />

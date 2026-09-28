@@ -1,3 +1,7 @@
+import { parseLocalSmartEntry, shouldUseAiFallback } from "./smartEntryLocalParser.ts";
+
+export { normalizeSmartEntryText, parseLocalSmartEntry, parseRupiahAmount, shouldUseAiFallback } from "./smartEntryLocalParser.ts";
+
 export const SMART_ENTRY_INTENTS = [
   "expense",
   "income",
@@ -13,6 +17,36 @@ export const SMART_ENTRY_INTENTS = [
 ] as const;
 
 export type SmartEntryIntent = (typeof SMART_ENTRY_INTENTS)[number];
+
+export const SMART_ENTRY_CONFIDENCE_FIELDS = [
+  "amount",
+  "category",
+  "counterparty",
+  "date",
+  "envelope",
+  "intent",
+  "managedSpace",
+  "obligation",
+  "time",
+  "wallet",
+] as const;
+
+export type SmartEntryConfidenceField = (typeof SMART_ENTRY_CONFIDENCE_FIELDS)[number];
+
+export type SmartEntryClarification =
+  | "amount_ambiguous"
+  | "ai_unavailable"
+  | "pinjam_direction"
+  | "wallet_ambiguous";
+
+export type SmartEntryParserSource = "gemini" | "local" | "local_with_ai_fallback";
+
+export type SmartEntryParseResult = {
+  draft: SmartEntryRawDraft;
+  normalizedText: string;
+  parserSource: SmartEntryParserSource;
+  rawText: string;
+};
 
 export type SmartEntryOption = {
   id: string;
@@ -47,7 +81,6 @@ export type SmartEntryParserContext = {
   managedSpaces: string[];
   obligations: Array<{
     counterpartyName: string;
-    remainingAmount: number;
     title: string;
     type: "debt" | "receivable";
   }>;
@@ -66,7 +99,8 @@ export type SmartEntryResources = {
 export type SmartEntryRawDraft = {
   amount: number | null;
   category: string | null;
-  confidence: Partial<Record<"amount" | "category" | "date" | "envelope" | "intent" | "wallet", number>>;
+  clarification: SmartEntryClarification | null;
+  confidence: Partial<Record<SmartEntryConfidenceField, number>>;
   counterparty: string | null;
   description: string | null;
   destinationWallet: string | null;
@@ -88,6 +122,7 @@ export type SmartEntryDraft = {
   amount: number | null;
   categoryId: string | null;
   categoryLabel: string | null;
+  clarification: SmartEntryClarification | null;
   confidence: SmartEntryRawDraft["confidence"];
   counterparty: string;
   description: string;
@@ -225,7 +260,10 @@ export function buildSmartEntryDraft(
   fallbackDate: string,
 ): SmartEntryDraft {
   const wallet = matchOption(raw.wallet ?? raw.sourceWallet, resources.wallets);
-  const sourceWallet = matchOption(raw.sourceWallet ?? raw.wallet, resources.wallets);
+  const sourceWallet = matchOption(
+    raw.sourceWallet ?? (raw.intent === "internal_transfer" || raw.intent === "external_transfer" ? raw.wallet : null),
+    resources.wallets,
+  );
   const destinationWallet = matchOption(raw.destinationWallet, resources.wallets);
   const validCategoryKind = raw.intent === "income" ? "income" : "expense";
   const category = matchOption(
@@ -247,6 +285,7 @@ export function buildSmartEntryDraft(
     amount: raw.amount,
     categoryId: category.id,
     categoryLabel: category.label,
+    clarification: raw.clarification,
     confidence: raw.confidence,
     counterparty: raw.counterparty?.trim() ?? "",
     description: raw.description?.trim() ?? "",
@@ -296,10 +335,9 @@ function boundedString(value: unknown, max = 240) {
 
 function boundedConfidence(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const allowed = ["intent", "amount", "wallet", "category", "envelope", "date"] as const;
   const source = value as Record<string, unknown>;
   return Object.fromEntries(
-    allowed.flatMap((key) => {
+    SMART_ENTRY_CONFIDENCE_FIELDS.flatMap((key) => {
       const score = source[key];
       return typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= 1 ? [[key, score]] : [];
     }),
@@ -313,7 +351,7 @@ export function validateSmartEntryRawDraft(value: unknown): SmartEntryRawDraft |
     "intent", "amount", "description", "transactionDate", "transactionTime",
     "wallet", "sourceWallet", "destinationWallet", "category", "envelope",
     "counterparty", "managedSpace", "reimbursement", "settlementSource",
-    "confidence", "missingFields", "multipleActions", "message",
+    "clarification", "confidence", "missingFields", "multipleActions", "message",
   ];
   if (!requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(source, key))) return null;
   const intent = typeof source.intent === "string" && SMART_ENTRY_INTENTS.includes(source.intent as SmartEntryIntent)
@@ -331,6 +369,10 @@ export function validateSmartEntryRawDraft(value: unknown): SmartEntryRawDraft |
   return {
     amount,
     category: boundedString(source.category),
+    clarification: source.clarification === "amount_ambiguous" || source.clarification === "ai_unavailable"
+      || source.clarification === "pinjam_direction" || source.clarification === "wallet_ambiguous"
+      ? source.clarification
+      : null,
     confidence: boundedConfidence(source.confidence),
     counterparty: boundedString(source.counterparty),
     description: boundedString(source.description, 500),
@@ -352,44 +394,54 @@ export function validateSmartEntryRawDraft(value: unknown): SmartEntryRawDraft |
   };
 }
 
-export async function parseSmartEntry(text: string, context: SmartEntryParserContext) {
+export async function parseSmartEntry(
+  text: string,
+  context: SmartEntryParserContext,
+  resources: SmartEntryResources,
+): Promise<SmartEntryParseResult> {
   const content = text.trim();
   if (!content || content.length > MAX_TEXT_LENGTH) {
     throw new Error("SMART_ENTRY_INVALID_TEXT");
   }
-  if (detectMultipleFinancialActions(content)) {
+  const local = parseLocalSmartEntry(content, context, resources);
+  if (!shouldUseAiFallback(local)) {
     return {
-      amount: null,
-      category: null,
-      confidence: {},
-      counterparty: null,
-      description: null,
-      destinationWallet: null,
-      envelope: null,
-      intent: "unknown" as const,
-      managedSpace: null,
-      message: null,
-      missingFields: [],
-      multipleActions: true,
-      reimbursement: null,
-      settlementSource: null,
-      sourceWallet: null,
-      transactionDate: null,
-      transactionTime: null,
-      wallet: null,
-    } satisfies SmartEntryRawDraft;
+      draft: local.draft,
+      normalizedText: local.normalizedText,
+      parserSource: "local",
+      rawText: local.rawText,
+    };
   }
 
-  // Kept behind the parsing boundary so the deterministic resolver remains
-  // independently testable and never needs an AI credential.
+  // The provider is only a language-understanding fallback. Local extraction
+  // and client-side entity resolution remain available when it is unavailable.
   const { supabase } = await import("./supabase");
   const { data, error } = await supabase.functions.invoke("smart-entry-parse", {
     body: { context, text: content },
   });
-  if (error) throw new Error("SMART_ENTRY_PARSER_UNAVAILABLE");
+  if (error) {
+    return {
+      draft: { ...local.draft, clarification: "ai_unavailable" },
+      normalizedText: local.normalizedText,
+      parserSource: "local",
+      rawText: local.rawText,
+    };
+  }
   const parsed = validateSmartEntryRawDraft(data?.draft);
-  if (!parsed) throw new Error("SMART_ENTRY_INVALID_DRAFT");
-  return parsed;
+  if (!parsed) {
+    return {
+      draft: { ...local.draft, clarification: "ai_unavailable" },
+      normalizedText: local.normalizedText,
+      parserSource: "local",
+      rawText: local.rawText,
+    };
+  }
+  return {
+    draft: parsed,
+    normalizedText: local.normalizedText,
+    parserSource: "local_with_ai_fallback",
+    rawText: local.rawText,
+  };
 }
 
 export function smartEntryDateTime(date: string, time: string | null) {
