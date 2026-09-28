@@ -122,6 +122,13 @@ assert.equal(parseRupiahAmount("35rb").amount, 35_000);
 assert.equal(parseRupiahAmount("Rp35.000").amount, 35_000);
 assert.equal(parseRupiahAmount("1,5 juta").amount, 1_500_000);
 assert.equal(parseRupiahAmount("35").ambiguous, true);
+assert.deepEqual(parseRupiahAmount("makan bakso 1 porsi harga 15 ribu"), { amount: 15_000, ambiguous: false });
+
+const detailedMeal = parseLocalSmartEntry("Tadi saya makan bakso 1 porsi dengan harga 15 ribu menggunakan bca", parserContext, resources);
+assert.deepEqual(
+  { amount: detailedMeal.draft.amount, description: detailedMeal.draft.description, wallet: detailedMeal.draft.wallet },
+  { amount: 15_000, description: "makan bakso 1 porsi", wallet: "myBCA" },
+);
 
 for (const phrase of [
   "tadi makan 35rb pake gopay",

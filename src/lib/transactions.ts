@@ -487,6 +487,9 @@ export async function getTransactionSupportData(spaceId?: string) {
 
   if (walletResult.error) throw walletResult.error;
   if (categoryResult.error) throw categoryResult.error;
+  // Do not let a failed envelope query masquerade as an empty list in any
+  // financial form, including Smart Entry's review editor.
+  if (envelopeResult.error) throw envelopeResult.error;
 
   return {
     categories: categoryResult.data ?? [],

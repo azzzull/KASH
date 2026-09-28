@@ -90,6 +90,25 @@ function localDateKey() {
   return local.toISOString().slice(0, 10);
 }
 
+/**
+ * Creates a transaction title from the meaningful activity, not the whole
+ * conversational instruction. This keeps quantities such as "1 porsi" while
+ * dropping pricing and payment-method clauses.
+ */
+export function summarizeSmartEntryDescription(rawText: string, fallback: string | null = null) {
+  const source = (fallback?.trim() || rawText.trim())
+    .replace(/^\s*(?:(?:tadi|barusan|hari\s+ini|kemarin|semalam|pagi\s+ini|siang\s+ini|sore\s+ini|malam\s+ini)\s+)*(?:(?:saya|aku|gue|gua)\s+)?/i, "")
+    // A price is explicit when it has an Rp prefix, grouped thousands, or an Indonesian unit.
+    .replace(/\s+(?:dengan\s+harga|harga(?:nya)?|seharga|senilai|sebesar|total(?:nya)?)\s+(?:(?:rp\s*)?\d{1,3}(?:[.,]\d{3})+|rp\s*\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?\s*(?:rb|ribu|k|jt|juta|miliar|m))\b/gi, " ")
+    .replace(/\s+(?:(?:rp\s*)?\d{1,3}(?:[.,]\d{3})+|rp\s*\d+(?:[.,]\d+)?|\d+(?:[.,]\d+)?\s*(?:rb|ribu|k|jt|juta|miliar|m))\b(?=\s+(?:pakai|menggunakan|via)\b|$)/gi, " ")
+    .replace(/\s+(?:pakai|menggunakan|via)\s+[^,.;]+$/i, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^[,.;:!?\s]+|[,.;:!?\s]+$/g, "")
+    .trim();
+
+  return source.slice(0, 160);
+}
+
 function addDays(date: string, days: number) {
   const value = new Date(`${date}T12:00:00`);
   value.setDate(value.getDate() + days);
@@ -216,27 +235,39 @@ export function normalizeSmartEntryText(rawText: string) {
 }
 
 export function parseRupiahAmount(text: string): RupiahAmountResult {
-  const match = text.match(/(?:rp\s*)?(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(rb|ribu|k|jt|juta|miliar|m)?\b/i);
-  if (!match) return { amount: null, ambiguous: false };
-  const rawNumber = match[1];
-  const unit = match[2]?.toLocaleLowerCase() ?? null;
-  if (!unit && /^\d{1,3}$/.test(rawNumber)) return { amount: null, ambiguous: true };
+  const matches = [...text.matchAll(/(?:rp\s*)?(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)\s*(rb|ribu|k|jt|juta|miliar|m)?\b/gi)];
+  let hasAmbiguousNumber = false;
 
-  const groupedThousands = /^\d{1,3}(?:[.,]\d{3})+$/.test(rawNumber);
-  const normalizedNumber = groupedThousands
-    ? rawNumber.replace(/[.,]/g, "")
-    : rawNumber.replace(",", ".");
-  const numeric = Number(normalizedNumber);
-  if (!Number.isFinite(numeric) || numeric <= 0) return { amount: null, ambiguous: false };
-  const multiplier = unit === "rb" || unit === "ribu" || unit === "k"
-    ? 1_000
-    : unit === "jt" || unit === "juta"
-      ? 1_000_000
-      : unit === "miliar" || unit === "m"
-        ? 1_000_000_000
-        : 1;
-  const amount = Math.round(numeric * multiplier);
-  return Number.isSafeInteger(amount) ? { amount, ambiguous: false } : { amount: null, ambiguous: false };
+  for (const match of matches) {
+    const rawNumber = match[1];
+    const unit = match[2]?.toLocaleLowerCase() ?? null;
+    const groupedThousands = /^\d{1,3}(?:[.,]\d{3})+$/.test(rawNumber);
+    const hasRupiahPrefix = /^\s*rp\s*/i.test(match[0]);
+    // Do not mistake a quantity such as "1 porsi" for the price. Three-digit
+    // or shorter plain values remain ambiguous; 35000 keeps the established
+    // direct-entry behavior.
+    if (!unit && !groupedThousands && !hasRupiahPrefix && /^\d{1,3}$/.test(rawNumber)) {
+      hasAmbiguousNumber = true;
+      continue;
+    }
+
+    const normalizedNumber = groupedThousands
+      ? rawNumber.replace(/[.,]/g, "")
+      : rawNumber.replace(",", ".");
+    const numeric = Number(normalizedNumber);
+    if (!Number.isFinite(numeric) || numeric <= 0) continue;
+    const multiplier = unit === "rb" || unit === "ribu" || unit === "k"
+      ? 1_000
+      : unit === "jt" || unit === "juta"
+        ? 1_000_000
+        : unit === "miliar" || unit === "m"
+          ? 1_000_000_000
+          : 1;
+    const amount = Math.round(numeric * multiplier);
+    if (Number.isSafeInteger(amount)) return { amount, ambiguous: false };
+  }
+
+  return { amount: null, ambiguous: hasAmbiguousNumber };
 }
 
 function resolveIntent(text: string, rawText: string, resources: SmartEntryResources) {
@@ -362,7 +393,7 @@ export function parseLocalSmartEntry(
         wallet: wallet.wallet || wallet.sourceWallet ? (wallet.ambiguous ? 0.35 : 0.96) : 0.2,
       },
       counterparty,
-      description: rawText.trim(),
+      description: summarizeSmartEntryDescription(rawText),
       destinationWallet: wallet.destinationWallet,
       envelope: envelope.option?.name ?? null,
       intent,

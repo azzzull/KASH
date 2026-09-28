@@ -1,4 +1,4 @@
-import { parseLocalSmartEntry, shouldUseAiFallback } from "./smartEntryLocalParser.ts";
+import { parseLocalSmartEntry, shouldUseAiFallback, summarizeSmartEntryDescription } from "./smartEntryLocalParser.ts";
 
 export { normalizeSmartEntryText, parseLocalSmartEntry, parseRupiahAmount, shouldUseAiFallback } from "./smartEntryLocalParser.ts";
 
@@ -437,7 +437,10 @@ export async function parseSmartEntry(
     };
   }
   return {
-    draft: parsed,
+    draft: {
+      ...parsed,
+      description: summarizeSmartEntryDescription(content, parsed.description),
+    },
     normalizedText: local.normalizedText,
     parserSource: "local_with_ai_fallback",
     rawText: local.rawText,

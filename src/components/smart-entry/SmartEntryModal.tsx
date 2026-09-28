@@ -55,6 +55,8 @@ type SmartEntryModalProps = {
   onSaved?: () => void;
 };
 
+type SmartEntryStage = "reply" | "review";
+
 function localDateKey() {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
@@ -137,6 +139,7 @@ export function SmartEntryModal({
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [stage, setStage] = useState<SmartEntryStage>("reply");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [voiceAvailable, setVoiceAvailable] = useState(false);
@@ -156,6 +159,8 @@ export function SmartEntryModal({
     ]);
     if (requestId !== resourceRequestRef.current) return;
     setResources({
+      // The canonical service queries the active space and is protected by
+      // RLS. Keep the complete active-space option sets for manual edits.
       categories: support.categories
         .filter((category) => !category.is_archived)
         .map((category) => ({ id: category.id, kind: category.category_type, name: category.name })),
@@ -195,6 +200,7 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
+    setStage("reply");
     setError(null);
     setSuccess(false);
   }, [activeSpaceId, isOpen]);
@@ -208,6 +214,7 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
+    setStage("reply");
     setError(null);
     setSuccess(false);
   }, [isOpen]);
@@ -263,6 +270,7 @@ export function SmartEntryModal({
       normalizedTextRef.current = result.normalizedText;
       setText("");
       setEditing(resolvedDraft.missingFields.length > 0);
+      setStage("reply");
     } catch (parseError) {
       setError(parseErrorMessage(parseError, t));
     } finally {
@@ -314,7 +322,9 @@ export function SmartEntryModal({
 
     const amount = String(draft.amount);
     const transactionDate = smartEntryDateTime(draft.transactionDate, draft.transactionTime);
-    const note = submittedText?.trim() || null;
+    // The chat is an instruction, not the persisted transaction description.
+    // The concise reviewed title is saved separately; raw chat stays ephemeral.
+    const note = null;
     setCommitting(true);
     setError(null);
     try {
@@ -434,6 +444,7 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
+    setStage("reply");
     setError(null);
     setSuccess(false);
   };
@@ -443,6 +454,7 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
+    setStage("reply");
     setError(null);
     setText(submittedText ?? "");
     setSubmittedText(null);
@@ -525,9 +537,17 @@ export function SmartEntryModal({
               <Button type="button" onClick={onClose}>{t("smartEntry.manualEntry")}</Button>
             </div>
           </div>
+        ) : stage === "reply" ? (
+          <div className="space-y-3">
+            <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2.5 text-sm font-semibold leading-5 text-slate-700">
+              <p>{t("smartEntry.reviewIntro")} <span className="font-extrabold text-slate-900">{intentLabel(draft.intent, t)}</span>.</p>
+              <p className="mt-1.5 text-slate-600">{draft.missingFields.length > 0 ? t("smartEntry.replyNeedsDetails") : t("smartEntry.replyReadyForReview")}</p>
+            </div>
+            <Button type="button" onClick={() => setStage("review")}>{t("smartEntry.openReview")}</Button>
+          </div>
         ) : (
           <>
-            <p className="text-sm font-semibold text-slate-700">{t("smartEntry.reviewIntro")} <span className="font-extrabold text-slate-900">{intentLabel(draft.intent, t)}</span>.</p>
+            <p className="text-sm font-semibold text-slate-700">{t("smartEntry.reviewTitle")}</p>
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
               <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                 <p className="font-extrabold text-slate-900">{intentLabel(draft.intent, t)}</p>
