@@ -3,6 +3,7 @@ import {
   ArrowRightLeft,
   ArrowUp,
   ReceiptText,
+  Sparkles,
 } from "lucide-react";
 import type { QuickTransactionMode } from "../transactions/TransactionModal";
 import { Modal } from "../ui/Modal";
@@ -13,7 +14,8 @@ import { canCreateTransaction } from "../../lib/transactions";
 
 export type QuickAddMode =
   | QuickTransactionMode
-  | "reimbursable_expense";
+  | "reimbursable_expense"
+  | "smart_entry";
 
 type QuickAddMenuProps = {
   open: boolean;
@@ -33,11 +35,18 @@ export function QuickAddMenu({
 
   const actions: Array<{
     helper: string;
-    icon: typeof ArrowDown | typeof ReceiptText;
+    icon: typeof ArrowDown | typeof ReceiptText | typeof Sparkles;
     label: string;
     mode: QuickAddMode;
     tone: string;
   }> = [
+    {
+      label: t("quickAdd.smartEntry"),
+      helper: t("quickAdd.smartEntryHelper"),
+      icon: Sparkles,
+      mode: "smart_entry",
+      tone: "text-kash-emerald",
+    },
     {
       label: terms.isManaged ? terms.addExpenseLabel : t("quickAdd.expense"),
       helper: terms.isManaged

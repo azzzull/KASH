@@ -11,6 +11,7 @@
     "verify:report-budget-v2": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/verify-report-budget-v2.mts",
     "verify:financial-metrics": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/verify-financial-metrics.mts",
     "verify:financial-insights": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/verify-financial-insights.mts",
+    "verify:smart-entry": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/verify-smart-entry.mts",
     "preview": "vite preview"
   },
   "dependencies": {

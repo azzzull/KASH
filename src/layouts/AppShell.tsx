@@ -15,6 +15,8 @@ import {
 } from "../components/layout/QuickAddMenu";
 import { TransactionModal } from "../components/transactions/TransactionModal";
 import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpenseModal";
+import { SmartEntryModal } from "../components/smart-entry/SmartEntryModal";
+import type { SmartEntryReimbursablePrefill } from "../lib/smartEntry";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { useAuth } from "../context/AuthContext";
 import { canCreateTransaction } from "../lib/transactions";
@@ -30,7 +32,9 @@ export function AppShell() {
   const shellUserIdRef = useRef<string | null>(null);
   const canCreate = canCreateTransaction(activeSpace, userRole);
   const [transactionMode, setTransactionMode] =
-    useState<QuickAddMode | null>(null);
+    useState<Exclude<QuickAddMode, "smart_entry"> | null>(null);
+  const [smartEntryOpen, setSmartEntryOpen] = useState(false);
+  const [reimbursablePrefill, setReimbursablePrefill] = useState<SmartEntryReimbursablePrefill | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resumeEpoch, setResumeEpoch] = useState(0);
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
@@ -40,6 +44,8 @@ export function AppShell() {
     setQuickAddOpen(false);
     setMoreOpen(false);
     setTransactionMode(null);
+    setSmartEntryOpen(false);
+    setReimbursablePrefill(null);
     setSuccessMessage(null);
   }, []);
 
@@ -181,6 +187,10 @@ export function AppShell() {
   const openTransaction = (mode: QuickAddMode) => {
     setQuickAddOpen(false);
     if (!canCreate) return;
+    if (mode === "smart_entry") {
+      setSmartEntryOpen(true);
+      return;
+    }
     setTransactionMode(mode);
   };
 
@@ -221,8 +231,28 @@ export function AppShell() {
         />
         <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
         <QuickAddMenu open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onSelect={openTransaction} />
+        <SmartEntryModal
+          isOpen={smartEntryOpen}
+          onClose={() => setSmartEntryOpen(false)}
+          onOpenReimbursable={(prefill) => {
+            setReimbursablePrefill(prefill);
+            setTransactionMode("reimbursable_expense");
+          }}
+          onSaved={handleTransactionSaved}
+        />
         {transactionMode === "reimbursable_expense" ? (
-          <ReimbursableExpenseModal isOpen={true} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
+          <ReimbursableExpenseModal
+            initialValues={reimbursablePrefill}
+            isOpen={true}
+            onClose={() => {
+              setTransactionMode(null);
+              setReimbursablePrefill(null);
+            }}
+            onSaved={() => {
+              setReimbursablePrefill(null);
+              handleTransactionSaved();
+            }}
+          />
         ) : transactionMode ? (
           <TransactionModal mode={transactionMode} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
         ) : null}

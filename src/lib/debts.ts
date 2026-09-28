@@ -316,6 +316,14 @@ export async function getCounterparties(
 }
 
 export async function getActiveDebts(spaceId?: string): Promise<DebtProgress[]> {
+  return (await getOutstandingDebtItems(spaceId)).filter((item) => item.type === "debt");
+}
+
+/**
+ * The Smart Entry resolver and the manual Debt screens both need the same
+ * authoritative, RLS-scoped outstanding items. IDs never come from the parser.
+ */
+export async function getOutstandingDebtItems(spaceId?: string): Promise<DebtProgress[]> {
   const userId = await getAuthenticatedUserId();
   const targetSpaceId = spaceId ?? getActiveSpaceId();
 
@@ -335,9 +343,9 @@ export async function getActiveDebts(spaceId?: string): Promise<DebtProgress[]> 
   let debtProgressQuery = supabase
     .from("debt_progress_view")
     .select("*")
-    .eq("type", "debt")
     .neq("status", "settled")
     .neq("status", "cancelled")
+    .gt("remaining_amount", 0)
     .order("created_at", { ascending: false });
 
   if (!targetSpaceId) {
@@ -570,7 +578,7 @@ export async function renameCounterparty(id: string, name: string): Promise<{ da
 
 export async function createDebt(
   input: CreateDebtInput,
-  options?: { walletId?: string | null; counterpartyName?: string; spaceId?: string },
+  options?: { walletId?: string | null; counterpartyName?: string; spaceId?: string; transactionDate?: string },
 ): Promise<{ data: Debt | null; error: any }> {
   const res = await createMultipleDebts([input], options);
   return { data: res.data ? res.data[0] ?? null : null, error: res.error };
@@ -578,7 +586,7 @@ export async function createDebt(
 
 export async function createMultipleDebts(
   inputs: CreateDebtInput[],
-  options?: { walletId?: string | null; counterpartyName?: string; spaceId?: string },
+  options?: { walletId?: string | null; counterpartyName?: string; spaceId?: string; transactionDate?: string },
 ): Promise<{ data: Debt[] | null; error: any }> {
   if (inputs.length === 0) {
     return { data: [], error: null };
@@ -629,7 +637,7 @@ export async function createMultipleDebts(
       wallet_id: options.walletId,
       destination_wallet_id: null,
       transfer_fee: "0",
-      transaction_date: new Date().toISOString(),
+      transaction_date: options?.transactionDate ? new Date(options.transactionDate).toISOString() : new Date().toISOString(),
       title: type === "debt" ? `Debt Inflow: ${cpName}` : `Receivable Outflow: ${cpName}`,
       note: inputs.length === 1 ? inputs[0].note?.trim() || null : `${inputs.length} items tracked`,
       status: "completed",

@@ -58,9 +58,11 @@ import {
 } from "../../lib/money";
 
 import { useI18n } from "../../i18n";
+import type { SmartEntryReimbursablePrefill } from "../../lib/smartEntry";
 import type { Category, Counterparty, FinancialSpace } from "../../types/domain";
 
 type ReimbursableExpenseModalProps = {
+  initialValues?: SmartEntryReimbursablePrefill | null;
   isOpen: boolean;
   onClose: () => void;
   onSaved?: () => void;
@@ -75,6 +77,7 @@ function getTodayLocalDateTime() {
 }
 
 export function ReimbursableExpenseModal({
+  initialValues,
   isOpen,
   onClose,
   onSaved,
@@ -107,6 +110,18 @@ export function ReimbursableExpenseModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
+
+  // Smart Entry only supplies a reviewed, non-authoritative form prefill. The
+  // existing reimbursement form remains the sole place that can create it.
+  useEffect(() => {
+    if (!isOpen || !initialValues) return;
+    setAmount(initialValues.amount ? formatMoneyDigits(String(initialValues.amount)) : "");
+    setWalletId(initialValues.walletId ?? "");
+    setSelectedManagedSpaceId(initialValues.managedSpaceId ?? "");
+    setTargetMode(initialValues.managedSpaceId ? "managed" : "contact");
+    setTitle(initialValues.description);
+    setTransactionDate(initialValues.transactionDate);
+  }, [initialValues, isOpen]);
 
   // Active wallets list (from current Personal space)
   const activeWallets = useMemo(() => {
