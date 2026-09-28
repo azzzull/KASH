@@ -55,7 +55,7 @@ type SmartEntryModalProps = {
   onSaved?: () => void;
 };
 
-type SmartEntryStage = "reply" | "review";
+const MIN_PROCESSING_BUBBLE_MS = 550;
 
 function localDateKey() {
   const now = new Date();
@@ -139,7 +139,6 @@ export function SmartEntryModal({
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [stage, setStage] = useState<SmartEntryStage>("reply");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [voiceAvailable, setVoiceAvailable] = useState(false);
@@ -200,7 +199,6 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
-    setStage("reply");
     setError(null);
     setSuccess(false);
   }, [activeSpaceId, isOpen]);
@@ -214,7 +212,6 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
-    setStage("reply");
     setError(null);
     setSuccess(false);
   }, [isOpen]);
@@ -248,6 +245,7 @@ export function SmartEntryModal({
     setSubmittedText(entryText);
     setError(null);
     setSuccess(false);
+    const processingStartedAt = performance.now();
     try {
       const result = await parseSmartEntry(entryText, {
         activeSpace: activeSpace ? { name: activeSpace.name, type: activeSpace.space_type } : null,
@@ -265,12 +263,15 @@ export function SmartEntryModal({
         wallets: resources.wallets.map((wallet) => wallet.name),
       }, resources);
       const resolvedDraft = buildSmartEntryDraft(result.draft, resources, effectiveDate);
+      const remainingProcessingTime = MIN_PROCESSING_BUBBLE_MS - (performance.now() - processingStartedAt);
+      if (remainingProcessingTime > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, remainingProcessingTime));
+      }
       setDraft(resolvedDraft);
       parserSourceRef.current = result.parserSource;
       normalizedTextRef.current = result.normalizedText;
       setText("");
       setEditing(resolvedDraft.missingFields.length > 0);
-      setStage("reply");
     } catch (parseError) {
       setError(parseErrorMessage(parseError, t));
     } finally {
@@ -444,7 +445,6 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
-    setStage("reply");
     setError(null);
     setSuccess(false);
   };
@@ -454,7 +454,6 @@ export function SmartEntryModal({
     parserSourceRef.current = null;
     normalizedTextRef.current = null;
     setEditing(false);
-    setStage("reply");
     setError(null);
     setText(submittedText ?? "");
     setSubmittedText(null);
@@ -468,6 +467,9 @@ export function SmartEntryModal({
 
   const isReady = Boolean(draft && draft.intent !== "unknown" && !draft.multipleActions && draft.missingFields.length === 0);
   const reviewObligation = draft?.obligationId ? resources?.obligations.find((item) => item.id === draft.obligationId) : null;
+  const editableDateTime = draft
+    ? `${draft.transactionDate}T${draft.transactionTime ?? new Date().toTimeString().slice(0, 5)}`
+    : "";
 
   return (
     <Modal
@@ -492,9 +494,11 @@ export function SmartEntryModal({
     >
       <div className="flex min-h-[max(9rem,calc(90dvh-9rem))] flex-col md:min-h-[32rem]">
         <div className="flex-1 space-y-4 px-5 py-4 md:px-6">
-          <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2.5 text-sm font-semibold leading-5 text-slate-700">
-            {t("smartEntry.description")}
-          </div>
+          {!submittedText ? (
+            <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2.5 text-sm font-semibold leading-5 text-slate-700">
+              {t("smartEntry.description")}
+            </div>
+          ) : null}
           {submittedText ? (
             <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-kash-emerald px-3 py-2.5 text-sm font-semibold leading-5 text-white">
               {submittedText}
@@ -537,17 +541,11 @@ export function SmartEntryModal({
               <Button type="button" onClick={onClose}>{t("smartEntry.manualEntry")}</Button>
             </div>
           </div>
-        ) : stage === "reply" ? (
-          <div className="space-y-3">
-            <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2.5 text-sm font-semibold leading-5 text-slate-700">
-              <p>{t("smartEntry.reviewIntro")} <span className="font-extrabold text-slate-900">{intentLabel(draft.intent, t)}</span>.</p>
-              <p className="mt-1.5 text-slate-600">{draft.missingFields.length > 0 ? t("smartEntry.replyNeedsDetails") : t("smartEntry.replyReadyForReview")}</p>
-            </div>
-            <Button type="button" onClick={() => setStage("review")}>{t("smartEntry.openReview")}</Button>
-          </div>
         ) : (
           <>
-            <p className="text-sm font-semibold text-slate-700">{t("smartEntry.reviewTitle")}</p>
+            <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-slate-100 px-3 py-2.5 text-sm font-semibold leading-5 text-slate-700">
+              {t("smartEntry.reviewPrompt")}
+            </div>
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
               <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                 <p className="font-extrabold text-slate-900">{intentLabel(draft.intent, t)}</p>
@@ -598,8 +596,13 @@ export function SmartEntryModal({
                   {draft.intent === "reimbursable_expense" ? <SelectField id="smart-entry-managed-space" label={t("smartEntry.managedSpace")} value={draft.managedSpaceId ?? ""} onChange={(event) => { const option = resources?.managedSpaces.find((space) => space.id === event.target.value); updateDraft({ managedSpaceId: option?.id ?? null, managedSpaceLabel: option?.name ?? null }); }}><option value="">{t("smartEntry.selectOption")}</option>{resources?.managedSpaces.map((space) => <option key={space.id} value={space.id}>{space.name}</option>)}</SelectField> : null}
                   {draft.intent === "reimbursement_settlement" ? <><SelectField id="smart-entry-reimbursement" label={t("smartEntry.reimbursement")} value={draft.obligationId ?? ""} onChange={(event) => { const option = resources?.obligations.find((item) => item.id === event.target.value); updateDraft({ obligationId: option?.id ?? null, reimbursementEventId: option?.crossSpaceEventId ?? null }); }}><option value="">{t("smartEntry.selectOption")}</option>{resources?.obligations.filter((item) => item.crossSpaceEventId).map((item) => <option key={item.id} value={item.id}>{item.counterpartyName} · {item.title}</option>)}</SelectField><SelectField id="smart-entry-settlement-source" label={t("smartEntry.settlementSource")} value={draft.settlementSource} onChange={(event) => updateDraft({ settlementSource: event.target.value as "managed_wallet" | "external_direct" })}><option value="external_direct">{t("smartEntry.externalDirect")}</option><option value="managed_wallet">{t("smartEntry.managedWallet")}</option></SelectField></> : null}
                   <FormField id="smart-entry-description" label={t("smartEntry.descriptionLabel")} onChange={(event) => updateDraft({ description: event.target.value })} value={draft.description} />
-                  <DatePickerField id="smart-entry-date" label={t("smartEntry.date")} value={draft.transactionDate} onChange={(value) => updateDraft({ transactionDate: value.slice(0, 10) })} />
-                  <FormField id="smart-entry-time" label={t("smartEntry.time")} type="time" onChange={(event) => updateDraft({ transactionTime: event.target.value || null })} value={draft.transactionTime ?? ""} />
+                  <DatePickerField
+                    enableTime
+                    id="smart-entry-date-time"
+                    label={t("transactions.dateTime")}
+                    onChange={(value) => updateDraft({ transactionDate: value.slice(0, 10), transactionTime: value.slice(11, 16) || null })}
+                    value={editableDateTime}
+                  />
                 </div>
               )}
             </div>
