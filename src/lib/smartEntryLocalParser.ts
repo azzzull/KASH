@@ -38,7 +38,8 @@ const NORMALIZATION_REPLACEMENTS: Array<[RegExp, string]> = [
 const EXPENSE_SIGNALS = ["beli", "bayar", "jajan", "makan", "ngopi", "keluar", "habis", "ngabisin"];
 const INCOME_SIGNALS = ["gaji", "freelance", "bonus", "dapat", "dibayar", "income", "pemasukan"];
 const TRANSFER_SIGNALS = ["pindah", "pindahin", "transfer", "kirim", "masukin"];
-const REIMBURSEMENT_SIGNALS = ["nombok", "direimburse", "diganti", "bayarin kantor"];
+const REIMBURSEMENT_SIGNALS = ["nombok", "direimburse", "reimburse", "diganti", "bayarin kantor", "nanti diganti"];
+const WORK_EXPENSE_SIGNALS = ["buat kantor", "untuk kantor", "meeting kantor", "keperluan kantor", "dinas", "operasional kantor"];
 
 const CATEGORY_SEMANTICS = {
   food: {
@@ -66,6 +67,14 @@ const CATEGORY_SEMANTICS = {
     signals: INCOME_SIGNALS,
   },
 } as const;
+
+const EXPENSE_SEMANTIC_SIGNALS = [
+  ...CATEGORY_SEMANTICS.food.signals,
+  ...CATEGORY_SEMANTICS.transport.signals,
+  ...CATEGORY_SEMANTICS.shopping.signals,
+  ...CATEGORY_SEMANTICS.health.signals,
+  ...CATEGORY_SEMANTICS.bills.signals,
+];
 
 function normalizeForMatch(value: string) {
   return value
@@ -164,11 +173,13 @@ function knownCounterparty(normalizedText: string, resources: SmartEntryResource
   return candidates.size === 1 ? [...candidates.values()][0] : null;
 }
 
-function extractCounterparty(rawText: string, normalizedText: string, resources: SmartEntryResources, intent: SmartEntryIntent) {
+function extractCounterparty(rawText: string, normalizedText: string, resources: SmartEntryResources, intent: SmartEntryIntent, reimbursable: boolean) {
   const known = knownCounterparty(normalizedText, resources);
   if (known) return known;
 
-  const patterns = intent === "debt_borrow"
+  const patterns = reimbursable
+    ? [/\b(?:direimburse|reimburse|diganti)\s+(?:oleh\s+)?([^,.;]+?)(?:\s+(?:pakai|dari|ke|untuk)\b|$)/i, /\b(?:buat|untuk)\s+([^,.;]+?)(?:\s+(?:pakai|dari|ke)\b|$)/i]
+    : intent === "debt_borrow"
     ? [/\bdari\s+([^,.;]+?)(?:\s+(?:pakai|ke|masuk)\b|$)/i]
     : intent === "receivable_lend"
       ? [/^\s*([^,.;]+?)\s+(?:minjem|minjam|pinjam)\b/i]
@@ -287,7 +298,7 @@ function resolveIntent(text: string, rawText: string, resources: SmartEntryResou
   if (lendsToUser || (/^\s*[^\d,.;]+\s+pinjam\b/.test(rawText) && /\bke\s+aku\b/.test(text))) {
     return { clarification: null, intent: "receivable_lend" as const };
   }
-  if (reimbursement) return { clarification: null, intent: "reimbursable_expense" as const };
+  if (reimbursement) return { clarification: null, intent: "expense" as const };
   if (transfer) {
     if (wallets.length >= 2) return { clarification: null, intent: "internal_transfer" as const };
     if (wallets.length === 1 && /\bke\s+[a-z]/.test(text)) return { clarification: null, intent: "external_transfer" as const };
@@ -296,8 +307,14 @@ function resolveIntent(text: string, rawText: string, resources: SmartEntryResou
   if (hasAny(text, INCOME_SIGNALS) || /\b(?:client|klien)\s+bayar\b/.test(text) || /\bmasuk\b.*\bke\b/.test(text)) {
     return { clarification: null, intent: "income" as const };
   }
-  if (hasAny(text, EXPENSE_SIGNALS)) return { clarification: null, intent: "expense" as const };
+  if (hasAny(text, EXPENSE_SIGNALS) || hasAny(text, EXPENSE_SEMANTIC_SIGNALS) || hasAny(text, WORK_EXPENSE_SIGNALS)) return { clarification: null, intent: "expense" as const };
   return { clarification: null, intent: "unknown" as const };
+}
+
+function resolveExpenseContext(text: string) {
+  if (hasAny(text, REIMBURSEMENT_SIGNALS)) return "reimbursable" as const;
+  if (hasAny(text, WORK_EXPENSE_SIGNALS)) return "work" as const;
+  return "personal" as const;
 }
 
 function parseWallets(text: string, intent: SmartEntryIntent, resources: SmartEntryResources) {
@@ -327,6 +344,7 @@ function rawDraft(overrides: Partial<SmartEntryRawDraft>): SmartEntryRawDraft {
     description: null,
     destinationWallet: null,
     envelope: null,
+    expenseContext: null,
     intent: "unknown",
     managedSpace: null,
     message: null,
@@ -364,17 +382,18 @@ export function parseLocalSmartEntry(
 
   const intentResult = resolveIntent(normalizedText, rawText, resources);
   const intent = intentResult.intent;
+  const expenseContext = intent === "expense" ? resolveExpenseContext(normalizedText) : "personal";
   const wallet = parseWallets(normalizedText, intent, resources);
   const envelope = findSingleOption(normalizedText, resources.envelopes);
   const managedSpace = findSingleOption(normalizedText, resources.managedSpaces);
   const kind = intent === "income" ? "income" : "expense";
   const category = intent === "external_transfer" ? transferCategory(resources) : categoryFor(normalizedText, resources, kind);
-  const counterparty = extractCounterparty(rawText, normalizedText, resources, intent);
+  const counterparty = extractCounterparty(rawText, normalizedText, resources, intent, expenseContext === "reimbursable");
   const clarification = intentResult.clarification ?? (wallet.ambiguous ? "wallet_ambiguous" : amountResult.ambiguous ? "amount_ambiguous" : null);
-  const deterministicMissing = clarification !== null || (!amountResult.amount && intent !== "unknown") || wallet.ambiguous;
-  const complexReimbursement = intent === "reimbursable_expense"
-    && /\b(?:kantor|bos|teknisi|diganti|direimburse)\b/.test(normalizedText);
-  const shouldUseAiFallback = !deterministicMissing && (complexReimbursement || (intent === "unknown" && Boolean(amountResult.amount)));
+  const shouldUseAiFallback = intent === "unknown"
+    || clarification !== null
+    || (intent === "expense" && (!amountResult.amount || !category || !wallet.wallet || (expenseContext === "reimbursable" && !counterparty)))
+    || !amountResult.amount;
 
   return {
     draft: rawDraft({
@@ -396,6 +415,7 @@ export function parseLocalSmartEntry(
       description: summarizeSmartEntryDescription(rawText),
       destinationWallet: wallet.destinationWallet,
       envelope: envelope.option?.name ?? null,
+      expenseContext,
       intent,
       managedSpace: managedSpace.option?.name ?? null,
       missingFields: clarification === "amount_ambiguous" ? ["amount"] : clarification === "pinjam_direction" ? ["direction"] : clarification === "wallet_ambiguous" ? ["wallet"] : [],

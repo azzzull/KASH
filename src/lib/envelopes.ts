@@ -173,6 +173,7 @@ export async function getEnvelopeMonthlyAnalytics(
     .select("*, category:categories(*), wallet:wallets!wallet_id(*)")
     .eq("envelope_id", envelopeId)
     .eq("type", "expense")
+    .eq("expense_context", "personal")
     .eq("status", "completed")
     .gte("transaction_date", `${normPeriod}T00:00:00`)
     .lt("transaction_date", `${endDate}T00:00:00`)

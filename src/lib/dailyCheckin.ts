@@ -66,7 +66,7 @@ export async function updateDailyCheckinPreferences(
 
   const { data, error } = await supabase
     .from("profiles")
-    .update(changes)
+    .update("daily_checkin_time" in changes ? { ...changes, daily_checkin_timezone: browserTimezone() } : changes)
     .eq("id", user.id)
     .select("daily_checkin_enabled, daily_checkin_time, daily_checkin_timezone, daily_checkin_intro_seen")
     .single();

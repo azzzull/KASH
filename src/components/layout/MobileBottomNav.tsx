@@ -6,11 +6,12 @@ import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { canCreateTransaction } from "../../lib/transactions";
 
 type MobileBottomNavProps = {
+  keyboardOpen?: boolean;
   onMore: () => void;
   onQuickAdd: () => void;
 };
 
-export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
+export function MobileBottomNav({ keyboardOpen = false, onMore, onQuickAdd }: MobileBottomNavProps) {
   const { t } = useI18n();
   const { activeSpace, userRole } = useActiveSpace();
   const canCreate = canCreateTransaction(activeSpace, userRole);
@@ -28,7 +29,7 @@ export function MobileBottomNav({ onMore, onQuickAdd }: MobileBottomNavProps) {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-kash-emerald/15 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-soft backdrop-blur lg:hidden"
+      className={`fixed inset-x-0 bottom-0 z-30 border-t border-kash-emerald/15 bg-white/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-soft backdrop-blur transition duration-200 lg:hidden ${keyboardOpen ? "pointer-events-none translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
     >
       <div className={`mx-auto grid max-w-md ${canCreate ? "grid-cols-5" : "grid-cols-4"} items-center gap-1`}>
         {[home, transactions].map((item) => (

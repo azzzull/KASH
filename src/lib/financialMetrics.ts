@@ -1,4 +1,9 @@
 import type { Transaction, Wallet } from "../types/domain";
+import {
+  isPersonalConsumptionExpense,
+  isReimbursableExpenseContext,
+  isWorkExpenseContext,
+} from "./expenseContext.ts";
 
 /**
  * Canonical transaction-derived metrics. Live wallet balances remain
@@ -8,6 +13,11 @@ import type { Transaction, Wallet } from "../types/domain";
 export type FinancialMetrics = {
   income: number;
   expensePrincipal: number;
+  /** Real non-personal cash expenses, kept separate from lifestyle spending. */
+  workExpense: number;
+  reimbursableExpense: number;
+  /** All completed cash expense principals, regardless of context. */
+  cashExpenseOutflow: number;
   transferFees: number;
   expense: number;
   totalExpense: number;
@@ -157,6 +167,11 @@ export function isEconomicIncomeOrExpense(transaction: Transaction) {
   return !NON_ECONOMIC_EVENT_TYPES.has(transaction.related_entity_type ?? "");
 }
 
+/** Personal spending KPI / budget / lifestyle eligibility. */
+export function isPersonalExpensePrincipal(transaction: Transaction) {
+  return isEconomicIncomeOrExpense(transaction) && isPersonalConsumptionExpense(transaction);
+}
+
 export function transactionFee(transaction: Transaction) {
   return transaction.type === "expense" || transaction.type === "transfer"
     ? moneyValue(transaction.transfer_fee)
@@ -191,7 +206,12 @@ export function calculateFinancialMetrics(transactions: Transaction[], walletId?
     const fee = transactionFee(transaction);
 
     if (transaction.type === "income" && isEconomicIncomeOrExpense(transaction)) metrics.income += amount;
-    if (transaction.type === "expense" && isEconomicIncomeOrExpense(transaction)) metrics.expensePrincipal += amount;
+    if (transaction.type === "expense" && isEconomicIncomeOrExpense(transaction)) {
+      metrics.cashExpenseOutflow += amount;
+      if (isPersonalExpensePrincipal(transaction)) metrics.expensePrincipal += amount;
+      else if (isWorkExpenseContext(transaction)) metrics.workExpense += amount;
+      else if (isReimbursableExpenseContext(transaction)) metrics.reimbursableExpense += amount;
+    }
     metrics.transferFees += fee;
     if (transaction.type === "transfer") metrics.internalTransfers += amount;
 
@@ -211,7 +231,7 @@ export function calculateFinancialMetrics(transactions: Transaction[], walletId?
       metrics.transactionCount += 1;
     }
     return metrics;
-  }, { income: 0, expensePrincipal: 0, transferFees: 0, expense: 0, totalExpense: 0, internalTransfers: 0, walletInflow: 0, walletOutflow: 0, walletNetMovement: 0, netCashFlow: 0, transactionCount: 0 });
+  }, { income: 0, expensePrincipal: 0, workExpense: 0, reimbursableExpense: 0, cashExpenseOutflow: 0, transferFees: 0, expense: 0, totalExpense: 0, internalTransfers: 0, walletInflow: 0, walletOutflow: 0, walletNetMovement: 0, netCashFlow: 0, transactionCount: 0 });
 }
 
 export function finalizeFinancialMetrics(metrics: Omit<FinancialMetrics, "expense" | "totalExpense" | "netCashFlow">): FinancialMetrics {
@@ -361,7 +381,7 @@ export function calculateMoneyFlowReconciliation(input: {
     if (transaction.destination_wallet_id && destinationIsLiquid) result.resultingLiquidityChange += walletMovementForTransaction(transaction, transaction.destination_wallet_id).netMovement;
 
     if (transaction.type === "income" && sourceIsLiquid && isEconomicIncomeOrExpense(transaction)) result.genuineIncome += amount;
-    if (transaction.type === "expense" && sourceIsLiquid && isEconomicIncomeOrExpense(transaction)) result.ordinarySpending += amount;
+    if (transaction.type === "expense" && sourceIsLiquid && isPersonalExpensePrincipal(transaction)) result.ordinarySpending += amount;
     if (sourceIsLiquid) result.transferFees += fee;
 
     if (transaction.type === "adjustment") {

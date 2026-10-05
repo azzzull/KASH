@@ -10,6 +10,7 @@ import { getMonthlyBudgets } from "./budgets";
 import { financialMetrics, walletNetWorthAt, calculateMoneyFlowReconciliation, type MoneyFlowReconciliation, type SpendableCashBreakdown } from "./financialMetrics";
 import { getSpendableCash } from "./financialMetricsService";
 import { detectFinancialInsights, summarizeUnbudgetedSpending, type FinancialInsight } from "./financialInsights";
+import { isPersonalConsumptionExpense } from "./expenseContext.ts";
 import type { Category, Debt, DebtPayment, DebtPaymentAllocation, Envelope, Goal, GoalProgress, Transaction, TransactionType, Wallet, WalletBalance, WalletType } from "../types/domain";
 
 const WALLET_TYPE_COLORS: Record<WalletType, string> = {
@@ -714,7 +715,7 @@ export async function getDashboardSummary(
       }));
   const unbudgetedSpending = summarizeUnbudgetedSpending(
     monthTransactions
-      .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
+      .filter((transaction) => isPersonalConsumptionExpense(transaction))
       .map((transaction) => ({
         amount: moneyValue(transaction.amount),
         categoryId: transaction.category_id,

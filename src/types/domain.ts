@@ -189,6 +189,11 @@ export type InvestmentValuation = {
 export type TransactionType = "income" | "expense" | "transfer" | "adjustment";
 export type TransactionSubtype = "external_transfer";
 export type TransactionStatus = "completed" | "void";
+/**
+ * Why an expense happened. This deliberately classifies the transaction, not
+ * the money held in its wallet or the financial space it belongs to.
+ */
+export type ExpenseContext = "personal" | "work" | "reimbursable";
 
 export type Transaction = {
   id: string;
@@ -198,6 +203,7 @@ export type Transaction = {
   updated_by_user_id?: string | null;
   type: TransactionType;
   transaction_subtype?: TransactionSubtype | null;
+  expense_context?: ExpenseContext;
   amount: MoneyAmount;
   wallet_id: string | null;
   category_id: string | null;
@@ -486,6 +492,8 @@ export type RecurringObligation = {
   next_due_date: string | null;
   status: RecurringObligationStatus;
   default_wallet_id: string | null;
+  /** Local time at which due-date reminders are evaluated for this obligation. */
+  reminder_time?: string;
   reminder_offsets: number[];
   overdue_reminder_enabled: boolean;
   installment_total_amount: MoneyAmount | null;

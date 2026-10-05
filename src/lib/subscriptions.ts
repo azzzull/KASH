@@ -23,6 +23,7 @@ export type CreateRecurringObligationInput = {
   categoryId?: string | null;
   defaultWalletId?: string | null;
   reminderOffsets?: number[];
+  reminderTime?: string;
   overdueReminderEnabled?: boolean;
   installmentTotalAmount?: string | null;
   installmentCount?: number | null;
@@ -38,6 +39,7 @@ export type UpdateRecurringObligationInput = {
   categoryId?: string | null;
   defaultWalletId?: string | null;
   reminderOffsets?: number[];
+  reminderTime?: string;
   overdueReminderEnabled?: boolean;
   note?: string | null;
 };
@@ -248,6 +250,13 @@ export async function createRecurringObligation(
 
     if (error) throw error;
 
+    if (data && input.reminderTime) {
+      const { error: reminderError } = await supabase
+        .from("recurring_obligations")
+        .update({ reminder_time: input.reminderTime })
+        .eq("id", data);
+      if (reminderError) throw reminderError;
+    }
     return { id: data, error: null };
   } catch (error) {
     return { id: null, error: error as Error };
@@ -274,6 +283,7 @@ export async function updateRecurringObligation(
         category_id: input.categoryId || null,
         default_wallet_id: input.defaultWalletId || null,
         reminder_offsets: input.reminderOffsets ?? [7, 3, 1, 0],
+        reminder_time: input.reminderTime ?? "08:00",
         overdue_reminder_enabled: input.overdueReminderEnabled ?? true,
         note: input.note?.trim() || null,
         updated_at: new Date().toISOString(),

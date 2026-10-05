@@ -72,6 +72,16 @@ assert.deepEqual({ expense: metrics.expensePrincipal, transfers: metrics.interna
 metrics = financialMetrics([transaction({ id: "void", type: "income", amount: "999", status: "void" })]);
 assert.deepEqual({ income: metrics.income, count: metrics.transactionCount, net: metrics.walletNetMovement }, { income: 0, count: 0, net: 0 });
 
+// Work/reimbursable cash outflows remain in wallet movement but not lifestyle KPIs.
+metrics = financialMetrics([
+  transaction({ id: "work", type: "expense", amount: "100", expense_context: "work" }),
+  transaction({ id: "claim", type: "expense", amount: "150", expense_context: "reimbursable", related_entity_type: "reimbursable_expense" }),
+]);
+assert.deepEqual(
+  { personal: metrics.expensePrincipal, work: metrics.workExpense, reimbursable: metrics.reimbursableExpense, wallet: metrics.walletNetMovement },
+  { personal: 0, work: 100, reimbursable: 150, wallet: -250 },
+);
+
 // A Space filter prevents unrelated financial events from entering a metric.
 const spaceATransactions = [transaction({ id: "a-income", type: "income", amount: "100" })];
 const spaceBTransaction = transaction({ id: "b-income", type: "income", amount: "900", space_id: spaceB, wallet_id: "wallet-b" });

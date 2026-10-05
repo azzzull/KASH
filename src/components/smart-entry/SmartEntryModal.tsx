@@ -1,4 +1,4 @@
-import { Loader2, Mic, Pencil, SendHorizontal, Sparkles, Square, WifiOff } from "lucide-react";
+import { Loader2, Mic, Pencil, SendHorizontal, Sparkles, Square } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useI18n } from "../../i18n";
@@ -22,7 +22,8 @@ import {
   type SmartEntryResources,
 } from "../../lib/smartEntry";
 import { getTransactionSupportData, createExpense, createExternalTransfer, createIncome, createTransfer, recordCrossSpaceSettlement } from "../../lib/transactions";
-import type { Category } from "../../types/domain";
+import type { Category, ExpenseContext } from "../../types/domain";
+import { ExpenseContextSelector } from "../transactions/ExpenseContextSelector";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
 import { FormField } from "../ui/FormField";
@@ -233,10 +234,6 @@ export function SmartEntryModal({
   const parse = async () => {
     if (loading || !text.trim()) return;
     const entryText = text.trim();
-    if (!navigator.onLine) {
-      setError(t("smartEntry.offline"));
-      return;
-    }
     if (!resources || !activeSpaceId) {
       setError(t("transactions.loadError"));
       return;
@@ -333,8 +330,10 @@ export function SmartEntryModal({
         const result = await createExpense({
           amount,
           categoryId: draft.categoryId!,
+          expenseContext: draft.expenseContext,
           envelopeId: draft.envelopeId,
           note,
+          reimbursementCounterparty: draft.expenseContext === "reimbursable" ? draft.counterparty : undefined,
           spaceId: activeSpaceId,
           title: draft.description || draft.categoryLabel,
           transactionDate,
@@ -520,7 +519,6 @@ export function SmartEntryModal({
             ) : null}
             {error ? (
               <div className="flex items-start gap-2 rounded-2xl rounded-tl-sm border border-kash-expense/30 bg-kash-expense/10 p-3 text-sm font-semibold text-slate-800">
-                {!navigator.onLine ? <WifiOff aria-hidden="true" className="mt-0.5 shrink-0" size={16} /> : null}
                 <div className="min-w-0">
                   <span>{error}</span>
                   <Button className="mt-3" type="button" variant="secondary" onClick={onClose}>{t("smartEntry.manualEntry")}</Button>
@@ -558,6 +556,7 @@ export function SmartEntryModal({
                   {draft.sourceWalletLabel ? <ReviewLine label={t("smartEntry.sourceWallet")} value={draft.sourceWalletLabel} /> : null}
                   {draft.destinationWalletLabel ? <ReviewLine label={t("smartEntry.destinationWallet")} value={draft.destinationWalletLabel} /> : null}
                   {draft.categoryLabel ? <ReviewLine label={t("smartEntry.category")} value={draft.categoryLabel} /> : null}
+                  {draft.intent === "expense" ? <ReviewLine label={t("expenseContext.label") || "Expense context"} value={draft.expenseContext === "work" ? (t("expenseContext.work") || "Work") : draft.expenseContext === "reimbursable" ? (t("expenseContext.reimbursable") || "Reimbursable") : (t("expenseContext.personal") || "Personal")} /> : null}
                   {draft.envelopeLabel ? <ReviewLine label={t("smartEntry.envelope")} value={draft.envelopeLabel} /> : null}
                   {draft.counterparty ? <ReviewLine label={t("smartEntry.counterparty")} value={draft.counterparty} /> : null}
                   {reviewObligation ? <ReviewLine label={t("smartEntry.obligation")} value={`${reviewObligation.counterpartyName} · ${reviewObligation.title}`} /> : null}
@@ -590,8 +589,9 @@ export function SmartEntryModal({
                   {(draft.intent === "internal_transfer" || draft.intent === "external_transfer") ? <SelectField id="smart-entry-source-wallet" label={t("smartEntry.sourceWallet")} value={draft.sourceWalletId ?? ""} onChange={(event) => selectOption(event.target.value, resources!.wallets, "sourceWalletId")}><option value="">{t("smartEntry.selectOption")}</option>{resources?.wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</SelectField> : null}
                   {draft.intent === "internal_transfer" ? <SelectField id="smart-entry-destination-wallet" label={t("smartEntry.destinationWallet")} value={draft.destinationWalletId ?? ""} onChange={(event) => selectOption(event.target.value, resources!.wallets, "destinationWalletId")}><option value="">{t("smartEntry.selectOption")}</option>{resources?.wallets.map((wallet) => <option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</SelectField> : null}
                   {(draft.intent === "expense" || draft.intent === "income" || draft.intent === "external_transfer") ? <SelectField id="smart-entry-category" label={t("smartEntry.category")} value={draft.categoryId ?? ""} onChange={(event) => { const option = categoryOptions.find((category) => category.id === event.target.value); updateDraft({ categoryId: option?.id ?? null, categoryLabel: option?.name ?? null }); }}><option value="">{t("smartEntry.selectOption")}</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</SelectField> : null}
+                  {draft.intent === "expense" ? <ExpenseContextSelector value={draft.expenseContext} onChange={(expenseContext: ExpenseContext) => updateDraft({ expenseContext })} /> : null}
                   {draft.intent === "expense" ? <SelectField id="smart-entry-envelope" label={t("smartEntry.envelope")} value={draft.envelopeId ?? ""} onChange={(event) => { const option = resources?.envelopes.find((envelope) => envelope.id === event.target.value); updateDraft({ envelopeId: option?.id ?? null, envelopeLabel: option?.name ?? null }); }}><option value="">{t("smartEntry.noEnvelope")}</option>{resources?.envelopes.map((envelope) => <option key={envelope.id} value={envelope.id}>{envelope.name}</option>)}</SelectField> : null}
-                  {(draft.intent === "external_transfer" || draft.intent === "debt_borrow" || draft.intent === "receivable_lend" || draft.intent === "reimbursable_expense") ? <FormField id="smart-entry-counterparty" label={t("smartEntry.counterparty")} onChange={(event) => updateDraft({ counterparty: event.target.value })} value={draft.counterparty} /> : null}
+                  {(draft.intent === "external_transfer" || draft.intent === "debt_borrow" || draft.intent === "receivable_lend" || draft.intent === "reimbursable_expense" || (draft.intent === "expense" && draft.expenseContext === "reimbursable")) ? <FormField id="smart-entry-counterparty" label={draft.intent === "expense" ? (t("expenseContext.reimbursementCounterparty") || "Pihak pengganti biaya") : t("smartEntry.counterparty")} onChange={(event) => updateDraft({ counterparty: event.target.value })} value={draft.counterparty} /> : null}
                   {(draft.intent === "debt_payment" || draft.intent === "receivable_collection") ? <SelectField id="smart-entry-obligation" label={t("smartEntry.obligation")} value={draft.obligationId ?? ""} onChange={(event) => { const option = resources?.obligations.find((item) => item.id === event.target.value); updateDraft({ counterparty: option?.counterpartyName ?? "", obligationId: option?.id ?? null }); }}><option value="">{t("smartEntry.selectOption")}</option>{resources?.obligations.filter((item) => item.type === (draft.intent === "debt_payment" ? "debt" : "receivable")).map((item) => <option key={item.id} value={item.id}>{item.counterpartyName} · {item.title} · {formatCurrency(item.remainingAmount, "IDR")}</option>)}</SelectField> : null}
                   {draft.intent === "reimbursable_expense" ? <SelectField id="smart-entry-managed-space" label={t("smartEntry.managedSpace")} value={draft.managedSpaceId ?? ""} onChange={(event) => { const option = resources?.managedSpaces.find((space) => space.id === event.target.value); updateDraft({ managedSpaceId: option?.id ?? null, managedSpaceLabel: option?.name ?? null }); }}><option value="">{t("smartEntry.selectOption")}</option>{resources?.managedSpaces.map((space) => <option key={space.id} value={space.id}>{space.name}</option>)}</SelectField> : null}
                   {draft.intent === "reimbursement_settlement" ? <><SelectField id="smart-entry-reimbursement" label={t("smartEntry.reimbursement")} value={draft.obligationId ?? ""} onChange={(event) => { const option = resources?.obligations.find((item) => item.id === event.target.value); updateDraft({ obligationId: option?.id ?? null, reimbursementEventId: option?.crossSpaceEventId ?? null }); }}><option value="">{t("smartEntry.selectOption")}</option>{resources?.obligations.filter((item) => item.crossSpaceEventId).map((item) => <option key={item.id} value={item.id}>{item.counterpartyName} · {item.title}</option>)}</SelectField><SelectField id="smart-entry-settlement-source" label={t("smartEntry.settlementSource")} value={draft.settlementSource} onChange={(event) => updateDraft({ settlementSource: event.target.value as "managed_wallet" | "external_direct" })}><option value="external_direct">{t("smartEntry.externalDirect")}</option><option value="managed_wallet">{t("smartEntry.managedWallet")}</option></SelectField></> : null}

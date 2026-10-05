@@ -9,6 +9,7 @@ import { FormField } from "../ui/FormField";
 import { IconButton } from "../ui/IconButton";
 import { Modal } from "../ui/Modal";
 import { SelectField } from "../ui/SelectField";
+import { ExpenseContextSelector } from "./ExpenseContextSelector";
 import { useI18n } from "../../i18n";
 import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
@@ -18,7 +19,7 @@ import { createExpense, createExternalTransfer, createIncome, createTransfer, fi
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
 import { emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
-import type { Category, Envelope } from "../../types/domain";
+import type { Category, Envelope, ExpenseContext } from "../../types/domain";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 
@@ -101,6 +102,8 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
   const [transferFee, setTransferFee] = useState("0");
   const [transactionDate, setTransactionDate] = useState(() => initialTransactionDatetime(initialDate));
   const [note, setNote] = useState("");
+  const [expenseContext, setExpenseContext] = useState<ExpenseContext>("personal");
+  const [reimbursementCounterparty, setReimbursementCounterparty] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [paymentSource, setPaymentSource] = useState<"managed" | "personal">("managed");
@@ -201,6 +204,9 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
     }
 
     if (!categoryId) return t("transactions.chooseCategory") || "Pilih kategori.";
+    if (mode === "expense" && paymentSource !== "personal" && expenseContext === "reimbursable" && !reimbursementCounterparty.trim()) {
+      return t("expenseContext.reimbursementCounterparty") || "Isi pihak yang akan mengganti.";
+    }
     if (mode === "expense" && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
       return t("transactions.insufficientBalanceExpense") || "Saldo dompet tidak mencukupi. Periksa kembali nominal transaksi.";
     }
@@ -262,7 +268,9 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
               amount: amountDigits,
               categoryId,
               envelopeId: envelopeId || null,
+              expenseContext,
               note: noteValue,
+              reimbursementCounterparty,
               title: noteValue ?? categoryName,
               transactionDate,
               walletId,
@@ -310,6 +318,8 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
         setNote("");
         setCategoryId("");
         setEnvelopeId("");
+        setExpenseContext("personal");
+        setReimbursementCounterparty("");
         setSaving(false);
         return;
       }
@@ -381,6 +391,22 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
               placeholder="125.000"
               value={amount}
             />
+
+            {mode === "expense" && paymentSource !== "personal" ? (
+              <>
+                <ExpenseContextSelector value={expenseContext} onChange={setExpenseContext} />
+                {expenseContext === "reimbursable" ? (
+                  <FormField
+                    id="expense-reimbursement-counterparty"
+                    label={t("expenseContext.reimbursementCounterparty")}
+                    onChange={(event) => setReimbursementCounterparty(event.target.value)}
+                    placeholder={t("expenseContext.reimbursementCounterpartyPlaceholder")}
+                    required
+                    value={reimbursementCounterparty}
+                  />
+                ) : null}
+              </>
+            ) : null}
 
             {mode === "transfer" ? (
               <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">

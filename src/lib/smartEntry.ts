@@ -1,4 +1,5 @@
 import { parseLocalSmartEntry, shouldUseAiFallback, summarizeSmartEntryDescription } from "./smartEntryLocalParser.ts";
+import type { ExpenseContext } from "../types/domain";
 
 export { normalizeSmartEntryText, parseLocalSmartEntry, parseRupiahAmount, shouldUseAiFallback } from "./smartEntryLocalParser.ts";
 
@@ -24,6 +25,7 @@ export const SMART_ENTRY_CONFIDENCE_FIELDS = [
   "counterparty",
   "date",
   "envelope",
+  "expenseContext",
   "intent",
   "managedSpace",
   "obligation",
@@ -105,6 +107,7 @@ export type SmartEntryRawDraft = {
   description: string | null;
   destinationWallet: string | null;
   envelope: string | null;
+  expenseContext: ExpenseContext | null;
   intent: SmartEntryIntent;
   managedSpace: string | null;
   message: string | null;
@@ -130,6 +133,7 @@ export type SmartEntryDraft = {
   destinationWalletLabel: string | null;
   envelopeId: string | null;
   envelopeLabel: string | null;
+  expenseContext: ExpenseContext;
   intent: SmartEntryIntent;
   managedSpaceId: string | null;
   managedSpaceLabel: string | null;
@@ -198,6 +202,7 @@ function requiredFields(draft: SmartEntryDraft) {
     case "income":
       if (!draft.walletId) fields.add("wallet");
       if (!draft.categoryId) fields.add("category");
+      if (draft.intent === "expense" && draft.expenseContext === "reimbursable" && !draft.counterparty.trim()) fields.add("counterparty");
       break;
     case "internal_transfer":
       if (!draft.sourceWalletId) fields.add("sourceWallet");
@@ -293,6 +298,7 @@ export function buildSmartEntryDraft(
     destinationWalletLabel: destinationWallet.label,
     envelopeId: envelope.id,
     envelopeLabel: envelope.label,
+    expenseContext: raw.expenseContext === "work" || raw.expenseContext === "reimbursable" ? raw.expenseContext : "personal",
     intent: raw.intent,
     managedSpaceId: managedSpace.id,
     managedSpaceLabel: managedSpace.label,
@@ -350,7 +356,7 @@ export function validateSmartEntryRawDraft(value: unknown): SmartEntryRawDraft |
   const requiredKeys = [
     "intent", "amount", "description", "transactionDate", "transactionTime",
     "wallet", "sourceWallet", "destinationWallet", "category", "envelope",
-    "counterparty", "managedSpace", "reimbursement", "settlementSource",
+    "counterparty", "managedSpace", "reimbursement", "settlementSource", "expenseContext",
     "clarification", "confidence", "missingFields", "multipleActions", "message",
   ];
   if (!requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(source, key))) return null;
@@ -378,6 +384,9 @@ export function validateSmartEntryRawDraft(value: unknown): SmartEntryRawDraft |
     description: boundedString(source.description, 500),
     destinationWallet: boundedString(source.destinationWallet),
     envelope: boundedString(source.envelope),
+    expenseContext: source.expenseContext === "work" || source.expenseContext === "reimbursable" || source.expenseContext === "personal"
+      ? source.expenseContext
+      : null,
     intent,
     managedSpace: boundedString(source.managedSpace),
     message: boundedString(source.message, 300),
@@ -404,7 +413,7 @@ export async function parseSmartEntry(
     throw new Error("SMART_ENTRY_INVALID_TEXT");
   }
   const local = parseLocalSmartEntry(content, context, resources);
-  if (!shouldUseAiFallback(local)) {
+  if (!shouldUseAiFallback(local) || (typeof navigator !== "undefined" && !navigator.onLine)) {
     return {
       draft: local.draft,
       normalizedText: local.normalizedText,
@@ -416,35 +425,46 @@ export async function parseSmartEntry(
   // The provider is only a language-understanding fallback. Local extraction
   // and client-side entity resolution remain available when it is unavailable.
   const { supabase } = await import("./supabase");
-  const { data, error } = await supabase.functions.invoke("smart-entry-parse", {
-    body: { context, text: content },
-  });
-  if (error) {
+  try {
+    const response = await Promise.race([
+      supabase.functions.invoke("smart-entry-parse", { body: { context, text: content } }),
+      new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error("SMART_ENTRY_TIMEOUT")), 12_000)),
+    ]);
+    const { data, error } = response;
+    if (error) {
+      return {
+        draft: local.draft,
+        normalizedText: local.normalizedText,
+        parserSource: "local",
+        rawText: local.rawText,
+      };
+    }
+    const parsed = validateSmartEntryRawDraft(data?.draft);
+    if (!parsed) {
+      return {
+        draft: local.draft,
+        normalizedText: local.normalizedText,
+        parserSource: "local",
+        rawText: local.rawText,
+      };
+    }
     return {
-      draft: { ...local.draft, clarification: "ai_unavailable" },
+      draft: {
+        ...parsed,
+        description: summarizeSmartEntryDescription(content, parsed.description),
+      },
+      normalizedText: local.normalizedText,
+      parserSource: "local_with_ai_fallback",
+      rawText: local.rawText,
+    };
+  } catch {
+    return {
+      draft: local.draft,
       normalizedText: local.normalizedText,
       parserSource: "local",
       rawText: local.rawText,
     };
   }
-  const parsed = validateSmartEntryRawDraft(data?.draft);
-  if (!parsed) {
-    return {
-      draft: { ...local.draft, clarification: "ai_unavailable" },
-      normalizedText: local.normalizedText,
-      parserSource: "local",
-      rawText: local.rawText,
-    };
-  }
-  return {
-    draft: {
-      ...parsed,
-      description: summarizeSmartEntryDescription(content, parsed.description),
-    },
-    normalizedText: local.normalizedText,
-    parserSource: "local_with_ai_fallback",
-    rawText: local.rawText,
-  };
 }
 
 export function smartEntryDateTime(date: string, time: string | null) {

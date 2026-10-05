@@ -1,4 +1,5 @@
 import type { Category, Envelope, Transaction } from "../types/domain";
+import { isPersonalConsumptionExpense } from "./expenseContext.ts";
 
 /** A presentation-only ownership group. Transaction category metadata is never changed. */
 export type SpendingBreakdownGroup = {
@@ -11,7 +12,7 @@ export type SpendingBreakdownGroup = {
 export type SpendingDrilldownScope = { mode: "hybrid" | "category"; groupType: "category" | "envelope"; groupId: string };
 
 type GroupOptions = { categories: Pick<Category, "id" | "name">[]; envelopes?: Pick<Envelope, "id" | "name">[] };
-export type SpendingTransaction = Pick<Transaction, "amount" | "category_id" | "envelope_id" | "status" | "type">;
+export type SpendingTransaction = Pick<Transaction, "amount" | "category_id" | "envelope_id" | "expense_context" | "related_entity_type" | "status" | "type">;
 
 function principal(value: unknown) {
   const parsed = Number(value);
@@ -19,7 +20,7 @@ function principal(value: unknown) {
 }
 
 function eligibleExpense(transaction: SpendingTransaction) {
-  return transaction.status === "completed" && transaction.type === "expense";
+  return isPersonalConsumptionExpense(transaction);
 }
 
 function categoryIdentity(transaction: SpendingTransaction, categories: Map<string, Pick<Category, "id" | "name">>) {

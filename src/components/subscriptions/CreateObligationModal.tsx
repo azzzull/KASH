@@ -60,6 +60,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
   const [showQuickCategoryModal, setShowQuickCategoryModal] = useState(false);
   const [defaultWalletId, setDefaultWalletId] = useState("");
   const [reminderOffsets, setReminderOffsets] = useState<number[]>([7, 3, 1, 0]);
+  const [reminderTime, setReminderTime] = useState("08:00");
   const [overdueReminder, setOverdueReminder] = useState(true);
   const [installmentCount, setInstallmentCount] = useState("12");
   const [alreadyPaidCount, setAlreadyPaidCount] = useState("0");
@@ -169,6 +170,7 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
       categoryId: categoryId || null,
       defaultWalletId: defaultWalletId || null,
       reminderOffsets,
+      reminderTime,
       overdueReminderEnabled: overdueReminder,
       installmentCount: isInstallmentType ? parseInt(installmentCount, 10) : undefined,
       installmentTotalAmount: isInstallmentType ? String(calculatedTotalAmount) : undefined,
@@ -432,6 +434,16 @@ export function CreateObligationModal({ onClose, onSaved }: CreateObligationModa
                   );
                 })}
               </div>
+              <label className="mt-3 block text-sm font-bold text-slate-900">
+                <span className="mb-1.5 block">{t("subscriptions.reminderTime") || "Waktu pengingat"}</span>
+                <input
+                  className="h-10 rounded-lg border border-slate-200 bg-white px-3 font-semibold text-slate-800 outline-none focus:border-kash-emerald focus:ring-4 focus:ring-kash-emerald/20"
+                  type="time"
+                  value={reminderTime}
+                  onChange={(event) => setReminderTime(event.target.value)}
+                />
+                <span className="mt-1 block text-xs font-semibold text-slate-500">{t("subscriptions.reminderTimeHint") || "Mengikuti zona waktu perangkat saat pengingat diaktifkan."}</span>
+              </label>
             </div>
 
             {/* Note */}

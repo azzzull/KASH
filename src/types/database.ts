@@ -18,6 +18,7 @@ import type {
   DebtStatus,
   DebtType,
   Envelope,
+  ExpenseContext,
   FinancialSpace,
   FinancialSpaceType,
   ManagedSpaceMember,
@@ -256,6 +257,7 @@ export type Database = {
           space_id?: string;
           type: TransactionType;
           transaction_subtype?: TransactionSubtype | null;
+          expense_context?: ExpenseContext;
           amount: string;
           wallet_id: string;
           category_id?: string | null;
@@ -413,6 +415,7 @@ export type Database = {
           next_due_date?: string | null;
           status?: RecurringObligationStatus;
           default_wallet_id?: string | null;
+          reminder_time?: string;
           reminder_offsets?: number[];
           overdue_reminder_enabled?: boolean;
           installment_total_amount?: string | null;
@@ -963,6 +966,22 @@ export type Database = {
           message: string;
           target_path: string;
         }[];
+      };
+      record_contextual_expense: {
+        Args: {
+          p_amount: string;
+          p_category_id: string;
+          p_context: ExpenseContext;
+          p_counterparty_name?: string | null;
+          p_envelope_id?: string | null;
+          p_note?: string | null;
+          p_space_id: string;
+          p_title?: string | null;
+          p_transaction_date: string;
+          p_transaction_id?: string | null;
+          p_wallet_id: string;
+        };
+        Returns: Transaction;
       };
       create_shared_savings: {
         Args: {

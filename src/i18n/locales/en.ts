@@ -2392,6 +2392,20 @@ export const en = {
     "reports.recapExportHint": "Complete transaction details for the selected period.",
     "reports.exportError": "The export could not be created. Please try again shortly.",
 
+    // Expense context
+    "expenseContext.label": "Expense context",
+    "expenseContext.personal": "Personal",
+    "expenseContext.work": "Work / Office",
+    "expenseContext.reimbursable": "Reimbursable",
+    "expenseContext.workHint": "A real cash expense that is not personal consumption.",
+    "expenseContext.reimbursableHint": "Paid in advance and tracked as a receivable until repaid.",
+    "expenseContext.reimbursementCounterparty": "Expected payer",
+    "expenseContext.reimbursementCounterpartyPlaceholder": "For example: Office",
+
+    // Reminder scheduling
+    "subscriptions.reminderTime": "Reminder time",
+    "subscriptions.reminderTimeHint": "Uses the account time zone. Defaults to 08:00.",
+
     // Statuses
     "status.active": "Active",
     "status.settled": "Settled",

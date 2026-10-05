@@ -9,6 +9,7 @@ import { getSpendableCash } from "./financialMetricsService";
 import { getCounterparties } from "./debts";
 import { getMonthlyBudgets } from "./budgets";
 import { detectFinancialInsights, summarizeUnbudgetedSpending, type FinancialInsight } from "./financialInsights";
+import { isPersonalConsumptionExpense } from "./expenseContext.ts";
 import type { Category, Debt, DebtPayment, DebtPaymentAllocation, Envelope, Transaction, Wallet, WalletBalance } from "../types/domain";
 
 export type AnalyticsPeriodKey = "this_month" | "last_month" | "3_months" | "6_months" | "this_year" | "custom";
@@ -553,7 +554,7 @@ export async function getAnalyticsSummary(
   const envelopeById = new Map(envelopes.map((envelope) => [envelope.id, envelope]));
   const walletById = new Map(wallets.map((wallet) => [wallet.id, wallet]));
   const spendingTransactions: AnalyticsSpendingTransaction[] = currentTransactions
-    .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
+    .filter((transaction) => isPersonalConsumptionExpense(transaction))
     .map((transaction) => ({
       ...transaction,
       categoryName: transaction.category_id ? categoryById.get(transaction.category_id)?.name ?? "Uncategorized" : "Uncategorized",
@@ -643,7 +644,7 @@ export async function getAnalyticsSummary(
       }));
   const unbudgetedSpending = summarizeUnbudgetedSpending(
     currentTransactions
-      .filter((transaction) => transaction.status === "completed" && transaction.type === "expense")
+      .filter((transaction) => isPersonalConsumptionExpense(transaction))
       .map((transaction) => ({
         amount: Number(transaction.amount),
         categoryId: transaction.category_id,

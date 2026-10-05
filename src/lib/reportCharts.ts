@@ -2,6 +2,7 @@ import type { TransactionRecapData } from "../types/reports";
 import { getDonutChartColor } from "./chartColors";
 import { toNumber } from "./money";
 import { parseDateKey } from "./reportPeriod";
+import { isPersonalConsumptionExpense } from "./expenseContext.ts";
 
 export type CashFlowPoint = { label: string; shortLabel: string; income: number; expense: number; net: number };
 export type CashFlowScale = { min: number; max: number; ticks: number[] };
@@ -37,7 +38,7 @@ export function buildCashFlowTrend(data: TransactionRecapData): CashFlowPoint[] 
     const point = groups.get(key) ?? { label: format.format(date), shortLabel: groupByMonth ? format.format(date) : String(date.getDate()), income: 0, expense: 0, net: 0 };
     const amount = toNumber(transaction.amount); const fee = transaction.type === "expense" || transaction.type === "transfer" ? toNumber(transaction.transfer_fee) : 0;
     if (transaction.type === "income" && !isEconomicMovement(transaction.related_entity_type)) point.income += Number.isFinite(amount) ? amount : 0;
-    if (transaction.type === "expense" && !isEconomicMovement(transaction.related_entity_type)) point.expense += Number.isFinite(amount) ? amount : 0;
+    if (isPersonalConsumptionExpense(transaction) && !isEconomicMovement(transaction.related_entity_type)) point.expense += Number.isFinite(amount) ? amount : 0;
     point.expense += Number.isFinite(fee) ? fee : 0;
     point.net = point.income - point.expense;
     groups.set(key, point);

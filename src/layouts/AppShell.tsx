@@ -40,6 +40,7 @@ export function AppShell() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resumeEpoch, setResumeEpoch] = useState(0);
   const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
+  const [mobileKeyboardOpen, setMobileKeyboardOpen] = useState(false);
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   const resetTransientShellUi = useCallback(() => {
@@ -177,6 +178,45 @@ export function AppShell() {
     };
   }, []);
 
+  // Mobile browsers do not consistently reduce the layout viewport for the
+  // software keyboard. VisualViewport gives us the effective visible area so
+  // fixed navigation never overlays the active field.
+  useEffect(() => {
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) return;
+
+    const updateKeyboardState = () => {
+      const isMobile = window.matchMedia("(max-width: 1023px)").matches;
+      const obscuredHeight = window.innerHeight - visualViewport.height - visualViewport.offsetTop;
+      const isOpen = isMobile && obscuredHeight > 120;
+      setMobileKeyboardOpen(isOpen);
+      document.documentElement.toggleAttribute("data-kash-mobile-keyboard", isOpen);
+    };
+
+    const keepFocusedFieldVisible = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (!target.matches("input, textarea, select, [contenteditable='true']")) return;
+      if (target.closest("[role='dialog']")) return;
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" }), 80);
+      });
+    };
+
+    updateKeyboardState();
+    visualViewport.addEventListener("resize", updateKeyboardState);
+    visualViewport.addEventListener("scroll", updateKeyboardState);
+    window.addEventListener("resize", updateKeyboardState);
+    document.addEventListener("focusin", keepFocusedFieldVisible);
+    return () => {
+      visualViewport.removeEventListener("resize", updateKeyboardState);
+      visualViewport.removeEventListener("scroll", updateKeyboardState);
+      window.removeEventListener("resize", updateKeyboardState);
+      document.removeEventListener("focusin", keepFocusedFieldVisible);
+      document.documentElement.removeAttribute("data-kash-mobile-keyboard");
+    };
+  }, []);
+
   useEffect(() => {
     const handleUpdateReady = (event: WindowEventMap["kash:pwa-update-ready"]) => {
       setUpdateRegistration(event.detail.registration);
@@ -214,18 +254,19 @@ export function AppShell() {
         onBeforeLongResume={resetTransientShellUi}
         onLongResume={advanceResumeEpoch}
       />
-      <div className="kash-page-bg min-h-screen text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
-        <div className="flex min-h-screen lg:h-[100dvh] lg:min-h-0">
+      <div className="kash-page-bg min-h-[100dvh] text-slate-900 lg:h-[100dvh] lg:overflow-hidden">
+        <div className="flex min-h-[100dvh] lg:h-[100dvh] lg:min-h-0">
           <DesktopSidebar />
           <div className="flex min-w-0 flex-1 flex-col lg:h-[100dvh] lg:min-h-0">
             <AppHeader visible={mobileHeaderVisible} />
-            <main ref={contentRef} className="flex-1 px-4 pt-20 pb-28 md:px-6 md:pt-6 lg:min-h-0 lg:overflow-y-auto lg:pb-8 lg:pt-8">
+            <main ref={contentRef} className="flex-1 px-4 pt-20 pb-[calc(7rem+env(safe-area-inset-bottom))] md:px-6 md:pt-6 lg:min-h-0 lg:overflow-y-auto lg:pb-8 lg:pt-8">
               <Outlet key={`${activeSpaceId ?? "no-space"}-${resumeEpoch}`} />
             </main>
           </div>
         </div>
 
         <MobileBottomNav
+          keyboardOpen={mobileKeyboardOpen}
           onMore={() => setMoreOpen(true)}
           onQuickAdd={() => {
             if (canCreate) setQuickAddOpen(true);

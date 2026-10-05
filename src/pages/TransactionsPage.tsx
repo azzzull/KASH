@@ -22,6 +22,7 @@ import { useSearchParams } from "react-router-dom";
 import { startOfLocalMonth } from "../lib/calendar";
 import { QuickCreateCategoryModal } from "../components/categories/QuickCreateCategoryModal";
 import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
+import { ExpenseContextSelector } from "../components/transactions/ExpenseContextSelector";
 import { TransactionRow as CanonicalTransactionRow } from "../components/transactions/TransactionRow";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -56,7 +57,7 @@ import { getEnvelopes } from "../lib/envelopes";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
 import { useAppEvent } from "../hooks/useAppEvent";
-import type { Category, Envelope, TransactionStatus, TransactionType, Wallet } from "../types/domain";
+import type { Category, Envelope, ExpenseContext, TransactionStatus, TransactionType, Wallet } from "../types/domain";
 
 type EditMode = "duplicate" | "edit";
 
@@ -175,6 +176,7 @@ function clearableFilters(filters: TransactionFilters) {
     filters.walletId ||
     filters.categoryId ||
     filters.envelopeId ||
+    filters.expenseContext ||
     (filters.sort && filters.sort !== "latest")
   );
 }
@@ -218,7 +220,8 @@ function advancedFilterCount(filters: TransactionFilters) {
     Number(Boolean(filters.status && filters.status !== "all")) +
     Number(Boolean(filters.walletId)) +
     Number(Boolean(filters.categoryId)) +
-    Number(Boolean(filters.envelopeId))
+    Number(Boolean(filters.envelopeId)) +
+    Number(Boolean(filters.expenseContext))
   );
 }
 
@@ -431,6 +434,8 @@ function TransactionFormModal({
   );
   const [transactionDate, setTransactionDate] = useState(mode === "duplicate" ? getCurrentLocalDatetimeString() : toLocalDatetimeInputValue(transaction.transaction_date));
   const [note, setNote] = useState(transaction.note ?? "");
+  const [expenseContext, setExpenseContext] = useState<ExpenseContext>(transaction.expense_context ?? "personal");
+  const [reimbursementCounterparty, setReimbursementCounterparty] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLElement>(null);
@@ -484,6 +489,15 @@ function TransactionFormModal({
     if (transaction.type !== "adjustment" && toNumber(amountValue) <= 0) return t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.";
     if (isExternalTransfer(transaction) && !externalRecipient.trim()) return t("transactions.chooseRecipient") || "Isi penerima atau tujuan transfer.";
     if ((transaction.type === "income" || transaction.type === "expense") && !categoryId) return t("transactions.chooseCategory") || "Pilih kategori.";
+    if (
+      transaction.type === "expense" &&
+      !externalTransfer &&
+      expenseContext === "reimbursable" &&
+      transaction.expense_context !== "reimbursable" &&
+      !reimbursementCounterparty.trim()
+    ) {
+      return t("expenseContext.reimbursementCounterparty") || "Isi pihak yang akan mengganti biaya.";
+    }
     if (transaction.type === "transfer") {
       if (!destinationWalletId) return t("transactions.chooseDestinationWallet") || "Pilih dompet tujuan.";
       if (walletId === destinationWalletId) return t("transactions.walletsMustBeDifferent") || "Dompet asal dan tujuan harus berbeda.";
@@ -535,8 +549,10 @@ function TransactionFormModal({
                 : await createExpense({
                   amount: amountValue,
                   categoryId,
+                  expenseContext,
                   envelopeId: envelopeId || null,
                   note: noteValue,
+                  reimbursementCounterparty,
                   title: noteValue ?? categoryName,
                   transactionDate,
                   walletId,
@@ -561,7 +577,9 @@ function TransactionFormModal({
             categoryId: transaction.type === "income" || transaction.type === "expense" ? categoryId : null,
             envelopeId: transaction.type === "expense" ? (envelopeId || null) : null,
             destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
+            expenseContext: transaction.type === "expense" && !externalTransfer ? expenseContext : undefined,
             note: noteValue,
+            reimbursementCounterparty: transaction.type === "expense" && !externalTransfer ? reimbursementCounterparty : undefined,
             title: externalTransfer ? `Transfer ke ${externalRecipient.trim()}` : transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
             transactionDate,
             transferFee: feeValue,
@@ -635,6 +653,21 @@ function TransactionFormModal({
               ))}
               <option value="__create_new__">{t("categories.createNewOption") || "+ Tambah Kategori Baru..."}</option>
             </SelectField>
+          ) : null}
+
+          {transaction.type === "expense" && !externalTransfer ? (
+            <>
+              <ExpenseContextSelector value={expenseContext} onChange={setExpenseContext} />
+              {expenseContext === "reimbursable" ? (
+                <FormField
+                  id="transaction-edit-reimbursement-counterparty"
+                  label={t("expenseContext.reimbursementCounterparty") || "Pihak pengganti biaya"}
+                  placeholder={t("expenseContext.reimbursementCounterpartyPlaceholder") || "Contoh: PT KASH"}
+                  onChange={(event) => setReimbursementCounterparty(event.target.value)}
+                  value={reimbursementCounterparty}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {externalTransfer ? (
@@ -818,6 +851,13 @@ function AdvancedFilterContent({
     { label: t("transactions.voided") || "Dibatalkan", value: "void" },
   ];
 
+  const expenseContextOptions: Array<{ label: string; value: "" | ExpenseContext }> = [
+    { label: t("common.all") || "Semua", value: "" },
+    { label: t("expenseContext.personal") || "Pribadi", value: "personal" },
+    { label: t("expenseContext.work") || "Kantor", value: "work" },
+    { label: t("expenseContext.reimbursable") || "Reimburse", value: "reimbursable" },
+  ];
+
   return (
     <div data-transaction-filter-panel="true">
       {!hideHeader && (
@@ -839,6 +879,14 @@ function AdvancedFilterContent({
           <option value="">{t("categories.allCategories") || "Semua Kategori"}</option>
           <option value="uncategorized">{t("categories.uncategorized") || "Tanpa Kategori"}</option>
           {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+        </SelectField>
+        <SelectField
+          id="transaction-expense-context-filter"
+          label={t("expenseContext.label") || "Konteks Pengeluaran"}
+          value={filters.expenseContext ?? ""}
+          onChange={(event) => onUpdate("expenseContext", (event.target.value || undefined) as ExpenseContext | undefined)}
+        >
+          {expenseContextOptions.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
         </SelectField>
         {envelopes.length > 0 ? (
           <SelectField id="transaction-envelope-filter" label={t("budgets.envelope") || "Pos Anggaran"} value={filters.envelopeId ?? ""} onChange={(event) => onUpdate("envelopeId", event.target.value || undefined)}>
@@ -894,6 +942,7 @@ export function TransactionsPage() {
     const initialType = (searchParams.get("type") as TransactionTypeFilter) ?? "all";
     return {
       categoryId: initialCategoryId,
+      expenseContext: undefined,
       envelopeId: initialEnvelopeId,
       withoutEnvelope: searchParams.get("withoutEnvelope") === "true",
       dateKey: initialDateKey,
@@ -1074,6 +1123,7 @@ export function TransactionsPage() {
       categoryId: undefined,
       dateKey: undefined,
       envelopeId: undefined,
+      expenseContext: undefined,
       page: 0,
       query: "",
       sort: "latest",
@@ -1089,6 +1139,7 @@ export function TransactionsPage() {
       categoryId: undefined,
       dateKey: undefined,
       envelopeId: undefined,
+      expenseContext: undefined,
       page: 0,
       sort: "latest",
       status: "all",
@@ -1165,7 +1216,7 @@ export function TransactionsPage() {
           </div>
         </div>
 
-        {(filters.walletId || filters.categoryId || filters.dateKey) && (
+        {(filters.walletId || filters.categoryId || filters.expenseContext || filters.dateKey) && (
           <div className="mt-2.5 flex flex-wrap items-center gap-2 px-1">
             {filters.walletId && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-kash-selected px-3 py-0.5 text-xs font-extrabold text-kash-emeraldDark border border-kash-emerald/20">
@@ -1192,6 +1243,20 @@ export function TransactionsPage() {
                   aria-label="Clear category filter"
                   onClick={() => updateFilter("categoryId", undefined)}
                   className="ml-0.5 text-kash-emeraldDark hover:text-kash-expense transition"
+                >
+                  <X size={13} />
+                </button>
+              </span>
+            )}
+            {filters.expenseContext && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-kash-emerald/20 bg-kash-selected px-3 py-0.5 text-xs font-extrabold text-kash-emeraldDark">
+                <span className="font-semibold text-slate-500">{t("expenseContext.label") || "Konteks Pengeluaran"}:</span>
+                {t(`expenseContext.${filters.expenseContext}`)}
+                <button
+                  type="button"
+                  aria-label="Clear expense context filter"
+                  onClick={() => updateFilter("expenseContext", undefined)}
+                  className="ml-0.5 text-kash-emeraldDark transition hover:text-kash-expense"
                 >
                   <X size={13} />
                 </button>

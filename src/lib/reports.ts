@@ -17,6 +17,7 @@ import { getMonthlyBudgets } from "./budgets";
 import { buildSpendingBreakdown } from "./spendingBreakdown";
 import { budgetPerformanceKind, resolveBudgetPerformance } from "./budgetPerformance";
 import { financialMetrics, isEconomicIncomeOrExpense, transactionFee, walletBalanceAt as calculateWalletBalanceAt } from "./financialMetrics";
+import { isPersonalConsumptionExpense } from "./expenseContext.ts";
 
 const REPORT_PAGE_SIZE = 500;
 
@@ -148,7 +149,7 @@ function calculateSummary(transactions: Transaction[]): TransactionRecapData["su
 
 function buildCategoryBreakdown(transactions: TransactionWithMeta[], totalExpense: number): ReportCategoryBreakdown[] {
   const grouped = new Map<string, ReportCategoryBreakdown>();
-  transactions.filter((transaction) => transaction.status === "completed" && transaction.type === "expense" && !isEconomicDebtOrGoalMovement(transaction)).forEach((transaction) => {
+  transactions.filter((transaction) => isPersonalConsumptionExpense(transaction) && !isEconomicDebtOrGoalMovement(transaction)).forEach((transaction) => {
     const key = transaction.category_id ?? "uncategorized";
     const current = grouped.get(key) ?? { categoryId: transaction.category_id, categoryName: transaction.category?.name ?? "Uncategorized", amount: 0, transactionCount: 0, percentage: 0 };
     current.amount += toNumber(transaction.amount);
@@ -189,7 +190,7 @@ export async function getFinancialReportData({ space, period }: { space: Financi
   const transactionRecap = await getTransactionRecapData({ space, period });
   const walletIds = transactionRecap.wallets.map((wallet) => wallet.id);
   const financialHealth = await getFinancialHealth(space, period, transactionRecap.wallets);
-  const completedEconomicExpenses = transactionRecap.transactions.filter((tx) => tx.status === "completed" && tx.type === "expense" && !isEconomicDebtOrGoalMovement(tx));
+  const completedEconomicExpenses = transactionRecap.transactions.filter((tx) => isPersonalConsumptionExpense(tx) && !isEconomicDebtOrGoalMovement(tx));
   const budgetRows = financialHealth?.budgets ?? [];
   const budgetItems = budgetRows.map((budget) => {
     const kind = budgetPerformanceKind(budget.targetType, Boolean(budget.goalId));

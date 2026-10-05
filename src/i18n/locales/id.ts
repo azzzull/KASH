@@ -2404,6 +2404,20 @@ export const id = {
     "reports.recapExportHint": "Rincian transaksi lengkap untuk periode pilihan.",
     "reports.exportError": "Export belum dapat dibuat. Coba lagi dalam beberapa saat.",
 
+    // Expense context
+    "expenseContext.label": "Konteks Pengeluaran",
+    "expenseContext.personal": "Pribadi",
+    "expenseContext.work": "Kantor",
+    "expenseContext.reimbursable": "Reimburse",
+    "expenseContext.workHint": "Pengeluaran nyata, tidak dihitung sebagai konsumsi pribadi.",
+    "expenseContext.reimbursableHint": "Dibayar dulu dan dicatat sebagai piutang sampai diganti.",
+    "expenseContext.reimbursementCounterparty": "Pihak yang akan mengganti",
+    "expenseContext.reimbursementCounterpartyPlaceholder": "Contoh: Kantor",
+
+    // Reminder scheduling
+    "subscriptions.reminderTime": "Jam pengingat",
+    "subscriptions.reminderTimeHint": "Mengikuti zona waktu akun. Default 08.00.",
+
     // Statuses
     "status.active": "Aktif",
     "status.settled": "Lunas",

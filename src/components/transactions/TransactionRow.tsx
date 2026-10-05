@@ -2,7 +2,7 @@ import React, { type CSSProperties } from "react";
 import { useI18n, type TranslationKey } from "../../i18n";
 import { getCategoryIcon } from "../../lib/categoryMeta";
 import { formatCurrency, toNumber } from "../../lib/money";
-import type { TransactionSubtype, TransactionType } from "../../types/domain";
+import type { ExpenseContext, TransactionSubtype, TransactionType } from "../../types/domain";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { isExternalTransfer } from "../../lib/transactions";
 import { transactionIcon, transactionTone } from "./TransactionDetailPanel";
@@ -21,6 +21,7 @@ export type TransactionRowData = {
   wallet_id?: string | null;
   cross_space_role?: "personal_cash_out" | "managed_spending" | "managed_advance_cash_in" | null;
   cross_space_event_id?: string | null;
+  expense_context?: ExpenseContext | null;
   crossSpaceEvent?: {
     event_type: "managed_expense_paid_personally" | "personal_advance_to_managed";
     managedSpaceName?: string;
@@ -60,6 +61,11 @@ export function TransactionRow({
   const fee = toNumber(transaction.transfer_fee ?? 0);
   const amount = toNumber(transaction.amount);
   const externalTransfer = isExternalTransfer(transaction);
+  const expenseContextLabel = transaction.type === "expense" && !externalTransfer && transaction.expense_context !== "personal"
+    ? transaction.expense_context === "work"
+      ? (t("expenseContext.work") || "Work")
+      : (t("expenseContext.reimbursable") || "Reimbursable")
+    : null;
   const timeLabel = new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { hour: "2-digit", minute: "2-digit" }).format(new Date(transaction.transaction_date));
 
   // Determine category and subtitle based on authoritative cross_space_event.event_type
@@ -142,7 +148,7 @@ export function TransactionRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold text-slate-900">{title}</span>
         <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">
-          {categoryLabel} • {walletLabel}{contextSubtext ? ` • ${contextSubtext}` : ""}
+          {categoryLabel} • {walletLabel}{expenseContextLabel ? ` • ${expenseContextLabel}` : ""}{contextSubtext ? ` • ${contextSubtext}` : ""}
         </span>
         {isVoid ? <span className="mt-0.5 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{t("transactions.voided") || "Dibatalkan"}</span> : null}
       </span>
@@ -154,7 +160,7 @@ export function TransactionRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate font-bold text-slate-900">{title}</span>
           <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">
-            {categoryLabel}{contextSubtext ? ` • ${contextSubtext}` : ""}
+            {categoryLabel}{expenseContextLabel ? ` • ${expenseContextLabel}` : ""}{contextSubtext ? ` • ${contextSubtext}` : ""}
           </span>
         </span>
         <span className="min-w-0 truncate font-medium text-slate-500">{walletLabel}</span>

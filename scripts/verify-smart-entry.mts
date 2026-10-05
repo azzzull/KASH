@@ -42,6 +42,7 @@ function raw(overrides: Partial<SmartEntryRawDraft>): SmartEntryRawDraft {
     description: "Test entry",
     destinationWallet: null,
     envelope: null,
+    expenseContext: null,
     intent: "unknown",
     managedSpace: null,
     message: null,
@@ -77,6 +78,8 @@ const parserContext: SmartEntryParserContext = {
 // 1–4: transaction intents route only to typed, existing transaction services.
 let draft = buildSmartEntryDraft(raw({ amount: 35_000, category: "Food & Drink", intent: "expense", wallet: "myBCA" }), resources, fallbackDate);
 assert.deepEqual({ amount: draft.amount, category: draft.categoryId, wallet: draft.walletId, missing: draft.missingFields }, { amount: 35_000, category: "food", wallet: "bca", missing: [] });
+draft = buildSmartEntryDraft(raw({ amount: 35_000, category: "Food & Drink", counterparty: "PT KASH", expenseContext: "reimbursable", intent: "expense", wallet: "myBCA" }), resources, fallbackDate);
+assert.deepEqual({ context: draft.expenseContext, counterparty: draft.counterparty, missing: draft.missingFields }, { context: "reimbursable", counterparty: "PT KASH", missing: [] });
 draft = buildSmartEntryDraft(raw({ amount: 750_000, category: "Salary", intent: "income", wallet: "myBCA" }), resources, fallbackDate);
 assert.deepEqual({ category: draft.categoryId, intent: draft.intent, wallet: draft.walletId }, { category: "salary", intent: "income", wallet: "bca" });
 draft = buildSmartEntryDraft(raw({ amount: 500_000, destinationWallet: "GoPay", intent: "internal_transfer", sourceWallet: "myBCA" }), resources, fallbackDate);
@@ -182,6 +185,18 @@ assert.equal(parseLocalSmartEntry("aku bayar utang Dimas 200rb", parserContext, 
 assert.equal(parseLocalSmartEntry("Dimas balikin utang 150rb", parserContext, resources).draft.intent, "receivable_collection");
 assert.equal(parseLocalSmartEntry("aku pinjam Dimas 500rb", parserContext, resources).draft.clarification, "pinjam_direction");
 assert.equal(parseLocalSmartEntry("makan 35 pake gopay", parserContext, resources).draft.clarification, "amount_ambiguous");
+assert.deepEqual(
+  (() => { const result = parseLocalSmartEntry("transport pake KRL aja", parserContext, resources); return { category: result.draft.category, intent: result.draft.intent, amount: result.draft.amount }; })(),
+  { category: "Transportation", intent: "expense", amount: null },
+);
+assert.deepEqual(
+  (() => { const result = parseLocalSmartEntry("meeting kantor 120rb pake myBCA", parserContext, resources); return { context: result.draft.expenseContext, intent: result.draft.intent }; })(),
+  { context: "work", intent: "expense" },
+);
+assert.deepEqual(
+  (() => { const result = parseLocalSmartEntry("beli makan 120rb pake myBCA nanti direimburse PT KASH", parserContext, resources); return { context: result.draft.expenseContext, intent: result.draft.intent }; })(),
+  { context: "reimbursable", intent: "expense" },
+);
 assert.equal(
   parseLocalSmartEntry("kemarin habis kantor aku nombokin kabel buat teknisi 275rb pake BCA yang biasa, katanya nanti diganti bos", parserContext, resources).shouldUseAiFallback,
   true,

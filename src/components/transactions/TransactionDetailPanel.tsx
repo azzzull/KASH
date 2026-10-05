@@ -237,6 +237,11 @@ export function TransactionDetailModal({
   const amount = toNumber(transaction.amount);
   const fee = toNumber(transaction.transfer_fee);
   const externalTransfer = isExternalTransfer(transaction);
+  const expenseContextLabel = transaction.expense_context === "work"
+    ? (t("expenseContext.work") || "Work")
+    : transaction.expense_context === "reimbursable"
+      ? (t("expenseContext.reimbursable") || "Reimbursable")
+      : (t("expenseContext.personal") || "Personal");
 
   const isReimbursableEvent = crossSpaceDetails?.eventType === "managed_expense_paid_personally";
   const isAdvanceEvent = crossSpaceDetails?.eventType === "personal_advance_to_managed";
@@ -380,6 +385,7 @@ export function TransactionDetailModal({
               <DetailLine label={transaction.type === "transfer" ? (t("transactions.from") || "Dari") : (t("wallets.title") || "Dompet")} value={transaction.wallet_id === null && transaction.cross_space_role === "managed_spending" ? (t("transactions.paidWithPersonalFunds") || "Dibayar dengan dana pribadi") : transaction.wallet?.name ?? (t("wallets.title") || "Dompet")} />
               {transaction.type === "transfer" ? <DetailLine label={t("transactions.to") || "Ke"} value={transaction.destinationWallet?.name ?? (t("wallets.title") || "Dompet")} /> : null}
               {transaction.type !== "transfer" && transaction.type !== "adjustment" ? <DetailLine label={t("categories.title") || "Kategori"} value={getTranslatedCategoryLabel()} /> : null}
+              {transaction.type === "expense" && !externalTransfer ? <DetailLine label={t("expenseContext.label") || "Expense context"} value={expenseContextLabel} /> : null}
               {transaction.envelope ? <DetailLine label={t("envelopes.title") || "Amplop"} value={transaction.envelope.name} /> : null}
               {transaction.type === "transfer" ? <DetailLine label={t("transactions.transferFee") || "Biaya Transfer"} value={fee > 0 ? formatCurrency(fee, currency) : "-"} /> : null}
               {transaction.type === "transfer" ? <DetailLine label={t("transactions.totalDeducted") || "Total Terpotong"} value={formatCurrency(amount + fee, currency)} /> : null}

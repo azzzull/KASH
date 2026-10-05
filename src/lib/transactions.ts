@@ -2,6 +2,7 @@ import type {
   Category,
   CategoryType,
   Envelope,
+  ExpenseContext,
   FinancialSpace,
   ManagedSpaceMemberItem,
   ManagedSpaceRole,
@@ -27,6 +28,8 @@ type BaseTransactionInput = {
 
 type CategoryTransactionInput = BaseTransactionInput & {
   categoryId: string;
+  expenseContext?: ExpenseContext;
+  reimbursementCounterparty?: string | null;
   title: string | null;
 };
 
@@ -53,6 +56,7 @@ export type TransactionPeriodFilter = "all" | "this_month" | "last_month" | "thi
 
 export type TransactionFilters = {
   categoryId?: string;
+  expenseContext?: ExpenseContext;
   envelopeId?: string;
   withoutEnvelope?: boolean;
   dateKey?: string;
@@ -134,6 +138,8 @@ export type UpdateTransactionInput = {
   transactionDate: string;
   transferFee?: string;
   walletId: string;
+  expenseContext?: ExpenseContext;
+  reimbursementCounterparty?: string | null;
 };
 
 const INSUFFICIENT_BALANCE_MESSAGE = "Wallet balance is not enough. Check the amount again.";
@@ -272,6 +278,7 @@ async function createTransaction(payload: {
   note?: string | null;
   title?: string | null;
   transaction_subtype?: Transaction["transaction_subtype"];
+  expense_context?: ExpenseContext;
   transfer_fee?: string;
   transaction_date: string;
   type: TransactionType;
@@ -293,6 +300,7 @@ async function createTransaction(payload: {
       space_id: targetSpaceId,
       type: payload.type,
       transaction_subtype: payload.transaction_subtype ?? null,
+      expense_context: payload.expense_context ?? "personal",
       amount: payload.amount,
       wallet_id: payload.wallet_id,
       category_id: payload.category_id ?? null,
@@ -322,16 +330,22 @@ export async function createIncome(input: CategoryTransactionInput) {
 }
 
 export async function createExpense(input: CategoryTransactionInput) {
-  return createTransaction({
-    amount: input.amount,
-    category_id: input.categoryId,
-    envelope_id: input.envelopeId,
-    note: input.note,
-    title: input.title,
-    transaction_date: input.transactionDate,
-    type: "expense",
-    wallet_id: input.walletId,
-    space_id: input.spaceId,
+  const targetSpaceId = input.spaceId ?? getActiveSpaceId();
+  if (!targetSpaceId) throw new Error("A financial space is required to record an expense.");
+
+  await assertWalletCanCover(input.walletId, input.amount);
+  return supabase.rpc("record_contextual_expense", {
+    p_amount: input.amount,
+    p_category_id: input.categoryId,
+    p_context: input.expenseContext ?? "personal",
+    p_counterparty_name: input.reimbursementCounterparty?.trim() || null,
+    p_envelope_id: input.envelopeId ?? null,
+    p_note: input.note ?? null,
+    p_space_id: targetSpaceId,
+    p_title: input.title ?? null,
+    p_transaction_date: toUtcIsoString(input.transactionDate),
+    p_transaction_id: null,
+    p_wallet_id: input.walletId,
   });
 }
 
@@ -523,6 +537,12 @@ export async function getTransactions(filters: TransactionFilters = {}) {
     query = query.eq("user_id", userId);
   }
   if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
+  // Context is meaningful only for expenses. Keeping the type restriction here
+  // prevents a "Personal" context filter from also returning income, transfer,
+  // and adjustment rows that use the database default.
+  if (filters.expenseContext) {
+    query = query.eq("type", "expense").eq("expense_context", filters.expenseContext);
+  }
   if (filters.status && filters.status !== "all") query = query.eq("status", filters.status);
   if (filters.categoryId === "uncategorized") {
     query = query.is("category_id", null);
@@ -740,6 +760,26 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
         : "0";
 
     await assertWalletCanCover(input.walletId, nextOutgoingAmount, restoredOutgoingAmount);
+  }
+
+  if (transaction.type === "expense" && !isExternalTransfer(transaction)) {
+    const targetSpaceId = transaction.space_id ?? getActiveSpaceId();
+    if (!targetSpaceId) throw new Error("A financial space is required to update an expense.");
+    const categoryId = input.categoryId ?? transaction.category_id;
+    if (!categoryId) throw new Error("An expense category is required to update an expense.");
+    return supabase.rpc("record_contextual_expense", {
+      p_amount: input.amount,
+      p_category_id: categoryId,
+      p_context: input.expenseContext ?? transaction.expense_context ?? "personal",
+      p_counterparty_name: input.reimbursementCounterparty?.trim() || null,
+      p_envelope_id: input.envelopeId !== undefined ? input.envelopeId : transaction.envelope_id,
+      p_note: input.note?.trim() || null,
+      p_space_id: targetSpaceId,
+      p_title: (input.title ?? transaction.title ?? "").trim() || null,
+      p_transaction_date: toUtcIsoString(input.transactionDate ?? transaction.transaction_date),
+      p_transaction_id: transaction.id,
+      p_wallet_id: input.walletId,
+    });
   }
 
   const updatePayload: Database["public"]["Tables"]["transactions"]["Update"] = {
