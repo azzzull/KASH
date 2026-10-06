@@ -42,7 +42,9 @@ let previousBodyStyles = {
     top: "",
     width: "",
     touchAction: "",
+    overscrollBehavior: "",
 };
+let previousDocumentElementOverscrollBehavior = "";
 let savedScrollY = 0;
 
 const MEDIUM_DETENT_DVH = 62;
@@ -142,6 +144,18 @@ function isKeyboardEditableElement(element: Element | null) {
     return !nonTextInputTypes.has(element.type);
 }
 
+function isSheetExpansionExemptTarget(target: EventTarget | null) {
+    const element = target instanceof Element ? target : null;
+    return (
+        isKeyboardEditableElement(element) ||
+        Boolean(
+            element?.closest(
+                "button, [role='button'], [data-no-sheet-gesture]",
+            ),
+        )
+    );
+}
+
 function isMobileViewport() {
     return (
         typeof window !== "undefined" &&
@@ -165,7 +179,10 @@ function lockBodyScroll() {
             top: document.body.style.top,
             width: document.body.style.width,
             touchAction: document.body.style.touchAction,
+            overscrollBehavior: document.body.style.overscrollBehavior,
         };
+        previousDocumentElementOverscrollBehavior =
+            document.documentElement.style.overscrollBehavior;
 
         // On iOS Safari / mobile browsers, position: fixed with negative top is the standard reliable scroll lock.
         // Setting width: 100% and overflow: hidden prevents layout shifts.
@@ -173,6 +190,8 @@ function lockBodyScroll() {
         document.body.style.top = `-${savedScrollY}px`;
         document.body.style.width = "100%";
         document.body.style.overflow = "hidden";
+        document.body.style.overscrollBehavior = "none";
+        document.documentElement.style.overscrollBehavior = "none";
     }
 
     openModalsCount += 1;
@@ -215,6 +234,20 @@ function unlockBodyScroll() {
             document.body.style.removeProperty("touch-action");
         }
 
+        if (previousBodyStyles.overscrollBehavior) {
+            document.body.style.overscrollBehavior =
+                previousBodyStyles.overscrollBehavior;
+        } else {
+            document.body.style.removeProperty("overscroll-behavior");
+        }
+
+        if (previousDocumentElementOverscrollBehavior) {
+            document.documentElement.style.overscrollBehavior =
+                previousDocumentElementOverscrollBehavior;
+        } else {
+            document.documentElement.style.removeProperty("overscroll-behavior");
+        }
+
         // Restore scroll position
         window.scrollTo(0, savedScrollY);
     }
@@ -255,6 +288,7 @@ export function Modal({
     const startTimeRef = useRef<number>(0);
     const bodyExpansionActiveRef = useRef(false);
     const bodyGestureStartedAtTopRef = useRef(false);
+    const scrollTouchStartYRef = useRef(0);
     const expansionFrameRef = useRef<number | null>(null);
     const pendingExpansionHeightRef = useRef<number | null>(null);
     const dragHandleRef = useRef<HTMLDivElement>(null);
@@ -863,26 +897,32 @@ export function Modal({
         }
     };
 
-    const handleBodyTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-        if (isClosing || !isTopModal || sheetDetentRef.current !== "medium") return;
-        const eventTarget = event.target instanceof Element ? event.target : null;
-        if (
-            isKeyboardEditableElement(eventTarget) ||
-            eventTarget?.closest("label, button, [role='button'], [data-no-sheet-gesture]")
-        ) {
+    const beginBodyExpansionGesture = (
+        target: EventTarget | null,
+        touch: { clientY: number },
+    ) => {
+        if (!isTopModalRef.current || sheetDetentRef.current !== "medium")
+            return;
+        if (isSheetExpansionExemptTarget(target)) {
             bodyExpansionActiveRef.current = false;
             bodyGestureStartedAtTopRef.current = false;
             return;
         }
         const scrollBody = scrollBodyRef.current;
         if (!scrollBody) return;
-        const touch = event.touches[0];
         startYRef.current = touch.clientY;
         currentYRef.current = touch.clientY;
+        scrollTouchStartYRef.current = touch.clientY;
         startTimeRef.current = Date.now();
         clearExpansionPreview();
         bodyGestureStartedAtTopRef.current = scrollBody.scrollTop <= 1;
         bodyExpansionActiveRef.current = bodyGestureStartedAtTopRef.current;
+    };
+
+    const handleBodyTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        beginBodyExpansionGesture(event.target, touch);
     };
 
     const handleBodyTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -943,31 +983,61 @@ export function Modal({
     }, [mounted]);
 
     // React touch events are not guaranteed to be non-passive across mobile
-    // browsers. This native listener keeps a top-originating expansion from
-    // leaking into the scroll body during the same finger movement.
+    // browsers. Keep the first upward content gesture with the sheet, then
+    // prevent scroll chaining at the sheet's top/bottom edges so the page
+    // behind the modal cannot jitter or move.
     useEffect(() => {
         const scrollBody = scrollBodyRef.current;
         if (!scrollBody) return;
 
-        const preventBodyScrollWhileExpanding = (event: TouchEvent) => {
+        const captureBodyTouchStart = (event: TouchEvent) => {
             const touch = event.touches[0];
-            if (
-                !touch ||
-                !bodyExpansionActiveRef.current ||
-                !bodyGestureStartedAtTopRef.current ||
-                sheetDetentRef.current !== "medium"
-            ) return;
+            if (!touch) return;
 
-            if (touch.clientY < startYRef.current && event.cancelable) {
+            scrollTouchStartYRef.current = touch.clientY;
+            beginBodyExpansionGesture(event.target, touch);
+        };
+
+        const containBodyTouchMove = (event: TouchEvent) => {
+            const touch = event.touches[0];
+            if (!touch) return;
+
+            const deltaY = touch.clientY - scrollTouchStartYRef.current;
+            const isExpandingFromContent =
+                bodyExpansionActiveRef.current &&
+                bodyGestureStartedAtTopRef.current &&
+                sheetDetentRef.current === "medium" &&
+                deltaY < 0;
+
+            if (isExpandingFromContent) {
+                scrollBody.scrollTop = 0;
+                if (event.cancelable) event.preventDefault();
+                return;
+            }
+
+            const isPullingPastTop = scrollBody.scrollTop <= 1 && deltaY > 0;
+            const maxScrollTop =
+                scrollBody.scrollHeight - scrollBody.clientHeight;
+            const isPushingPastBottom =
+                scrollBody.scrollTop >= maxScrollTop - 1 && deltaY < 0;
+
+            if (
+                (isPullingPastTop || isPushingPastBottom) &&
+                event.cancelable
+            ) {
                 event.preventDefault();
             }
         };
 
-        scrollBody.addEventListener("touchmove", preventBodyScrollWhileExpanding, {
+        scrollBody.addEventListener("touchstart", captureBodyTouchStart, {
+            passive: true,
+        });
+        scrollBody.addEventListener("touchmove", containBodyTouchMove, {
             passive: false,
         });
         return () => {
-            scrollBody.removeEventListener("touchmove", preventBodyScrollWhileExpanding);
+            scrollBody.removeEventListener("touchstart", captureBodyTouchStart);
+            scrollBody.removeEventListener("touchmove", containBodyTouchMove);
         };
     }, [mounted]);
 
