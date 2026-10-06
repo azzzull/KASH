@@ -745,29 +745,27 @@ export function Modal({
                         return;
                     }
 
-                    const keyboardHeight =
-                        window.innerHeight - viewport.height - viewport.offsetTop;
+                    // Calculate from the stable layout viewport rather than
+                    // the panel's current rect. The panel is simultaneously
+                    // changing height while the keyboard animates, so using
+                    // that rect can make the inset oscillate and briefly pull
+                    // an already-expanded sheet back down.
+                    const layoutViewportHeight =
+                        baseViewportHeight ?? window.innerHeight;
+                    const visibleViewportBottom =
+                        viewport.height + Math.max(0, viewport.offsetTop);
+                    const keyboardHeight = Math.max(
+                        0,
+                        layoutViewportHeight - visibleViewportBottom,
+                    );
                     if (keyboardHeight <= 80) {
                         setKeyboardBottomInset(0);
                         return;
                     }
 
-                    const panelBottom = panel.getBoundingClientRect().bottom;
-                    const visibleBottom = viewport.height + Math.max(0, viewport.offsetTop);
-
-                    setKeyboardBottomInset((currentInset) => {
-                        // Add the existing inset back to recover the panel's
-                        // unshifted bottom edge, then calculate the exact new
-                        // offset. This avoids oscillation after every resize.
-                        const unshiftedBottom = panelBottom + currentInset;
-                        const nextInset = Math.max(
-                            0,
-                            Math.ceil(unshiftedBottom - visibleBottom + KEYBOARD_FIELD_GAP_PX),
-                        );
-                        return Math.abs(nextInset - currentInset) < 1
-                            ? currentInset
-                            : nextInset;
-                    });
+                    setKeyboardBottomInset(
+                        Math.ceil(keyboardHeight + KEYBOARD_FIELD_GAP_PX),
+                    );
                 });
             });
         };
@@ -786,7 +784,7 @@ export function Modal({
             viewport?.removeEventListener("resize", updateKeyboardBottomInset);
             viewport?.removeEventListener("scroll", updateKeyboardBottomInset);
         };
-    }, [mounted]);
+    }, [baseViewportHeight, mounted]);
 
     // Animated Close Controller
     const handleRequestClose = () => {
@@ -1078,7 +1076,15 @@ export function Modal({
             ? "translate3d(0, 100%, 0)"
             : "translate3d(0, 0, 0)";
 
-    const mobileTransition = isDragging || expansionHeight !== null
+    const keyboardHasReducedViewport =
+        baseViewportHeight !== null &&
+        keyboardViewportHeight !== null &&
+        keyboardViewportHeight < baseViewportHeight - 80;
+    const keyboardIsVisible =
+        keyboardHasReducedViewport || keyboardBottomInset > 80;
+
+    const mobileTransition =
+        isDragging || expansionHeight !== null || keyboardIsVisible
         ? "none"
         : "transform 0.32s cubic-bezier(0.22, 0.8, 0.3, 1), min-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1), max-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1)";
 
@@ -1094,13 +1100,19 @@ export function Modal({
     // bottom sheet inside that live viewport instead of its pre-keyboard size.
     const detentViewportHeight = keyboardViewportHeight ?? baseViewportHeight;
     const largeDetentPx = detentViewportHeight
-        ? Math.max(
-              keyboardViewportHeight === null ? 320 : 0,
-              Math.min(
-                  detentViewportHeight * (LARGE_DETENT_DVH / 100),
-                  detentViewportHeight - LARGE_TOP_GAP_PX,
-              ),
-          )
+        ? keyboardIsVisible
+            // Once the keyboard is visible, an expanded sheet needs to use
+            // the whole usable viewport. At 90% of the smaller viewport, the
+            // "large" detent could become physically smaller than the
+            // original medium detent and look as if it had collapsed.
+            ? Math.max(0, detentViewportHeight - LARGE_TOP_GAP_PX)
+            : Math.max(
+                  320,
+                  Math.min(
+                      detentViewportHeight * (LARGE_DETENT_DVH / 100),
+                      detentViewportHeight - LARGE_TOP_GAP_PX,
+                  ),
+              )
         : undefined;
 
     const mobileMaxHeight = hasChildModal
