@@ -150,9 +150,18 @@ function isSheetExpansionExemptTarget(target: EventTarget | null) {
         isKeyboardEditableElement(element) ||
         Boolean(
             element?.closest(
-                "button, [role='button'], [data-no-sheet-gesture]",
+                "button, [role='button'], [role='listbox'], [data-bottom-sheet-nested-scroll], [data-no-sheet-gesture]",
             ),
         )
+    );
+}
+
+function isNestedSheetScrollTarget(target: EventTarget | null) {
+    const element = target instanceof Element ? target : null;
+    return Boolean(
+        element?.closest(
+            "[role='listbox'], [data-bottom-sheet-nested-scroll]",
+        ),
     );
 }
 
@@ -1001,6 +1010,11 @@ export function Modal({
         const containBodyTouchMove = (event: TouchEvent) => {
             const touch = event.touches[0];
             if (!touch) return;
+
+            // An open select/combobox owns its own scroll gesture. Let its
+            // option list consume the movement instead of turning it into a
+            // bottom-sheet expansion or a parent-form scroll.
+            if (isNestedSheetScrollTarget(event.target)) return;
 
             const deltaY = touch.clientY - scrollTouchStartYRef.current;
             const isExpandingFromContent =

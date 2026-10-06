@@ -174,7 +174,10 @@ function CounterpartyComboboxInner({
         </ComboboxButton>
       </div>
 
-      <ComboboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none">
+      <ComboboxOptions
+        data-bottom-sheet-nested-scroll="true"
+        className="absolute z-50 mt-1 max-h-60 w-full touch-pan-y overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none"
+      >
         {/* Create new counterparty option if query is not empty and no exact match */}
           {query.trim().length > 0 && !hasExactMatch && (
             <ComboboxOption

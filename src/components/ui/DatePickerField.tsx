@@ -121,7 +121,10 @@ function TimeDropdown({
           <ChevronDown size={13} className="text-slate-600 transition group-data-[open]:rotate-180" />
         </ListboxButton>
 
-        <ListboxOptions className="absolute z-60 bottom-full mb-1.5 max-h-48 w-18 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none">
+        <ListboxOptions
+          data-bottom-sheet-nested-scroll="true"
+          className="absolute z-60 bottom-full mb-1.5 max-h-48 w-18 touch-pan-y overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none"
+        >
           {options.map((opt) => (
             <ListboxOption
               key={opt}

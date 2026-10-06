@@ -283,7 +283,10 @@ function SelectFieldContent({
         <ChevronDown aria-hidden="true" className="shrink-0 text-slate-600 transition group-data-[open]:rotate-180" size={18} strokeWidth={2.2} />
       </ListboxButton>
 
-      <ListboxOptions className={`absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none ${optionsClassName}`}>
+      <ListboxOptions
+        data-bottom-sheet-nested-scroll="true"
+        className={`absolute z-50 mt-2 max-h-64 w-full touch-pan-y overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white p-1 shadow-soft focus:outline-none ${optionsClassName}`}
+      >
         {options.map((option) => (
           <ListboxOption
             key={option.value}
