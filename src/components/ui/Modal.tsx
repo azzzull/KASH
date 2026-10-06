@@ -243,13 +243,6 @@ export function Modal({
     const [baseViewportHeight, setBaseViewportHeight] = useState<
         number | null
     >(null);
-    const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<
-        number | null
-    >(null);
-    // Some Android WebViews keep `position: fixed` anchored to the layout
-    // viewport while VisualViewport shrinks for the keyboard. This is the
-    // measured amount the sheet must be lifted in those browsers.
-    const [keyboardBottomInset, setKeyboardBottomInset] = useState(0);
     const [, setStackVersion] = useState(0);
 
     // Gesture state
@@ -273,7 +266,6 @@ export function Modal({
     const keyboardTrackingFrameRef = useRef<number | null>(null);
     const keyboardFallbackTimeoutRef = useRef<number | null>(null);
     const keyboardDetentExpansionPendingRef = useRef(false);
-    const viewportHeightBeforeFocusRef = useRef<number | null>(null);
     const baseViewportWidthRef = useRef<number | null>(null);
     const sheetDetentRef = useRef<SheetDetent>("medium");
     const isTopModalRef = useRef(false);
@@ -330,8 +322,6 @@ export function Modal({
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent(initialMobileDetent);
-            setKeyboardViewportHeight(null);
-            setKeyboardBottomInset(0);
 
             let frame2: number;
             const frame1 = requestAnimationFrame(() => {
@@ -355,8 +345,6 @@ export function Modal({
             setExpansionHeight(null);
             setHasExpanded(false);
             setSheetDetent(initialMobileDetent);
-            setKeyboardViewportHeight(null);
-            setKeyboardBottomInset(0);
         }
     }, [initialMobileDetent, isOpen]);
 
@@ -653,8 +641,6 @@ export function Modal({
             if (!panelRef.current?.contains(target)) return;
 
             focusedEditableRef.current = target;
-            viewportHeightBeforeFocusRef.current =
-                window.visualViewport?.height ?? window.innerHeight;
             // A typing interaction must never be treated as a sheet drag. Open
             // the larger detent before the software keyboard completes its
             // animation so the field has room to remain visible.
@@ -667,9 +653,6 @@ export function Modal({
                 setHasExpanded(true);
                 setSheetDetent("large");
             }
-            setKeyboardViewportHeight(
-                window.visualViewport?.height ?? window.innerHeight,
-            );
             scheduleFocusedFieldAdjustment("auto");
             startKeyboardTracking();
         };
@@ -677,17 +660,12 @@ export function Modal({
         const handleFocusOut = (event: FocusEvent) => {
             if (event.target === focusedEditableRef.current) {
                 focusedEditableRef.current = null;
-                viewportHeightBeforeFocusRef.current = null;
-                setKeyboardViewportHeight(null);
                 stopKeyboardTracking();
             }
         };
 
         const handleViewportChange = () => {
             if (!focusedEditableRef.current) return;
-            setKeyboardViewportHeight(
-                window.visualViewport?.height ?? window.innerHeight,
-            );
             scheduleFocusedFieldAdjustment("auto");
             startKeyboardTracking();
         };
@@ -717,74 +695,6 @@ export function Modal({
             keyboardDetentExpansionPendingRef.current = false;
         };
     }, [mounted]);
-
-    // Keep the physical bottom edge of the sheet above the keyboard. Merely
-    // setting a shorter max-height is insufficient on Android WebViews that
-    // keep fixed elements attached to the non-shrinking layout viewport.
-    useEffect(() => {
-        if (!mounted || typeof window === "undefined" || !isMobileViewport())
-            return;
-
-        let frame: number | null = null;
-        const updateKeyboardBottomInset = () => {
-            if (frame !== null) window.cancelAnimationFrame(frame);
-            frame = window.requestAnimationFrame(() => {
-                frame = window.requestAnimationFrame(() => {
-                    frame = null;
-                    const focusedElement = focusedEditableRef.current;
-                    const panel = panelRef.current;
-                    const viewport = window.visualViewport;
-
-                    if (
-                        !focusedElement ||
-                        !panel ||
-                        !viewport ||
-                        !isKeyboardEditableElement(focusedElement)
-                    ) {
-                        setKeyboardBottomInset(0);
-                        return;
-                    }
-
-                    // Calculate from the stable layout viewport rather than
-                    // the panel's current rect. The panel is simultaneously
-                    // changing height while the keyboard animates, so using
-                    // that rect can make the inset oscillate and briefly pull
-                    // an already-expanded sheet back down.
-                    const layoutViewportHeight =
-                        baseViewportHeight ?? window.innerHeight;
-                    const visibleViewportBottom =
-                        viewport.height + Math.max(0, viewport.offsetTop);
-                    const keyboardHeight = Math.max(
-                        0,
-                        layoutViewportHeight - visibleViewportBottom,
-                    );
-                    if (keyboardHeight <= 80) {
-                        setKeyboardBottomInset(0);
-                        return;
-                    }
-
-                    setKeyboardBottomInset(
-                        Math.ceil(keyboardHeight + KEYBOARD_FIELD_GAP_PX),
-                    );
-                });
-            });
-        };
-
-        const panel = panelRef.current;
-        const viewport = window.visualViewport;
-        panel?.addEventListener("focusin", updateKeyboardBottomInset);
-        panel?.addEventListener("focusout", updateKeyboardBottomInset);
-        viewport?.addEventListener("resize", updateKeyboardBottomInset);
-        viewport?.addEventListener("scroll", updateKeyboardBottomInset);
-
-        return () => {
-            if (frame !== null) window.cancelAnimationFrame(frame);
-            panel?.removeEventListener("focusin", updateKeyboardBottomInset);
-            panel?.removeEventListener("focusout", updateKeyboardBottomInset);
-            viewport?.removeEventListener("resize", updateKeyboardBottomInset);
-            viewport?.removeEventListener("scroll", updateKeyboardBottomInset);
-        };
-    }, [baseViewportHeight, mounted]);
 
     // Animated Close Controller
     const handleRequestClose = () => {
@@ -896,6 +806,13 @@ export function Modal({
         const deltaY = touch.clientY - startYRef.current;
         currentYRef.current = touch.clientY;
 
+        if (sheetDetentRef.current === "large") {
+            // Large is a terminal sheet state. The handle may only preview a
+            // dismissal; it must never reduce the detent back toward medium.
+            setDragY(deltaY > 0 ? deltaY : 0);
+            return;
+        }
+
         if (deltaY < 0 && sheetDetentRef.current === "medium") {
             // A compact sheet grows with the handle rather than snapping early.
             updateExpansionFromGesture(deltaY);
@@ -917,6 +834,18 @@ export function Modal({
         const deltaY = currentYRef.current - startYRef.current;
         const elapsed = Math.max(1, Date.now() - startTimeRef.current);
         const velocity = deltaY / elapsed; // px per ms
+
+        if (sheetDetentRef.current === "large") {
+            // Once expanded, the grabber is dismiss-or-snap-back only. There
+            // is deliberately no large-to-medium path.
+            if (deltaY >= 96 || velocity >= 0.45) {
+                setDragY(400);
+                handleRequestClose();
+            } else {
+                setDragY(0);
+            }
+            return;
+        }
 
         if (sheetDetentRef.current === "medium" && deltaY < 0) {
             if (shouldSettleExpanded(deltaY, velocity)) {
@@ -1076,15 +1005,7 @@ export function Modal({
             ? "translate3d(0, 100%, 0)"
             : "translate3d(0, 0, 0)";
 
-    const keyboardHasReducedViewport =
-        baseViewportHeight !== null &&
-        keyboardViewportHeight !== null &&
-        keyboardViewportHeight < baseViewportHeight - 80;
-    const keyboardIsVisible =
-        keyboardHasReducedViewport || keyboardBottomInset > 80;
-
-    const mobileTransition =
-        isDragging || expansionHeight !== null || keyboardIsVisible
+    const mobileTransition = isDragging || expansionHeight !== null
         ? "none"
         : "transform 0.32s cubic-bezier(0.22, 0.8, 0.3, 1), min-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1), max-height 0.36s cubic-bezier(0.22, 0.75, 0.3, 1)";
 
@@ -1096,23 +1017,17 @@ export function Modal({
               ? `opacity-${Math.max(20, Math.round(100 - (dragY / 300) * 80))}`
               : "opacity-100";
 
-    // visualViewport shrinks when the soft keyboard opens. Keep the expanded
-    // bottom sheet inside that live viewport instead of its pre-keyboard size.
-    const detentViewportHeight = keyboardViewportHeight ?? baseViewportHeight;
-    const largeDetentPx = detentViewportHeight
-        ? keyboardIsVisible
-            // Once the keyboard is visible, an expanded sheet needs to use
-            // the whole usable viewport. At 90% of the smaller viewport, the
-            // "large" detent could become physically smaller than the
-            // original medium detent and look as if it had collapsed.
-            ? Math.max(0, detentViewportHeight - LARGE_TOP_GAP_PX)
-            : Math.max(
-                  320,
-                  Math.min(
-                      detentViewportHeight * (LARGE_DETENT_DVH / 100),
-                      detentViewportHeight - LARGE_TOP_GAP_PX,
-                  ),
-              )
+    // A detent is latched once it expands. Keyboard viewport changes are used
+    // only to scroll the focused field into view; they must never recompute an
+    // expanded sheet into a shorter one.
+    const largeDetentPx = baseViewportHeight
+        ? Math.max(
+              320,
+              Math.min(
+                  baseViewportHeight * (LARGE_DETENT_DVH / 100),
+                  baseViewportHeight - LARGE_TOP_GAP_PX,
+              ),
+          )
         : undefined;
 
     const mobileMaxHeight = hasChildModal
@@ -1155,7 +1070,6 @@ export function Modal({
             {/* Sheet / Dialog Container */}
             <div
                 className="fixed inset-0 z-50 flex min-h-full items-end justify-center p-0 md:items-center md:p-4 pointer-events-none"
-                style={{ bottom: `${keyboardBottomInset}px` }}
             >
                 <div
                     ref={panelRef}
