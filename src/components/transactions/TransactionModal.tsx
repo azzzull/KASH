@@ -2,6 +2,7 @@ import { ArrowDown, ArrowRightLeft, ArrowUp, Loader2, Plus, X } from "lucide-rea
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QuickCreateCategoryModal } from "../categories/QuickCreateCategoryModal";
+import { CounterpartyCombobox } from "../debts/CounterpartyCombobox";
 import { QuickCreateEnvelopeModal } from "../envelopes/QuickCreateEnvelopeModal";
 import { Button } from "../ui/Button";
 import { DatePickerField } from "../ui/DatePickerField";
@@ -13,13 +14,14 @@ import { ExpenseContextSelector } from "./ExpenseContextSelector";
 import { useI18n } from "../../i18n";
 import { getActiveCategories } from "../../lib/categories";
 import { getEnvelopes } from "../../lib/envelopes";
-import { getPersonalSpace, getActiveSpaceId } from "../../lib/spaces";
+import { getActiveManagedSpaces, getPersonalSpace, getActiveSpaceId } from "../../lib/spaces";
+import { getCounterparties } from "../../lib/debts";
 import { addMoneyValues, formatCurrency, formatMoneyDigits, isMoneyGreaterThan, parseMoneyInputDigits, toNumber } from "../../lib/money";
 import { createExpense, createExternalTransfer, createIncome, createTransfer, filterCategoriesByType, createCrossSpaceExpense, recordCrossSpaceAdvance, canCreateTransaction } from "../../lib/transactions";
 import { getWallets, type WalletWithBalance } from "../../lib/wallets";
-import { emitTransactionSaved } from "../../lib/appEvents";
+import { emitDebtSaved, emitTransactionSaved } from "../../lib/appEvents";
 import { getCurrentLocalDatetimeString } from "../../lib/datetime";
-import type { Category, Envelope, ExpenseContext } from "../../types/domain";
+import type { Category, Counterparty, Envelope, ExpenseContext, FinancialSpace } from "../../types/domain";
 import { useActiveSpace } from "../../context/ActiveSpaceContext";
 import { useSpaceTerminology } from "../../hooks/useSpaceTerminology";
 
@@ -31,6 +33,14 @@ type TransactionModalProps = {
   initialDate?: string;
   /** Keeps a contextual entry point safely scoped to its intended financial space. */
   spaceId?: string;
+  /** Smart Entry can hand off a reviewed reimbursement draft to this unified form. */
+  initialReimbursement?: {
+    amount: number | null;
+    description: string;
+    managedSpaceId: string | null;
+    transactionDate: string;
+    walletId: string | null;
+  } | null;
   onClose: () => void;
   onSaved?: () => void;
 };
@@ -48,7 +58,7 @@ function isAmountError(error: string | null) {
   return normalizedError.includes("amount") || normalizedError.includes("balance");
 }
 
-export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved }: TransactionModalProps) {
+export function TransactionModal({ mode, initialDate, initialReimbursement, spaceId, onClose, onSaved }: TransactionModalProps) {
   const { t, formatCurrency } = useI18n();
   const { activeSpace, userRole } = useActiveSpace();
   const terms = useSpaceTerminology();
@@ -104,6 +114,13 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
   const [note, setNote] = useState("");
   const [expenseContext, setExpenseContext] = useState<ExpenseContext>("personal");
   const [reimbursementCounterparty, setReimbursementCounterparty] = useState("");
+  const [reimbursementTitle, setReimbursementTitle] = useState("");
+  const [reimbursementTarget, setReimbursementTarget] = useState<"managed" | "contact">("contact");
+  const [reimbursementManagedSpaceId, setReimbursementManagedSpaceId] = useState("");
+  const [reimbursementManagedSpaces, setReimbursementManagedSpaces] = useState<FinancialSpace[]>([]);
+  const [reimbursementManagedCategories, setReimbursementManagedCategories] = useState<Category[]>([]);
+  const [reimbursementCounterparties, setReimbursementCounterparties] = useState<Counterparty[]>([]);
+  const [reimbursementSupportLoading, setReimbursementSupportLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [paymentSource, setPaymentSource] = useState<"managed" | "personal">("managed");
@@ -116,11 +133,13 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
     setLoading(true);
     setError(null);
 
-    const [walletResult, categoryResult, envelopeResult, personalSpaceResult] = await Promise.all([
+    const [walletResult, categoryResult, envelopeResult, personalSpaceResult, managedSpacesResult, counterpartiesResult] = await Promise.all([
       getWallets(spaceId),
       getActiveCategories(spaceId),
       getEnvelopes(false, spaceId),
-      isManaged ? getPersonalSpace() : Promise.resolve({ data: null, error: null })
+      isManaged ? getPersonalSpace() : Promise.resolve({ data: null, error: null }),
+      mode === "expense" && !isManaged ? getActiveManagedSpaces() : Promise.resolve({ data: [], error: null }),
+      mode === "expense" ? getCounterparties(undefined, spaceId).catch(() => null) : Promise.resolve(null),
     ]);
 
     if (walletResult.error || categoryResult.error || !walletResult.data || !categoryResult.data) {
@@ -132,6 +151,10 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
     setWallets(walletResult.data);
     setCategories(categoryResult.data);
     setEnvelopes(envelopeResult.data ?? []);
+    setReimbursementManagedSpaces(managedSpacesResult.data ?? []);
+    setReimbursementCounterparties(
+      (counterpartiesResult?.allCounterparties ?? []).filter((counterparty) => !counterparty.linked_space_id),
+    );
 
     if (isManaged && personalSpaceResult.data) {
       setPersonalSpaceId(personalSpaceResult.data.id);
@@ -146,11 +169,22 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
 
   useEffect(() => {
     void loadData();
-  }, [isManaged, spaceId]);
+  }, [isManaged, mode, spaceId]);
 
   useEffect(() => {
     setTransactionDate(initialTransactionDatetime(initialDate));
   }, [initialDate]);
+
+  useEffect(() => {
+    if (!initialReimbursement || mode !== "expense") return;
+    setAmount(initialReimbursement.amount ? formatMoneyDigits(String(initialReimbursement.amount)) : "");
+    setWalletId(initialReimbursement.walletId ?? "");
+    setExpenseContext("reimbursable");
+    setReimbursementTitle(initialReimbursement.description);
+    setReimbursementManagedSpaceId(initialReimbursement.managedSpaceId ?? "");
+    setReimbursementTarget(initialReimbursement.managedSpaceId ? "managed" : "contact");
+    setTransactionDate(initialReimbursement.transactionDate);
+  }, [initialReimbursement, mode]);
 
   useEffect(() => {
     if (!error) return;
@@ -165,6 +199,53 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
     () => filterCategoriesByType(categories, mode === "income" ? "income" : "expense"),
     [categories, mode],
   );
+  const isReimbursement = mode === "expense" && expenseContext === "reimbursable";
+  const isManagedTargetReimbursement = isReimbursement && !isManaged && reimbursementTarget === "managed";
+  const isManagedSpacePersonalPayment = mode === "expense" && isManaged && paymentSource === "personal";
+  const isCrossSpaceReimbursement = isManagedTargetReimbursement || isManagedSpacePersonalPayment;
+  const requiresExternalCounterparty = isReimbursement && !isManagedTargetReimbursement && !isManagedSpacePersonalPayment;
+  const reimbursementCategoryOptions = isManagedTargetReimbursement
+    ? filterCategoriesByType(reimbursementManagedCategories, "expense")
+    : filteredCategories;
+  const selectedReimbursementCategory = reimbursementCategoryOptions.find((category) => category.id === categoryId) ?? null;
+  const selectedReimbursementManagedSpace = reimbursementManagedSpaces.find((space) => space.id === reimbursementManagedSpaceId) ?? null;
+  const currentSpaceId = spaceId ?? activeSpace?.id ?? getActiveSpaceId();
+
+  useEffect(() => {
+    if (!isReimbursement || isManaged) return;
+    if (reimbursementTarget === "managed" && reimbursementManagedSpaces.length === 0) {
+      setReimbursementTarget("contact");
+      setReimbursementManagedSpaceId("");
+      return;
+    }
+    if (reimbursementTarget === "managed" && !reimbursementManagedSpaceId) {
+      setReimbursementManagedSpaceId(reimbursementManagedSpaces[0]?.id ?? "");
+    }
+  }, [isManaged, isReimbursement, reimbursementManagedSpaceId, reimbursementManagedSpaces, reimbursementTarget]);
+
+  useEffect(() => {
+    if (!isManagedTargetReimbursement || !reimbursementManagedSpaceId) {
+      setReimbursementManagedCategories([]);
+      setReimbursementSupportLoading(false);
+      return;
+    }
+
+    let isCurrent = true;
+    setReimbursementSupportLoading(true);
+    setCategoryId("");
+    void getActiveCategories(reimbursementManagedSpaceId)
+      .then(({ data }) => {
+        if (isCurrent) setReimbursementManagedCategories(data ?? []);
+      })
+      .finally(() => {
+        if (isCurrent) setReimbursementSupportLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isManagedTargetReimbursement, reimbursementManagedSpaceId]);
+
   const amountDigits = parseMoneyInputDigits(amount);
   const feeDigits = parseMoneyInputDigits(transferFee);
   const amountNumber = toNumber(amountDigits);
@@ -204,7 +285,19 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
     }
 
     if (!categoryId) return t("transactions.chooseCategory") || "Pilih kategori.";
-    if (mode === "expense" && paymentSource !== "personal" && expenseContext === "reimbursable" && !reimbursementCounterparty.trim()) {
+    if (isReimbursement && !reimbursementTitle.trim()) {
+      return t("debts.itemTitleRequiredDirect") || "Judul / keterangan pengeluaran wajib diisi.";
+    }
+    if (isManagedTargetReimbursement && !reimbursementManagedSpaceId) {
+      return t("reimbursable.selectManagedSpace") || "Pilih Managed Space yang akan mereimburse.";
+    }
+    if (isManagedTargetReimbursement && !currentSpaceId) {
+      return "Personal Space tidak ditemukan.";
+    }
+    if (isManagedSpacePersonalPayment && !personalSpaceId) {
+      return "Personal Space tidak ditemukan.";
+    }
+    if (requiresExternalCounterparty && !reimbursementCounterparty.trim()) {
       return t("expenseContext.reimbursementCounterparty") || "Isi pihak yang akan mengganti.";
     }
     if (mode === "expense" && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
@@ -232,7 +325,10 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
     setError(null);
 
     const noteValue = note.trim() || null;
-    const categoryName = filteredCategories.find((category) => category.id === categoryId)?.name ?? null;
+    const categoryName = reimbursementCategoryOptions.find((category) => category.id === categoryId)?.name ?? null;
+    const transactionTitle = isReimbursement
+      ? reimbursementTitle.trim()
+      : noteValue ?? categoryName;
 
     try {
       const result =
@@ -255,15 +351,24 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
             walletId,
           })
           : mode === "expense"
-            ? (paymentSource === "personal" && personalSpaceId) ? await createCrossSpaceExpense({
+            ? isManagedSpacePersonalPayment ? await createCrossSpaceExpense({
               amount: amountDigits,
               categoryId,
               note: noteValue,
-              title: noteValue ?? categoryName,
+              title: transactionTitle,
               transactionDate,
               personalWalletId: walletId,
-              personalSpaceId,
+              personalSpaceId: personalSpaceId!,
               managedSpaceId: getActiveSpaceId()!,
+            }) : isManagedTargetReimbursement ? await createCrossSpaceExpense({
+              amount: amountDigits,
+              categoryId,
+              note: noteValue,
+              title: transactionTitle,
+              transactionDate,
+              personalWalletId: walletId,
+              personalSpaceId: currentSpaceId!,
+              managedSpaceId: reimbursementManagedSpaceId,
             }) : await createExpense({
               amount: amountDigits,
               categoryId,
@@ -271,7 +376,7 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
               expenseContext,
               note: noteValue,
               reimbursementCounterparty,
-              title: noteValue ?? categoryName,
+              title: transactionTitle,
               transactionDate,
               walletId,
               spaceId,
@@ -312,6 +417,7 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
       }
 
       emitTransactionSaved();
+      if (isReimbursement) emitDebtSaved();
       onSaved?.();
       if (saveAndAddAnother) {
         setAmount("");
@@ -320,6 +426,9 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
         setEnvelopeId("");
         setExpenseContext("personal");
         setReimbursementCounterparty("");
+        setReimbursementTitle("");
+        setReimbursementTarget(reimbursementManagedSpaces.length > 0 ? "managed" : "contact");
+        setReimbursementManagedSpaceId(reimbursementManagedSpaces[0]?.id ?? "");
         setSaving(false);
         return;
       }
@@ -394,15 +503,73 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
 
             {mode === "expense" && paymentSource !== "personal" ? (
               <>
-                <ExpenseContextSelector value={expenseContext} onChange={setExpenseContext} />
-                {expenseContext === "reimbursable" ? (
-                  <FormField
+                <ExpenseContextSelector
+                  value={expenseContext}
+                  onChange={(nextContext) => {
+                    setExpenseContext(nextContext);
+                    // Managed-space categories cannot be reused for a normal
+                    // personal expense after the reimbursement path is left.
+                    if (nextContext !== "reimbursable") setCategoryId("");
+                  }}
+                />
+                {isReimbursement && !isManaged ? (
+                  <div className="grid gap-3 rounded-xl border border-kash-emerald/20 bg-kash-selected/35 p-3">
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900">{t("reimbursable.reimbursedBy") || "Direimburse oleh"}</p>
+                      <p className="mt-0.5 text-xs font-medium text-slate-600">{t("expenseContext.reimbursableHint") || "Dibayar dulu dan dicatat sebagai piutang sampai diganti."}</p>
+                    </div>
+                    {reimbursementManagedSpaces.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-1 rounded-lg bg-white/80 p-1">
+                        <button
+                          type="button"
+                          onClick={() => { setReimbursementTarget("managed"); setCategoryId(""); }}
+                          className={`rounded-md px-2 py-2 text-xs font-bold transition ${reimbursementTarget === "managed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+                        >
+                          {t("reimbursable.targetModeManaged") || "Financial Space (Managed)"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setReimbursementTarget("contact"); setCategoryId(""); }}
+                          className={`rounded-md px-2 py-2 text-xs font-bold transition ${reimbursementTarget === "contact" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+                        >
+                          {t("reimbursable.targetModeContact") || "Kontak / Pihak Luar"}
+                        </button>
+                      </div>
+                    ) : null}
+                    {isManagedTargetReimbursement ? (
+                      <SelectField
+                        id="expense-reimbursement-managed-space"
+                        label={t("reimbursable.selectManagedSpace") || "Pilih Managed Space"}
+                        onChange={(event) => setReimbursementManagedSpaceId(event.target.value)}
+                        value={reimbursementManagedSpaceId}
+                      >
+                        <option value="">{t("reimbursable.selectManagedSpace") || "Pilih Managed Space"}</option>
+                        {reimbursementManagedSpaces.map((managedSpace) => (
+                          <option key={managedSpace.id} value={managedSpace.id}>{managedSpace.name}</option>
+                        ))}
+                      </SelectField>
+                    ) : null}
+                  </div>
+                ) : null}
+                {requiresExternalCounterparty ? (
+                  <CounterpartyCombobox
                     id="expense-reimbursement-counterparty"
+                    counterparties={reimbursementCounterparties}
                     label={t("expenseContext.reimbursementCounterparty")}
-                    onChange={(event) => setReimbursementCounterparty(event.target.value)}
+                    onChange={(name) => setReimbursementCounterparty(name)}
                     placeholder={t("expenseContext.reimbursementCounterpartyPlaceholder")}
                     required
                     value={reimbursementCounterparty}
+                  />
+                ) : null}
+                {isReimbursement ? (
+                  <FormField
+                    id="expense-reimbursement-title"
+                    label={`${t("debts.itemTitleLabel") || "Keterangan / Judul"} *`}
+                    onChange={(event) => setReimbursementTitle(event.target.value)}
+                    placeholder={t("transactions.notePlaceholder") || "mis. Makan siang kantor, wifi bulanan"}
+                    required
+                    value={reimbursementTitle}
                   />
                 ) : null}
               </>
@@ -448,7 +615,7 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
             {(mode !== "transfer" || isOutgoingTransfer) && !(mode === "income" && isManaged && paymentSource === "personal") ? (
               <SelectField
                 id={`${mode}-category`}
-                label={mode === "income" ? terms.incomeCategoryLabel : (isOutgoingTransfer ? t("transactions.category") || "Kategori" : (t("categories.title") || "Kategori"))}
+                label={isManagedTargetReimbursement ? (t("reimbursable.expenseCategory") || "Kategori pengeluaran space") : mode === "income" ? terms.incomeCategoryLabel : (isOutgoingTransfer ? t("transactions.category") || "Kategori" : (t("categories.title") || "Kategori"))}
                 action={
                   <button
                     type="button"
@@ -468,8 +635,8 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
                 }}
                 value={categoryId}
               >
-                <option value="">{t("categories.selectCategory") || "Pilih Kategori"}</option>
-                {filteredCategories.map((category) => (
+                <option value="">{reimbursementSupportLoading ? (t("common.loading") || "Memuat...") : (isManagedTargetReimbursement ? (t("reimbursable.selectCategory") || "Pilih Kategori Space") : (t("categories.selectCategory") || "Pilih Kategori"))}</option>
+                {reimbursementCategoryOptions.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -478,7 +645,7 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
               </SelectField>
             ) : null}
 
-            {mode === "expense" ? (
+            {mode === "expense" && !isCrossSpaceReimbursement ? (
               <SelectField
                 id="expense-envelope"
                 label={t("envelopes.title") || "Amplop / Grup Anggaran (Opsional)"}
@@ -516,7 +683,7 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
                 <label className="text-xs font-bold text-slate-700">{t("transactions.paymentSource") || "Sumber Dana"}</label>
                 <div className="flex rounded-lg bg-slate-100 p-1">
                   <button type="button" onClick={() => { setPaymentSource("managed"); setWalletId(""); }} className={`flex-1 rounded-md py-1.5 text-xs font-bold transition ${paymentSource === "managed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dana Managed</button>
-                  <button type="button" onClick={() => { setPaymentSource("personal"); setWalletId(""); }} className={`flex-1 rounded-md py-1.5 text-xs font-bold transition ${paymentSource === "personal" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dana Pribadi</button>
+                  <button type="button" onClick={() => { setPaymentSource("personal"); setWalletId(""); setExpenseContext("reimbursable"); }} className={`flex-1 rounded-md py-1.5 text-xs font-bold transition ${paymentSource === "personal" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dana Pribadi</button>
                 </div>
               </div>
             ) : null}
@@ -553,6 +720,17 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
                 </option>
               ))}
             </SelectField>
+
+            {isManagedSpacePersonalPayment ? (
+              <FormField
+                id="expense-managed-reimbursement-title"
+                label={`${t("debts.itemTitleLabel") || "Keterangan / Judul"} *`}
+                onChange={(event) => setReimbursementTitle(event.target.value)}
+                placeholder={t("transactions.notePlaceholder") || "mis. Makan siang kantor, wifi bulanan"}
+                required
+                value={reimbursementTitle}
+              />
+            ) : null}
 
             {mode === "income" && isManaged && paymentSource === "personal" ? (
               <SelectField id="income-destination" label="Pilih Dompet Penerima Dana" onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
@@ -610,6 +788,24 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
               value={note}
             />
 
+            {isReimbursement ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{t("reimbursable.preview") || "Pratinjau Reimbursement"}</p>
+                <div className="mt-2 grid gap-2">
+                  <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                    <p className="font-bold text-slate-900">{selectedWallet?.name ?? (t("reimbursable.paidFrom") || "Dompet")}</p>
+                    <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{t("reimbursable.paidFrom") || "Dibayar dari"}</span><span className="font-extrabold text-kash-expense">-{formatCurrency(amountNumber, selectedWallet?.currency ?? "IDR")}</span></div>
+                    <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{t("debts.receivable") || "Piutang"}</span><span className="font-extrabold text-kash-emeraldDark">+{formatCurrency(amountNumber, selectedWallet?.currency ?? "IDR")}</span></div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                    <p className="font-bold text-slate-900">{isManagedTargetReimbursement ? selectedReimbursementManagedSpace?.name ?? (t("spaces.managed") || "Managed Space") : isManagedSpacePersonalPayment ? activeSpace?.name ?? (t("spaces.managed") || "Managed Space") : reimbursementCounterparty.trim() || "—"}</p>
+                    <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{isCrossSpaceReimbursement ? `${t("transactions.expense") || "Pengeluaran"}${selectedReimbursementCategory ? ` (${selectedReimbursementCategory.name})` : ""}` : (t("reimbursable.reimbursedBy") || "Direimburse oleh")}</span><span className="font-extrabold text-slate-900">{isCrossSpaceReimbursement ? `+${formatCurrency(amountNumber, selectedWallet?.currency ?? "IDR")}` : (t("reimbursable.awaitingReimbursement") || "Menunggu reimbursement")}</span></div>
+                    {isCrossSpaceReimbursement ? <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{t("reimbursable.cashMovement") || "Pergerakan kas"}</span><span>{formatCurrency(0, selectedWallet?.currency ?? "IDR")}</span></div> : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {mode === "transfer" && selectedWallet && (destinationWallet || isOutgoingTransfer) ? (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
                 <p className="font-bold text-slate-900">{isOutgoingTransfer ? t("transactions.outgoingTransfer") || "Transfer Keluar" : t("transactions.transferBreakdown") || "Rincian Transfer"}</p>
@@ -662,13 +858,18 @@ export function TransactionModal({ mode, initialDate, spaceId, onClose, onSaved 
         <QuickCreateCategoryModal
           isOpen={showQuickCategoryModal}
           categoryType={mode === "income" ? "income" : "expense"}
-          spaceId={spaceId}
+          spaceId={isManagedTargetReimbursement ? reimbursementManagedSpaceId : spaceId}
           onClose={() => setShowQuickCategoryModal(false)}
           onCreated={(newCat) => {
-            setCategories((prev) => {
+            const updateCategories = (prev: Category[]) => {
               const exists = prev.some((c) => c.id === newCat.id);
               return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
-            });
+            };
+            if (isManagedTargetReimbursement) {
+              setReimbursementManagedCategories(updateCategories);
+            } else {
+              setCategories(updateCategories);
+            }
             setCategoryId(newCat.id);
             setShowQuickCategoryModal(false);
           }}

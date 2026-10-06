@@ -14,7 +14,6 @@ import {
   type QuickAddMode,
 } from "../components/layout/QuickAddMenu";
 import { TransactionModal } from "../components/transactions/TransactionModal";
-import { ReimbursableExpenseModal } from "../components/debts/ReimbursableExpenseModal";
 import { SmartEntryModal } from "../components/smart-entry/SmartEntryModal";
 import type { SmartEntryReimbursablePrefill } from "../lib/smartEntry";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
@@ -233,6 +232,7 @@ export function AppShell() {
       setSmartEntryOpen(true);
       return;
     }
+    setReimbursablePrefill(null);
     setTransactionMode(mode);
   };
 
@@ -290,14 +290,14 @@ export function AppShell() {
           onClose={() => setSmartEntryOpen(false)}
           onOpenReimbursable={(prefill) => {
             setReimbursablePrefill(prefill);
-            setTransactionMode("reimbursable_expense");
+            setTransactionMode("expense");
           }}
           onSaved={handleTransactionSaved}
         />
-        {transactionMode === "reimbursable_expense" ? (
-          <ReimbursableExpenseModal
-            initialValues={reimbursablePrefill}
-            isOpen={true}
+        {transactionMode ? (
+          <TransactionModal
+            initialReimbursement={transactionMode === "expense" ? reimbursablePrefill : null}
+            mode={transactionMode}
             onClose={() => {
               setTransactionMode(null);
               setReimbursablePrefill(null);
@@ -307,8 +307,6 @@ export function AppShell() {
               handleTransactionSaved();
             }}
           />
-        ) : transactionMode ? (
-          <TransactionModal mode={transactionMode} onClose={() => setTransactionMode(null)} onSaved={handleTransactionSaved} />
         ) : null}
         {successMessage ? (
           <div className="fixed bottom-24 left-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-soft md:left-auto md:right-8 md:w-80">

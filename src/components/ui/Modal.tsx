@@ -246,6 +246,10 @@ export function Modal({
     const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<
         number | null
     >(null);
+    // Some Android WebViews keep `position: fixed` anchored to the layout
+    // viewport while VisualViewport shrinks for the keyboard. This is the
+    // measured amount the sheet must be lifted in those browsers.
+    const [keyboardBottomInset, setKeyboardBottomInset] = useState(0);
     const [, setStackVersion] = useState(0);
 
     // Gesture state
@@ -327,6 +331,7 @@ export function Modal({
             setHasExpanded(false);
             setSheetDetent(initialMobileDetent);
             setKeyboardViewportHeight(null);
+            setKeyboardBottomInset(0);
 
             let frame2: number;
             const frame1 = requestAnimationFrame(() => {
@@ -351,6 +356,7 @@ export function Modal({
             setHasExpanded(false);
             setSheetDetent(initialMobileDetent);
             setKeyboardViewportHeight(null);
+            setKeyboardBottomInset(0);
         }
     }, [initialMobileDetent, isOpen]);
 
@@ -649,6 +655,18 @@ export function Modal({
             focusedEditableRef.current = target;
             viewportHeightBeforeFocusRef.current =
                 window.visualViewport?.height ?? window.innerHeight;
+            // A typing interaction must never be treated as a sheet drag. Open
+            // the larger detent before the software keyboard completes its
+            // animation so the field has room to remain visible.
+            bodyExpansionActiveRef.current = false;
+            bodyGestureStartedAtTopRef.current = false;
+            setDragY(0);
+            setIsDragging(false);
+            setExpansionHeight(null);
+            if (sheetDetentRef.current === "medium") {
+                setHasExpanded(true);
+                setSheetDetent("large");
+            }
             setKeyboardViewportHeight(
                 window.visualViewport?.height ?? window.innerHeight,
             );
@@ -697,6 +715,76 @@ export function Modal({
                 keyboardFallbackTimeoutRef.current = null;
             }
             keyboardDetentExpansionPendingRef.current = false;
+        };
+    }, [mounted]);
+
+    // Keep the physical bottom edge of the sheet above the keyboard. Merely
+    // setting a shorter max-height is insufficient on Android WebViews that
+    // keep fixed elements attached to the non-shrinking layout viewport.
+    useEffect(() => {
+        if (!mounted || typeof window === "undefined" || !isMobileViewport())
+            return;
+
+        let frame: number | null = null;
+        const updateKeyboardBottomInset = () => {
+            if (frame !== null) window.cancelAnimationFrame(frame);
+            frame = window.requestAnimationFrame(() => {
+                frame = window.requestAnimationFrame(() => {
+                    frame = null;
+                    const focusedElement = focusedEditableRef.current;
+                    const panel = panelRef.current;
+                    const viewport = window.visualViewport;
+
+                    if (
+                        !focusedElement ||
+                        !panel ||
+                        !viewport ||
+                        !isKeyboardEditableElement(focusedElement)
+                    ) {
+                        setKeyboardBottomInset(0);
+                        return;
+                    }
+
+                    const keyboardHeight =
+                        window.innerHeight - viewport.height - viewport.offsetTop;
+                    if (keyboardHeight <= 80) {
+                        setKeyboardBottomInset(0);
+                        return;
+                    }
+
+                    const panelBottom = panel.getBoundingClientRect().bottom;
+                    const visibleBottom = viewport.height + Math.max(0, viewport.offsetTop);
+
+                    setKeyboardBottomInset((currentInset) => {
+                        // Add the existing inset back to recover the panel's
+                        // unshifted bottom edge, then calculate the exact new
+                        // offset. This avoids oscillation after every resize.
+                        const unshiftedBottom = panelBottom + currentInset;
+                        const nextInset = Math.max(
+                            0,
+                            Math.ceil(unshiftedBottom - visibleBottom + KEYBOARD_FIELD_GAP_PX),
+                        );
+                        return Math.abs(nextInset - currentInset) < 1
+                            ? currentInset
+                            : nextInset;
+                    });
+                });
+            });
+        };
+
+        const panel = panelRef.current;
+        const viewport = window.visualViewport;
+        panel?.addEventListener("focusin", updateKeyboardBottomInset);
+        panel?.addEventListener("focusout", updateKeyboardBottomInset);
+        viewport?.addEventListener("resize", updateKeyboardBottomInset);
+        viewport?.addEventListener("scroll", updateKeyboardBottomInset);
+
+        return () => {
+            if (frame !== null) window.cancelAnimationFrame(frame);
+            panel?.removeEventListener("focusin", updateKeyboardBottomInset);
+            panel?.removeEventListener("focusout", updateKeyboardBottomInset);
+            viewport?.removeEventListener("resize", updateKeyboardBottomInset);
+            viewport?.removeEventListener("scroll", updateKeyboardBottomInset);
         };
     }, [mounted]);
 
@@ -789,7 +877,13 @@ export function Modal({
     };
 
     const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (!dismissible || isClosing || !isTopModal) return;
+        if (
+            !dismissible ||
+            isClosing ||
+            !isTopModal ||
+            focusedEditableRef.current !== null
+        )
+            return;
         const touch = e.touches[0];
         startYRef.current = touch.clientY;
         currentYRef.current = touch.clientY;
@@ -844,6 +938,15 @@ export function Modal({
 
     const handleBodyTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         if (isClosing || !isTopModal || sheetDetentRef.current !== "medium") return;
+        const eventTarget = event.target instanceof Element ? event.target : null;
+        if (
+            isKeyboardEditableElement(eventTarget) ||
+            eventTarget?.closest("label, button, [role='button'], [data-no-sheet-gesture]")
+        ) {
+            bodyExpansionActiveRef.current = false;
+            bodyGestureStartedAtTopRef.current = false;
+            return;
+        }
         const scrollBody = scrollBodyRef.current;
         if (!scrollBody) return;
         const touch = event.touches[0];
@@ -1038,7 +1141,10 @@ export function Modal({
             <div onClick={handleRequestClose} className={backdropClassName} />
 
             {/* Sheet / Dialog Container */}
-            <div className="fixed inset-0 z-50 flex min-h-full items-end justify-center p-0 md:items-center md:p-4 pointer-events-none">
+            <div
+                className="fixed inset-0 z-50 flex min-h-full items-end justify-center p-0 md:items-center md:p-4 pointer-events-none"
+                style={{ bottom: `${keyboardBottomInset}px` }}
+            >
                 <div
                     ref={panelRef}
                     style={
