@@ -21,6 +21,7 @@ import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { startOfLocalMonth } from "../lib/calendar";
 import { QuickCreateCategoryModal } from "../components/categories/QuickCreateCategoryModal";
+import { CounterpartyCombobox } from "../components/debts/CounterpartyCombobox";
 import { TransactionDetailPanel } from "../components/transactions/TransactionDetailPanel";
 import { ExpenseContextSelector } from "../components/transactions/ExpenseContextSelector";
 import { TransactionRow as CanonicalTransactionRow } from "../components/transactions/TransactionRow";
@@ -42,6 +43,7 @@ import { createExpense, createExternalTransfer, createIncome, createTransfer, fi
 import {
   canCreateTransaction,
   canEditTransaction,
+  convertExpenseToManagedReimbursement,
   createAdjustment,
   getTransactions,
   type TransactionFilters,
@@ -53,11 +55,14 @@ import {
   voidTransaction,
 } from "../lib/transactions";
 import { getCurrentLocalDatetimeString, toLocalDatetimeInputValue } from "../lib/datetime";
+import { getCounterparties } from "../lib/debts";
+import { getActiveCategories } from "../lib/categories";
 import { getEnvelopes } from "../lib/envelopes";
 import { formatCurrency, formatDatabaseMoneyDigits, formatMoneyDigits, parseMoneyInputDigits, toNumber } from "../lib/money";
-import { appEvents, emitTransactionSaved } from "../lib/appEvents";
+import { appEvents, emitDebtSaved, emitTransactionSaved } from "../lib/appEvents";
+import { getActiveManagedSpaces } from "../lib/spaces";
 import { useAppEvent } from "../hooks/useAppEvent";
-import type { Category, Envelope, ExpenseContext, TransactionStatus, TransactionType, Wallet } from "../types/domain";
+import type { Category, Counterparty, Envelope, ExpenseContext, FinancialSpace, TransactionStatus, TransactionType, Wallet } from "../types/domain";
 
 type EditMode = "duplicate" | "edit";
 
@@ -436,10 +441,30 @@ function TransactionFormModal({
   const [note, setNote] = useState(transaction.note ?? "");
   const [expenseContext, setExpenseContext] = useState<ExpenseContext>(transaction.expense_context ?? "personal");
   const [reimbursementCounterparty, setReimbursementCounterparty] = useState("");
+  const [reimbursementTitle, setReimbursementTitle] = useState(transaction.title ?? transaction.note ?? "");
+  const [reimbursementTarget, setReimbursementTarget] = useState<"managed" | "contact">("contact");
+  const [reimbursementManagedSpaceId, setReimbursementManagedSpaceId] = useState("");
+  const [reimbursementManagedSpaces, setReimbursementManagedSpaces] = useState<FinancialSpace[]>([]);
+  const [reimbursementManagedCategories, setReimbursementManagedCategories] = useState<Category[]>([]);
+  const [reimbursementCounterparties, setReimbursementCounterparties] = useState<Counterparty[]>([]);
+  const [reimbursementSupportLoading, setReimbursementSupportLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLElement>(null);
   const externalTransfer = isExternalTransfer(transaction);
+  const supportsManagedReimbursement =
+    mode === "edit" &&
+    transaction.type === "expense" &&
+    !externalTransfer &&
+    activeSpace?.space_type === "personal" &&
+    !transaction.cross_space_event_id &&
+    transaction.related_entity_type == null &&
+    transaction.related_entity_id == null &&
+    (transaction.expense_context ?? "personal") !== "reimbursable";
+  const isReimbursement = transaction.type === "expense" && !externalTransfer && expenseContext === "reimbursable";
+  const isManagedTargetReimbursement = supportsManagedReimbursement && isReimbursement && reimbursementTarget === "managed";
+  const requiresExternalCounterparty = isReimbursement && !isManagedTargetReimbursement;
+  const isManagedReimbursementConversion = mode === "edit" && isManagedTargetReimbursement;
   const activeWallets = wallets.filter((wallet) => !wallet.is_archived || wallet.id === transaction.wallet_id || wallet.id === transaction.destination_wallet_id);
   const filteredCategories = useMemo(() => {
     if (transaction.type !== "income" && transaction.type !== "expense") return [];
@@ -448,6 +473,11 @@ function TransactionFormModal({
   const amountValue = transaction.type === "adjustment" ? parseSignedMoneyDigits(amount) : parseMoneyInputDigits(amount);
   const feeValue = parseMoneyInputDigits(transferFee) || "0";
   const amountHasError = isAmountError(error);
+  const reimbursementCategoryOptions = isManagedTargetReimbursement
+    ? filterCategoriesByType(reimbursementManagedCategories, "expense")
+    : filteredCategories;
+  const selectedReimbursementCategory = reimbursementCategoryOptions.find((category) => category.id === categoryId) ?? null;
+  const selectedReimbursementManagedSpace = reimbursementManagedSpaces.find((space) => space.id === reimbursementManagedSpaceId) ?? null;
 
   const getSaveErrorMessage = (err: any) => {
     const code = err?.code;
@@ -472,10 +502,46 @@ function TransactionFormModal({
   };
 
   useEffect(() => {
-    getEnvelopes().then((res) => {
+    getEnvelopes(false, transaction.space_id).then((res) => {
       if (res.data) setEnvelopes(res.data);
     });
-  }, []);
+  }, [transaction.space_id]);
+
+  useEffect(() => {
+    if (transaction.type !== "expense" || externalTransfer) return;
+
+    void Promise.all([
+      supportsManagedReimbursement ? getActiveManagedSpaces() : Promise.resolve({ data: [], error: null }),
+      getCounterparties(undefined, transaction.space_id).catch(() => null),
+    ]).then(([managedSpacesResult, counterpartiesResult]) => {
+      setReimbursementManagedSpaces(managedSpacesResult.data ?? []);
+      setReimbursementCounterparties(
+        (counterpartiesResult?.allCounterparties ?? []).filter((counterparty) => !counterparty.linked_space_id),
+      );
+    });
+  }, [externalTransfer, supportsManagedReimbursement, transaction.space_id, transaction.type]);
+
+  useEffect(() => {
+    if (!isManagedTargetReimbursement || !reimbursementManagedSpaceId) {
+      setReimbursementManagedCategories([]);
+      setReimbursementSupportLoading(false);
+      return;
+    }
+
+    let isCurrent = true;
+    setReimbursementSupportLoading(true);
+    void getActiveCategories(reimbursementManagedSpaceId)
+      .then(({ data }) => {
+        if (isCurrent) setReimbursementManagedCategories(data ?? []);
+      })
+      .finally(() => {
+        if (isCurrent) setReimbursementSupportLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isManagedTargetReimbursement, reimbursementManagedSpaceId]);
 
   useEffect(() => {
     if (!error) return;
@@ -492,7 +558,18 @@ function TransactionFormModal({
     if (
       transaction.type === "expense" &&
       !externalTransfer &&
-      expenseContext === "reimbursable" &&
+      isReimbursement &&
+      !reimbursementTitle.trim()
+    ) {
+      return t("debts.itemTitleRequiredDirect") || "Judul / keterangan pengeluaran wajib diisi.";
+    }
+    if (isManagedTargetReimbursement && !reimbursementManagedSpaceId) {
+      return t("reimbursable.selectManagedSpace") || "Pilih Managed Space yang akan mereimburse.";
+    }
+    if (
+      transaction.type === "expense" &&
+      !externalTransfer &&
+      requiresExternalCounterparty &&
       transaction.expense_context !== "reimbursable" &&
       !reimbursementCounterparty.trim()
     ) {
@@ -521,8 +598,12 @@ function TransactionFormModal({
 
     try {
       const selectedCategory = localCategories.find((category) => category.id === categoryId);
-      const categoryName = selectedCategory?.name ?? "Transaction";
+      const managedCategory = reimbursementManagedCategories.find((category) => category.id === categoryId);
+      const categoryName = (isManagedTargetReimbursement ? managedCategory : selectedCategory)?.name ?? "Transaction";
       const noteValue = note.trim() ? note.trim() : null;
+      const transactionTitle = isReimbursement
+        ? reimbursementTitle.trim()
+        : noteValue ?? categoryName;
 
       const result =
         mode === "duplicate"
@@ -553,7 +634,7 @@ function TransactionFormModal({
                   envelopeId: envelopeId || null,
                   note: noteValue,
                   reimbursementCounterparty,
-                  title: noteValue ?? categoryName,
+                  title: transactionTitle,
                   transactionDate,
                   walletId,
                 })
@@ -572,15 +653,26 @@ function TransactionFormModal({
                   transactionDate,
                   walletId,
                 })
-          : await updateTransaction(transaction, {
+          : isManagedReimbursementConversion
+            ? await convertExpenseToManagedReimbursement({
+              amount: amountValue,
+              managedCategoryId: categoryId,
+              managedSpaceId: reimbursementManagedSpaceId,
+              note: noteValue,
+              sourceTransactionId: transaction.id,
+              title: transactionTitle,
+              transactionDate,
+              walletId,
+            })
+            : await updateTransaction(transaction, {
             amount: amountValue,
             categoryId: transaction.type === "income" || transaction.type === "expense" ? categoryId : null,
-            envelopeId: transaction.type === "expense" ? (envelopeId || null) : null,
+            envelopeId: transaction.type === "expense" && !isManagedTargetReimbursement ? (envelopeId || null) : null,
             destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
             expenseContext: transaction.type === "expense" && !externalTransfer ? expenseContext : undefined,
             note: noteValue,
             reimbursementCounterparty: transaction.type === "expense" && !externalTransfer ? reimbursementCounterparty : undefined,
-            title: externalTransfer ? `Transfer ke ${externalRecipient.trim()}` : transaction.type === "income" || transaction.type === "expense" ? noteValue ?? categoryName : transaction.title,
+            title: externalTransfer ? `Transfer ke ${externalRecipient.trim()}` : transaction.type === "income" || transaction.type === "expense" ? transactionTitle : transaction.title,
             transactionDate,
             transferFee: feeValue,
             walletId,
@@ -593,6 +685,7 @@ function TransactionFormModal({
       }
 
       emitTransactionSaved();
+      if (isReimbursement) emitDebtSaved();
       onSaved();
       onClose();
     } catch (caughtError) {
@@ -625,7 +718,7 @@ function TransactionFormModal({
           {(transaction.type === "income" || transaction.type === "expense") ? (
             <SelectField
               id="transaction-edit-category"
-              label={t("categories.title") || "Kategori"}
+              label={isManagedTargetReimbursement ? (t("reimbursable.expenseCategory") || "Kategori pengeluaran space") : (t("categories.title") || "Kategori")}
               action={
                 <button
                   type="button"
@@ -645,8 +738,14 @@ function TransactionFormModal({
                 }
               }}
             >
-              <option value="">{t("categories.selectCategory") || "Pilih Kategori"}</option>
-              {filteredCategories.map((category) => (
+              <option value="">
+                {reimbursementSupportLoading
+                  ? (t("common.loading") || "Memuat...")
+                  : isManagedTargetReimbursement
+                    ? (t("reimbursable.selectCategory") || "Pilih Kategori Space")
+                    : (t("categories.selectCategory") || "Pilih Kategori")}
+              </option>
+              {reimbursementCategoryOptions.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
@@ -657,14 +756,84 @@ function TransactionFormModal({
 
           {transaction.type === "expense" && !externalTransfer ? (
             <>
-              <ExpenseContextSelector value={expenseContext} onChange={setExpenseContext} />
-              {expenseContext === "reimbursable" ? (
-                <FormField
+              <ExpenseContextSelector
+                value={expenseContext}
+                onChange={(nextContext) => {
+                  setExpenseContext(nextContext);
+                  if (nextContext !== "reimbursable") {
+                    setReimbursementTarget("contact");
+                    setCategoryId(transaction.category_id ?? "");
+                  }
+                }}
+              />
+              {isReimbursement && supportsManagedReimbursement ? (
+                <div className="grid gap-3 rounded-xl border border-kash-emerald/20 bg-kash-selected/35 p-3">
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900">{t("reimbursable.reimbursedBy") || "Direimburse oleh"}</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-600">{t("expenseContext.reimbursableHint") || "Dibayar dulu dan dicatat sebagai piutang sampai diganti."}</p>
+                  </div>
+                  {reimbursementManagedSpaces.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-1 rounded-lg bg-white/80 p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReimbursementTarget("managed");
+                          setReimbursementManagedSpaceId((current) => current || reimbursementManagedSpaces[0]?.id || "");
+                          setCategoryId("");
+                        }}
+                        className={`rounded-md px-2 py-2 text-xs font-bold transition ${reimbursementTarget === "managed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+                      >
+                        {t("reimbursable.targetModeManaged") || "Financial Space (Managed)"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReimbursementTarget("contact");
+                          setCategoryId(transaction.category_id ?? "");
+                        }}
+                        className={`rounded-md px-2 py-2 text-xs font-bold transition ${reimbursementTarget === "contact" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+                      >
+                        {t("reimbursable.targetModeContact") || "Kontak / Pihak Luar"}
+                      </button>
+                    </div>
+                  ) : null}
+                  {isManagedTargetReimbursement ? (
+                    <SelectField
+                      id="transaction-edit-reimbursement-managed-space"
+                      label={t("reimbursable.selectManagedSpace") || "Pilih Managed Space"}
+                      onChange={(event) => {
+                        setReimbursementManagedSpaceId(event.target.value);
+                        setCategoryId("");
+                      }}
+                      value={reimbursementManagedSpaceId}
+                    >
+                      <option value="">{t("reimbursable.selectManagedSpace") || "Pilih Managed Space"}</option>
+                      {reimbursementManagedSpaces.map((managedSpace) => (
+                        <option key={managedSpace.id} value={managedSpace.id}>{managedSpace.name}</option>
+                      ))}
+                    </SelectField>
+                  ) : null}
+                </div>
+              ) : null}
+              {requiresExternalCounterparty ? (
+                <CounterpartyCombobox
                   id="transaction-edit-reimbursement-counterparty"
-                  label={t("expenseContext.reimbursementCounterparty") || "Pihak pengganti biaya"}
-                  placeholder={t("expenseContext.reimbursementCounterpartyPlaceholder") || "Contoh: PT KASH"}
-                  onChange={(event) => setReimbursementCounterparty(event.target.value)}
+                  counterparties={reimbursementCounterparties}
+                  label={t("expenseContext.reimbursementCounterparty")}
+                  onChange={(name) => setReimbursementCounterparty(name)}
+                  placeholder={t("expenseContext.reimbursementCounterpartyPlaceholder")}
+                  required={transaction.expense_context !== "reimbursable"}
                   value={reimbursementCounterparty}
+                />
+              ) : null}
+              {isReimbursement ? (
+                <FormField
+                  id="transaction-edit-reimbursement-title"
+                  label={`${t("debts.itemTitleLabel") || "Keterangan / Judul"} *`}
+                  onChange={(event) => setReimbursementTitle(event.target.value)}
+                  placeholder={t("transactions.notePlaceholder") || "mis. Makan siang kantor, wifi bulanan"}
+                  required
+                  value={reimbursementTitle}
                 />
               ) : null}
             </>
@@ -679,7 +848,7 @@ function TransactionFormModal({
             />
           ) : null}
 
-          {transaction.type === "expense" && envelopes.length > 0 ? (
+          {transaction.type === "expense" && !isManagedTargetReimbursement && envelopes.length > 0 ? (
             <SelectField
               id="transaction-edit-envelope"
               label={t("envelopes.title") || "Amplop / Purpose Group (Opsional)"}
@@ -745,6 +914,24 @@ function TransactionFormModal({
 
           <FormField id="transaction-edit-note" label={transaction.type === "adjustment" ? (t("transactions.reasonOrNote") || "Alasan / Catatan") : (t("transactions.note") || "Catatan")} value={note} onChange={(event) => setNote(event.target.value)} />
 
+          {isReimbursement ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{t("reimbursable.preview") || "Pratinjau Reimbursement"}</p>
+              <div className="mt-2 grid gap-2">
+                <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                  <p className="font-bold text-slate-900">{activeWallets.find((wallet) => wallet.id === walletId)?.name ?? (t("reimbursable.paidFrom") || "Dompet")}</p>
+                  <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{t("reimbursable.paidFrom") || "Dibayar dari"}</span><span className="font-extrabold text-kash-expense">-{formatCurrency(toNumber(amountValue), "IDR")}</span></div>
+                  <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{t("debts.receivable") || "Piutang"}</span><span className="font-extrabold text-kash-emeraldDark">+{formatCurrency(toNumber(amountValue), "IDR")}</span></div>
+                </div>
+                <div className="rounded-lg border border-slate-200/80 bg-white p-2.5">
+                  <p className="font-bold text-slate-900">{isManagedTargetReimbursement ? selectedReimbursementManagedSpace?.name ?? (t("spaces.managed") || "Managed Space") : reimbursementCounterparty.trim() || "—"}</p>
+                  <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{isManagedTargetReimbursement ? `${t("transactions.expense") || "Pengeluaran"}${selectedReimbursementCategory ? ` (${selectedReimbursementCategory.name})` : ""}` : (t("reimbursable.reimbursedBy") || "Direimburse oleh")}</span><span className="font-extrabold text-slate-900">{isManagedTargetReimbursement ? `+${formatCurrency(toNumber(amountValue), "IDR")}` : (t("reimbursable.awaitingReimbursement") || "Menunggu reimbursement")}</span></div>
+                  {isManagedTargetReimbursement ? <div className="mt-1 flex justify-between gap-3 font-semibold text-slate-600"><span>{t("reimbursable.cashMovement") || "Pergerakan kas"}</span><span>{formatCurrency(0, "IDR")}</span></div> : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {transaction.type === "transfer" || externalTransfer ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
               <p className="font-bold text-slate-900">{externalTransfer ? (t("transactions.outgoingTransfer") || "Transfer Keluar") : (t("transactions.transferSummary") || "Ringkasan Transfer")}</p>
@@ -765,12 +952,20 @@ function TransactionFormModal({
           <QuickCreateCategoryModal
             isOpen={showQuickCategoryModal}
             categoryType={transaction.type}
+            spaceId={isManagedTargetReimbursement ? reimbursementManagedSpaceId : transaction.space_id}
             onClose={() => setShowQuickCategoryModal(false)}
             onCreated={(newCat) => {
-              setLocalCategories((prev) => {
-                const exists = prev.some((c) => c.id === newCat.id);
-                return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
-              });
+              if (isManagedTargetReimbursement) {
+                setReimbursementManagedCategories((prev) => {
+                  const exists = prev.some((c) => c.id === newCat.id);
+                  return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
+                });
+              } else {
+                setLocalCategories((prev) => {
+                  const exists = prev.some((c) => c.id === newCat.id);
+                  return exists ? prev.map((c) => (c.id === newCat.id ? newCat : c)) : [...prev, newCat];
+                });
+              }
               setCategoryId(newCat.id);
               setShowQuickCategoryModal(false);
             }}

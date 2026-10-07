@@ -1157,6 +1157,20 @@ export type Database = {
         };
         Returns: Json;
       };
+      convert_expense_to_managed_reimbursement: {
+        Args: {
+          p_amount: number;
+          p_client_request_id: string;
+          p_managed_category_id: string;
+          p_managed_space_id: string;
+          p_note?: string | null;
+          p_personal_wallet_id: string;
+          p_source_transaction_id: string;
+          p_title: string;
+          p_transaction_date: string;
+        };
+        Returns: Json;
+      };
       record_cross_space_settlement: {
         Args: {
           p_client_request_id: string;

@@ -142,6 +142,17 @@ export type UpdateTransactionInput = {
   reimbursementCounterparty?: string | null;
 };
 
+export type ConvertExpenseToManagedReimbursementInput = {
+  amount: string;
+  managedCategoryId: string;
+  managedSpaceId: string;
+  note: string | null;
+  sourceTransactionId: string;
+  title: string;
+  transactionDate: string;
+  walletId: string;
+};
+
 const INSUFFICIENT_BALANCE_MESSAGE = "Wallet balance is not enough. Check the amount again.";
 
 async function getAuthenticatedUserId() {
@@ -389,6 +400,26 @@ export async function createCrossSpaceExpense(input: {
   });
   if (error) throw error;
   return { data, error: null };
+}
+
+/**
+ * Reclassifies an existing ordinary personal expense as a managed-space
+ * reimbursement. The database converts the original cash-out row in place,
+ * then creates the matching receivable, payable, and managed spending entry
+ * atomically so the event is never double-counted as personal consumption.
+ */
+export async function convertExpenseToManagedReimbursement(input: ConvertExpenseToManagedReimbursementInput) {
+  return supabase.rpc("convert_expense_to_managed_reimbursement", {
+    p_amount: toNumber(input.amount),
+    p_client_request_id: crypto.randomUUID(),
+    p_managed_category_id: input.managedCategoryId,
+    p_managed_space_id: input.managedSpaceId,
+    p_note: input.note,
+    p_personal_wallet_id: input.walletId,
+    p_source_transaction_id: input.sourceTransactionId,
+    p_title: input.title,
+    p_transaction_date: toUtcIsoString(input.transactionDate),
+  });
 }
 
 export async function recordCrossSpaceAdvance(input: {
