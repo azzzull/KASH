@@ -8,6 +8,8 @@ import type {
   WalletMoveAnalysis,
   WalletMoveResult,
   WalletType,
+  WorkFundKind,
+  WorkFundSummary,
 } from "../types/domain";
 import type { Database } from "../types/database";
 import type { TranslationKey } from "../i18n/index";
@@ -27,6 +29,7 @@ type CreateFirstWalletInput = {
 
 export type WalletWithBalance = Wallet & {
   balance: WalletBalance | null;
+  workFundSummary?: WorkFundSummary;
   goal_id?: string | null;
   goal_name?: string | null;
   goal_target_amount?: string | number | null;
@@ -43,6 +46,15 @@ export type UpdateWalletInput = {
   includeInNetWorth: boolean;
   icon: string | null;
   color: string | null;
+};
+
+export type CreateWorkFundInput = {
+  name: string;
+  kind: WorkFundKind;
+  initialAmount: string;
+  currency?: CurrencyCode;
+  icon?: string | null;
+  color?: string | null;
 };
 
 async function getAuthenticatedUserId() {
@@ -206,6 +218,65 @@ export async function createWallet(input: CreateWalletInput, spaceId?: string) {
 
 export async function createFirstWallet(input: CreateFirstWalletInput, spaceId?: string) {
   return createWallet(input, spaceId);
+}
+
+export async function createWorkFund(input: CreateWorkFundInput): Promise<{
+  data: Wallet | null;
+  error: Error | null;
+}> {
+  const { data, error } = await supabase.rpc("create_work_fund", {
+    p_name: input.name.trim(),
+    p_kind: input.kind,
+    p_initial_amount: input.initialAmount,
+    p_currency: input.currency ?? null,
+    p_icon: input.icon ?? "wallet",
+    p_color: input.color ?? "#0F766E",
+  });
+
+  return {
+    data: data ?? null,
+    error: error ? new Error(error.message) : null,
+  };
+}
+
+export async function recordWorkFundReceipt(input: {
+  walletId: string;
+  amount: string;
+  transactionDate: string;
+  note?: string | null;
+}) {
+  const { data, error } = await supabase.rpc("record_work_fund_receipt", {
+    p_wallet_id: input.walletId,
+    p_amount: input.amount,
+    p_transaction_date: input.transactionDate,
+    p_note: input.note?.trim() || null,
+  });
+
+  return {
+    data: data ?? null,
+    error: error ? new Error(error.message) : null,
+  };
+}
+
+export async function getWorkFundSummaries(walletIds?: string[]): Promise<{
+  data: WorkFundSummary[] | null;
+  error: Error | null;
+}> {
+  if (walletIds?.length === 0) {
+    return { data: [], error: null };
+  }
+
+  let query = supabase.from("work_fund_summary_view").select("*");
+
+  if (walletIds && walletIds.length > 0) {
+    query = query.in("wallet_id", walletIds);
+  }
+
+  const { data, error } = await query;
+  return {
+    data: data ?? null,
+    error: error ? new Error(error.message) : null,
+  };
 }
 
 export async function updateWallet(id: string, input: UpdateWalletInput) {

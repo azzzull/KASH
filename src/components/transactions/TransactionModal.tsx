@@ -124,6 +124,9 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [paymentSource, setPaymentSource] = useState<"managed" | "personal">("managed");
+  const [workPaymentSource, setWorkPaymentSource] = useState<
+    "personal" | "work_fund"
+  >("personal");
   const [personalWallets, setPersonalWallets] = useState<WalletWithBalance[]>([]);
   const [personalSpaceId, setPersonalSpaceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -191,9 +194,21 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
     modalRef.current?.scrollTo({ behavior: "smooth", top: 0 });
   }, [error]);
 
-  const activeWallets = paymentSource === "personal" ? personalWallets : wallets;
+  const workFundWallets = wallets.filter((wallet) => Boolean(wallet.work_fund_kind));
+  const standardWallets = wallets.filter((wallet) => !wallet.work_fund_kind);
+  const privateWorkExpense =
+    mode === "expense" && !isManaged && expenseContext === "work";
+  const activeWallets = privateWorkExpense
+    ? workPaymentSource === "work_fund"
+      ? workFundWallets
+      : standardWallets
+    : paymentSource === "personal"
+      ? personalWallets.filter((wallet) => !wallet.work_fund_kind)
+      : isManaged
+        ? wallets
+        : standardWallets;
   const selectedWallet = activeWallets.find((wallet) => wallet.id === walletId) ?? null;
-  const destinationWallet = wallets.find((wallet) => wallet.id === destinationWalletId) ?? null;
+  const destinationWallet = standardWallets.find((wallet) => wallet.id === destinationWalletId) ?? null;
   const isOutgoingTransfer = mode === "transfer" && transferKind === "outgoing";
   const filteredCategories = useMemo(
     () => filterCategoriesByType(categories, mode === "income" ? "income" : "expense"),
@@ -425,6 +440,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
         setCategoryId("");
         setEnvelopeId("");
         setExpenseContext("personal");
+        setWorkPaymentSource("personal");
         setReimbursementCounterparty("");
         setReimbursementTitle("");
         setReimbursementTarget(reimbursementManagedSpaces.length > 0 ? "managed" : "contact");
@@ -433,7 +449,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
         return;
       }
       onClose();
-    } catch (transactionError: any) {
+    } catch (transactionError) {
       console.error("Failed to create transaction", transactionError);
       const errMsg =
         transactionError instanceof Error
@@ -507,11 +523,62 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
                   value={expenseContext}
                   onChange={(nextContext) => {
                     setExpenseContext(nextContext);
+                    setWalletId("");
+                    if (nextContext !== "work") {
+                      setWorkPaymentSource("personal");
+                    }
                     // Managed-space categories cannot be reused for a normal
                     // personal expense after the reimbursement path is left.
                     if (nextContext !== "reimbursable") setCategoryId("");
                   }}
                 />
+                {privateWorkExpense ? (
+                  <div className="grid gap-2 rounded-xl border border-kash-emerald/20 bg-kash-selected/35 p-3">
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900">
+                        {t("transactions.paymentSource")}
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium text-slate-600">
+                        {t("expenseContext.workHint")}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 rounded-lg bg-white/80 p-1">
+                      <button
+                        className={`rounded-md px-2 py-2 text-xs font-bold transition ${
+                          workPaymentSource === "personal"
+                            ? "bg-white text-slate-900 shadow-sm"
+                            : "text-slate-500 hover:text-slate-900"
+                        }`}
+                        onClick={() => {
+                          setWorkPaymentSource("personal");
+                          setWalletId("");
+                        }}
+                        type="button"
+                      >
+                        {t("workFunds.personalPaymentSource")}
+                      </button>
+                      <button
+                        className={`rounded-md px-2 py-2 text-xs font-bold transition ${
+                          workPaymentSource === "work_fund"
+                            ? "bg-white text-slate-900 shadow-sm"
+                            : "text-slate-500 hover:text-slate-900"
+                        }`}
+                        onClick={() => {
+                          setWorkPaymentSource("work_fund");
+                          setWalletId("");
+                        }}
+                        type="button"
+                      >
+                        {t("workFunds.workPaymentSource")}
+                      </button>
+                    </div>
+                    {workPaymentSource === "work_fund" && workFundWallets.length === 0 ? (
+                      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+                        {t("workFunds.emptyForExpense")}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 {isReimbursement && !isManaged ? (
                   <div className="grid gap-3 rounded-xl border border-kash-emerald/20 bg-kash-selected/35 p-3">
                     <div>
@@ -707,6 +774,8 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
                   ? "Pilih Dompet Pribadi (Sumber Talangan)"
                   : mode === "income" && isManaged
                   ? t("transactions.fundingWalletDestination") || "Pilih Dompet Penerima Dana"
+                  : privateWorkExpense && workPaymentSource === "work_fund"
+                  ? t("workFunds.selectFund")
                   : paymentSource === "personal" ? t("transactions.personalWallet") || "Pilih Dompet Pribadi"
                   : t("wallets.title") || "Dompet"
               }
@@ -735,7 +804,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
             {mode === "income" && isManaged && paymentSource === "personal" ? (
               <SelectField id="income-destination" label="Pilih Dompet Penerima Dana" onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
                 <option value="">Pilih Dompet Tujuan</option>
-                {wallets.map((wallet) => (
+                {standardWallets.map((wallet) => (
                   <option key={wallet.id} value={wallet.id}>
                     {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
                   </option>
@@ -747,7 +816,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
               <>
                 <SelectField id="transfer-destination" label={t("transactions.toWallet") || "Ke Dompet"} onChange={(event) => setDestinationWalletId(event.target.value)} value={destinationWalletId}>
                   <option value="">{t("transactions.selectDestinationWallet") || "Pilih Dompet Tujuan"}</option>
-                  {wallets.map((wallet) => (
+                  {standardWallets.map((wallet) => (
                     <option key={wallet.id} value={wallet.id}>
                       {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
                     </option>
@@ -832,19 +901,19 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
               </div>
             ) : null}
 
-            {mode === "transfer" && !isOutgoingTransfer && wallets.length < 2 ? (
+            {mode === "transfer" && !isOutgoingTransfer && standardWallets.length < 2 ? (
               <p className="rounded-lg border border-kash-gold/40 bg-kash-gold/10 px-4 py-3 text-sm font-bold text-slate-900">
                 {t("transactions.needTwoWallets") || "Tambahkan setidaknya satu dompet aktif lainnya sebelum membuat transfer."}
               </p>
             ) : null}
 
-            <Button disabled={saving || (mode === "transfer" && !isOutgoingTransfer && wallets.length < 2)} type="submit">
+            <Button disabled={saving || (mode === "transfer" && !isOutgoingTransfer && standardWallets.length < 2)} type="submit">
               {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
               {saving ? (t("common.saving") || "Menyimpan...") : copy.submitLabel}
             </Button>
             {initialDate ? (
               <Button
-                disabled={saving || (mode === "transfer" && !isOutgoingTransfer && wallets.length < 2)}
+                disabled={saving || (mode === "transfer" && !isOutgoingTransfer && standardWallets.length < 2)}
                 type="button"
                 variant="secondary"
                 onClick={() => void submit(undefined, true)}

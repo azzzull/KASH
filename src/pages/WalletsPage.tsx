@@ -20,11 +20,14 @@ import { FormField } from "../components/ui/FormField";
 import { HeaderArchiveButton } from "../components/ui/HeaderActionControls";
 import { Modal } from "../components/ui/Modal";
 import { PageHeader } from "../components/ui/PageHeader";
+import { ProgressBar } from "../components/ui/ProgressBar";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
 import {
   AdjustmentModal,
+  CreateWorkFundModal,
   EditWalletModal,
+  WorkFundReceiptModal,
 } from "../components/wallets/WalletModals";
 import { useAuth } from "../context/AuthContext";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
@@ -49,12 +52,13 @@ import {
   archiveWallet,
   createWallet,
   getArchivedWalletsCount,
+  getWorkFundSummaries,
   getWalletTransactionCount,
   getWallets,
   restoreWallet,
   type WalletWithBalance,
 } from "../lib/wallets";
-import type { WalletType } from "../types/domain";
+import type { WalletType, WorkFundSummary } from "../types/domain";
 
 type WalletFormState = {
   name: string;
@@ -82,6 +86,7 @@ function WalletRow({
   wallet,
   onEdit,
   onAdjustBalance,
+  onAddFunds,
   onArchive,
   onRestore,
   onDeletePermanently,
@@ -89,6 +94,7 @@ function WalletRow({
   wallet: WalletWithBalance;
   onEdit?: () => void;
   onAdjustBalance?: () => void;
+  onAddFunds?: () => void;
   onArchive?: () => void;
   onRestore?: () => void;
   onDeletePermanently?: () => void;
@@ -100,7 +106,9 @@ function WalletRow({
   const isGoalPocket = Boolean(wallet.goal_id);
   const isSavingsPocket = wallet.wallet_type === "savings" && !wallet.goal_id;
   const isInvestment = wallet.wallet_type === "investment";
+  const isWorkFund = Boolean(wallet.work_fund_kind);
   const currentBal = wallet.balance?.current_balance ?? wallet.initial_balance;
+  const workFundSummary = isWorkFund ? wallet.workFundSummary : undefined;
 
   return (
     <div
@@ -131,13 +139,32 @@ function WalletRow({
           <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
             {[
               wallet.institution_name,
-              isGoalPocket
-                ? t("wallets.goalPocket") || "Kantong Target"
-                : typeOption.label,
+              isWorkFund
+                ? wallet.work_fund_kind === "meal"
+                  ? t("workFunds.meal")
+                  : t("workFunds.project")
+                : isGoalPocket
+                  ? t("wallets.goalPocket") || "Kantong Target"
+                  : typeOption.label,
             ]
               .filter(Boolean)
               .join(" • ")}
           </p>
+          {workFundSummary ? (
+            <div className="mt-2 max-w-sm">
+              <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
+                <span>{t("workFunds.used")}</span>
+                <span className="text-slate-700">
+                  {formatCurrency(workFundSummary.spent_amount, wallet.currency)} / {formatCurrency(workFundSummary.total_received, wallet.currency)}
+                </span>
+              </div>
+              <ProgressBar
+                height="xs"
+                percentage={toNumber(workFundSummary.usage_percentage)}
+                tone="auto"
+              />
+            </div>
+          ) : null}
         </div>
       </Link>
 
@@ -166,6 +193,10 @@ function WalletRow({
               {Number(wallet.balance.return_percentage).toFixed(2)}%{" "}
               {t("wallets.return") || "return"}
             </span>
+          ) : isWorkFund ? (
+            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[10px] font-bold text-kash-emeraldDark border border-kash-emerald/20">
+              {t("workFunds.remaining")}: {formatCurrency(currentBal, wallet.currency)}
+            </span>
           ) : null}
         </Link>
 
@@ -173,6 +204,12 @@ function WalletRow({
           triggerVariant="ghost"
           ariaLabel={`Opsi dompet ${wallet.name}`}
           items={[
+            {
+              label: t("workFunds.addFunds"),
+              icon: Plus,
+              hidden: !isWorkFund || wallet.is_archived || !onAddFunds,
+              onClick: onAddFunds ?? (() => {}),
+            },
             {
               label: t("common.edit") || "Edit",
               icon: Edit3,
@@ -184,6 +221,7 @@ function WalletRow({
               icon: SlidersHorizontal,
               hidden:
                 isInvestment ||
+                isWorkFund ||
                 Boolean(wallet.goal_id) ||
                 wallet.is_archived ||
                 !onAdjustBalance,
@@ -485,6 +523,9 @@ export function WalletsPage() {
   const [canEditInitialBalance, setCanEditInitialBalance] = useState(false);
   const [adjustingWallet, setAdjustingWallet] =
     useState<WalletWithBalance | null>(null);
+  const [showAddWorkFund, setShowAddWorkFund] = useState(false);
+  const [fundingWorkFund, setFundingWorkFund] =
+    useState<WalletWithBalance | null>(null);
   const [archivingWallet, setArchivingWallet] =
     useState<WalletWithBalance | null>(null);
   const [archivingLoading, setArchivingLoading] = useState(false);
@@ -513,7 +554,23 @@ export function WalletsPage() {
       return;
     }
 
-    setWallets(data);
+    const workFundIds = data
+      .filter((wallet) => Boolean(wallet.work_fund_kind))
+      .map((wallet) => wallet.id);
+    const summaryResult = await getWorkFundSummaries(workFundIds);
+    const workFundSummaries = (summaryResult.data ?? []).reduce<
+      Record<string, WorkFundSummary>
+    >((summary, item) => {
+      summary[item.wallet_id] = item;
+      return summary;
+    }, {});
+
+    setWallets(
+      data.map((wallet) => ({
+        ...wallet,
+        workFundSummary: workFundSummaries[wallet.id],
+      })),
+    );
     setArchivedCount(archCount);
     setLoading(false);
   }, [activeTab, activeSpace?.id, spaceLoading, t]);
@@ -539,7 +596,7 @@ export function WalletsPage() {
           summary.totalAssets += balance;
         }
 
-        if (isLiquidWallet(wallet.wallet_type)) {
+        if (isLiquidWallet(wallet.wallet_type) && !wallet.work_fund_kind) {
           summary.liquid += balance;
           if (wallet.include_in_net_worth) {
             summary.available += balance;
@@ -619,8 +676,18 @@ export function WalletsPage() {
         wallets: investmentWallets,
       });
 
-    // 7. Custom
-    const customWallets = wallets.filter((w) => w.wallet_type === "custom");
+    // 7. Private Work Funds
+    const workFundWallets = wallets.filter((w) => Boolean(w.work_fund_kind));
+    if (workFundWallets.length > 0)
+      groups.push({
+        group: t("workFunds.title"),
+        wallets: workFundWallets,
+      });
+
+    // 8. Custom
+    const customWallets = wallets.filter(
+      (w) => w.wallet_type === "custom" && !w.work_fund_kind,
+    );
     if (customWallets.length > 0)
       groups.push({
         group: t("wallets.custom") || "Custom",
@@ -681,8 +748,12 @@ export function WalletsPage() {
         setDeletingPermanentlyWallet(null);
         void loadWallets();
       }
-    } catch (e: any) {
-      setError(e?.message || "Gagal menghapus dompet secara permanen.");
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Gagal menghapus dompet secara permanen.",
+      );
     }
     setDeletingPermanentlyLoading(false);
   };
@@ -727,7 +798,13 @@ export function WalletsPage() {
               }
             />
             {activeTab === "active" && (
-              <div ref={createActionRef} className="hidden sm:block">
+              <div ref={createActionRef} className="hidden items-center gap-2 sm:flex">
+                {(!activeSpace || activeSpace.space_type === "personal") ? (
+                  <Button onClick={() => setShowAddWorkFund(true)} variant="secondary">
+                    <Plus aria-hidden="true" size={18} />
+                    {t("workFunds.create")}
+                  </Button>
+                ) : null}
                 <Button onClick={() => setShowAddWallet(true)}>
                   <Plus aria-hidden="true" size={18} />
                   {t("wallets.create")}
@@ -847,6 +924,11 @@ export function WalletsPage() {
                     <WalletRow
                       key={wallet.id}
                       onAdjustBalance={canManageWallet ? () => setAdjustingWallet(wallet) : undefined}
+                      onAddFunds={
+                        canManageWallet && wallet.work_fund_kind
+                          ? () => setFundingWorkFund(wallet)
+                          : undefined
+                      }
                       onArchive={canManageWallet ? () => setArchivingWallet(wallet) : undefined}
                       onEdit={canManageWallet ? () => void handleStartEdit(wallet) : undefined}
                       onRestore={
@@ -865,11 +947,29 @@ export function WalletsPage() {
       </section>
 
       {activeTab === "active" && canManageWallet && (
-        <ContextualCreateAction
-          targetRef={createActionRef}
-          onClick={() => setShowAddWallet(true)}
-          label={t("wallets.create")}
-        />
+        <>
+          {(!activeSpace || activeSpace.space_type === "personal") ? (
+            <div className="flex gap-2 sm:hidden">
+              <Button
+                className="flex-1"
+                onClick={() => setShowAddWorkFund(true)}
+                variant="secondary"
+              >
+                <Plus aria-hidden="true" size={17} />
+                {t("workFunds.create")}
+              </Button>
+              <Button className="flex-1" onClick={() => setShowAddWallet(true)}>
+                <Plus aria-hidden="true" size={17} />
+                {t("wallets.create")}
+              </Button>
+            </div>
+          ) : null}
+          <ContextualCreateAction
+            targetRef={createActionRef}
+            onClick={() => setShowAddWallet(true)}
+            label={t("wallets.create")}
+          />
+        </>
       )}
 
       {showAddWallet ? (
@@ -878,6 +978,28 @@ export function WalletsPage() {
           onClose={() => setShowAddWallet(false)}
           onSaved={() => {
             setShowAddWallet(false);
+            void loadWallets();
+          }}
+        />
+      ) : null}
+
+      {showAddWorkFund ? (
+        <CreateWorkFundModal
+          defaultCurrency={profile?.default_currency ?? "IDR"}
+          onClose={() => setShowAddWorkFund(false)}
+          onSaved={() => {
+            setShowAddWorkFund(false);
+            void loadWallets();
+          }}
+        />
+      ) : null}
+
+      {fundingWorkFund ? (
+        <WorkFundReceiptModal
+          wallet={fundingWorkFund}
+          onClose={() => setFundingWorkFund(null)}
+          onSaved={() => {
+            setFundingWorkFund(null);
             void loadWallets();
           }}
         />

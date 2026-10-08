@@ -54,6 +54,7 @@ import type {
   WalletMoveAnalysis,
   WalletMoveResult,
   WalletType,
+  WorkFundSummary,
   SharedSavings,
   SharedSavingsMember,
   SharedSavingsApprover,
@@ -172,6 +173,7 @@ export type Database = {
           icon?: string | null;
           color?: string | null;
           include_in_net_worth?: boolean;
+          work_fund_kind?: "meal" | "project" | null;
           is_archived?: boolean;
           cost_basis?: string | null;
           current_market_value?: string | null;
@@ -496,6 +498,12 @@ export type Database = {
     Views: {
       wallet_balance_view: {
         Row: WalletBalance;
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      work_fund_summary_view: {
+        Row: WorkFundSummary;
         Insert: never;
         Update: never;
         Relationships: [];
@@ -980,6 +988,26 @@ export type Database = {
           p_transaction_date: string;
           p_transaction_id?: string | null;
           p_wallet_id: string;
+        };
+        Returns: Transaction;
+      };
+      create_work_fund: {
+        Args: {
+          p_name: string;
+          p_kind: "meal" | "project";
+          p_initial_amount?: string;
+          p_currency?: string | null;
+          p_icon?: string | null;
+          p_color?: string | null;
+        };
+        Returns: Wallet;
+      };
+      record_work_fund_receipt: {
+        Args: {
+          p_wallet_id: string;
+          p_amount: string;
+          p_transaction_date?: string;
+          p_note?: string | null;
         };
         Returns: Transaction;
       };

@@ -108,6 +108,7 @@ export type DailyCheckin = {
 };
 
 export type WalletType = "bank" | "digital_bank" | "ewallet" | "cash" | "investment" | "savings" | "custom";
+export type WorkFundKind = "meal" | "project";
 
 export type Wallet = {
   id: string;
@@ -122,6 +123,8 @@ export type Wallet = {
   icon: string | null;
   color: string | null;
   include_in_net_worth: boolean;
+  /** A private office fund; it is intentionally excluded from personal wealth. */
+  work_fund_kind?: WorkFundKind | null;
   is_archived: boolean;
   cost_basis?: MoneyAmount | null;
   current_market_value?: MoneyAmount | null;
@@ -239,6 +242,16 @@ export type WalletBalance = {
   unrealized_gain_loss?: MoneyAmount | null;
   return_percentage?: number | null;
   last_valuation_at?: string | null;
+};
+
+export type WorkFundSummary = {
+  wallet_id: string;
+  user_id: string;
+  work_fund_kind: WorkFundKind;
+  total_received: MoneyAmount;
+  current_balance: MoneyAmount;
+  spent_amount: MoneyAmount;
+  usage_percentage: MoneyAmount;
 };
 
 export type WalletMoveIssueClassification =

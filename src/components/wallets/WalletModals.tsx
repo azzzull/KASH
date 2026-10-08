@@ -23,8 +23,13 @@ import {
   walletIconOptions,
   walletTypeOptions,
 } from "../../lib/walletMeta";
-import { updateWallet, type WalletWithBalance } from "../../lib/wallets";
-import type { WalletType } from "../../types/domain";
+import {
+  createWorkFund,
+  recordWorkFundReceipt,
+  updateWallet,
+  type WalletWithBalance,
+} from "../../lib/wallets";
+import type { WalletType, WorkFundKind } from "../../types/domain";
 
 export type WalletEditState = {
   name: string;
@@ -75,7 +80,8 @@ export function EditWalletModal({
 
   const isSpecialized =
     wallet.wallet_type === "investment" ||
-    (wallet.wallet_type === "savings" && Boolean(wallet.goal_id));
+    (wallet.wallet_type === "savings" && Boolean(wallet.goal_id)) ||
+    Boolean(wallet.work_fund_kind);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -269,24 +275,30 @@ export function EditWalletModal({
               ))}
             </div>
           </fieldset>
-          <ToggleField
-            checked={form.includeInNetWorth}
-            description={
-              t("wallets.includeInNetWorthHelp") ||
-              "Dompet yang disertakan akan dihitung dalam Total Aset."
-            }
-            id="edit-include-net-worth"
-            label={
-              t("wallets.includeInNetWorth") ||
-              "Sertakan dalam Kekayaan Bersih"
-            }
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                includeInNetWorth: event.target.checked,
-              }))
-            }
-          />
+          {wallet.work_fund_kind ? (
+            <div className="rounded-lg border border-kash-emerald/20 bg-kash-selected/35 px-4 py-3 text-xs font-semibold text-slate-700">
+              {t("workFunds.privateHint")}
+            </div>
+          ) : (
+            <ToggleField
+              checked={form.includeInNetWorth}
+              description={
+                t("wallets.includeInNetWorthHelp") ||
+                "Dompet yang disertakan akan dihitung dalam Total Aset."
+              }
+              id="edit-include-net-worth"
+              label={
+                t("wallets.includeInNetWorth") ||
+                "Sertakan dalam Kekayaan Bersih"
+              }
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  includeInNetWorth: event.target.checked,
+                }))
+              }
+            />
+          )}
           <Button disabled={saving} type="submit">
             {saving ? (
               <Loader2 aria-hidden="true" className="animate-spin" size={18} />
@@ -462,6 +474,270 @@ export function AdjustmentModal({
             {saving
               ? t("common.saving") || "Menyimpan..."
               : t("wallets.saveAdjustment") || "Simpan Penyesuaian"}
+          </Button>
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
+export function CreateWorkFundModal({
+  defaultCurrency,
+  onClose,
+  onSaved,
+}: {
+  defaultCurrency: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useI18n();
+  const [kind, setKind] = useState<WorkFundKind>("meal");
+  const [name, setName] = useState("");
+  const [initialAmount, setInitialAmount] = useState("0");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving) return;
+
+    const trimmedName = name.trim();
+    const amount = parseMoneyInputDigits(initialAmount);
+
+    if (!trimmedName) {
+      setError(t("workFunds.nameRequired"));
+      return;
+    }
+
+    if (toNumber(amount) < 0) {
+      setError(t("workFunds.initialAmountInvalid"));
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { error: createError } = await createWorkFund({
+        name: trimmedName,
+        kind,
+        initialAmount: amount || "0",
+        currency: defaultCurrency,
+        icon: "wallet",
+        color: kind === "meal" ? "#F59E0B" : "#0F766E",
+      });
+
+      if (createError) {
+        setError(createError.message || t("workFunds.createError"));
+        return;
+      }
+
+      emitTransactionSaved();
+      onSaved();
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : t("workFunds.createError"),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen
+      maxWidth="md"
+      onClose={onClose}
+      title={t("workFunds.create")}
+      description={t("workFunds.createDescription")}
+    >
+      <div>
+        {error ? (
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          <fieldset>
+            <legend className="text-sm font-bold text-slate-900">
+              {t("workFunds.kind")}
+            </legend>
+            <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+              <button
+                className={`rounded-md px-3 py-2 text-left text-xs font-bold transition ${
+                  kind === "meal"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                onClick={() => setKind("meal")}
+                type="button"
+              >
+                <span className="block">{t("workFunds.meal")}</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">
+                  {t("workFunds.mealHint")}
+                </span>
+              </button>
+              <button
+                className={`rounded-md px-3 py-2 text-left text-xs font-bold transition ${
+                  kind === "project"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                onClick={() => setKind("project")}
+                type="button"
+              >
+                <span className="block">{t("workFunds.project")}</span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-slate-500">
+                  {t("workFunds.projectHint")}
+                </span>
+              </button>
+            </div>
+          </fieldset>
+
+          <FormField
+            id="work-fund-name"
+            label={t("workFunds.name")}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={
+              kind === "meal"
+                ? t("workFunds.mealNamePlaceholder")
+                : t("workFunds.projectNamePlaceholder")
+            }
+            value={name}
+          />
+          <FormField
+            id="work-fund-initial-amount"
+            inputMode="numeric"
+            label={t("workFunds.initialAmount")}
+            hint={t("workFunds.initialAmountHint")}
+            onChange={(event) =>
+              setInitialAmount(formatMoneyDigits(event.target.value))
+            }
+            placeholder="0"
+            value={initialAmount}
+          />
+
+          <Button disabled={saving} type="submit">
+            {saving ? (
+              <Loader2 aria-hidden="true" className="animate-spin" size={18} />
+            ) : null}
+            {saving ? t("common.saving") : t("workFunds.create")}
+          </Button>
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
+export function WorkFundReceiptModal({
+  onClose,
+  onSaved,
+  wallet,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+  wallet: WalletWithBalance;
+}) {
+  const { t } = useI18n();
+  const [amount, setAmount] = useState("");
+  const [transactionDate, setTransactionDate] = useState(
+    currentLocalDateTimeValue(),
+  );
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving) return;
+
+    const amountDigits = parseMoneyInputDigits(amount);
+    if (!amountDigits || toNumber(amountDigits) <= 0) {
+      setError(t("workFunds.receiptAmountInvalid"));
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const { error: receiptError } = await recordWorkFundReceipt({
+        walletId: wallet.id,
+        amount: amountDigits,
+        transactionDate,
+        note,
+      });
+
+      if (receiptError) {
+        setError(receiptError.message || t("workFunds.receiptError"));
+        return;
+      }
+
+      emitTransactionSaved();
+      onSaved();
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : t("workFunds.receiptError"),
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen
+      maxWidth="md"
+      onClose={onClose}
+      title={t("workFunds.addReceipt")}
+      description={t("workFunds.addReceiptDescription")}
+    >
+      <div>
+        {error ? (
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          <div className="rounded-lg border border-kash-emerald/20 bg-kash-selected/35 px-4 py-3">
+            <p className="text-xs font-bold text-slate-600">{t("workFunds.fund")}</p>
+            <p className="mt-1 text-sm font-extrabold text-slate-900">
+              {wallet.name}
+            </p>
+          </div>
+          <FormField
+            id="work-fund-receipt-amount"
+            inputMode="numeric"
+            label={t("workFunds.receiptAmount")}
+            onChange={(event) => setAmount(formatMoneyDigits(event.target.value))}
+            placeholder="500.000"
+            value={amount}
+          />
+          <DatePickerField
+            enableTime
+            id="work-fund-receipt-date"
+            label={t("common.date")}
+            onChange={setTransactionDate}
+            value={transactionDate}
+          />
+          <FormField
+            id="work-fund-receipt-note"
+            label={t("transactions.noteOptional")}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder={t("workFunds.receiptNotePlaceholder")}
+            value={note}
+          />
+          <Button disabled={saving} type="submit">
+            {saving ? (
+              <Loader2 aria-hidden="true" className="animate-spin" size={18} />
+            ) : null}
+            {saving ? t("common.saving") : t("workFunds.saveReceipt")}
           </Button>
         </form>
       </div>

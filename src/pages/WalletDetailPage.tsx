@@ -1,5 +1,5 @@
-import { AlertTriangle, ArrowLeft, RotateCcw, ArrowRight, Archive, CheckCircle2, Edit3, History, LineChart, Loader2, MoveRight, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { AlertTriangle, ArrowLeft, RotateCcw, ArrowRight, Archive, CheckCircle2, Edit3, History, LineChart, Loader2, MoveRight, Plus, SlidersHorizontal, Trash2, TrendingDown, TrendingUp, WalletCards, X } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { ConfirmationDialog } from "../components/ui/ConfirmationDialog";
@@ -10,6 +10,7 @@ import { IconButton } from "../components/ui/IconButton";
 import { Modal } from "../components/ui/Modal";
 import { SelectField } from "../components/ui/SelectField";
 import { ToggleField } from "../components/ui/ToggleField";
+import { ProgressBar } from "../components/ui/ProgressBar";
 import { useI18n } from "../i18n";
 import { useActiveSpace } from "../context/ActiveSpaceContext";
 import { appEvents, emitTransactionSaved } from "../lib/appEvents";
@@ -40,14 +41,16 @@ import {
   moveWalletToManaged,
   recordInvestmentActivity,
   recordInvestmentValuation,
+  getWorkFundSummaries,
   updateWallet,
   type WalletWithBalance,
 } from "../lib/wallets";
-import type { FinancialSpace, InvestmentActivity, InvestmentActivityType, InvestmentValuation, WalletMoveAnalysis, WalletType } from "../types/domain";
+import type { FinancialSpace, InvestmentActivity, InvestmentActivityType, InvestmentValuation, WalletMoveAnalysis, WalletType, WorkFundSummary } from "../types/domain";
 
 import {
   AdjustmentModal,
   EditWalletModal,
+  WorkFundReceiptModal,
 } from "../components/wallets/WalletModals";
 
 function DetailMetric({ label, value }: { label: string; value: string }) {
@@ -125,8 +128,8 @@ function UpdateValuationModal({
 
       emitTransactionSaved();
       onSaved();
-    } catch (err: any) {
-      setError(err?.message || (t("wallets.updateValuationError") || "Gagal memperbarui nilai pasar investasi."));
+    } catch (err) {
+      setError(errorMessage(err, t("wallets.updateValuationError") || "Gagal memperbarui nilai pasar investasi."));
       setSaving(false);
     }
   };
@@ -254,8 +257,8 @@ function RecordInvestmentActivityModal({
 
       emitTransactionSaved();
       onSaved();
-    } catch (err: any) {
-      setError(err?.message || (t("wallets.recordActivityError") || "Gagal mencatat aktivitas investasi."));
+    } catch (err) {
+      setError(errorMessage(err, t("wallets.recordActivityError") || "Gagal mencatat aktivitas investasi."));
       setSaving(false);
     }
   };
@@ -620,6 +623,8 @@ export function WalletDetailPage() {
   const [valuations, setValuations] = useState<InvestmentValuation[]>([]);
   const [activities, setActivities] = useState<InvestmentActivity[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<TransactionWithMeta[]>([]);
+  const [workFundSummary, setWorkFundSummary] = useState<WorkFundSummary | null>(null);
+  const [workFundTransactions, setWorkFundTransactions] = useState<TransactionWithMeta[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithMeta | null>(null);
   const [linkedGoalCount, setLinkedGoalCount] = useState(0);
   const [transactionCount, setTransactionCount] = useState(0);
@@ -628,6 +633,7 @@ export function WalletDetailPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showAdjustment, setShowAdjustment] = useState(false);
+  const [showWorkFundReceipt, setShowWorkFundReceipt] = useState(false);
   const [showMoveWallet, setShowMoveWallet] = useState(false);
   const [showValuation, setShowValuation] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
@@ -659,20 +665,32 @@ export function WalletDetailPage() {
       setLinkedGoalCount(goalCount);
       setRecentTransactions(txResult.transactions ?? []);
 
+      if (data.work_fund_kind) {
+        const [summaryResult, workTransactionsResult] = await Promise.all([
+          getWorkFundSummaries([id]),
+          getTransactions({ walletId: id, pageSize: 500 }),
+        ]);
+        setWorkFundSummary(summaryResult.data?.[0] ?? null);
+        setWorkFundTransactions(workTransactionsResult.transactions ?? []);
+      } else {
+        setWorkFundSummary(null);
+        setWorkFundTransactions([]);
+      }
+
       if (data.wallet_type === "investment") {
         try {
           const [valHistory, actHistory] = await Promise.all([
             getInvestmentValuationHistory(id),
             getInvestmentActivities(id),
           ]);
-          setValuations((valHistory.data as any) ?? []);
+          setValuations(valHistory.data ?? []);
           setActivities(actHistory.data ?? []);
         } catch (err) {
           console.warn("Failed to load investment history", err);
         }
       }
-    } catch (err: any) {
-      setError(err?.message || (t("wallets.loadDetailError") || "Gagal memuat dompet ini."));
+    } catch (err) {
+      setError(errorMessage(err, t("wallets.loadDetailError") || "Gagal memuat dompet ini."));
     } finally {
       setLoading(false);
     }
@@ -686,6 +704,25 @@ export function WalletDetailPage() {
 
   useAppEvent(appEvents.transactionSaved, () => void loadWallet());
   useAppEvent(appEvents.goalSaved, () => void loadWallet());
+
+  const workFundCategoryTotals = useMemo(() => {
+    const totals = new Map<string, { name: string; amount: number }>();
+
+    workFundTransactions.forEach((transaction) => {
+      if (transaction.type !== "expense" || transaction.status !== "completed") {
+        return;
+      }
+
+      const name = transaction.category?.name ?? "—";
+      const existing = totals.get(name) ?? { name, amount: 0 };
+      existing.amount += toNumber(transaction.amount) + toNumber(transaction.transfer_fee);
+      totals.set(name, existing);
+    });
+
+    return [...totals.values()]
+      .sort((left, right) => right.amount - left.amount)
+      .slice(0, 4);
+  }, [workFundTransactions]);
 
   const handleRestoreWallet = async () => {
     if (!wallet) return;
@@ -744,8 +781,8 @@ export function WalletDetailPage() {
         setActivityToDelete(null);
         void loadWallet();
       }
-    } catch (err: any) {
-      setError(err?.message || (t("wallets.deleteActivityError") || "Gagal menghapus aktivitas investasi."));
+    } catch (err) {
+      setError(errorMessage(err, t("wallets.deleteActivityError") || "Gagal menghapus aktivitas investasi."));
     } finally {
       setDeletingActivity(false);
     }
@@ -772,6 +809,7 @@ export function WalletDetailPage() {
   }
 
   const isInvestment = wallet.wallet_type === "investment";
+  const isWorkFund = Boolean(wallet.work_fund_kind);
   const typeOption = getWalletTypeOption(wallet.wallet_type);
   const Icon = getWalletIcon(wallet.icon, wallet.wallet_type);
 
@@ -784,6 +822,11 @@ export function WalletDetailPage() {
   const totalReturnPct = netContributions > 0 ? (totalPnL / netContributions) * 100 : null;
 
   const currentBalance = currentEquity;
+  const workFundTotalReceived = toNumber(
+    workFundSummary?.total_received ?? wallet.initial_balance,
+  );
+  const workFundSpent = toNumber(workFundSummary?.spent_amount ?? 0);
+  const workFundUsage = toNumber(workFundSummary?.usage_percentage ?? 0);
   const lastValuationAt = wallet.balance?.last_valuation_at;
   const canEditInitialBalance = transactionCount === 0;
   const canHardDelete = transactionCount === 0 && linkedGoalCount === 0;
@@ -791,6 +834,7 @@ export function WalletDetailPage() {
   const canMoveToManaged =
     canManageWallet &&
     !wallet.is_archived &&
+    !isWorkFund &&
     wallet.wallet_type !== "investment" &&
     Boolean(personalSpace?.id) &&
     wallet.space_id === personalSpace?.id;
@@ -830,7 +874,11 @@ export function WalletDetailPage() {
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wide text-white/60">
-                  {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
+                  {wallet.goal_name
+                    ? (t("wallets.goalPocket") || "Kantong Target")
+                    : wallet.wallet_type === "savings"
+                      ? (t("wallets.savingsPocket") || "Kantong Tabungan")
+                      : typeOption.label}
                 </p>
                 <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
               </div>
@@ -914,7 +962,15 @@ export function WalletDetailPage() {
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wide text-white/60">
-                  {wallet.goal_name ? (t("wallets.goalPocket") || "Kantong Target") : wallet.wallet_type === "savings" ? (t("wallets.savingsPocket") || "Kantong Tabungan") : typeOption.label}
+                  {isWorkFund
+                    ? wallet.work_fund_kind === "meal"
+                      ? t("workFunds.meal")
+                      : t("workFunds.project")
+                    : wallet.goal_name
+                      ? (t("wallets.goalPocket") || "Kantong Target")
+                      : wallet.wallet_type === "savings"
+                        ? (t("wallets.savingsPocket") || "Kantong Tabungan")
+                        : typeOption.label}
                 </p>
                 <h1 className="truncate text-base font-extrabold text-white">{wallet.name}</h1>
               </div>
@@ -924,6 +980,12 @@ export function WalletDetailPage() {
               ariaLabel={`Opsi ${wallet.name}`}
               items={[
                 {
+                  label: t("workFunds.addFunds"),
+                  icon: Plus,
+                  hidden: !isWorkFund || wallet.is_archived || !canManageWallet,
+                  onClick: () => setShowWorkFundReceipt(true),
+                },
+                {
                   label: t("common.edit") || "Edit",
                   icon: Edit3,
                   hidden: !canManageWallet,
@@ -932,7 +994,7 @@ export function WalletDetailPage() {
                 {
                   label: t("wallets.adjustBalance") || "Sesuaikan Saldo",
                   icon: SlidersHorizontal,
-                  hidden: isInvestment || wallet.is_archived || !canManageWallet,
+                  hidden: isInvestment || isWorkFund || wallet.is_archived || !canManageWallet,
                   onClick: () => setShowAdjustment(true),
                 },
                 {
@@ -972,6 +1034,91 @@ export function WalletDetailPage() {
           {heroMetadata}
         </section>
       )}
+
+      {isWorkFund ? (
+        <section className="rounded-2xl border border-kash-emerald/20 bg-white p-4 shadow-card sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-extrabold text-slate-900">
+                {t("workFunds.report")}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-600">
+                {t("workFunds.privateHint")}
+              </p>
+            </div>
+            {!wallet.is_archived && canManageWallet ? (
+              <Button
+                className="shrink-0"
+                onClick={() => setShowWorkFundReceipt(true)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                <Plus aria-hidden="true" size={15} />
+                {t("workFunds.addFunds")}
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <DetailMetric
+              label={t("workFunds.totalReceived")}
+              value={formatCurrency(workFundTotalReceived, wallet.currency)}
+            />
+            <DetailMetric
+              label={t("workFunds.used")}
+              value={formatCurrency(workFundSpent, wallet.currency)}
+            />
+            <DetailMetric
+              label={t("workFunds.remaining")}
+              value={formatCurrency(currentBalance, wallet.currency)}
+            />
+          </div>
+
+          <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3.5">
+            <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold text-slate-600">
+              <span>{t("workFunds.used")}</span>
+              <span>{workFundUsage.toFixed(0)}%</span>
+            </div>
+            <ProgressBar height="sm" percentage={workFundUsage} tone="auto" />
+          </div>
+
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-extrabold text-slate-900">
+                {t("workFunds.categoryBreakdown")}
+              </h3>
+              <Link
+                className="text-xs font-extrabold text-kash-emerald hover:text-kash-emeraldDark"
+                to={`/transactions?wallet=${wallet.id}`}
+              >
+                {t("wallets.viewAllTransactions")}
+              </Link>
+            </div>
+            {workFundCategoryTotals.length > 0 ? (
+              <div className="mt-3 grid gap-2">
+                {workFundCategoryTotals.map((category) => (
+                  <div
+                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2.5 text-sm"
+                    key={category.name}
+                  >
+                    <span className="min-w-0 truncate font-bold text-slate-700">
+                      {category.name}
+                    </span>
+                    <span className="shrink-0 font-extrabold text-slate-900">
+                      {formatCurrency(category.amount, wallet.currency)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs font-semibold text-slate-500">
+                {t("workFunds.noExpenses")}
+              </p>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {wallet.goal_id ? (
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-0.5 text-xs font-semibold text-slate-500">
@@ -1257,6 +1404,16 @@ export function WalletDetailPage() {
             void loadWallet();
           }}
           wallet={wallet}
+        />
+      ) : null}
+      {showWorkFundReceipt ? (
+        <WorkFundReceiptModal
+          wallet={wallet}
+          onClose={() => setShowWorkFundReceipt(false)}
+          onSaved={() => {
+            setShowWorkFundReceipt(false);
+            void loadWallet();
+          }}
         />
       ) : null}
       {showMoveWallet ? (
