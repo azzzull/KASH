@@ -88,7 +88,6 @@ function WalletRow({
   onEdit,
   onAdjustBalance,
   onAddFunds,
-  onLinkSource,
   onArchive,
   onRestore,
   onDeletePermanently,
@@ -97,7 +96,6 @@ function WalletRow({
   onEdit?: () => void;
   onAdjustBalance?: () => void;
   onAddFunds?: () => void;
-  onLinkSource?: () => void;
   onArchive?: () => void;
   onRestore?: () => void;
   onDeletePermanently?: () => void;
@@ -116,13 +114,13 @@ function WalletRow({
 
   return (
     <div
-      className={`kash-activity-row flex items-center justify-between gap-3 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md min-w-0 max-w-full ${
+      className={`kash-activity-row flex min-w-0 max-w-full items-center justify-between gap-2.5 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md sm:gap-3 ${
         wallet.is_archived ? "opacity-80" : ""
       }`}
     >
       <Link
         to={`/wallets/${wallet.id}`}
-        className="flex min-w-0 flex-1 items-center gap-3"
+        className="flex min-w-0 flex-1 basis-0 items-center gap-3"
       >
         <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
@@ -156,9 +154,9 @@ function WalletRow({
           </p>
           {workFundSummary ? (
             <div className="mt-2 max-w-sm">
-              <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
-                <span>{t("workFunds.used")}</span>
-                <span className="text-slate-700">
+              <div className="mb-1 flex min-w-0 items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
+                <span className="shrink-0">{t("workFunds.used")}</span>
+                <span className="min-w-0 truncate text-right text-slate-700">
                   {formatCurrency(workFundSummary.spent_amount, wallet.currency)} / {formatCurrency(workFundSummary.total_received, wallet.currency)}
                 </span>
               </div>
@@ -169,12 +167,17 @@ function WalletRow({
               />
             </div>
           ) : null}
+          {!isWorkFund && toNumber(reservedForWorkFunds) > 0 ? (
+            <p className="mt-1.5 truncate text-[10px] font-bold text-amber-800">
+              {t("workFunds.reservedInWallet")}: {formatCurrency(reservedForWorkFunds, wallet.currency)}
+            </p>
+          ) : null}
         </div>
       </Link>
 
-      <div className="flex items-center gap-2.5 shrink-0">
-        <Link to={`/wallets/${wallet.id}`} className="text-right">
-          <p className="text-sm font-extrabold text-slate-900 md:text-base">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+        <Link to={`/wallets/${wallet.id}`} className="min-w-0 text-right">
+          <p className="max-w-[8rem] break-words text-xs font-extrabold text-slate-900 sm:max-w-[13rem] sm:text-sm md:text-base">
             {formatCurrency(currentBal, wallet.currency)}
           </p>
           {isGoalPocket ? (
@@ -201,10 +204,6 @@ function WalletRow({
             <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[10px] font-bold text-kash-emeraldDark border border-kash-emerald/20">
               {t("workFunds.remaining")}: {formatCurrency(currentBal, wallet.currency)}
             </span>
-          ) : toNumber(reservedForWorkFunds) > 0 ? (
-            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/60">
-              {t("workFunds.reservedInWallet")}: {formatCurrency(reservedForWorkFunds, wallet.currency)}
-            </span>
           ) : null}
         </Link>
 
@@ -212,12 +211,6 @@ function WalletRow({
           triggerVariant="ghost"
           ariaLabel={`Opsi dompet ${wallet.name}`}
           items={[
-            {
-              label: t("workFunds.linkSource"),
-              icon: CreditCard,
-              hidden: !isWorkFund || Boolean(wallet.source_wallet_id) || wallet.is_archived || !onLinkSource,
-              onClick: onLinkSource ?? (() => {}),
-            },
             {
               label: t("workFunds.addFunds"),
               icon: Plus,
@@ -278,9 +271,9 @@ function WorkFundBranch({
   const remaining = summary?.current_balance ?? fund.initial_balance;
 
   return (
-    <div className="ml-5 border-l-2 border-kash-emerald/20 pl-3 sm:ml-8 sm:pl-4">
-      <div className="rounded-xl border border-kash-emerald/15 bg-kash-selected/30 px-3 py-3 sm:px-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="ml-3 w-[calc(100%-0.75rem)] min-w-0 max-w-[calc(100%-0.75rem)] border-l-2 border-kash-emerald/20 pl-3 sm:ml-6 sm:w-[calc(100%-1.5rem)] sm:max-w-[calc(100%-1.5rem)] sm:pl-4">
+      <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-kash-emerald/15 bg-kash-selected/30 px-3 py-3 sm:px-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 shrink-0 rounded-full bg-kash-emerald" />
@@ -290,11 +283,11 @@ function WorkFundBranch({
               {fund.work_fund_kind === "meal" ? t("workFunds.meal") : t("workFunds.project")}
             </p>
           </div>
-          <div className="text-right">
+          <div className="min-w-0 text-right">
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
               {t("workFunds.remaining")}
             </p>
-            <p className="mt-0.5 text-sm font-extrabold text-slate-900">
+            <p className="mt-0.5 max-w-[8rem] break-words text-sm font-extrabold text-slate-900 sm:max-w-none">
               {formatCurrency(remaining, fund.currency)}
             </p>
           </div>
@@ -302,9 +295,9 @@ function WorkFundBranch({
 
         {summary ? (
           <div className="mt-3">
-            <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
-              <span>{t("workFunds.used")}</span>
-              <span>
+            <div className="mb-1 flex min-w-0 items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
+              <span className="shrink-0">{t("workFunds.used")}</span>
+              <span className="min-w-0 truncate text-right">
                 {formatCurrency(summary.spent_amount, fund.currency)} / {formatCurrency(summary.total_received, fund.currency)}
               </span>
             </div>
@@ -312,9 +305,9 @@ function WorkFundBranch({
           </div>
         ) : null}
 
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-kash-emerald/10 pt-2.5">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-kash-emerald/10 pt-2.5">
           <Link
-            className="text-xs font-extrabold text-kash-emerald hover:text-kash-emeraldDark"
+            className="min-w-0 flex-1 truncate text-xs font-extrabold text-kash-emerald hover:text-kash-emeraldDark"
             to={`/wallets/${fund.id}`}
           >
             {t("workFunds.viewReport")}
@@ -1055,15 +1048,28 @@ export function WalletsPage() {
             </p>
             <div className="grid gap-2">
               {unlinkedLegacyWorkFunds.map((wallet) => (
-                <WalletRow
-                  key={wallet.id}
-                  onLinkSource={canManageWallet && !wallet.is_archived ? () => setLinkingLegacyWorkFund(wallet) : undefined}
-                  onArchive={canManageWallet ? () => setArchivingWallet(wallet) : undefined}
-                  onEdit={canManageWallet ? () => void handleStartEdit(wallet) : undefined}
-                  onRestore={wallet.is_archived && canManageWallet ? () => setRestoringWallet(wallet) : undefined}
-                  onDeletePermanently={canManageWallet ? () => setDeletingPermanentlyWallet(wallet) : undefined}
-                  wallet={wallet}
-                />
+                <div className="space-y-2" key={wallet.id}>
+                  <WalletRow
+                    onArchive={canManageWallet ? () => setArchivingWallet(wallet) : undefined}
+                    onEdit={canManageWallet ? () => void handleStartEdit(wallet) : undefined}
+                    onRestore={wallet.is_archived && canManageWallet ? () => setRestoringWallet(wallet) : undefined}
+                    onDeletePermanently={canManageWallet ? () => setDeletingPermanentlyWallet(wallet) : undefined}
+                    wallet={wallet}
+                  />
+                  {canManageWallet && !wallet.is_archived ? (
+                    <div className="flex justify-end px-1">
+                      <Button
+                        onClick={() => setLinkingLegacyWorkFund(wallet)}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        <CreditCard aria-hidden="true" size={14} />
+                        {t("workFunds.linkSource")}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
               ))}
             </div>
           </div>
