@@ -38,7 +38,7 @@ export async function getSpendableCash(input: { periodStart?: string; periodEnd?
 
   const [walletsResult, balancesResult, goalsResult, obligationsResult, budgets] = await Promise.all([
     walletsQuery,
-    supabase.from("wallet_balance_view").select("wallet_id, current_balance"),
+    supabase.from("wallet_balance_view").select("wallet_id, available_balance"),
     goalsQuery,
     obligationsQuery,
     getMonthlyBudgets(periodStart, spaceId ?? undefined),
@@ -49,8 +49,8 @@ export async function getSpendableCash(input: { periodStart?: string; periodEnd?
   if (obligationsResult.error) throw obligationsResult.error;
 
   const wallets = (walletsResult.data ?? []) as Wallet[];
-  const balancesByWalletId = new Map((balancesResult.data ?? []).map((balance) => [balance.wallet_id, balance.current_balance]));
-  const metricWallets: FinancialMetricsWallet[] = wallets.map((wallet) => ({
+  const balancesByWalletId = new Map((balancesResult.data ?? []).map((balance) => [balance.wallet_id, balance.available_balance]));
+  const metricWallets: FinancialMetricsWallet[] = wallets.filter((wallet) => !wallet.work_fund_kind).map((wallet) => ({
     id: wallet.id,
     name: wallet.name,
     wallet_type: wallet.wallet_type,

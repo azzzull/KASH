@@ -620,6 +620,7 @@ export async function getDashboardSummary(
     .sort((a, b) => (b.debtTotal + b.receivableTotal) - (a.debtTotal + a.receivableTotal));
 
   const dashboardWallets = wallets
+    .filter((wallet) => !wallet.work_fund_kind)
     .map((wallet): DashboardWalletItem => ({
       id: wallet.id,
       name: wallet.name,
@@ -734,7 +735,7 @@ export async function getDashboardSummary(
         moneyFlow: moneyFlow ?? undefined,
         primaryWallet: primaryLiquidWallet ? {
           id: primaryLiquidWallet.id,
-          currentBalance: primaryLiquidWallet.balance,
+          currentBalance: primaryLiquidWallet.availableBalance,
           spaceId: targetSpaceId ?? undefined,
         } : undefined,
         receivableOutstanding: totalReceivable,

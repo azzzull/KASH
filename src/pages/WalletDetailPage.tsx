@@ -668,10 +668,12 @@ export function WalletDetailPage() {
       if (data.work_fund_kind) {
         const [summaryResult, workTransactionsResult] = await Promise.all([
           getWorkFundSummaries([id]),
-          getTransactions({ walletId: id, pageSize: 500 }),
+          getTransactions({ workFundId: id, pageSize: 500 }),
         ]);
         setWorkFundSummary(summaryResult.data?.[0] ?? null);
-        setWorkFundTransactions(workTransactionsResult.transactions ?? []);
+        const fundTransactions = workTransactionsResult.transactions ?? [];
+        setWorkFundTransactions(fundTransactions);
+        setRecentTransactions(fundTransactions.slice(0, 10));
       } else {
         setWorkFundSummary(null);
         setWorkFundTransactions([]);
@@ -821,7 +823,9 @@ export function WalletDetailPage() {
   const unrealizedPnL = totalPnL - realizedPnL;
   const totalReturnPct = netContributions > 0 ? (totalPnL / netContributions) * 100 : null;
 
-  const currentBalance = currentEquity;
+  const currentBalance = isWorkFund
+    ? toNumber(workFundSummary?.current_balance ?? wallet.initial_balance)
+    : currentEquity;
   const workFundTotalReceived = toNumber(
     workFundSummary?.total_received ?? wallet.initial_balance,
   );

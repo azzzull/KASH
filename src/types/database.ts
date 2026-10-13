@@ -174,6 +174,7 @@ export type Database = {
           color?: string | null;
           include_in_net_worth?: boolean;
           work_fund_kind?: "meal" | "project" | null;
+          source_wallet_id?: string | null;
           is_archived?: boolean;
           cost_basis?: string | null;
           current_market_value?: string | null;
@@ -991,14 +992,39 @@ export type Database = {
         };
         Returns: Transaction;
       };
+      record_work_fund_contextual_expense: {
+        Args: {
+          p_amount: string;
+          p_category_id: string;
+          p_context: ExpenseContext;
+          p_counterparty_name?: string | null;
+          p_envelope_id?: string | null;
+          p_note?: string | null;
+          p_space_id: string;
+          p_title?: string | null;
+          p_transaction_date: string;
+          p_transaction_id?: string | null;
+          p_wallet_id: string;
+          p_work_fund_id?: string | null;
+        };
+        Returns: Transaction;
+      };
       create_work_fund: {
         Args: {
           p_name: string;
           p_kind: "meal" | "project";
+          p_source_wallet_id: string;
           p_initial_amount?: string;
           p_currency?: string | null;
           p_icon?: string | null;
           p_color?: string | null;
+        };
+        Returns: Wallet;
+      };
+      link_legacy_work_fund_source: {
+        Args: {
+          p_work_fund_id: string;
+          p_source_wallet_id: string;
         };
         Returns: Wallet;
       };
@@ -1192,6 +1218,20 @@ export type Database = {
           p_managed_category_id: string;
           p_managed_space_id: string;
           p_note?: string | null;
+          p_personal_wallet_id: string;
+          p_source_transaction_id: string;
+          p_title: string;
+          p_transaction_date: string;
+        };
+        Returns: Json;
+      };
+      convert_work_fund_expense_to_managed_reimbursement: {
+        Args: {
+          p_amount: number;
+          p_client_request_id: string;
+          p_managed_category_id: string;
+          p_managed_space_id: string;
+          p_note: string | null;
           p_personal_wallet_id: string;
           p_source_transaction_id: string;
           p_title: string;

@@ -25,6 +25,7 @@ import {
 } from "../../lib/walletMeta";
 import {
   createWorkFund,
+  linkLegacyWorkFundSource,
   recordWorkFundReceipt,
   updateWallet,
   type WalletWithBalance,
@@ -482,17 +483,18 @@ export function AdjustmentModal({
 }
 
 export function CreateWorkFundModal({
-  defaultCurrency,
   onClose,
   onSaved,
+  sourceWallets,
 }: {
-  defaultCurrency: string;
   onClose: () => void;
   onSaved: () => void;
+  sourceWallets: WalletWithBalance[];
 }) {
-  const { t } = useI18n();
+  const { t, formatCurrency } = useI18n();
   const [kind, setKind] = useState<WorkFundKind>("meal");
   const [name, setName] = useState("");
+  const [sourceWalletId, setSourceWalletId] = useState(() => sourceWallets[0]?.id ?? "");
   const [initialAmount, setInitialAmount] = useState("0");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -509,6 +511,11 @@ export function CreateWorkFundModal({
       return;
     }
 
+    if (!sourceWalletId) {
+      setError(t("workFunds.sourceRequired"));
+      return;
+    }
+
     if (toNumber(amount) < 0) {
       setError(t("workFunds.initialAmountInvalid"));
       return;
@@ -521,8 +528,8 @@ export function CreateWorkFundModal({
       const { error: createError } = await createWorkFund({
         name: trimmedName,
         kind,
+        sourceWalletId,
         initialAmount: amount || "0",
-        currency: defaultCurrency,
         icon: "wallet",
         color: kind === "meal" ? "#F59E0B" : "#0F766E",
       });
@@ -608,6 +615,19 @@ export function CreateWorkFundModal({
             }
             value={name}
           />
+          <SelectField
+            id="work-fund-source-wallet"
+            label={t("workFunds.sourceWallet")}
+            onChange={(event) => setSourceWalletId(event.target.value)}
+            value={sourceWalletId}
+          >
+            <option value="">{t("workFunds.selectSourceWallet")}</option>
+            {sourceWallets.map((wallet) => (
+              <option key={wallet.id} value={wallet.id}>
+                {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
+              </option>
+            ))}
+          </SelectField>
           <FormField
             id="work-fund-initial-amount"
             inputMode="numeric"
@@ -619,12 +639,107 @@ export function CreateWorkFundModal({
             placeholder="0"
             value={initialAmount}
           />
+          <p className="-mt-2 text-xs font-semibold leading-5 text-slate-500">
+            {t("workFunds.sourceWalletHint")}
+          </p>
 
           <Button disabled={saving} type="submit">
             {saving ? (
               <Loader2 aria-hidden="true" className="animate-spin" size={18} />
             ) : null}
             {saving ? t("common.saving") : t("workFunds.create")}
+          </Button>
+        </form>
+      </div>
+    </Modal>
+  );
+}
+
+export function LinkLegacyWorkFundSourceModal({
+  onClose,
+  onSaved,
+  sourceWallets,
+  wallet,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+  sourceWallets: WalletWithBalance[];
+  wallet: WalletWithBalance;
+}) {
+  const { t, formatCurrency } = useI18n();
+  const [sourceWalletId, setSourceWalletId] = useState(() => sourceWallets[0]?.id ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const remaining = wallet.workFundSummary?.current_balance ?? wallet.initial_balance;
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving) return;
+    if (!sourceWalletId) {
+      setError(t("workFunds.sourceRequired"));
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const { error: linkError } = await linkLegacyWorkFundSource({
+        workFundId: wallet.id,
+        sourceWalletId,
+      });
+      if (linkError) {
+        setError(linkError.message || t("workFunds.linkSourceError"));
+        return;
+      }
+      emitTransactionSaved();
+      onSaved();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t("workFunds.linkSourceError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen
+      maxWidth="md"
+      onClose={onClose}
+      title={t("workFunds.linkSource")}
+      description={t("workFunds.linkSourceDescription")}
+    >
+      <div>
+        {error ? (
+          <div className="mb-4 rounded-lg border border-kash-expense/30 bg-kash-expense/10 px-4 py-3 text-sm font-bold text-slate-900">
+            {error}
+          </div>
+        ) : null}
+        <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs font-bold text-amber-900">{wallet.name}</p>
+            <p className="mt-1 text-sm font-extrabold text-slate-900">
+              {t("workFunds.remaining")}: {formatCurrency(remaining, wallet.currency)}
+            </p>
+            <p className="mt-2 text-xs font-semibold leading-5 text-amber-900">
+              {t("workFunds.linkSourceHint")}
+            </p>
+          </div>
+          <SelectField
+            id="legacy-work-fund-source-wallet"
+            label={t("workFunds.sourceWallet")}
+            onChange={(event) => setSourceWalletId(event.target.value)}
+            value={sourceWalletId}
+          >
+            <option value="">{t("workFunds.selectSourceWallet")}</option>
+            {sourceWallets.map((sourceWallet) => (
+              <option key={sourceWallet.id} value={sourceWallet.id}>
+                {sourceWallet.name} / {formatCurrency(sourceWallet.balance?.available_balance ?? sourceWallet.balance?.current_balance ?? sourceWallet.initial_balance, sourceWallet.currency)}
+              </option>
+            ))}
+          </SelectField>
+          <Button disabled={saving} type="submit">
+            {saving ? <Loader2 aria-hidden="true" className="animate-spin" size={18} /> : null}
+            {saving ? t("common.saving") : t("workFunds.linkSource")}
           </Button>
         </form>
       </div>

@@ -249,10 +249,44 @@ export function walletBalanceAt(wallet: Pick<Wallet, "id" | "created_at" | "init
   return initial + financialMetrics(transactions.filter((transaction) => transaction.transaction_date < cutoff), wallet.id).walletNetMovement;
 }
 
-export function walletNetWorthAt(wallets: Pick<Wallet, "id" | "created_at" | "initial_balance" | "include_in_net_worth" | "is_archived">[], transactions: Transaction[], endExclusive: Date) {
+function workFundReservationsAt(
+  wallets: Pick<Wallet, "id" | "created_at" | "initial_balance" | "work_fund_kind" | "source_wallet_id">[],
+  transactions: Transaction[],
+  endExclusive: Date,
+) {
+  const cutoff = endExclusive.toISOString();
+  const reservedBySourceWalletId = new Map<string, number>();
+
+  for (const fund of wallets) {
+    if (!fund.work_fund_kind || !fund.source_wallet_id || new Date(fund.created_at).toISOString() >= cutoff) continue;
+
+    const remaining = transactions
+      .filter((transaction) => transaction.transaction_date < cutoff && transaction.work_fund_id === fund.id)
+      .reduce((amount, transaction) => {
+        if (transaction.status !== "completed") return amount;
+        if (transaction.type === "adjustment" && transaction.related_entity_type === "work_fund_receipt") {
+          return amount + moneyValue(transaction.amount);
+        }
+        if (transaction.type === "expense" && isWorkExpenseContext(transaction)) {
+          return amount - moneyValue(transaction.amount) - transactionFee(transaction);
+        }
+        return amount;
+      }, moneyValue(fund.initial_balance));
+
+    reservedBySourceWalletId.set(
+      fund.source_wallet_id,
+      (reservedBySourceWalletId.get(fund.source_wallet_id) ?? 0) + Math.max(remaining, 0),
+    );
+  }
+
+  return reservedBySourceWalletId;
+}
+
+export function walletNetWorthAt(wallets: Pick<Wallet, "id" | "created_at" | "initial_balance" | "include_in_net_worth" | "is_archived" | "work_fund_kind" | "source_wallet_id">[], transactions: Transaction[], endExclusive: Date) {
+  const reservedBySourceWalletId = workFundReservationsAt(wallets, transactions, endExclusive);
   return wallets
-    .filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived)
-    .reduce((total, wallet) => total + walletBalanceAt(wallet, transactions, endExclusive), 0);
+    .filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived && !wallet.work_fund_kind)
+    .reduce((total, wallet) => total + walletBalanceAt(wallet, transactions, endExclusive) - (reservedBySourceWalletId.get(wallet.id) ?? 0), 0);
 }
 
 /**

@@ -27,6 +27,7 @@ import {
   AdjustmentModal,
   CreateWorkFundModal,
   EditWalletModal,
+  LinkLegacyWorkFundSourceModal,
   WorkFundReceiptModal,
 } from "../components/wallets/WalletModals";
 import { useAuth } from "../context/AuthContext";
@@ -87,6 +88,7 @@ function WalletRow({
   onEdit,
   onAdjustBalance,
   onAddFunds,
+  onLinkSource,
   onArchive,
   onRestore,
   onDeletePermanently,
@@ -95,6 +97,7 @@ function WalletRow({
   onEdit?: () => void;
   onAdjustBalance?: () => void;
   onAddFunds?: () => void;
+  onLinkSource?: () => void;
   onArchive?: () => void;
   onRestore?: () => void;
   onDeletePermanently?: () => void;
@@ -108,6 +111,7 @@ function WalletRow({
   const isInvestment = wallet.wallet_type === "investment";
   const isWorkFund = Boolean(wallet.work_fund_kind);
   const currentBal = wallet.balance?.current_balance ?? wallet.initial_balance;
+  const reservedForWorkFunds = wallet.balance?.reserved_for_work_funds ?? "0";
   const workFundSummary = isWorkFund ? wallet.workFundSummary : undefined;
 
   return (
@@ -197,6 +201,10 @@ function WalletRow({
             <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[10px] font-bold text-kash-emeraldDark border border-kash-emerald/20">
               {t("workFunds.remaining")}: {formatCurrency(currentBal, wallet.currency)}
             </span>
+          ) : toNumber(reservedForWorkFunds) > 0 ? (
+            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200/60">
+              {t("workFunds.reservedInWallet")}: {formatCurrency(reservedForWorkFunds, wallet.currency)}
+            </span>
           ) : null}
         </Link>
 
@@ -204,6 +212,12 @@ function WalletRow({
           triggerVariant="ghost"
           ariaLabel={`Opsi dompet ${wallet.name}`}
           items={[
+            {
+              label: t("workFunds.linkSource"),
+              icon: CreditCard,
+              hidden: !isWorkFund || Boolean(wallet.source_wallet_id) || wallet.is_archived || !onLinkSource,
+              onClick: onLinkSource ?? (() => {}),
+            },
             {
               label: t("workFunds.addFunds"),
               icon: Plus,
@@ -247,6 +261,71 @@ function WalletRow({
             },
           ]}
         />
+      </div>
+    </div>
+  );
+}
+
+function WorkFundBranch({
+  fund,
+  onAddFunds,
+}: {
+  fund: WalletWithBalance;
+  onAddFunds?: () => void;
+}) {
+  const { t, formatCurrency } = useI18n();
+  const summary = fund.workFundSummary;
+  const remaining = summary?.current_balance ?? fund.initial_balance;
+
+  return (
+    <div className="ml-5 border-l-2 border-kash-emerald/20 pl-3 sm:ml-8 sm:pl-4">
+      <div className="rounded-xl border border-kash-emerald/15 bg-kash-selected/30 px-3 py-3 sm:px-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-kash-emerald" />
+              <p className="truncate text-sm font-extrabold text-slate-900">{fund.name}</p>
+            </div>
+            <p className="mt-1 text-xs font-semibold text-slate-600">
+              {fund.work_fund_kind === "meal" ? t("workFunds.meal") : t("workFunds.project")}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              {t("workFunds.remaining")}
+            </p>
+            <p className="mt-0.5 text-sm font-extrabold text-slate-900">
+              {formatCurrency(remaining, fund.currency)}
+            </p>
+          </div>
+        </div>
+
+        {summary ? (
+          <div className="mt-3">
+            <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold text-slate-500">
+              <span>{t("workFunds.used")}</span>
+              <span>
+                {formatCurrency(summary.spent_amount, fund.currency)} / {formatCurrency(summary.total_received, fund.currency)}
+              </span>
+            </div>
+            <ProgressBar height="xs" percentage={toNumber(summary.usage_percentage)} tone="auto" />
+          </div>
+        ) : null}
+
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-kash-emerald/10 pt-2.5">
+          <Link
+            className="text-xs font-extrabold text-kash-emerald hover:text-kash-emeraldDark"
+            to={`/wallets/${fund.id}`}
+          >
+            {t("workFunds.viewReport")}
+          </Link>
+          {onAddFunds ? (
+            <Button onClick={onAddFunds} size="sm" type="button" variant="secondary">
+              <Plus aria-hidden="true" size={14} />
+              {t("workFunds.addFunds")}
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -526,6 +605,8 @@ export function WalletsPage() {
   const [showAddWorkFund, setShowAddWorkFund] = useState(false);
   const [fundingWorkFund, setFundingWorkFund] =
     useState<WalletWithBalance | null>(null);
+  const [linkingLegacyWorkFund, setLinkingLegacyWorkFund] =
+    useState<WalletWithBalance | null>(null);
   const [archivingWallet, setArchivingWallet] =
     useState<WalletWithBalance | null>(null);
   const [archivingLoading, setArchivingLoading] = useState(false);
@@ -591,15 +672,18 @@ export function WalletsPage() {
         const balance = toNumber(
           wallet.balance?.current_balance ?? wallet.initial_balance,
         );
+        const personalBalance = toNumber(
+          wallet.balance?.available_balance ?? balance,
+        );
 
-        if (wallet.include_in_net_worth) {
-          summary.totalAssets += balance;
+        if (wallet.include_in_net_worth && !wallet.work_fund_kind) {
+          summary.totalAssets += personalBalance;
         }
 
         if (isLiquidWallet(wallet.wallet_type) && !wallet.work_fund_kind) {
-          summary.liquid += balance;
+          summary.liquid += personalBalance;
           if (wallet.include_in_net_worth) {
-            summary.available += balance;
+            summary.available += personalBalance;
           }
         }
 
@@ -632,24 +716,26 @@ export function WalletsPage() {
     const groups: { group: string; wallets: WalletWithBalance[] }[] = [];
 
     // 1. Bank Accounts
-    const bankWallets = wallets.filter(
+    const sourceWallets = wallets.filter((wallet) => !wallet.work_fund_kind);
+
+    const bankWallets = sourceWallets.filter(
       (w) => w.wallet_type === "bank" || w.wallet_type === "digital_bank",
     );
     if (bankWallets.length > 0)
       groups.push({ group: t("wallets.bank"), wallets: bankWallets });
 
     // 2. E-Wallets
-    const ewallets = wallets.filter((w) => w.wallet_type === "ewallet");
+    const ewallets = sourceWallets.filter((w) => w.wallet_type === "ewallet");
     if (ewallets.length > 0)
       groups.push({ group: t("wallets.eWallet"), wallets: ewallets });
 
     // 3. Cash
-    const cashWallets = wallets.filter((w) => w.wallet_type === "cash");
+    const cashWallets = sourceWallets.filter((w) => w.wallet_type === "cash");
     if (cashWallets.length > 0)
       groups.push({ group: t("wallets.cash"), wallets: cashWallets });
 
     // 4. Savings Pockets
-    const savingsPockets = wallets.filter(
+    const savingsPockets = sourceWallets.filter(
       (w) => w.wallet_type === "savings" && !w.goal_id,
     );
     if (savingsPockets.length > 0)
@@ -659,7 +745,7 @@ export function WalletsPage() {
       });
 
     // 5. Goal Pockets
-    const goalPockets = wallets.filter((w) => Boolean(w.goal_id));
+    const goalPockets = sourceWallets.filter((w) => Boolean(w.goal_id));
     if (goalPockets.length > 0)
       groups.push({
         group: `${t("wallets.goalPockets") || "Goal Pockets"} (${t("wallets.goalPocket") || "Kantong Target"})`,
@@ -667,7 +753,7 @@ export function WalletsPage() {
       });
 
     // 6. Investments
-    const investmentWallets = wallets.filter(
+    const investmentWallets = sourceWallets.filter(
       (w) => w.wallet_type === "investment",
     );
     if (investmentWallets.length > 0)
@@ -676,17 +762,9 @@ export function WalletsPage() {
         wallets: investmentWallets,
       });
 
-    // 7. Private Work Funds
-    const workFundWallets = wallets.filter((w) => Boolean(w.work_fund_kind));
-    if (workFundWallets.length > 0)
-      groups.push({
-        group: t("workFunds.title"),
-        wallets: workFundWallets,
-      });
-
-    // 8. Custom
-    const customWallets = wallets.filter(
-      (w) => w.wallet_type === "custom" && !w.work_fund_kind,
+    // 7. Custom
+    const customWallets = sourceWallets.filter(
+      (w) => w.wallet_type === "custom",
     );
     if (customWallets.length > 0)
       groups.push({
@@ -696,6 +774,26 @@ export function WalletsPage() {
 
     return groups;
   }, [wallets, t]);
+
+  const workFundsBySourceWalletId = useMemo(() => {
+    return wallets.reduce<Record<string, WalletWithBalance[]>>((fundsBySource, wallet) => {
+      if (!wallet.work_fund_kind || !wallet.source_wallet_id) return fundsBySource;
+      const sourceFunds = fundsBySource[wallet.source_wallet_id] ?? [];
+      sourceFunds.push(wallet);
+      fundsBySource[wallet.source_wallet_id] = sourceFunds;
+      return fundsBySource;
+    }, {});
+  }, [wallets]);
+
+  const unlinkedLegacyWorkFunds = useMemo(
+    () => wallets.filter((wallet) => wallet.work_fund_kind && !wallet.source_wallet_id),
+    [wallets],
+  );
+
+  const eligibleWorkFundSourceWallets = useMemo(
+    () => wallets.filter((wallet) => !wallet.work_fund_kind && !wallet.is_archived && isLiquidWallet(wallet.wallet_type)),
+    [wallets],
+  );
 
   const createActionRef = useRef<HTMLDivElement>(null);
   const defaultCurr = profile?.default_currency ?? "IDR";
@@ -921,29 +1019,55 @@ export function WalletsPage() {
                 </h4>
                 <div className="grid gap-2">
                   {group.wallets.map((wallet) => (
-                    <WalletRow
-                      key={wallet.id}
-                      onAdjustBalance={canManageWallet ? () => setAdjustingWallet(wallet) : undefined}
-                      onAddFunds={
-                        canManageWallet && wallet.work_fund_kind
-                          ? () => setFundingWorkFund(wallet)
-                          : undefined
-                      }
-                      onArchive={canManageWallet ? () => setArchivingWallet(wallet) : undefined}
-                      onEdit={canManageWallet ? () => void handleStartEdit(wallet) : undefined}
-                      onRestore={
-                        wallet.is_archived && canManageWallet
-                          ? () => setRestoringWallet(wallet)
-                          : undefined
-                      }
-                      onDeletePermanently={canManageWallet ? () => setDeletingPermanentlyWallet(wallet) : undefined}
-                      wallet={wallet}
-                    />
+                    <div className="space-y-2" key={wallet.id}>
+                      <WalletRow
+                        onAdjustBalance={canManageWallet ? () => setAdjustingWallet(wallet) : undefined}
+                        onArchive={canManageWallet ? () => setArchivingWallet(wallet) : undefined}
+                        onEdit={canManageWallet ? () => void handleStartEdit(wallet) : undefined}
+                        onRestore={
+                          wallet.is_archived && canManageWallet
+                            ? () => setRestoringWallet(wallet)
+                            : undefined
+                        }
+                        onDeletePermanently={canManageWallet ? () => setDeletingPermanentlyWallet(wallet) : undefined}
+                        wallet={wallet}
+                      />
+                      {(workFundsBySourceWalletId[wallet.id] ?? []).map((fund) => (
+                        <WorkFundBranch
+                          fund={fund}
+                          key={fund.id}
+                          onAddFunds={canManageWallet && !fund.is_archived ? () => setFundingWorkFund(fund) : undefined}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
               </div>
             ))
           : null}
+        {!loading && unlinkedLegacyWorkFunds.length > 0 ? (
+          <div className="space-y-2">
+            <h4 className="px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
+              {t("workFunds.legacyUnlinked")}
+            </h4>
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-900">
+              {t("workFunds.legacyUnlinkedHint")}
+            </p>
+            <div className="grid gap-2">
+              {unlinkedLegacyWorkFunds.map((wallet) => (
+                <WalletRow
+                  key={wallet.id}
+                  onLinkSource={canManageWallet && !wallet.is_archived ? () => setLinkingLegacyWorkFund(wallet) : undefined}
+                  onArchive={canManageWallet ? () => setArchivingWallet(wallet) : undefined}
+                  onEdit={canManageWallet ? () => void handleStartEdit(wallet) : undefined}
+                  onRestore={wallet.is_archived && canManageWallet ? () => setRestoringWallet(wallet) : undefined}
+                  onDeletePermanently={canManageWallet ? () => setDeletingPermanentlyWallet(wallet) : undefined}
+                  wallet={wallet}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {activeTab === "active" && canManageWallet && (
@@ -985,12 +1109,12 @@ export function WalletsPage() {
 
       {showAddWorkFund ? (
         <CreateWorkFundModal
-          defaultCurrency={profile?.default_currency ?? "IDR"}
           onClose={() => setShowAddWorkFund(false)}
           onSaved={() => {
             setShowAddWorkFund(false);
             void loadWallets();
           }}
+          sourceWallets={eligibleWorkFundSourceWallets}
         />
       ) : null}
 
@@ -1000,6 +1124,18 @@ export function WalletsPage() {
           onClose={() => setFundingWorkFund(null)}
           onSaved={() => {
             setFundingWorkFund(null);
+            void loadWallets();
+          }}
+        />
+      ) : null}
+
+      {linkingLegacyWorkFund ? (
+        <LinkLegacyWorkFundSourceModal
+          wallet={linkingLegacyWorkFund}
+          sourceWallets={eligibleWorkFundSourceWallets}
+          onClose={() => setLinkingLegacyWorkFund(null)}
+          onSaved={() => {
+            setLinkingLegacyWorkFund(null);
             void loadWallets();
           }}
         />

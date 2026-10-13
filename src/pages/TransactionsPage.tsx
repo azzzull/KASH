@@ -663,6 +663,7 @@ function TransactionFormModal({
               title: transactionTitle,
               transactionDate,
               walletId,
+              workFundId: transaction.work_fund_id,
             })
             : await updateTransaction(transaction, {
             amount: amountValue,
@@ -670,6 +671,11 @@ function TransactionFormModal({
             envelopeId: transaction.type === "expense" && !isManagedTargetReimbursement ? (envelopeId || null) : null,
             destinationWalletId: transaction.type === "transfer" ? destinationWalletId : null,
             expenseContext: transaction.type === "expense" && !externalTransfer ? expenseContext : undefined,
+            workFundId: transaction.work_fund_id
+              ? expenseContext === "work"
+                ? transaction.work_fund_id
+                : null
+              : undefined,
             note: noteValue,
             reimbursementCounterparty: transaction.type === "expense" && !externalTransfer ? reimbursementCounterparty : undefined,
             title: externalTransfer ? `Transfer ke ${externalRecipient.trim()}` : transaction.type === "income" || transaction.type === "expense" ? transactionTitle : transaction.title,

@@ -127,6 +127,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
   const [workPaymentSource, setWorkPaymentSource] = useState<
     "personal" | "work_fund"
   >("personal");
+  const [workFundId, setWorkFundId] = useState("");
   const [personalWallets, setPersonalWallets] = useState<WalletWithBalance[]>([]);
   const [personalSpaceId, setPersonalSpaceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -195,19 +196,23 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
   }, [error]);
 
   const workFundWallets = wallets.filter((wallet) => Boolean(wallet.work_fund_kind));
+  const linkedWorkFundWallets = workFundWallets.filter((wallet) => Boolean(wallet.source_wallet_id));
   const standardWallets = wallets.filter((wallet) => !wallet.work_fund_kind);
   const privateWorkExpense =
     mode === "expense" && !isManaged && expenseContext === "work";
   const activeWallets = privateWorkExpense
     ? workPaymentSource === "work_fund"
-      ? workFundWallets
+      ? linkedWorkFundWallets
       : standardWallets
     : paymentSource === "personal"
       ? personalWallets.filter((wallet) => !wallet.work_fund_kind)
       : isManaged
         ? wallets
         : standardWallets;
-  const selectedWallet = activeWallets.find((wallet) => wallet.id === walletId) ?? null;
+  const selectedWallet = (privateWorkExpense && workPaymentSource === "work_fund"
+    ? standardWallets
+    : activeWallets
+  ).find((wallet) => wallet.id === walletId) ?? null;
   const destinationWallet = standardWallets.find((wallet) => wallet.id === destinationWalletId) ?? null;
   const isOutgoingTransfer = mode === "transfer" && transferKind === "outgoing";
   const filteredCategories = useMemo(
@@ -274,6 +279,9 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
     if (!canCreate) {
       return t("transactions.createUnauthorizedViewer") || "Viewer tidak memiliki izin untuk menambah transaksi.";
     }
+    if (privateWorkExpense && workPaymentSource === "work_fund" && !workFundId) {
+      return t("workFunds.selectFund") || "Pilih dana kerja.";
+    }
     if (!walletId) return t("transactions.chooseWallet") || "Pilih dompet.";
     if (!amountDigits || amountNumber <= 0) return t("transactions.amountGreaterThanZero") || "Nominal harus lebih besar dari nol.";
     if (!transactionDate) return t("transactions.chooseDate") || "Pilih tanggal transaksi.";
@@ -315,7 +323,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
     if (requiresExternalCounterparty && !reimbursementCounterparty.trim()) {
       return t("expenseContext.reimbursementCounterparty") || "Isi pihak yang akan mengganti.";
     }
-    if (mode === "expense" && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
+    if (mode === "expense" && !(privateWorkExpense && workPaymentSource === "work_fund") && isMoneyGreaterThan(amountDigits, selectedWalletBalance)) {
       return t("transactions.insufficientBalanceExpense") || "Saldo dompet tidak mencukupi. Periksa kembali nominal transaksi.";
     }
     return null;
@@ -394,6 +402,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
               title: transactionTitle,
               transactionDate,
               walletId,
+              workFundId: privateWorkExpense && workPaymentSource === "work_fund" ? workFundId : null,
               spaceId,
             })
             : isOutgoingTransfer
@@ -441,6 +450,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
         setEnvelopeId("");
         setExpenseContext("personal");
         setWorkPaymentSource("personal");
+        setWorkFundId("");
         setReimbursementCounterparty("");
         setReimbursementTitle("");
         setReimbursementTarget(reimbursementManagedSpaces.length > 0 ? "managed" : "contact");
@@ -526,6 +536,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
                     setWalletId("");
                     if (nextContext !== "work") {
                       setWorkPaymentSource("personal");
+                      setWorkFundId("");
                     }
                     // Managed-space categories cannot be reused for a normal
                     // personal expense after the reimbursement path is left.
@@ -552,6 +563,7 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
                         onClick={() => {
                           setWorkPaymentSource("personal");
                           setWalletId("");
+                          setWorkFundId("");
                         }}
                         type="button"
                       >
@@ -566,13 +578,14 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
                         onClick={() => {
                           setWorkPaymentSource("work_fund");
                           setWalletId("");
+                          setWorkFundId("");
                         }}
                         type="button"
                       >
                         {t("workFunds.workPaymentSource")}
                       </button>
                     </div>
-                    {workPaymentSource === "work_fund" && workFundWallets.length === 0 ? (
+                    {workPaymentSource === "work_fund" && linkedWorkFundWallets.length === 0 ? (
                       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
                         {t("workFunds.emptyForExpense")}
                       </p>
@@ -779,13 +792,23 @@ export function TransactionModal({ mode, initialDate, initialReimbursement, spac
                   : paymentSource === "personal" ? t("transactions.personalWallet") || "Pilih Dompet Pribadi"
                   : t("wallets.title") || "Dompet"
               }
-              onChange={(event) => setWalletId(event.target.value)}
-              value={walletId}
+              onChange={(event) => {
+                if (privateWorkExpense && workPaymentSource === "work_fund") {
+                  const selectedFund = linkedWorkFundWallets.find((fund) => fund.id === event.target.value) ?? null;
+                  setWorkFundId(event.target.value);
+                  setWalletId(selectedFund?.source_wallet_id ?? "");
+                  return;
+                }
+                setWalletId(event.target.value);
+              }}
+              value={privateWorkExpense && workPaymentSource === "work_fund" ? workFundId : walletId}
             >
               <option value="">{t("wallets.selectWallet") || "Pilih Dompet"}</option>
               {activeWallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name} / {formatCurrency(wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}
+                  {privateWorkExpense && workPaymentSource === "work_fund"
+                    ? `${wallet.name} / ${formatCurrency(wallet.workFundSummary?.current_balance ?? wallet.initial_balance, wallet.currency)}${wallet.workFundSummary?.source_wallet_name ? ` — ${wallet.workFundSummary.source_wallet_name}` : ""}`
+                    : `${wallet.name} / ${formatCurrency(wallet.balance?.available_balance ?? wallet.balance?.current_balance ?? wallet.initial_balance, wallet.currency)}`}
                 </option>
               ))}
             </SelectField>

@@ -125,6 +125,8 @@ export type Wallet = {
   include_in_net_worth: boolean;
   /** A private office fund; it is intentionally excluded from personal wealth. */
   work_fund_kind?: WorkFundKind | null;
+  /** The physical personal wallet where this work-fund allocation is held. */
+  source_wallet_id?: string | null;
   is_archived: boolean;
   cost_basis?: MoneyAmount | null;
   current_market_value?: MoneyAmount | null;
@@ -222,6 +224,8 @@ export type Transaction = {
   related_entity_id: string | null;
   cross_space_event_id?: string | null;
   cross_space_role?: "personal_cash_out" | "managed_spending" | "managed_advance_cash_in" | null;
+  /** Private work-fund allocation used by this transaction, when applicable. */
+  work_fund_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -233,6 +237,7 @@ export type WalletBalance = {
   transaction_total: MoneyAmount;
   current_balance: MoneyAmount;
   allocated_to_goals: MoneyAmount;
+  reserved_for_work_funds?: MoneyAmount;
   available_balance: MoneyAmount;
   net_contributions?: MoneyAmount | null;
   cost_basis?: MoneyAmount | null;
@@ -248,6 +253,9 @@ export type WorkFundSummary = {
   wallet_id: string;
   user_id: string;
   work_fund_kind: WorkFundKind;
+  source_wallet_id: string | null;
+  source_wallet_name: string | null;
+  source_wallet_currency: CurrencyCode | null;
   total_received: MoneyAmount;
   current_balance: MoneyAmount;
   spent_amount: MoneyAmount;

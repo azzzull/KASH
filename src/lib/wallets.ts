@@ -51,6 +51,7 @@ export type UpdateWalletInput = {
 export type CreateWorkFundInput = {
   name: string;
   kind: WorkFundKind;
+  sourceWalletId: string;
   initialAmount: string;
   currency?: CurrencyCode;
   icon?: string | null;
@@ -111,7 +112,35 @@ export async function getWallets(spaceId?: string, isArchived: boolean = false) 
     };
   });
 
-  return { data: attachBalances(mappedWallets, balances), error: null };
+  const walletsWithBalances = attachBalances(mappedWallets, balances);
+  const workFundIds = walletsWithBalances
+    .filter((wallet) => Boolean(wallet.work_fund_kind))
+    .map((wallet) => wallet.id);
+
+  if (workFundIds.length === 0) {
+    return { data: walletsWithBalances, error: null };
+  }
+
+  const { data: summaries, error: summaryError } = await supabase
+    .from("work_fund_summary_view")
+    .select("*")
+    .in("wallet_id", workFundIds);
+
+  if (summaryError) {
+    return { data: null, error: summaryError };
+  }
+
+  const summariesByWalletId = new Map(
+    (summaries ?? []).map((summary) => [summary.wallet_id, summary]),
+  );
+
+  return {
+    data: walletsWithBalances.map((wallet) => ({
+      ...wallet,
+      workFundSummary: summariesByWalletId.get(wallet.id),
+    })),
+    error: null,
+  };
 }
 
 export async function getArchivedWalletsCount(spaceId?: string) {
@@ -227,10 +256,26 @@ export async function createWorkFund(input: CreateWorkFundInput): Promise<{
   const { data, error } = await supabase.rpc("create_work_fund", {
     p_name: input.name.trim(),
     p_kind: input.kind,
+    p_source_wallet_id: input.sourceWalletId,
     p_initial_amount: input.initialAmount,
     p_currency: input.currency ?? null,
     p_icon: input.icon ?? "wallet",
     p_color: input.color ?? "#0F766E",
+  });
+
+  return {
+    data: data ?? null,
+    error: error ? new Error(error.message) : null,
+  };
+}
+
+export async function linkLegacyWorkFundSource(input: {
+  workFundId: string;
+  sourceWalletId: string;
+}): Promise<{ data: Wallet | null; error: Error | null }> {
+  const { data, error } = await supabase.rpc("link_legacy_work_fund_source", {
+    p_work_fund_id: input.workFundId,
+    p_source_wallet_id: input.sourceWalletId,
   });
 
   return {

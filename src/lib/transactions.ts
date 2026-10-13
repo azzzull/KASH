@@ -29,6 +29,7 @@ type BaseTransactionInput = {
 type CategoryTransactionInput = BaseTransactionInput & {
   categoryId: string;
   expenseContext?: ExpenseContext;
+  workFundId?: string | null;
   reimbursementCounterparty?: string | null;
   title: string | null;
 };
@@ -69,6 +70,7 @@ export type TransactionFilters = {
   status?: TransactionStatusFilter;
   type?: TransactionTypeFilter;
   walletId?: string;
+  workFundId?: string;
   spaceId?: string;
 };
 
@@ -139,6 +141,7 @@ export type UpdateTransactionInput = {
   transferFee?: string;
   walletId: string;
   expenseContext?: ExpenseContext;
+  workFundId?: string | null;
   reimbursementCounterparty?: string | null;
 };
 
@@ -151,6 +154,7 @@ export type ConvertExpenseToManagedReimbursementInput = {
   title: string;
   transactionDate: string;
   walletId: string;
+  workFundId?: string | null;
 };
 
 const INSUFFICIENT_BALANCE_MESSAGE = "Wallet balance is not enough. Check the amount again.";
@@ -264,12 +268,12 @@ export function isExternalTransfer(transaction: Pick<Transaction, "type" | "tran
 async function getWalletCurrentBalance(walletId: string) {
   const { data, error } = await supabase
     .from("wallet_balance_view")
-    .select("current_balance")
+    .select("available_balance")
     .eq("wallet_id", walletId)
     .single();
 
   if (error) throw new Error(error.message || "Failed to retrieve wallet balance");
-  return data?.current_balance ?? "0";
+  return data?.available_balance ?? "0";
 }
 
 async function assertWalletCanCover(walletId: string, outgoingAmount: string, restoredAmount = "0") {
@@ -344,7 +348,27 @@ export async function createExpense(input: CategoryTransactionInput) {
   const targetSpaceId = input.spaceId ?? getActiveSpaceId();
   if (!targetSpaceId) throw new Error("A financial space is required to record an expense.");
 
-  await assertWalletCanCover(input.walletId, input.amount);
+  if (!input.workFundId) {
+    await assertWalletCanCover(input.walletId, input.amount);
+  }
+
+  if (input.workFundId) {
+    return supabase.rpc("record_work_fund_contextual_expense", {
+      p_amount: input.amount,
+      p_category_id: input.categoryId,
+      p_context: input.expenseContext ?? "personal",
+      p_counterparty_name: input.reimbursementCounterparty?.trim() || null,
+      p_envelope_id: input.envelopeId ?? null,
+      p_note: input.note ?? null,
+      p_space_id: targetSpaceId,
+      p_title: input.title ?? null,
+      p_transaction_date: toUtcIsoString(input.transactionDate),
+      p_transaction_id: null,
+      p_wallet_id: input.walletId,
+      p_work_fund_id: input.workFundId,
+    });
+  }
+
   return supabase.rpc("record_contextual_expense", {
     p_amount: input.amount,
     p_category_id: input.categoryId,
@@ -409,7 +433,7 @@ export async function createCrossSpaceExpense(input: {
  * atomically so the event is never double-counted as personal consumption.
  */
 export async function convertExpenseToManagedReimbursement(input: ConvertExpenseToManagedReimbursementInput) {
-  return supabase.rpc("convert_expense_to_managed_reimbursement", {
+  const args = {
     p_amount: toNumber(input.amount),
     p_client_request_id: crypto.randomUUID(),
     p_managed_category_id: input.managedCategoryId,
@@ -419,7 +443,11 @@ export async function convertExpenseToManagedReimbursement(input: ConvertExpense
     p_source_transaction_id: input.sourceTransactionId,
     p_title: input.title,
     p_transaction_date: toUtcIsoString(input.transactionDate),
-  });
+  };
+
+  return input.workFundId
+    ? supabase.rpc("convert_work_fund_expense_to_managed_reimbursement", args)
+    : supabase.rpc("convert_expense_to_managed_reimbursement", args);
 }
 
 export async function recordCrossSpaceAdvance(input: {
@@ -583,6 +611,7 @@ export async function getTransactions(filters: TransactionFilters = {}) {
   if (filters.envelopeId) query = query.eq("envelope_id", filters.envelopeId);
   if (filters.withoutEnvelope) query = query.is("envelope_id", null);
   if (filters.walletId) query = query.or(`wallet_id.eq.${filters.walletId},destination_wallet_id.eq.${filters.walletId}`);
+  if (filters.workFundId) query = query.eq("work_fund_id", filters.workFundId);
   if (range) query = query.gte("transaction_date", range.start).lt("transaction_date", range.end);
 
   query =
@@ -782,9 +811,11 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     throw new Error("Voided transactions cannot be edited.");
   }
 
+  const hasWorkFundUpdate = input.workFundId !== undefined;
+  const workFundId = hasWorkFundUpdate ? input.workFundId ?? null : transaction.work_fund_id ?? null;
   const nextOutgoingAmount = outgoingAmountFor(transaction.type, input.amount, input.transferFee ?? "0");
 
-  if (nextOutgoingAmount) {
+  if (nextOutgoingAmount && !workFundId) {
     const restoredOutgoingAmount =
       transaction.wallet_id === input.walletId
         ? outgoingAmountFor(transaction.type, transaction.amount, transaction.transfer_fee ?? "0") ?? "0"
@@ -798,7 +829,7 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
     if (!targetSpaceId) throw new Error("A financial space is required to update an expense.");
     const categoryId = input.categoryId ?? transaction.category_id;
     if (!categoryId) throw new Error("An expense category is required to update an expense.");
-    return supabase.rpc("record_contextual_expense", {
+    const contextualExpenseArgs = {
       p_amount: input.amount,
       p_category_id: categoryId,
       p_context: input.expenseContext ?? transaction.expense_context ?? "personal",
@@ -810,7 +841,16 @@ export async function updateTransaction(transaction: Transaction, input: UpdateT
       p_transaction_date: toUtcIsoString(input.transactionDate ?? transaction.transaction_date),
       p_transaction_id: transaction.id,
       p_wallet_id: input.walletId,
-    });
+    };
+
+    if (workFundId || hasWorkFundUpdate) {
+      return supabase.rpc("record_work_fund_contextual_expense", {
+        ...contextualExpenseArgs,
+        p_work_fund_id: workFundId,
+      });
+    }
+
+    return supabase.rpc("record_contextual_expense", contextualExpenseArgs);
   }
 
   const updatePayload: Database["public"]["Tables"]["transactions"]["Update"] = {

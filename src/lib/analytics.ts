@@ -342,6 +342,10 @@ function walletCurrentBalance(wallet: WalletWithBalance) {
   return moneyValue(wallet.balance?.current_balance ?? wallet.initial_balance);
 }
 
+function walletPersonalBalance(wallet: WalletWithBalance) {
+  return moneyValue(wallet.balance?.available_balance ?? wallet.balance?.current_balance ?? wallet.initial_balance);
+}
+
 function walletDistributionGroup(wallet: Wallet) {
   if (isLiquidWallet(wallet.wallet_type)) return { color: "#10B981", id: "liquid", label: "Liquid (Cash + Bank + E-Wallet)" };
   if (wallet.wallet_type === "investment") return { color: "#8B5CF6", id: "investment", label: "Investments" };
@@ -354,12 +358,12 @@ function buildWalletDistribution(wallets: WalletWithBalance[]): AnalyticsWalletD
   const totals = new Map<string, { amount: number; color: string; label: string }>();
 
   wallets
-    .filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived)
+    .filter((wallet) => wallet.include_in_net_worth && !wallet.is_archived && !wallet.work_fund_kind)
     .forEach((wallet) => {
       const group = walletDistributionGroup(wallet);
       const previous = totals.get(group.id);
       totals.set(group.id, {
-        amount: (previous?.amount ?? 0) + walletCurrentBalance(wallet),
+        amount: (previous?.amount ?? 0) + walletPersonalBalance(wallet),
         color: group.color,
         label: group.label,
       });
@@ -668,7 +672,7 @@ export async function getAnalyticsSummary(
         primaryWallet: primaryLiquidWallet
           ? {
               id: primaryLiquidWallet.id,
-              currentBalance: walletCurrentBalance(primaryLiquidWallet),
+              currentBalance: walletPersonalBalance(primaryLiquidWallet),
               spaceId: targetSpaceId ?? undefined,
             }
           : undefined,
