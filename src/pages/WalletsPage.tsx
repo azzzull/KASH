@@ -114,7 +114,7 @@ function WalletRow({
 
   return (
     <div
-      className={`kash-activity-row flex min-w-0 max-w-full items-center justify-between gap-2.5 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md sm:gap-3 ${
+      className={`kash-activity-row grid min-w-0 max-w-full grid-cols-[minmax(0,1fr)_minmax(0,9.5rem)] items-center gap-2 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-card transition hover:border-kash-emerald/40 hover:shadow-md sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3 ${
         wallet.is_archived ? "opacity-80" : ""
       }`}
     >
@@ -175,17 +175,17 @@ function WalletRow({
         </div>
       </Link>
 
-      <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-        <Link to={`/wallets/${wallet.id}`} className="min-w-0 text-right">
-          <p className="max-w-[8rem] break-words text-xs font-extrabold text-slate-900 sm:max-w-[13rem] sm:text-sm md:text-base">
+      <div className="flex min-w-0 max-w-full items-center justify-end gap-1.5 sm:max-w-none sm:gap-2.5">
+        <Link to={`/wallets/${wallet.id}`} className="min-w-0 flex-1 text-right">
+          <p className="max-w-full break-words text-xs font-extrabold text-slate-900 sm:max-w-[13rem] sm:text-sm md:text-base">
             {formatCurrency(currentBal, wallet.currency)}
           </p>
           {isGoalPocket ? (
-            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/50">
+            <span className="mt-0.5 inline-flex max-w-full items-center justify-end gap-1 break-words rounded-md border border-amber-200/50 bg-amber-50 px-2 py-0.5 text-right text-[10px] font-bold text-amber-700">
               {t("goals.goal") || "Goal"}: {wallet.goal_name}
             </span>
           ) : isSavingsPocket ? (
-            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[10px] font-bold text-kash-emeraldDark border border-kash-emerald/20">
+            <span className="mt-0.5 inline-flex max-w-full items-center justify-end gap-1 break-words rounded-md border border-kash-emerald/20 bg-kash-emerald/10 px-2 py-0.5 text-right text-[10px] font-bold text-kash-emeraldDark">
               {t("wallets.savingsPocket") || "Tabungan"}
             </span>
           ) : isInvestment && wallet.balance?.return_percentage !== undefined ? (
@@ -201,13 +201,14 @@ function WalletRow({
               {t("wallets.return") || "return"}
             </span>
           ) : isWorkFund ? (
-            <span className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-kash-emerald/10 px-2 py-0.5 text-[10px] font-bold text-kash-emeraldDark border border-kash-emerald/20">
+            <span className="mt-0.5 inline-flex max-w-full items-center justify-end gap-1 break-words rounded-md border border-kash-emerald/20 bg-kash-emerald/10 px-2 py-0.5 text-right text-[10px] font-bold text-kash-emeraldDark">
               {t("workFunds.remaining")}: {formatCurrency(currentBal, wallet.currency)}
             </span>
           ) : null}
         </Link>
 
         <EntityMoreActionsMenu
+          className="shrink-0"
           triggerVariant="ghost"
           ariaLabel={`Opsi dompet ${wallet.name}`}
           items={[
