@@ -55,9 +55,9 @@ import {
 
 function DetailMetric({ label, value }: { label: string; value: string }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-normal text-slate-600">{label}</p>
-      <p className="mt-2 text-lg font-extrabold text-slate-900">{value}</p>
+    <article className="min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="break-words text-xs font-bold uppercase tracking-normal text-slate-600">{label}</p>
+      <p className="mt-2 break-words text-base font-extrabold text-slate-900 sm:text-lg">{value}</p>
     </article>
   );
 }
@@ -151,13 +151,13 @@ function UpdateValuationModal({
 
         <form className="grid w-full max-w-full min-w-0 gap-4" onSubmit={submit}>
           <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.netContributions") || "Modal Bersih"}</p>
-              <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(netContributionsAmount, wallet.currency)}</p>
+              <p className="mt-1 break-words text-sm font-extrabold text-slate-900">{formatCurrency(netContributionsAmount, wallet.currency)}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t("wallets.previousMarketValue") || "Nilai Investasi Sebelumnya"}</p>
-              <p className="mt-1 text-sm font-extrabold text-slate-900">{formatCurrency(currentMarketValue, wallet.currency)}</p>
+              <p className="mt-1 break-words text-sm font-extrabold text-slate-900">{formatCurrency(currentMarketValue, wallet.currency)}</p>
             </div>
           </div>
 
@@ -843,16 +843,16 @@ export function WalletDetailPage() {
     Boolean(personalSpace?.id) &&
     wallet.space_id === personalSpace?.id;
   const heroMetadata = (
-    <div className="mt-4 flex max-w-full flex-nowrap gap-2 overflow-x-auto border-t border-white/15 pt-3 text-xs font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-      <div className="w-[7rem] shrink-0">
+    <div className="mt-4 grid max-w-full grid-cols-2 gap-x-4 gap-y-3 border-t border-white/15 pt-3 text-xs font-semibold text-white/90 sm:flex sm:gap-2">
+      <div className="min-w-0 sm:w-[7rem] sm:shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.type") || "Tipe Dompet"}</span>
-        <p className="mt-0.5 text-sm font-extrabold text-white">{typeOption.label}</p>
+        <p className="mt-0.5 break-words text-sm font-extrabold text-white">{typeOption.label}</p>
       </div>
-      <div className="w-[5.5rem] shrink-0">
+      <div className="min-w-0 sm:w-[5.5rem] sm:shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.currency") || "Mata Uang"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">{wallet.currency}</p>
       </div>
-      <div className="w-[9rem] shrink-0">
+      <div className="col-span-2 min-w-0 sm:col-span-1 sm:w-[9rem] sm:shrink-0">
         <span className="text-white/60 font-semibold">{t("wallets.includeInNetWorth") || "Kekayaan Bersih"}</span>
         <p className="mt-0.5 text-sm font-extrabold text-white">
           {wallet.include_in_net_worth ? (t("common.yes") || "Ya") : (t("common.no") || "Tidak")}
@@ -871,7 +871,7 @@ export function WalletDetailPage() {
       {/* Hero Performance/Balance Card */}
       {isInvestment ? (
         <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
                 <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
@@ -928,7 +928,7 @@ export function WalletDetailPage() {
               {t("wallets.currentEquity") || "Nilai Investasi Saat Ini"}
             </p>
             {totalReturnPct !== null ? (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/15 px-2.5 py-0.5 text-xs font-extrabold text-white">
                 {totalReturnPct >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
                 {totalReturnPct >= 0 ? "+" : ""}{totalReturnPct.toFixed(2)}%
               </span>
@@ -939,17 +939,17 @@ export function WalletDetailPage() {
             {formatCurrency(currentEquity, wallet.currency)}
           </p>
 
-          <div className="mt-6 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto py-0.5 text-[10px] font-semibold text-white/90 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+          <div className="mt-6 flex max-w-full flex-wrap items-center gap-2 py-0.5 text-[10px] font-semibold text-white/90">
+            <span className="max-w-full break-words rounded-lg bg-white/15 px-2.5 py-1">
               <span className="font-medium text-white/65">{t("wallets.netContributions") || "Modal Bersih"}: </span>
               <span className="font-extrabold text-white">{formatCurrency(netContributions, wallet.currency)}</span>
             </span>
-            <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+            <span className="max-w-full break-words rounded-lg bg-white/15 px-2.5 py-1">
               <span className="font-medium text-white/65">{t("wallets.totalPnL") || "Total P/L"}: </span>
               <span className="font-extrabold text-white">{totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL, wallet.currency)}</span>
             </span>
             {realizedPnL !== 0 ? (
-              <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/15 px-2.5 py-1">
+              <span className="max-w-full break-words rounded-lg bg-white/15 px-2.5 py-1">
                 <span className="font-medium text-white/65">{t("wallets.realizedPnL") || "Terealisasi"}: </span>
                 <span className="font-extrabold text-white">{realizedPnL >= 0 ? "+" : ""}{formatCurrency(realizedPnL, wallet.currency)}</span>
               </span>
@@ -959,7 +959,7 @@ export function WalletDetailPage() {
         </section>
       ) : (
         <section className="kash-hero-card p-5 md:p-6 min-w-0 max-w-full">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15 text-white">
                 <Icon aria-hidden="true" size={20} strokeWidth={2.2} />
@@ -1040,13 +1040,13 @@ export function WalletDetailPage() {
       )}
 
       {isWorkFund ? (
-        <section className="rounded-2xl border border-kash-emerald/20 bg-white p-4 shadow-card sm:p-5">
+        <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-kash-emerald/20 bg-white p-4 shadow-card sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-extrabold text-slate-900">
                 {t("workFunds.report")}
               </p>
-              <p className="mt-1 text-xs font-semibold text-slate-600">
+              <p className="mt-1 break-words text-xs font-semibold text-slate-600">
                 {t("workFunds.privateHint")}
               </p>
             </div>
@@ -1088,12 +1088,12 @@ export function WalletDetailPage() {
           </div>
 
           <div className="mt-5 border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-extrabold text-slate-900">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <h3 className="min-w-0 truncate text-sm font-extrabold text-slate-900">
                 {t("workFunds.categoryBreakdown")}
               </h3>
               <Link
-                className="text-xs font-extrabold text-kash-emerald hover:text-kash-emeraldDark"
+                className="shrink-0 text-xs font-extrabold text-kash-emerald hover:text-kash-emeraldDark"
                 to={`/transactions?wallet=${wallet.id}`}
               >
                 {t("wallets.viewAllTransactions")}
@@ -1103,13 +1103,13 @@ export function WalletDetailPage() {
               <div className="mt-3 grid gap-2">
                 {workFundCategoryTotals.map((category) => (
                   <div
-                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2.5 text-sm"
+                    className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2.5 text-sm"
                     key={category.name}
                   >
-                    <span className="min-w-0 truncate font-bold text-slate-700">
+                    <span className="min-w-0 flex-1 truncate font-bold text-slate-700">
                       {category.name}
                     </span>
-                    <span className="shrink-0 font-extrabold text-slate-900">
+                    <span className="max-w-[8rem] shrink-0 break-words text-right font-extrabold text-slate-900">
                       {formatCurrency(category.amount, wallet.currency)}
                     </span>
                   </div>
@@ -1126,7 +1126,7 @@ export function WalletDetailPage() {
 
       {wallet.goal_id ? (
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-0.5 text-xs font-semibold text-slate-500">
-          <p className="min-w-0">
+          <p className="min-w-0 break-words">
             <span className="font-extrabold text-slate-700">{t("wallets.pocketLinkedToGoal") || "Kantong Terhubung ke Target Tabungan (Goal)"}</span>
             <span className="text-slate-400"> · </span>
             <span className="font-bold text-slate-600">
@@ -1141,11 +1141,11 @@ export function WalletDetailPage() {
 
       {/* Action Bar Directly BELOW Hero Card (Investment Wallets Only) */}
       {!wallet.is_archived && isInvestment && canManageWallet && (
-        <div className="flex flex-nowrap items-center justify-start gap-2 overflow-x-auto max-w-full py-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex max-w-full flex-wrap items-center justify-start gap-2 py-0.5">
           <Button
             type="button"
             onClick={() => setShowValuation(true)}
-            className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+            className="min-h-9 max-w-full gap-1.5 px-3.5 py-1.5 text-xs font-extrabold"
           >
             <LineChart aria-hidden="true" size={15} />
             {t("wallets.updateInvestmentValuation") || "Update Nilai"}
@@ -1154,7 +1154,7 @@ export function WalletDetailPage() {
             type="button"
             variant="secondary"
             onClick={() => setShowActivityModal(true)}
-            className="shrink-0 whitespace-nowrap gap-1.5 min-h-9 px-3.5 py-1.5 text-xs font-extrabold"
+            className="min-h-9 max-w-full gap-1.5 px-3.5 py-1.5 text-xs font-extrabold"
           >
             <TrendingUp aria-hidden="true" size={15} />
             {t("wallets.recordActivity") || "Catat Aktivitas"}
@@ -1284,10 +1284,10 @@ export function WalletDetailPage() {
 
       {/* Recent Transactions List */}
       <section className="rounded-2xl border border-slate-200/60 bg-white p-4 sm:p-5 shadow-card">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center justify-between gap-2 mb-3">
+          <div className="flex min-w-0 items-center gap-2">
             <WalletCards aria-hidden="true" className="text-slate-500" size={17} />
-            <h3 className="text-sm font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Transaksi Terbaru"}</h3>
+            <h3 className="min-w-0 truncate text-sm font-extrabold text-slate-900">{t("dashboard.recentTransactions") || "Transaksi Terbaru"}</h3>
           </div>
           {recentTransactions.length > 0 && (
             <span className="text-xs font-bold text-slate-500">
@@ -1331,8 +1331,8 @@ export function WalletDetailPage() {
                   onClick={() => setSelectedTransaction(tx)}
                   className="block w-full border-b border-slate-100 py-3 text-left transition last:border-b-0 hover:bg-slate-50 px-3"
                 >
-                  <span className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-3 min-w-0">
+                  <span className="flex min-w-0 items-center justify-between gap-3">
+                    <span className="flex min-w-0 flex-1 items-center gap-3">
                       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 ${tone}`}>
                         <IconComp aria-hidden="true" size={17} strokeWidth={2.2} />
                       </span>
@@ -1344,12 +1344,12 @@ export function WalletDetailPage() {
                       </span>
                     </span>
 
-                    <span className="text-right shrink-0">
-                      <span className={`block text-sm font-extrabold ${tone}`}>
+                    <span className="max-w-[8rem] shrink-0 text-right">
+                      <span className={`block break-words text-sm font-extrabold ${tone}`}>
                         {displayAmountPrefix}{formatCurrency(rowAmount, wallet.currency)}
                       </span>
                       {isExternalTransfer(tx) && toNumber(tx.transfer_fee) > 0 ? (
-                        <span className="block text-[11px] font-bold text-slate-500">
+                        <span className="block break-words text-[11px] font-bold text-slate-500">
                           {t("transactions.adminFee") || "Biaya Admin"} {formatCurrency(tx.transfer_fee, wallet.currency)}
                         </span>
                       ) : null}
